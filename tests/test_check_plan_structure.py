@@ -1,0 +1,27 @@
+from check_plan_structure import validate_plan
+
+GOOD = """# 2026Q3-S7 — ПЛАН спринта
+**Период:** 18 июля — 31 июля 2026 (2 недели)
+## ЦЕЛЬ: Кино (OBJ 2)
+**🎯 Образ результата команды (Sprint Goal):** кино на витрине
+| ЭПИК | История | Образ результата | Образ действия | Исполнитель | Приоритет | SP |
+| - | - | - | - | - | - | - |
+| TBD | BE: X | БЫЛО→СТАЛО | - [BE] шаг | BE-2 | Must | 8 |
+## Необходимые внеплановые работы
+## 📊 Capacity по командам
+## 👤 Персональный фокус
+## ⚠️ Общие риски
+## 🔭 Спринт N+1 (предварительно)
+*📋 Следующие шаги: демо*
+"""
+
+def test_good_plan_passes():
+    assert validate_plan(GOOD) == []
+
+def test_missing_capacity_block_flagged():
+    bad = GOOD.replace("## 📊 Capacity по командам", "")
+    assert any("Capacity" in v for v in validate_plan(bad))
+
+def test_tbd_executor_in_must_flagged():
+    bad = GOOD.replace("| BE-2 | Must |", "| TBD | Must |")
+    assert any("TBD" in v for v in validate_plan(bad))
