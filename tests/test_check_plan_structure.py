@@ -25,3 +25,26 @@ def test_missing_capacity_block_flagged():
 def test_tbd_executor_in_must_flagged():
     bad = GOOD.replace("| BE-2 | Must |", "| TBD | Must |")
     assert any("TBD" in v for v in validate_plan(bad))
+
+def test_tbd_executor_in_unplanned_must_flagged():
+    # Таблица «Необходимые внеплановые работы» — 8 колонок (добавлена Тег в конце).
+    # Регресс: cells[-3] при 8 колонках попадает на Приоритет, а не Исполнитель.
+    bad = GOOD.replace(
+        "## Необходимые внеплановые работы",
+        "## Необходимые внеплановые работы\n"
+        "| ЭПИК | История | Образ результата | Образ действия | Исполнитель | Приоритет | SP | Тег |\n"
+        "| - | - | - | - | - | - | - | - |\n"
+        "| OBJ 3 | BE: Y | БЫЛО→СТАЛО | - [BE] шаг | TBD | Must | 5 | внеплан |",
+    )
+    assert any("TBD" in v for v in validate_plan(bad))
+
+def test_bold_must_executor_tbd_flagged():
+    bad = GOOD.replace("| BE-2 | Must | 8 |", "| TBD | **Must** | 8 |")
+    assert any("TBD" in v for v in validate_plan(bad))
+
+def test_padded_header_passes():
+    padded = GOOD.replace(
+        "| ЭПИК | История | Образ результата | Образ действия | Исполнитель | Приоритет | SP |",
+        "| ЭПИК  | История | Образ результата | Образ действия  | Исполнитель | Приоритет | SP |",
+    )
+    assert validate_plan(padded) == []
