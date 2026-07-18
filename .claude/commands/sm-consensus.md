@@ -2,6 +2,6 @@
 description: "Стадия 5 — board «как вижу», цикл правок команды, гейт согласия. STOP."
 ---
 # /sm-consensus {sprint}
-Роль: Facilitator. Вход: `ПЛАН-{sprint}.md`. Прочитай `resources/consensus_board.md`.
+Роль: Facilitator. Вход: `ПЛАН-{sprint}.md`. Прочитай `.claude/domain-profile.md`, `resources/consensus_board.md`, `examples/ideal_consensus_log.md`.
 Отрендери board «как вижу» (группы по историям, `@исполнитель`/`SP`, легенда SP). Собери правки (**канал: PO ретранслирует на ревью**), версионируй. **Правки SP/состава/исполнителей → повторный `/sm-deliver`.**
 Гейт «все согласны» → зафиксируй `consensus-{sprint}.md` (кто/дата/версия/правки). STOP.
