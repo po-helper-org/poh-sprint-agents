@@ -48,3 +48,7 @@ def test_padded_header_passes():
         "| ЭПИК  | История | Образ результата | Образ действия  | Исполнитель | Приоритет | SP |",
     )
     assert validate_plan(padded) == []
+
+def test_missing_next_steps_block_flagged():
+    bad = GOOD.replace("*📋 Следующие шаги: демо*", "")
+    assert any("Следующие шаги" in v for v in validate_plan(bad))

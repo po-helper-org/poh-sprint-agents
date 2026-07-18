@@ -9,6 +9,7 @@ sprint_output_doc:  GROUND/SPRINTS/{sprint}/ПЛАН-{sprint}.md
 okr_output_doc:     GROUND/NEXUS/project-management/{quarter}/OKR.md
 sprint_roadmap_doc: GROUND/SPRINTS/SPRINT-ROADMAP-{quarter}.md
 sprint_fact_doc:    GROUND/SPRINTS/{prev_sprint}/ФАКТ-{prev_sprint}.md
+index_doc:          GROUND/NEXUS/project-management/{quarter}/INDEX.md
 kr_epic_map_doc:    GROUND/NEXUS/project-management/{quarter}/KR-EPIC-MAP.md
 
 ## team
