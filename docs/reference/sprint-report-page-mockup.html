@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ФАКТ | 2026Q3-S8</title>
+<style>
+/* Отчётная страница спринта. Макет-мишень: к этой раскладке навык
+ * sprint-result приводит любой входящий контекст.
+ *
+ * Типографика — из poh-bft-writer (bft-html-export.css): чёрно-белый документ,
+ * Georgia, колонка 860px. Цвет на странице ровно один — шкала готовности из
+ * референсной колоды. Он несёт смысл, поэтому и остался единственным: рядом с
+ * ним заливка «для красоты» читалась бы как статус.
+ */
+:root{
+  --bg:#ffffff; --fg:#000000; --muted:#555555; --faint:#888888;
+  --line:#000000; --line-soft:#cccccc; --mark:#f2f2f2;
+  --link:#0000ee; --visited:#551a8b;
+  /* Шкала готовности — палитра источника. */
+  --ok:#d9ead3; --ok-line:#6aa84f;
+  --half:#fff2cc; --half-line:#e0a800;
+  --low:#f4cccc; --low-line:#cc0000;
+  --idle:#eeeeee; --idle-line:#999999;
+  --drawer-w:min(340px, 86vw);
+  color-scheme:light;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--fg);
+      font:15px/1.55 Georgia,"Times New Roman",serif; }
+code,.mono{ font-family:"Courier New",Consolas,monospace; }
+a{ color:var(--link); } a:visited{ color:var(--visited); }
+
+.layout{ max-width:860px; margin:0 auto; padding:2rem 1.5rem 6rem; }
+
+/* ---------- шапка ---------- */
+.doc-head{ border-bottom:2px solid var(--line); padding-bottom:1rem; margin-bottom:1.4rem; }
+h1{ font-size:1.75rem; line-height:1.2; margin:0 0 .5rem; letter-spacing:.01em; }
+h1 .sep{ color:var(--faint); font-weight:normal; }
+.meta{ font-family:"Courier New",monospace; font-size:.78rem; color:var(--muted);
+       display:flex; flex-wrap:wrap; gap:.2rem 1.2rem; }
+.meta b{ color:var(--fg); font-weight:normal; }
+
+/* ---------- светофор спринта ---------- */
+.tally{ border:1px solid var(--line); margin:0 0 1.6rem; }
+.tally-bar{ display:flex; height:26px; }
+.tally-bar span{ display:flex; align-items:center; justify-content:center;
+  font-family:"Courier New",monospace; font-size:.72rem; color:#1a1a1a;
+  border-right:1px solid var(--line); }
+.tally-bar span:last-child{ border-right:none; }
+.tally-bar .s-ok{ background:var(--ok); }
+.tally-bar .s-half{ background:var(--half); }
+.tally-bar .s-low{ background:var(--low); }
+.tally-bar .s-idle{ background:var(--idle); }
+.tally-legend{ display:flex; flex-wrap:wrap; gap:.1rem 1.1rem; padding:.5rem .7rem;
+  border-top:1px solid var(--line-soft); font-family:"Courier New",monospace;
+  font-size:.72rem; color:var(--muted); }
+.tally-legend i{ display:inline-block; width:10px; height:10px; margin-right:.35rem;
+  border:1px solid var(--line-soft); vertical-align:-1px; font-style:normal; }
+
+/* ---------- заголовки ---------- */
+h2{ font-size:1.2rem; margin:2.6rem 0 .3rem; padding-top:1.6rem;
+    border-top:1px solid var(--line-soft); }
+h2:first-of-type{ border-top:none; padding-top:0; }
+h2 .kicker{ display:block; font-family:"Courier New",monospace; font-size:.68rem;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
+  margin-bottom:.3rem; font-weight:normal; }
+h3{ font-size:1rem; margin:1.5rem 0 .5rem; }
+p{ margin:0 0 .9rem; }
+ul,ol{ margin:0 0 .9rem; padding-left:1.4rem; }
+li{ margin-bottom:.35rem; }
+.lead{ font-size:1.02rem; }
+.krline{ font-family:"Courier New",monospace; font-size:.78rem; color:var(--muted);
+  margin:.2rem 0 .8rem; }
+
+/* ---------- вердикт по Sprint Goal ---------- */
+.verdict{ border:1px solid var(--line); border-left-width:5px; padding:.7rem .9rem;
+  margin:0 0 1.1rem; }
+.verdict.v-ok{ border-left-color:var(--ok-line); }
+.verdict.v-part{ border-left-color:var(--half-line); }
+.verdict.v-no{ border-left-color:var(--low-line); }
+.verdict .vlabel{ font-family:"Courier New",monospace; font-size:.68rem;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--muted); display:block;
+  margin-bottom:.25rem; }
+.verdict .vstate{ font-weight:bold; }
+.verdict p{ margin:.35rem 0 0; font-size:.94rem; }
+
+/* ---------- таблица строк ---------- */
+.table-wrap{ overflow-x:auto; margin:0 0 1rem; }
+table{ border-collapse:collapse; width:100%; font-size:.86rem; }
+th,td{ border:1px solid var(--line-soft); padding:.55rem .6rem; text-align:left;
+       vertical-align:top; }
+th{ background:var(--mark); font-family:"Courier New",monospace; font-size:.68rem;
+    text-transform:uppercase; letter-spacing:.04em; font-weight:normal; }
+col.c-task{ width:23%; } col.c-res{ width:15%; } col.c-okr{ width:14%; }
+tr.row:hover{ background:#fafafa; }
+td.task{ font-weight:bold; }
+td.task .role{ font-family:"Courier New",monospace; font-weight:normal;
+  font-size:.74rem; color:var(--muted); display:block; }
+
+/* Комментарий — не абзац, а помеченные строки: у каждой метки свой вес.
+   Обещание приглушено, факт основной, причина и блокатор отбиты чертой. */
+.c{ display:block; margin-bottom:.4rem; }
+.c:last-child{ margin-bottom:0; }
+.c b{ font-family:"Courier New",monospace; font-size:.7rem; font-weight:normal;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--faint);
+  display:block; margin-bottom:.05rem; }
+.c-goal{ color:var(--muted); }
+.c-why,.c-block{ border-left:2px solid var(--low-line); padding-left:.55rem; }
+.c-next{ border-left:2px solid var(--line-soft); padding-left:.55rem; }
+.c-block b{ color:var(--low-line); }
+
+/* Ячейка результата: число + ступень лестницы, из которой оно выведено. */
+td.res{ text-align:center; white-space:nowrap; }
+td.res .num{ display:block; font-size:1.05rem; font-weight:bold; }
+td.res .step{ display:block; font-family:"Courier New",monospace; font-size:.66rem;
+  color:#333; margin-top:.15rem; white-space:normal; }
+td.res.r-ok{ background:var(--ok); }
+td.res.r-half{ background:var(--half); }
+td.res.r-low{ background:var(--low); }
+td.res.r-idle{ background:var(--idle); }
+td.okr{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted); }
+.tag{ display:inline-block; font-family:"Courier New",monospace; font-size:.68rem;
+  border:1px solid var(--line-soft); padding:.05rem .35rem; white-space:nowrap; }
+
+/* ---------- изменения в процессе спринта ---------- */
+.change{ border:1px solid var(--line); padding:.8rem .9rem; margin:0 0 1rem; }
+.change .who{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted);
+  margin-bottom:.5rem; }
+.change .ba{ display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-bottom:.6rem; }
+.change .ba div{ border:1px solid var(--line-soft); padding:.5rem .6rem; font-size:.88rem; }
+.change .ba b{ font-family:"Courier New",monospace; font-size:.68rem; letter-spacing:.06em;
+  color:var(--faint); font-weight:normal; display:block; margin-bottom:.2rem; }
+.change .out{ border-left:3px solid var(--line); padding-left:.6rem; font-size:.92rem; }
+@media(max-width:620px){ .change .ba{ grid-template-columns:1fr; } }
+
+/* ---------- метрики и демо ---------- */
+.shot{ border:1px solid var(--line-soft); padding:.7rem; margin:0 0 .8rem; }
+.shot .ph{ background:var(--mark); border:1px dashed var(--line-soft); height:150px;
+  display:flex; align-items:center; justify-content:center; color:var(--faint);
+  font-family:"Courier New",monospace; font-size:.74rem; text-align:center; padding:1rem; }
+.shot figcaption{ font-size:.86rem; color:var(--muted); margin-top:.5rem; }
+.shot figcaption b{ color:var(--fg); font-weight:normal;
+  font-family:"Courier New",monospace; font-size:.7rem; text-transform:uppercase;
+  letter-spacing:.05em; display:block; }
+ul.demo{ list-style:none; padding:0; }
+ul.demo li{ border-bottom:1px solid var(--line-soft); padding:.55rem 0; }
+ul.demo .cap{ display:block; color:var(--muted); font-size:.86rem; }
+
+/* ---------- уточнить ---------- */
+mark.unc{ background:var(--mark); border:1px solid var(--line-soft); padding:.02em .35em;
+  font-family:"Courier New",monospace; font-size:.85em; }
+.unc-dot{ display:inline-block; width:8px; height:8px; margin-left:.3rem; border-radius:50%;
+  background:#e00000; cursor:pointer; border:none; padding:0; vertical-align:middle;
+  animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(224,0,0,.5);}
+                  50%{opacity:.55;box-shadow:0 0 0 4px rgba(224,0,0,0);} }
+.unc-dot.has-comment{ background:#1a7a1a; animation:none; }
+@media(prefers-reduced-motion:reduce){ .unc-dot{ animation:none; } }
+
+footer{ border-top:1px solid var(--line); margin-top:3rem; padding-top:1.2rem;
+  font-size:.84rem; color:var(--muted); }
+footer .anchors{ font-family:"Courier New",monospace; font-size:.74rem; }
+
+/* ---------- правый верхний угол ---------- */
+.promptbox{ position:fixed; top:1rem; right:1rem; z-index:50; display:flex;
+  flex-direction:column; align-items:flex-end; gap:.4rem;
+  font-family:"Courier New",monospace; font-size:.75rem; }
+.promptbox>button{ background:var(--fg); color:var(--bg); border:1px solid var(--fg);
+  padding:.4rem .7rem; cursor:pointer; font:inherit; }
+.promptbox>button.finalbtn{ background:var(--bg); color:#1a7a1a; border-color:#1a7a1a; }
+.promptbox>button.finalbtn:hover{ background:#1a7a1a; color:#fff; }
+.panel{ display:none; width:360px; max-height:72vh; overflow-y:auto; background:var(--bg);
+  border:1px solid var(--fg); padding:.9rem; box-shadow:3px 3px 0 var(--line-soft); }
+.panel.open{ display:block; }
+.panel h4{ margin:0 0 .5rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+.panel .item{ border-bottom:1px solid var(--line-soft); padding:.4rem 0; }
+.panel .item .where{ color:var(--muted); font-size:.7rem; }
+.panel .item button{ font-size:.68rem; border:none; background:none; color:var(--muted);
+  cursor:pointer; text-decoration:underline; padding:0; }
+.panel textarea{ width:100%; min-height:130px; font:.72rem/1.4 "Courier New",monospace;
+  padding:.5rem; border:1px solid var(--line-soft); margin-top:.5rem; }
+.panel .copybtn{ margin-top:.4rem; width:100%; border:1px solid var(--fg);
+  background:var(--fg); color:var(--bg); padding:.35rem; cursor:pointer; font:inherit; }
+.panel .empty{ color:var(--faint); font-style:italic; }
+.hint{ max-width:340px; margin:0; text-align:right; font-size:.68rem; line-height:1.4;
+  color:var(--muted); background:var(--bg); border:1px solid var(--line-soft);
+  padding:.35rem .5rem; }
+.hint:empty{ display:none; }
+
+/* ---------- левая рейка ---------- */
+.rail{ position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:57;
+  display:flex; flex-direction:column; gap:6px; align-items:flex-start; transition:left .12s ease; }
+body.drawer-open .rail{ left:var(--drawer-w); }
+.rail-tab{ writing-mode:vertical-rl; transform:rotate(180deg); border:none; cursor:pointer;
+  color:#fff; font-family:"Courier New",monospace; font-size:.72rem; letter-spacing:.03em;
+  padding:.8rem .4rem; background:var(--fg); }
+.rail-tab.edit-tab{ background:#1a7a1a; }
+.drawer{ display:none; position:fixed; left:0; top:0; bottom:0; width:var(--drawer-w);
+  z-index:56; background:var(--bg); border-right:1px solid var(--fg);
+  box-shadow:3px 0 0 var(--line-soft); padding:1rem; overflow-y:auto;
+  font-family:"Courier New",monospace; font-size:.78rem; }
+.drawer.open{ display:block; }
+.drawer h4{ margin:0 0 .8rem; text-transform:uppercase; font-size:.78rem; letter-spacing:.05em; }
+.toc-link{ display:block; padding:.32rem 0; color:var(--fg); text-decoration:none;
+  border-bottom:1px solid var(--line-soft); }
+.toc-link:visited{ color:var(--fg); }
+.toc-link:hover{ background:var(--mark); }
+.edit-item{ display:block; width:100%; text-align:left; background:none; border:none;
+  border-bottom:1px solid var(--line-soft); padding:.55rem 0; cursor:pointer;
+  color:var(--fg); font:inherit; font-size:.76rem; }
+.edit-item:hover{ background:var(--mark); }
+.edit-item .sec{ display:block; color:var(--faint); font-size:.68rem;
+  text-transform:uppercase; margin-bottom:.15rem; }
+.edit-item .said{ display:block; margin-top:.25rem; padding-left:.5rem;
+  border-left:2px solid #1a7a1a; color:var(--muted); }
+
+/* ---------- попап комментария ---------- */
+.popover{ position:absolute; z-index:60; width:290px; background:var(--bg);
+  border:1px solid var(--fg); box-shadow:3px 3px 0 var(--line-soft); padding:.6rem;
+  font-family:"Courier New",monospace; font-size:.76rem; }
+.popover .pquote{ color:var(--muted); font-size:.72rem; margin-bottom:.4rem;
+  max-height:4.2em; overflow-y:auto; border-left:2px solid var(--line-soft);
+  padding-left:.5rem; }
+.popover textarea{ width:100%; min-height:64px; font:.76rem/1.4 "Courier New",monospace;
+  padding:.4rem; border:1px solid var(--line-soft); resize:vertical; }
+.popover .prow{ display:flex; gap:.4rem; margin-top:.4rem; }
+.popover button{ font:inherit; font-size:.72rem; border:1px solid var(--fg);
+  background:var(--fg); color:var(--bg); padding:.25rem .6rem; cursor:pointer; }
+.popover button.cancel{ background:var(--bg); color:var(--fg); }
+tr.commented td:first-child{ box-shadow:inset 3px 0 0 #1a7a1a; }
+
+@media print{
+  .promptbox,.rail,.drawer,.popover{ display:none !important; }
+  body{ font-size:11pt; } .layout{ max-width:none; padding:0; }
+  h2{ break-after:avoid; } table{ break-inside:auto; } tr{ break-inside:avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="promptbox">
+  <button type="button" id="finalBtn" class="finalbtn">Отчёт финальный</button>
+  <button type="button" id="editBtn">Правки (0)</button>
+  <p class="hint" id="hint"></p>
+  <div class="panel" id="editPanel">
+    <h4>Правки к отчёту</h4>
+    <div id="editList"><p class="empty">Правок нет. Кликните строку таблицы или выделите текст.</p></div>
+    <textarea id="promptOut" readonly placeholder="Промт соберётся здесь"></textarea>
+    <button type="button" class="copybtn" id="copyBtn">Скопировать промт</button>
+  </div>
+</div>
+
+<div class="rail">
+  <button type="button" class="rail-tab" id="tocTab">Содержание</button>
+  <button type="button" class="rail-tab edit-tab" id="editTab">Правки</button>
+</div>
+<nav class="drawer" id="tocDrawer"><h4>Содержание</h4><div id="tocList"></div></nav>
+<aside class="drawer" id="editDrawer"><h4>Правки</h4><div id="editWalk"></div></aside>
+
+<div class="layout">
+<main>
+
+<header class="doc-head">
+  <h1>ФАКТ <span class="sep">|</span> 2026Q3-S8</h1>
+  <div class="meta">
+    <span>Период: <b>18 — 31 августа 2026</b></span>
+    <span>Ответственный: <b>PO</b></span>
+    <span>Статус: <b>закрыт</b></span>
+    <span>Версия: <b>1</b></span>
+    <span>План: <b>ПЛАН-2026Q3-S8.md</b></span>
+  </div>
+</header>
+
+<div class="tally">
+  <div class="tally-bar" aria-label="Готовность строк спринта">
+    <span class="s-ok" style="flex:6">6 закрыто</span>
+    <span class="s-half" style="flex:3">3 в работе</span>
+    <span class="s-low" style="flex:1" title="0–49%: 1 строка">1</span>
+    <span class="s-idle" style="flex:1" title="ACTIVITY / заблокировано: 1 строка">1</span>
+  </div>
+  <div class="tally-legend">
+    <span><i style="background:#d9ead3"></i>100% — в Production</span>
+    <span><i style="background:#fff2cc"></i>50–99% — в работе</span>
+    <span><i style="background:#f4cccc"></i>0–49% — в работе</span>
+    <span><i style="background:#eeeeee"></i>ACTIVITY / заблокировано</span>
+  </div>
+</div>
+
+<h2 id="s-summary"><span class="kicker">Спринт 2026Q3-S8</span>Итог для бизнеса</h2>
+<p class="lead">Новый тип контента доведён до продакшна: пользователь видит его в
+каталоге и в поиске. Цель спринта по витрине закрыта полностью.</p>
+<p>Перенос нагрузки на новое ядро закрыт частично: 100% B2B-трафика переключено и
+работает без сбоев, B2C откатили на второй неделе из-за ошибки отрисовки схемы у
+одного поставщика. Ошибка локализована, выкатка перенесена на первую неделю S9.</p>
+<p>Одна строка заблокирована внешней зависимостью: смежная команда не отдала
+вебхук в обещанный срок. Договорённость менялась внутри спринта, детали в блоке
+«Изменения в процессе спринта».</p>
+
+<h2 id="s-init1"><span class="kicker">Инициатива 1 из 2</span>Перенос нагрузки на новое ядро</h2>
+<p class="krline">KR 1.1 — доля трафика, обслуживаемого новым ядром · KR 1.2 — методы записи переведены на новый стек</p>
+<div class="verdict v-part">
+  <span class="vlabel">Вердикт по Sprint Goal</span>
+  <span class="vstate">Достигнут частично.</span>
+  <p>Обещали: весь внешний трафик обслуживается новым ядром, старая ветка готова
+  к выключению. Показываем: 100% B2B и все методы записи в проде, дашборд без
+  ошибок за 10 дней. Не показываем: B2C — откат на второй неделе.</p>
+</div>
+<div class="table-wrap">
+<table>
+  <colgroup><col class="c-task"><col><col class="c-res"><col class="c-okr"></colgroup>
+  <thead><tr><th>Задача</th><th>Комментарий</th><th>Результат</th><th>OKR команды</th></tr></thead>
+  <tbody>
+    <tr class="row">
+      <td class="task"><span class="role">[RELEASE] BE-1</span>Переключение B2B-трафика на новое ядро</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>100% B2B-запросов чтения обслуживает новое ядро, старая ветка не в цепочке.</span>
+        <span class="c"><b>Факт</b>Переключено 100%, десять суток без сбоев. Конверсия и объём заказов на дашборде не просели.</span>
+      </td>
+      <td class="res r-ok"><span class="num">100%</span><span class="step">в Production</span></td>
+      <td class="okr">KR 1.1</td>
+    </tr>
+    <tr class="row">
+      <td class="task"><span class="role">[RELEASE] BE-1</span>Переключение B2C-трафика на новое ядро</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>Виджет выбора мест читает данные из нового ядра, нагрузка со старой платформы снята.</span>
+        <span class="c"><b>Факт</b>Выкатили на 50%, на десятый день откатили.</span>
+        <span class="c c-why"><b>Причина</b>У одного поставщика не отрисовались места без нумерации, схема зала пустая.</span>
+        <span class="c c-next"><b>Следующий шаг</b>Ошибка локализована в конвертере схем. Правка и повторная выкатка — первая неделя S9.</span>
+      </td>
+      <td class="res r-half"><span class="num">80%</span><span class="step">ревью пройдено, откат при выкатке</span></td>
+      <td class="okr">KR 1.1</td>
+    </tr>
+    <tr class="row">
+      <td class="task"><span class="role">[BE] BE-2</span>Методы записи на новый стек</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>Все методы создания и отмены заказа переписаны и работают в проде.</span>
+        <span class="c"><b>Факт</b>Переписаны и выкачены все методы, старая ветка выключена.</span>
+      </td>
+      <td class="res r-ok"><span class="num">100%</span><span class="step">в Production</span></td>
+      <td class="okr">KR 1.2</td>
+    </tr>
+    <tr class="row">
+      <td class="task"><span class="role">[SA] SA-1</span>Схема хранения для второго поставщика</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>Согласованная схема, по которой разработчик стартует без доуточнений.</span>
+        <span class="c"><b>Факт</b>Схема описана, кросс-ревью с архитектором пройдено.</span>
+        <span class="c c-why"><b>Причина</b>Не хватает решения по идентификаторам площадок, оно держит согласование.</span>
+        <span class="c c-next"><b>Следующий шаг</b>Решение по идентификаторам, затем передача в разработку.</span>
+      </td>
+      <td class="res r-half"><span class="num">50%</span><span class="step">разработка не начата, аналитика есть</span></td>
+      <td class="okr">KR 1.2</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s-init2"><span class="kicker">Инициатива 2 из 2</span>Развитие витрины: новый тип контента</h2>
+<p class="krline">KR 2.1 — новый тип контента продаётся с витрины</p>
+<div class="verdict v-ok">
+  <span class="vlabel">Вердикт по Sprint Goal</span>
+  <span class="vstate">Достигнут.</span>
+  <p>Обещали: пользователь находит и покупает новый тип контента на витрине.
+  Показываем: каталог, поиск и афиша в проде, первые заказы прошли, демо ниже.</p>
+</div>
+<div class="table-wrap">
+<table>
+  <colgroup><col class="c-task"><col><col class="c-res"><col class="c-okr"></colgroup>
+  <thead><tr><th>Задача</th><th>Комментарий</th><th>Результат</th><th>OKR команды</th></tr></thead>
+  <tbody>
+    <tr class="row">
+      <td class="task"><span class="role">[BE] BE-2</span>Загрузка каталога нового типа контента</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>Каталог приходит в витрину напрямую от поставщика, минуя легаси-платформу.</span>
+        <span class="c"><b>Факт</b>Загрузчик в проде, расхождений с источником за спринт нет. Заведён алертинг по ошибкам загрузки.</span>
+      </td>
+      <td class="res r-ok"><span class="num">100%</span><span class="step">в Production</span></td>
+      <td class="okr">KR 2.1</td>
+    </tr>
+    <tr class="row">
+      <td class="task"><span class="role">[FE] FE-1</span>Вывод на витрину: каталог, поиск, афиша</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>Пользователь фильтрует новый тип контента вместе с остальными и покупает.</span>
+        <span class="c"><b>Факт</b>Каталог, поиск и афиша в проде. Прошли дизайн-ревью, первые заказы есть.</span>
+        <span class="c c-next"><b>Следующий шаг</b>Тематические полки на главной — вторая неделя S9.</span>
+      </td>
+      <td class="res r-ok"><span class="num">100%</span><span class="step">в Production</span></td>
+      <td class="okr">KR 2.1</td>
+    </tr>
+    <tr class="row">
+      <td class="task"><span class="role">[BE] BE-2</span>Уведомления по новому типу контента</td>
+      <td>
+        <span class="c c-goal"><b>Образ результата</b>Покупатель получает письмо с подборкой после покупки билета.</span>
+        <span class="c"><b>Факт</b>Логика рассылки готова и протестирована на стенде.</span>
+        <span class="c c-block"><b>Блокатор</b>Вебхук смежной системы не отдан. Шаблоны писем не свёрстаны.</span>
+        <span class="c"><b>Созависимые</b>Смежная команда — вебхук; дизайн — вёрстка шаблонов.</span>
+        <span class="c c-next"><b>Следующий шаг</b>Эскалация по вебхуку на синке команд. Без него строка не двигается.</span>
+      </td>
+      <td class="res r-idle"><span class="num">заблокировано</span><span class="step">разработка завершена, ждёт внешнюю систему</span></td>
+      <td class="okr">KR 2.1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s-unplanned"><span class="kicker">Вне плана</span>Внеплановые работы и влёты</h2>
+<div class="table-wrap">
+<table>
+  <colgroup><col class="c-task"><col><col class="c-res"><col style="width:11%"></colgroup>
+  <thead><tr><th>Задача</th><th>Комментарий</th><th>Результат</th><th>Тег</th></tr></thead>
+  <tbody>
+    <tr class="row">
+      <td class="task"><span class="role">[BE] BE-1</span>Задержка синхронизации каталога</td>
+      <td>
+        <span class="c"><b>Факт</b>Появилась в середине спринта, крупных поставщиков временно вернули на прямую загрузку, задержек у пользователя не было.</span>
+        <span class="c c-next"><b>Следующий шаг</b>Закрыть без временного решения в S9.</span>
+      </td>
+      <td class="res r-ok"><span class="num">100%</span><span class="step">в Production</span></td>
+      <td><span class="tag">[BUG]</span></td>
+    </tr>
+    <tr class="row">
+      <td class="task"><span class="role">[QA] QA-1</span>Онбординг нового инженера сопровождения</td>
+      <td>
+        <span class="c"><b>Факт</b>Стенд поднят, первые обращения закрывает сам.</span>
+      </td>
+      <td class="res r-idle"><span class="num">ACTIVITY</span><span class="step">фоновая, без процента</span></td>
+      <td><span class="tag">[UNPLANNED]</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s-changes"><span class="kicker">Договорённости</span>Изменения в процессе спринта</h2>
+<div class="change">
+  <div class="who">Затронуто: [BE] Уведомления по новому типу контента</div>
+  <div class="ba">
+    <div><b>Было</b>Вебхук смежной системы к 16-му числу — договорённость на планировании.</div>
+    <div><b>Стало</b>Смежная команда перенесла на 25-е, затем на следующий спринт.</div>
+  </div>
+  <p class="out">Строка перешла в статус «заблокировано» и переносится в S9.
+  Ёмкость исполнителя перераспределена на загрузку каталога, поэтому она закрыта
+  раньше плана.</p>
+</div>
+
+<h2 id="s-metrics"><span class="kicker">Как шёл спринт</span>Процессные метрики</h2>
+<figure class="shot">
+  <div class="ph">Скриншот дашборда команды<br>прикладывает PO</div>
+  <figcaption><b>Объяснение</b>Среднее время в работе выросло с 4 до 6 дней.
+  Причина не в замедлении: две крупные поставки этого спринта оформлены одной
+  задачей с чеклистом вместо набора мелких, поэтому счётчик держит их открытыми
+  до самого конца. Окно незавершённой работы при этом не выросло.</figcaption>
+</figure>
+
+<h2 id="s-demo"><span class="kicker">Показываем руками</span>Демо</h2>
+<ul class="demo">
+  <li>Новый тип контента в каталоге и поиске витрины
+      <span class="cap">Показывает FE-1, 3 минуты. Запись демонстрации — <mark class="unc">[УТОЧНИТЬ ссылку]</mark></span></li>
+  <li>Дашборд переключения B2B: доля трафика и ошибки
+      <span class="cap">Показывает BE-1, 2 минуты. Скриншот прикладывает PO.</span></li>
+</ul>
+
+<h2 id="s-carry"><span class="kicker">В следующий спринт</span>Перенос в 2026Q3-S9 и следующие шаги</h2>
+<p>Кандидаты в carryover — четыре строки, все с известной причиной:</p>
+<ul>
+  <li><b>Переключение B2C-трафика</b> (80%) — правка конвертера схем и повторная выкатка.</li>
+  <li><b>Схема хранения для второго поставщика</b> (50%) — решение по идентификаторам площадок.</li>
+  <li><b>Уведомления по новому типу контента</b> (заблокировано) — вебхук смежной системы.</li>
+  <li><b>Задержка синхронизации каталога</b> — закрыть без временного решения.</li>
+</ul>
+<p><em>Следующие шаги: (1) вынести перенос в <code>/sm-sync 2026Q3-S9</code>,
+(2) эскалация по вебхуку на синке команд, (3) подтвердить у PO ступень для
+строки схемы хранения.</em></p>
+
+<footer>
+  <p class="anchors">Источники: ПЛАН-2026Q3-S8.md · operational-contract-2026Q3-S8.md ·
+  ресинк с PO 01.09.2026 · лестница готовности — docs/reference §4.1</p>
+  <p class="anchors">Версия 1 · ревизия <span id="revOut" class="mono"></span> ·
+  макет: docs/reference/sprint-report-page-mockup.html</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* Правки живут в браузере: страница лежит файлом и работает без сети
+     (НФТ-SR-10). Круг правок закрывается по ревизии содержимого — пересобрали
+     отчёт, значит правки уехали в работу и в следующий промт не идут. */
+  var DOC = "ФАКТ-2026Q3-S8.md";
+  var KEY = "sprint-result:2026Q3-S8";
+  var REV_KEY = KEY + ":rev";
+  var REV = (function(){
+    var s = (document.querySelector("main") || document.body).textContent, h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(16);
+  })();
+
+  function load(){ try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch(e){ return []; } }
+  function save(l){ try { localStorage.setItem(KEY, JSON.stringify(l)); } catch(e){} }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function open(){ return load().filter(function(c){ return !c.closedAt; }); }
+
+  (function syncRev(){
+    var seen = null;
+    try { seen = localStorage.getItem(REV_KEY); } catch(e){ return; }
+    if (seen && seen !== REV){
+      var now = new Date().toISOString(), l = load(), n = 0;
+      l.forEach(function(c){ if(!c.closedAt){ c.closedAt = now; n++; } });
+      if (n) save(l);
+    }
+    try { localStorage.setItem(REV_KEY, REV); } catch(e){}
+  })();
+  var revOut = document.getElementById("revOut");
+  if (revOut) revOut.textContent = REV;
+
+  /* Раздел правки — ближайший заголовок над ней: агент правит раздел, а не
+     «третий абзац сверху». */
+  function sectionOf(node){
+    var el = node.nodeType === 1 ? node : node.parentElement;
+    while (el && el !== document.body){
+      var prev = el.previousElementSibling;
+      while (prev){
+        if (/^H[123]$/.test(prev.tagName)){
+          var h = prev.cloneNode(true), k = h.querySelector(".kicker");
+          if (k) k.remove();
+          return h.textContent.trim();
+        }
+        prev = prev.previousElementSibling;
+      }
+      el = el.parentElement;
+    }
+    return "Отчёт";
+  }
+  function anchorOf(node){
+    var el = node.nodeType === 1 ? node : node.parentElement;
+    var row = el && el.closest ? el.closest("tr.row") : null;
+    if (row){
+      var t = row.querySelector("td.task");
+      return t ? t.textContent.replace(/\s+/g, " ").trim() : null;
+    }
+    return null;
+  }
+
+  var pop = null;
+  function closePop(){ if (pop){ pop.remove(); pop = null; } }
+
+  function openPop(x, y, section, anchor, quote){
+    closePop();
+    pop = document.createElement("div");
+    pop.className = "popover";
+    var existing = open().filter(function(c){ return c.anchor && c.anchor === anchor; });
+    pop.innerHTML =
+      (quote ? '<div class="pquote">' + esc(quote.slice(0, 160)) + '</div>' : "") +
+      (existing.length ? '<div class="pquote">Уже есть: ' + esc(existing[0].text.slice(0, 90)) + '</div>' : "") +
+      '<textarea placeholder="Что поправить в этой строке"></textarea>' +
+      '<div class="prow"><button type="button" data-a="ok">Сохранить</button>' +
+      '<button type="button" class="cancel" data-a="no">Отмена</button></div>';
+    document.body.appendChild(pop);
+    var w = pop.offsetWidth, left = Math.min(x, window.innerWidth - w - 12);
+    pop.style.left = Math.max(8, left) + "px";
+    pop.style.top = (y + window.scrollY + 8) + "px";
+    var ta = pop.querySelector("textarea");
+    ta.focus();
+    function commit(){
+      var text = ta.value.trim();
+      if (text){
+        var l = load();
+        l.push({ section: section, anchor: anchor, quote: quote || "", text: text,
+                 at: new Date().toISOString() });
+        save(l);
+        render();
+      }
+      closePop();
+    }
+    pop.addEventListener("click", function(e){
+      var a = e.target.getAttribute && e.target.getAttribute("data-a");
+      if (a === "ok") commit();
+      if (a === "no") closePop();
+    });
+    ta.addEventListener("keydown", function(e){
+      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") commit();
+      if (e.key === "Escape") closePop();
+    });
+  }
+
+  document.addEventListener("click", function(e){
+    if (pop && pop.contains(e.target)) return;
+    if (e.target.closest(".promptbox, .rail, .drawer")) return;
+    closePop();
+    var row = e.target.closest("tr.row");
+    if (row){
+      var t = row.querySelector("td.task");
+      openPop(e.clientX, e.clientY, sectionOf(row),
+              t ? t.textContent.replace(/\s+/g, " ").trim() : null,
+              t ? t.textContent.replace(/\s+/g, " ").trim() : "");
+    }
+  });
+
+  document.addEventListener("mouseup", function(e){
+    if (e.target.closest(".promptbox, .rail, .drawer, .popover")) return;
+    if (e.target.closest("tr.row")) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    var q = sel.toString().trim();
+    if (q.length < 3) return;
+    openPop(e.clientX, e.clientY, sectionOf(sel.anchorNode), anchorOf(sel.anchorNode), q);
+  });
+
+  function buildPrompt(list){
+    if (!list.length) return "";
+    var out = ["Доработай отчёт " + DOC + " с учётом правок PO:", ""];
+    list.forEach(function(c, i){
+      out.push((i + 1) + ". [" + c.section + "]" +
+               (c.anchor ? " (строка: «" + c.anchor + "»)" : "") + " " + c.text);
+    });
+    out.push("", "После правок — обязательно:",
+             "1. Ре-прогон гейтов отчёта (docs/bft-sprint-result-slice1.md §3.2).",
+             "2. Пересборка этой страницы — без неё правки придут повторно.");
+    return out.join("\n");
+  }
+
+  function render(){
+    var list = open();
+    document.getElementById("editBtn").textContent = "Правки (" + list.length + ")";
+    var body = list.length
+      ? list.map(function(c, i){
+          return '<div class="item"><div class="where">' + esc(c.section) +
+                 (c.anchor ? " · " + esc(c.anchor) : "") + '</div>' + esc(c.text) +
+                 ' <button type="button" data-del="' + i + '">снять</button></div>';
+        }).join("")
+      : '<p class="empty">Правок нет. Кликните строку таблицы или выделите текст.</p>';
+    document.getElementById("editList").innerHTML = body;
+    document.getElementById("editWalk").innerHTML = list.length
+      ? list.map(function(c){
+          return '<div class="edit-item"><span class="sec">' + esc(c.section) + '</span>' +
+                 esc(c.anchor || "") + '<span class="said">' + esc(c.text) + '</span></div>';
+        }).join("")
+      : '<p class="empty">Правок нет.</p>';
+    document.getElementById("promptOut").value = buildPrompt(list);
+
+    var marked = {};
+    list.forEach(function(c){ if (c.anchor) marked[c.anchor] = 1; });
+    Array.prototype.forEach.call(document.querySelectorAll("tr.row"), function(r){
+      var t = r.querySelector("td.task");
+      var k = t ? t.textContent.replace(/\s+/g, " ").trim() : "";
+      r.classList.toggle("commented", !!marked[k]);
+    });
+  }
+
+  document.getElementById("editList").addEventListener("click", function(e){
+    var i = e.target.getAttribute("data-del");
+    if (i === null) return;
+    var all = load(), o = open()[+i];
+    save(all.filter(function(c){ return c !== o; }));
+    render();
+  });
+
+  document.getElementById("editBtn").addEventListener("click", function(){
+    document.getElementById("editPanel").classList.toggle("open");
+  });
+  document.getElementById("copyBtn").addEventListener("click", function(){
+    var ta = document.getElementById("promptOut");
+    if (!ta.value){ document.getElementById("hint").textContent = "Правок пока нет."; return; }
+    ta.removeAttribute("readonly"); ta.select();
+    try { document.execCommand("copy"); } catch(e){}
+    if (navigator.clipboard) navigator.clipboard.writeText(ta.value).catch(function(){});
+    ta.setAttribute("readonly", "readonly");
+    document.getElementById("hint").textContent = "Промт скопирован — вставьте в чат с агентом.";
+  });
+  document.getElementById("finalBtn").addEventListener("click", function(){
+    var n = open().length;
+    document.getElementById("hint").textContent = n
+      ? "Осталось " + n + " незакрытых правок — отчёт можно финализировать, но они не учтены."
+      : "Отчёт финальный. Команда для агента: /sr-deliver 2026Q3-S8";
+  });
+
+  /* Оглавление строится из фактических h2 — не хардкодится. */
+  document.getElementById("tocList").innerHTML =
+    Array.prototype.map.call(document.querySelectorAll("main h2"), function(h){
+      var c = h.cloneNode(true), k = c.querySelector(".kicker");
+      if (k) k.remove();
+      return '<a class="toc-link" href="#' + h.id + '">' + esc(c.textContent.trim()) + "</a>";
+    }).join("");
+
+  function drawer(tab, el){
+    document.getElementById(tab).addEventListener("click", function(){
+      var d = document.getElementById(el), was = d.classList.contains("open");
+      document.querySelectorAll(".drawer").forEach(function(x){ x.classList.remove("open"); });
+      if (!was) d.classList.add("open");
+      document.body.classList.toggle("drawer-open",
+        !!document.querySelector(".drawer.open"));
+    });
+  }
+  drawer("tocTab", "tocDrawer");
+  drawer("editTab", "editDrawer");
+
+  Array.prototype.forEach.call(document.querySelectorAll("mark.unc"), function(m){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "unc-dot"; b.title = "Ответить на уточнение";
+    m.after(b);
+    b.addEventListener("click", function(e){
+      e.stopPropagation();
+      openPop(e.clientX, e.clientY, sectionOf(m), m.textContent.trim(), m.textContent.trim());
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
