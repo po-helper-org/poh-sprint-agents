@@ -1,0 +1,230 @@
+/* Отчётная страница спринта. Макет-мишень: к этой раскладке навык
+ * sprint-result приводит любой входящий контекст.
+ *
+ * Типографика — из poh-bft-writer (bft-html-export.css): чёрно-белый документ,
+ * Georgia, колонка 860px. Цвет на странице ровно один — шкала готовности из
+ * референсной колоды. Он несёт смысл, поэтому и остался единственным: рядом с
+ * ним заливка «для красоты» читалась бы как статус.
+ */
+:root{
+  --bg:#ffffff; --fg:#000000; --muted:#555555; --faint:#888888;
+  --line:#000000; --line-soft:#cccccc; --mark:#f2f2f2;
+  --link:#0000ee; --visited:#551a8b;
+  /* Шкала готовности — палитра источника. */
+  --ok:#d9ead3; --ok-line:#6aa84f;
+  --half:#fff2cc; --half-line:#e0a800;
+  --low:#f4cccc; --low-line:#cc0000;
+  --idle:#eeeeee; --idle-line:#999999;
+  --drawer-w:min(340px, 86vw);
+  color-scheme:light;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--fg);
+      font:15px/1.55 Georgia,"Times New Roman",serif; }
+code,.mono{ font-family:"Courier New",Consolas,monospace; }
+a{ color:var(--link); } a:visited{ color:var(--visited); }
+
+.layout{ max-width:860px; margin:0 auto; padding:2rem 1.5rem 6rem; }
+
+/* ---------- шапка ---------- */
+.doc-head{ border-bottom:2px solid var(--line); padding-bottom:1rem; margin-bottom:1.4rem; }
+h1{ font-size:1.75rem; line-height:1.2; margin:0 0 .5rem; letter-spacing:.01em; }
+h1 .sep{ color:var(--faint); font-weight:normal; }
+.meta{ font-family:"Courier New",monospace; font-size:.78rem; color:var(--muted);
+       display:flex; flex-wrap:wrap; gap:.2rem 1.2rem; }
+.meta b{ color:var(--fg); font-weight:normal; }
+
+/* ---------- светофор спринта ---------- */
+.tally{ border:1px solid var(--line); margin:0 0 1.6rem; }
+.tally-bar{ display:flex; height:26px; }
+.tally-bar span{ display:flex; align-items:center; justify-content:center;
+  font-family:"Courier New",monospace; font-size:.72rem; color:#1a1a1a;
+  border-right:1px solid var(--line); }
+.tally-bar span:last-child{ border-right:none; }
+.tally-bar .s-ok{ background:var(--ok); }
+.tally-bar .s-half{ background:var(--half); }
+.tally-bar .s-low{ background:var(--low); }
+.tally-bar .s-idle{ background:var(--idle); }
+.tally-legend{ display:flex; flex-wrap:wrap; gap:.1rem 1.1rem; padding:.5rem .7rem;
+  border-top:1px solid var(--line-soft); font-family:"Courier New",monospace;
+  font-size:.72rem; color:var(--muted); }
+.tally-legend i{ display:inline-block; width:10px; height:10px; margin-right:.35rem;
+  border:1px solid var(--line-soft); vertical-align:-1px; font-style:normal; }
+
+/* ---------- заголовки ---------- */
+h2{ font-size:1.2rem; margin:2.6rem 0 .3rem; padding-top:1.6rem;
+    border-top:1px solid var(--line-soft); }
+h2:first-of-type{ border-top:none; padding-top:0; }
+h2 .kicker{ display:block; font-family:"Courier New",monospace; font-size:.68rem;
+  text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
+  margin-bottom:.3rem; font-weight:normal; }
+h3{ font-size:1rem; margin:1.5rem 0 .5rem; }
+p{ margin:0 0 .9rem; }
+ul,ol{ margin:0 0 .9rem; padding-left:1.4rem; }
+li{ margin-bottom:.35rem; }
+.lead{ font-size:1.02rem; }
+.krline{ font-family:"Courier New",monospace; font-size:.78rem; color:var(--muted);
+  margin:.2rem 0 .8rem; }
+
+/* ---------- вердикт по Sprint Goal ---------- */
+.verdict{ border:1px solid var(--line); border-left-width:5px; padding:.7rem .9rem;
+  margin:0 0 1.1rem; }
+.verdict.v-ok{ border-left-color:var(--ok-line); }
+.verdict.v-part{ border-left-color:var(--half-line); }
+.verdict.v-no{ border-left-color:var(--low-line); }
+.verdict .vlabel{ font-family:"Courier New",monospace; font-size:.68rem;
+  text-transform:uppercase; letter-spacing:.07em; color:var(--muted); display:block;
+  margin-bottom:.25rem; }
+.verdict .vstate{ font-weight:bold; }
+.verdict p{ margin:.35rem 0 0; font-size:.94rem; }
+
+/* ---------- таблица строк ---------- */
+.table-wrap{ overflow-x:auto; margin:0 0 1rem; }
+table{ border-collapse:collapse; width:100%; font-size:.86rem; }
+th,td{ border:1px solid var(--line-soft); padding:.55rem .6rem; text-align:left;
+       vertical-align:top; }
+th{ background:var(--mark); font-family:"Courier New",monospace; font-size:.68rem;
+    text-transform:uppercase; letter-spacing:.04em; font-weight:normal; }
+col.c-task{ width:23%; } col.c-res{ width:15%; } col.c-okr{ width:14%; }
+tr.row:hover{ background:#fafafa; }
+td.task{ font-weight:bold; }
+td.task .role{ font-family:"Courier New",monospace; font-weight:normal;
+  font-size:.74rem; color:var(--muted); display:block; }
+
+/* Комментарий — не абзац, а помеченные строки: у каждой метки свой вес.
+   Обещание приглушено, факт основной, причина и блокатор отбиты чертой. */
+.c{ display:block; margin-bottom:.4rem; }
+.c:last-child{ margin-bottom:0; }
+.c b{ font-family:"Courier New",monospace; font-size:.7rem; font-weight:normal;
+  text-transform:uppercase; letter-spacing:.05em; color:var(--faint);
+  display:block; margin-bottom:.05rem; }
+.c-goal{ color:var(--muted); }
+.c-why,.c-block{ border-left:2px solid var(--low-line); padding-left:.55rem; }
+.c-next{ border-left:2px solid var(--line-soft); padding-left:.55rem; }
+.c-block b{ color:var(--low-line); }
+
+/* Ячейка результата: число + ступень лестницы, из которой оно выведено. */
+td.res{ text-align:center; white-space:nowrap; }
+td.res .num{ display:block; font-size:1.05rem; font-weight:bold; }
+td.res .step{ display:block; font-family:"Courier New",monospace; font-size:.66rem;
+  color:#333; margin-top:.15rem; white-space:normal; }
+td.res.r-ok{ background:var(--ok); }
+td.res.r-half{ background:var(--half); }
+td.res.r-low{ background:var(--low); }
+td.res.r-idle{ background:var(--idle); }
+td.okr{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted); }
+.tag{ display:inline-block; font-family:"Courier New",monospace; font-size:.68rem;
+  border:1px solid var(--line-soft); padding:.05rem .35rem; white-space:nowrap; }
+
+/* ---------- изменения в процессе спринта ---------- */
+.change{ border:1px solid var(--line); padding:.8rem .9rem; margin:0 0 1rem; }
+.change .who{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted);
+  margin-bottom:.5rem; }
+.change .ba{ display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-bottom:.6rem; }
+.change .ba div{ border:1px solid var(--line-soft); padding:.5rem .6rem; font-size:.88rem; }
+.change .ba b{ font-family:"Courier New",monospace; font-size:.68rem; letter-spacing:.06em;
+  color:var(--faint); font-weight:normal; display:block; margin-bottom:.2rem; }
+.change .out{ border-left:3px solid var(--line); padding-left:.6rem; font-size:.92rem; }
+@media(max-width:620px){ .change .ba{ grid-template-columns:1fr; } }
+
+/* ---------- метрики и демо ---------- */
+.shot{ border:1px solid var(--line-soft); padding:.7rem; margin:0 0 .8rem; }
+.shot .ph{ background:var(--mark); border:1px dashed var(--line-soft); height:150px;
+  display:flex; align-items:center; justify-content:center; color:var(--faint);
+  font-family:"Courier New",monospace; font-size:.74rem; text-align:center; padding:1rem; }
+.shot figcaption{ font-size:.86rem; color:var(--muted); margin-top:.5rem; }
+.shot figcaption b{ color:var(--fg); font-weight:normal;
+  font-family:"Courier New",monospace; font-size:.7rem; text-transform:uppercase;
+  letter-spacing:.05em; display:block; }
+ul.demo{ list-style:none; padding:0; }
+ul.demo li{ border-bottom:1px solid var(--line-soft); padding:.55rem 0; }
+ul.demo .cap{ display:block; color:var(--muted); font-size:.86rem; }
+
+/* ---------- уточнить ---------- */
+mark.unc{ background:var(--mark); border:1px solid var(--line-soft); padding:.02em .35em;
+  font-family:"Courier New",monospace; font-size:.85em; }
+.unc-dot{ display:inline-block; width:8px; height:8px; margin-left:.3rem; border-radius:50%;
+  background:#e00000; cursor:pointer; border:none; padding:0; vertical-align:middle;
+  animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(224,0,0,.5);}
+                  50%{opacity:.55;box-shadow:0 0 0 4px rgba(224,0,0,0);} }
+.unc-dot.has-comment{ background:#1a7a1a; animation:none; }
+@media(prefers-reduced-motion:reduce){ .unc-dot{ animation:none; } }
+
+footer{ border-top:1px solid var(--line); margin-top:3rem; padding-top:1.2rem;
+  font-size:.84rem; color:var(--muted); }
+footer .anchors{ font-family:"Courier New",monospace; font-size:.74rem; }
+
+/* ---------- правый верхний угол ---------- */
+.promptbox{ position:fixed; top:1rem; right:1rem; z-index:50; display:flex;
+  flex-direction:column; align-items:flex-end; gap:.4rem;
+  font-family:"Courier New",monospace; font-size:.75rem; }
+.promptbox>button{ background:var(--fg); color:var(--bg); border:1px solid var(--fg);
+  padding:.4rem .7rem; cursor:pointer; font:inherit; }
+.promptbox>button.finalbtn{ background:var(--bg); color:#1a7a1a; border-color:#1a7a1a; }
+.promptbox>button.finalbtn:hover{ background:#1a7a1a; color:#fff; }
+.panel{ display:none; width:360px; max-height:72vh; overflow-y:auto; background:var(--bg);
+  border:1px solid var(--fg); padding:.9rem; box-shadow:3px 3px 0 var(--line-soft); }
+.panel.open{ display:block; }
+.panel h4{ margin:0 0 .5rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+.panel .item{ border-bottom:1px solid var(--line-soft); padding:.4rem 0; }
+.panel .item .where{ color:var(--muted); font-size:.7rem; }
+.panel .item button{ font-size:.68rem; border:none; background:none; color:var(--muted);
+  cursor:pointer; text-decoration:underline; padding:0; }
+.panel textarea{ width:100%; min-height:130px; font:.72rem/1.4 "Courier New",monospace;
+  padding:.5rem; border:1px solid var(--line-soft); margin-top:.5rem; }
+.panel .copybtn{ margin-top:.4rem; width:100%; border:1px solid var(--fg);
+  background:var(--fg); color:var(--bg); padding:.35rem; cursor:pointer; font:inherit; }
+.panel .empty{ color:var(--faint); font-style:italic; }
+.hint{ max-width:340px; margin:0; text-align:right; font-size:.68rem; line-height:1.4;
+  color:var(--muted); background:var(--bg); border:1px solid var(--line-soft);
+  padding:.35rem .5rem; }
+.hint:empty{ display:none; }
+
+/* ---------- левая рейка ---------- */
+.rail{ position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:57;
+  display:flex; flex-direction:column; gap:6px; align-items:flex-start; transition:left .12s ease; }
+body.drawer-open .rail{ left:var(--drawer-w); }
+.rail-tab{ writing-mode:vertical-rl; transform:rotate(180deg); border:none; cursor:pointer;
+  color:#fff; font-family:"Courier New",monospace; font-size:.72rem; letter-spacing:.03em;
+  padding:.8rem .4rem; background:var(--fg); }
+.rail-tab.edit-tab{ background:#1a7a1a; }
+.drawer{ display:none; position:fixed; left:0; top:0; bottom:0; width:var(--drawer-w);
+  z-index:56; background:var(--bg); border-right:1px solid var(--fg);
+  box-shadow:3px 0 0 var(--line-soft); padding:1rem; overflow-y:auto;
+  font-family:"Courier New",monospace; font-size:.78rem; }
+.drawer.open{ display:block; }
+.drawer h4{ margin:0 0 .8rem; text-transform:uppercase; font-size:.78rem; letter-spacing:.05em; }
+.toc-link{ display:block; padding:.32rem 0; color:var(--fg); text-decoration:none;
+  border-bottom:1px solid var(--line-soft); }
+.toc-link:visited{ color:var(--fg); }
+.toc-link:hover{ background:var(--mark); }
+.edit-item{ display:block; width:100%; text-align:left; background:none; border:none;
+  border-bottom:1px solid var(--line-soft); padding:.55rem 0; cursor:pointer;
+  color:var(--fg); font:inherit; font-size:.76rem; }
+.edit-item:hover{ background:var(--mark); }
+.edit-item .sec{ display:block; color:var(--faint); font-size:.68rem;
+  text-transform:uppercase; margin-bottom:.15rem; }
+.edit-item .said{ display:block; margin-top:.25rem; padding-left:.5rem;
+  border-left:2px solid #1a7a1a; color:var(--muted); }
+
+/* ---------- попап комментария ---------- */
+.popover{ position:absolute; z-index:60; width:290px; background:var(--bg);
+  border:1px solid var(--fg); box-shadow:3px 3px 0 var(--line-soft); padding:.6rem;
+  font-family:"Courier New",monospace; font-size:.76rem; }
+.popover .pquote{ color:var(--muted); font-size:.72rem; margin-bottom:.4rem;
+  max-height:4.2em; overflow-y:auto; border-left:2px solid var(--line-soft);
+  padding-left:.5rem; }
+.popover textarea{ width:100%; min-height:64px; font:.76rem/1.4 "Courier New",monospace;
+  padding:.4rem; border:1px solid var(--line-soft); resize:vertical; }
+.popover .prow{ display:flex; gap:.4rem; margin-top:.4rem; }
+.popover button{ font:inherit; font-size:.72rem; border:1px solid var(--fg);
+  background:var(--fg); color:var(--bg); padding:.25rem .6rem; cursor:pointer; }
+.popover button.cancel{ background:var(--bg); color:var(--fg); }
+tr.commented td:first-child{ box-shadow:inset 3px 0 0 #1a7a1a; }
+
+@media print{
+  .promptbox,.rail,.drawer,.popover{ display:none !important; }
+  body{ font-size:11pt; } .layout{ max-width:none; padding:0; }
+  h2{ break-after:avoid; } table{ break-inside:auto; } tr{ break-inside:avoid; }
+}
