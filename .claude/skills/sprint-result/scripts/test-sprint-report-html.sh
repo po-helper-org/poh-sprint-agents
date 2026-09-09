@@ -18,18 +18,26 @@ python3 "$HERE/sprint-report-html.py" "$IDEAL" -o "$OUT" >/dev/null
 
 check "титульный слайд"          'class="slide title-slide"'
 check "HERO команды"             'class="slide hero-slide"'
-check "название команды"         '<h1>Ядро</h1>'
+check "название команды"         '<h1>ЯДРО</h1>'
 check "подзаголовок команды"     'class="hero-sub">Шлюзы и перенос нагрузки'
-check "заголовок стрима"         '<h1 class="slide-title">Перенос нагрузки на новое ядро</h1>'
-check "подзаголовок стрима"      'стрим "Перенос нагрузки на новое ядро"'
+check "заголовок стрима"         '<h1 class="slide-title">Перенос нагрузки</h1>'
+check "подзаголовок стрима"      'стрим "Перенос нагрузки"'
 check "вердикт в подзаголовке"   'Sprint Goal: достигнут частично'
 check "доказательство в подсказке" 'title="Обещали весь внешний трафик'
 check "легенда на слайде стрима" 'class="pill green"'
 check "заливка строки: зелёная"  '<tr class="row stat-green">'
 check "заливка строки: жёлтая"   '<tr class="row stat-yellow">'
 check "заливка строки: красная"  '<tr class="row stat-red">'
-check "роль исполнителя"         '<span class="role">[RELEASE] BE-1</span>'
 check "список фактов в ячейке"   '<li>Переключено 100%, десять суток без сбоев</li>'
+check "задача без префикса роли"  '<td class="task">Переключение B2B'
+absent "эталон не несёт ролей"    '<span class="role">'
+check "слайд метрик командный"   'Метрики ВИТРИНА команды'
+check "три карточки метрик"      'class="metrics-grid tri"'
+check "карточка без объяснения"  '<h3>Дашборд трекера</h3>'
+check "слайд РИСКИ"              'class="slide-title">РИСКИ</h1>'
+check "блок риска"               'class="risk-block"'
+check "имена команд на итогах"   'ЯДРО + ВИТРИНА'
+check "инициативы считают ACTIVITY" '16 инициатив по 4 стримам'
 check "строка следующего шага"   'class="next">След. шаг: <span class="next-item">'
 check "ступень ушла в подсказку" 'title="в Production"'
 check "подпись о сортировке"     'Сортировка: по убыванию результата'
@@ -50,7 +58,7 @@ absent "разделитель не протёк в метрику" 'растё�
 python3 - "$OUT" <<'PY'
 import re, sys
 html = open(sys.argv[1], encoding="utf-8").read()
-slide = html.split('Перенос нагрузки на новое ядро</h1>')[1].split('</section>')[0]
+slide = html.split('>Перенос нагрузки</h1>')[1].split('</section>')[0]
 vals = [int(m) for m in re.findall(r'class="result"[^>]*>(\d+)%', slide)]
 print("ok   сортировка по убыванию" if vals == sorted(vals, reverse=True)
       else f"FAIL сортировка: {vals}")
@@ -58,13 +66,22 @@ sys.exit(0 if vals == sorted(vals, reverse=True) else 1)
 PY
 [ $? -eq 0 ] || fails=$((fails+1))
 
-# Строк на слайд не больше порога: стрим режется на «(продолжение)».
+# Слайд растёт под стрим: по умолчанию разреза нет, самый плотный стрим целиком.
+absent "по умолчанию стрим не режется" '(продолжение)'
 python3 "$HERE/sprint-report-html.py" "$IDEAL" -o "$OUT" --max-rows 2 >/dev/null
-check "разрез длинного стрима" '(продолжение)'
+check "разрез по явному --max-rows" '(продолжение)'
+python3 "$HERE/sprint-report-html.py" "$IDEAL" -o "$OUT" >/dev/null
+
+# Префикс роли необязателен, но поддерживается, если PO его просит.
+ROLED="$TMP/roled.md"
+sed 's|Переключение B2B → новое ядро|[RELEASE] BE-1: Переключение B2B|' "$IDEAL" > "$ROLED"
+python3 "$HERE/sprint-report-html.py" "$ROLED" -o "$OUT" >/dev/null
+check "префикс роли выносится строкой" '<span class="role">[RELEASE] BE-1</span>'
+python3 "$HERE/sprint-report-html.py" "$IDEAL" -o "$OUT" >/dev/null
 
 # Гейт 5 в экспортёре: без вайтлиста внешняя ссылка остаётся текстом.
 LINKED="$TMP/linked.md"
-sed 's|- Дашборд переключения B2B — показывает BE-1, 2 минуты|- Запись — https://wiki.example.org/rec|' \
+sed 's|- Дашборд переключения B2B — 2 минуты|- Запись — https://wiki.example.org/rec|' \
   "$IDEAL" > "$LINKED"
 
 python3 "$HERE/sprint-report-html.py" "$LINKED" -o "$OUT" >/dev/null

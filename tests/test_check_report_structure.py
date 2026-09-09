@@ -121,3 +121,17 @@ def test_too_many_rows_warns_but_does_not_block():
     noisy = GOOD.replace(last, last + extra, 1)
     assert validate_report(noisy) == []
     assert any("гейт 6" in w for w in readability_warnings(noisy))
+
+
+def test_activity_row_counted_but_unscaled():
+    # «N инициатив» считает ACTIVITY, три счётчика — нет. Проверяем, что
+    # структурный валидатор такую строку пропускает без нареканий.
+    row = "| Погружение в смежный контур | - Принимаю задачи | ACTIVITY · фоновая |\n"
+    text = GOOD.replace("\n## Итоги спринта", "\n" + row + "\n## Итоги спринта", 1)
+    assert validate_report(text) == []
+
+
+def test_task_without_role_prefix_passes():
+    # В эталоне ни роли, ни исполнителя: префикс необязателен.
+    plain = GOOD.replace("| [BE] BE-1: Переключение |", "| Переключение B2B → ядро |")
+    assert validate_report(plain) == []

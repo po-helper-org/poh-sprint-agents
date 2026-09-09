@@ -27,7 +27,7 @@ description: "Навык отчёта по спринту скрам-масте�
 | # | Команда | Роль | Артефакт | Ресурсы |
 |---|---------|------|----------|---------|
 | 0 | `/sprint-result {sprint}` | Fact Collector | sprint-fact-context.md | resync_questions.md, readiness_ladder.md |
-| 1 | `/sprint-result {sprint}` | Report Builder | ФАКТ-{sprint}.md + .html | report_structure.md, fact_gates.md, writing_register.md, ideal_sprint_report.md |
+| 1 | `/sprint-result {sprint}` | Report Builder | ФАКТ-{sprint}.md + .html | report_structure.md, comment_logic.md, fact_gates.md, writing_register.md, ideal_sprint_report.md |
 | 2 | `/sr-revise {sprint}` | Reviser | те же, версия +1 | fact_gates.md |
 | 3 | `/sr-final {sprint}` | Finalizer | те же, статус «финальный» | fact_gates.md |
 | — | `/sr-html {путь}` | — | пересборка колоды | scripts/sprint-report-html.py |
@@ -57,8 +57,12 @@ description: "Навык отчёта по спринту скрам-масте�
 8. **Сортировка по убыванию результата.** Сверху закрытое, снизу
    заблокированное. Порядок из плана не наследуется.
 9. **Регистр — caveman ultra + anti-slop** (`resources/writing_register.md`).
-   Не стилевое предпочтение: длинная ячейка не «читается хуже», она не влезает
-   в слайд.
+   Не стилевое предпочтение: длинная ячейка не «читается хуже», её проматывают
+   глазами и слушают докладчика — отчёт перестаёт работать без него.
+10. **Комментарий — четыре слота в фиксированном порядке**
+   (`resources/comment_logic.md`): обещание → факт → почему не 100% → что
+   дальше. Пункт ≤ 12 слов, одна мысль. Комментарий несёт 58% ширины слайда:
+   всё, за что зацепится бизнес, лежит там.
 
 ## Валидаторы перед сборкой
 

@@ -1,9 +1,9 @@
 /* Отчётная колода спринта — слайд-лента.
  *
  * Геометрия, палитра и типографика — из эталонной колоды
- * (docs/reference/sprint-report-deck-reference.md). Слайд 1280×720 не
- * переливается по высоте: что не влезло, разрезается на два слайда, а не
- * прокручивается.
+ * (docs/reference/sprint-report-deck-reference.md). 720px — минимум, а не
+ * потолок: стрим на восемь строк живёт на одном слайде, слайд растёт под него.
+ * Разрез стрима на два слайда — ручное решение PO, не поведение экспортёра.
  *
  * Поверх эталона добавлена только механика правок (рейка слева, панель
  * справа, попап комментария). В @media print её нет — на показе и в печати
@@ -94,8 +94,10 @@ table.rep .next-item{font-weight:400;}
 .risks h2{font-size:16px; margin:0 0 10px;}
 .risks ul{font-size:13px; line-height:1.7; padding-left:20px; margin:0;}
 
-/* слайд метрик */
+/* слайд метрик: третья карточка занимает ряд целиком */
 .metrics-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:14px;}
+.metrics-grid.tri{grid-auto-rows:auto;}
+.metrics-grid.tri .metric-card:last-child{grid-column:1 / span 2;}
 .metric-card{border:1px solid var(--gray-border); border-radius:4px; padding:14px;}
 .metric-card h3{font-size:13px; font-weight:700; margin:0 0 8px;}
 .metric-card img{width:100%; height:auto; display:block; border:1px solid #e3e3e3;}
@@ -104,6 +106,15 @@ table.rep .next-item{font-weight:400;}
   font-size:12px; text-align:center; padding:38px 12px;
 }
 .metric-card p{font-size:11.5px; color:#555; margin:8px 0 0; line-height:1.5;}
+
+/* слайд РИСКИ — квартальные, отдельно от тактических блокеров на итогах */
+.risk-list{display:flex; flex-direction:column; gap:14px; margin-top:20px;}
+.risk-block{
+  border:1px solid var(--gray-border); border-left:4px solid var(--red-pill);
+  border-radius:2px; padding:12px 16px; background:var(--red-fill);
+}
+.risk-block h3{font-size:14px; font-weight:700; margin:0 0 6px;}
+.risk-block p{font-size:13px; line-height:1.55; margin:0; color:#222;}
 
 /* слайд изменений в процессе спринта */
 .change{border:1px solid var(--gray-border); border-radius:4px; padding:14px; margin-bottom:14px;}

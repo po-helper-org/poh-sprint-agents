@@ -2,7 +2,7 @@
 description: "Круг правок: промт с колоды → правки → ре-прогон гейтов и валидаторов → версия +1 + пересборка колоды. STOP."
 ---
 # /sr-revise {sprint}
-Роль: Reviser. Вход — промт, собранный на колоде (слайд + строка + текст правки). Прочитай `{sprint_report_doc}`, `resources/fact_gates.md`, `resources/report_structure.md`, `resources/writing_register.md`.
+Роль: Reviser. Вход — промт, собранный на колоде (слайд + строка + текст правки). Прочитай `{sprint_report_doc}`, `resources/fact_gates.md`, `resources/report_structure.md`, `resources/comment_logic.md`, `resources/writing_register.md`.
 
 Внеси каждую правку в **тот раздел и ту строку**, которые названы в промте. Правка PO — источник: записывай как есть, не переформулируй. Меняется процент → перепроверь ступень лестницы (гейт 3). Меняется состав строк → перепроверь трассировку к ПЛАН (гейт 1).
 

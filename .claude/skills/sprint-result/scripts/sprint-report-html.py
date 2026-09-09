@@ -15,10 +15,13 @@
   3. Заливка строки целиком по шкале; стоп-маркеры 🛑/🚫 у нулей (§5).
   4. Ячейка комментария → список фактов + строка следующего шага (§6).
   5. Счётчики итогового слайда — по строкам всех стримов (§8, решение Д1).
-  6. Разрез стрима, не влезающего в слайд, на «(продолжение)».
+  6. Слайд растёт под содержание: 720px — минимум. Авторазреза нет, стрим
+     живёт на одном слайде (--max-rows включает разрез вручную).
   7. Ступень лестницы (решение О2) уходит в подсказку ячейки: в .md она есть и
      проверяется гейтом 3, на слайде её нет — так в эталоне.
   8. Ссылки — только по вайтлисту (решение О5), иначе URL остаётся текстом.
+  9. Слайд РИСКИ — квартальные риски блоками, отдельно от тактических
+     блокеров на слайде итогов.
 """
 import argparse
 import html as htmlmod
@@ -29,7 +32,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-MAX_ROWS_PER_SLIDE = 6
+MAX_ROWS_PER_SLIDE = 0   # 0 — не резать: слайд растёт под стрим
 
 NEXT_LABEL_RE = re.compile(
     r"^\s*(След\.?\s*шаг|Следующий шаг|Следующий спринт|След\.?\s*спринт|"
@@ -134,7 +137,11 @@ def parse_result(cell):
 # ---------- ячейки ----------
 
 def render_task(cell, whitelist):
-    """`[BE] BE-1: действие` → роль отдельной строкой над названием."""
+    """Название задачи. Префикс роли необязателен: в эталоне его нет.
+
+    Есть `[BE] BE-1: …` — роль уходит отдельной строкой над названием;
+    нет — название печатается как есть (`Переключение 50/50`).
+    """
     m = re.match(r"\s*(\[[^\]]+\][^:]*?):\s*(.+)", cell)
     if m:
         return ('<td class="task"><span class="role">%s</span>%s</td>'
@@ -177,6 +184,7 @@ def render_rows(rows, whitelist, tally):
         if not any(row) or i_res >= len(row):
             continue
         shown, step, cls, key = parse_result(row[i_res])
+        tally["rows"] += 1          # «N инициатив» считает и ACTIVITY (эталон §8)
         if cls == "stat-green":
             tally["green"] += 1
         elif cls == "stat-yellow":
@@ -240,7 +248,8 @@ def parse_verdict(sec_lines):
 
 def stream_slides(deck, title, verdict, rows, sprint, whitelist, tally, max_rows):
     row_html = render_rows(rows, whitelist, tally) if rows else []
-    chunks = [row_html[i:i + max_rows] for i in range(0, len(row_html), max_rows)] or [[]]
+    step = max_rows if max_rows and max_rows > 0 else len(row_html) or 1
+    chunks = [row_html[i:i + step] for i in range(0, len(row_html), step)] or [[]]
     for n, chunk in enumerate(chunks):
         name = title if n == 0 else "%s (продолжение)" % title
         sub = 'Спринт %s · стрим "%s"' % (htmlmod.escape(sprint), htmlmod.escape(title))
@@ -283,7 +292,7 @@ def paragraphs(lines, whitelist):
     return "".join(out)
 
 
-def metrics_slide(deck, cards, sprint, whitelist, base):
+def metrics_slide(deck, cards, sprint, whitelist, base, team=""):
     """Карточки метрик. Файла картинки ещё нет — рисуем место под него с
     ожидаемым путём, а не битую ссылку: PO прикладывает скриншот отдельно (О4)."""
     if not cards:
@@ -295,16 +304,19 @@ def metrics_slide(deck, cards, sprint, whitelist, base):
                 if exists else
                 '<div class="noshot">Скриншот прикладывает PO%s</div>'
                 % (("<br>" + htmlmod.escape(src)) if src else ""))
-        body.append('<div class="metric-card"><h3>%s</h3>%s<p>%s</p></div>'
-                    % (htmlmod.escape(title), shot, inline(text, whitelist)))
-    deck.add("", '<h1 class="slide-title">Метрики</h1>'
+        explain = ('<p>%s</p>' % inline(text, whitelist)) if text.strip() else ""
+        body.append('<div class="metric-card"><h3>%s</h3>%s%s</div>'
+                    % (htmlmod.escape(title), shot, explain))
+    grid = "metrics-grid tri" if len(cards) == 3 else "metrics-grid"
+    head = "Метрики %s команды" % team if team else "Метрики"
+    deck.add("", '<h1 class="slide-title">%s</h1>'
                  '<div class="slide-sub">Спринт %s · процессные метрики</div>'
-                 '<div class="metrics-grid">%s</div>'
-                 % (htmlmod.escape(sprint), "".join(body)))
+                 '<div class="%s">%s</div>'
+                 % (htmlmod.escape(head), htmlmod.escape(sprint), grid, "".join(body)))
 
 
-def summary_slide(deck, sprint, tally, streams, risks, carry, whitelist):
-    total = tally["green"] + tally["yellow"] + tally["red"]
+def summary_slide(deck, sprint, tally, streams, risks, carry, whitelist, teams=()):
+    total = tally["rows"]
     kpi = "".join(
         '<div class="kpi %s"><div class="n">%d</div><div class="label">%s</div></div>'
         % (cls, tally[key], label)
@@ -318,9 +330,28 @@ def summary_slide(deck, sprint, tally, streams, risks, carry, whitelist):
     if carry:
         blocks += ('<div class="risks"><h2>Переносим в следующий спринт</h2>%s</div>'
                    % render_list(carry, whitelist, cap_sep=""))
+    sub = "%d инициатив по %d стримам" % (total, streams)
+    if teams:
+        sub += " · " + " + ".join(teams)
     deck.add("", '<h1 class="slide-title">Итоги спринта %s</h1>'
-                 '<div class="slide-sub">%d инициатив по %d стримам</div>%s'
-                 % (htmlmod.escape(sprint), total, streams, blocks))
+                 '<div class="slide-sub">%s</div>%s'
+                 % (htmlmod.escape(sprint), htmlmod.escape(sub), blocks))
+
+
+def risks_slide(deck, blocks, whitelist):
+    """Квартальные риски: срыв коммитментов и внешние зависимости.
+
+    Отдельно от «Ключевых рисков и блокеров» на слайде итогов: там тактика
+    этого спринта одной строкой, здесь — что ставит под удар квартал.
+    """
+    if not blocks:
+        return
+    body = "".join('<div class="risk-block"><h3>%s</h3><p>%s</p></div>'
+                   % (htmlmod.escape(title), inline(text, whitelist))
+                   for title, text in blocks)
+    deck.add("", '<h1 class="slide-title">РИСКИ</h1>'
+                 '<div class="slide-sub">Срыв коммитментов и внешние зависимости</div>'
+                 '<div class="risk-list">%s</div>' % body)
 
 
 # ---------- сборка ----------
@@ -338,7 +369,7 @@ def build(md_text, whitelist, max_rows, base=Path(".")):
             meta[key] = m.group(1).strip(" ·")
 
     deck = Deck()
-    tally = {"green": 0, "yellow": 0, "red": 0}
+    tally = {"green": 0, "yellow": 0, "red": 0, "rows": 0}
     sections = parse_sections(body)
     teams = [t for lvl, t, _ in sections if lvl == 2 and t.startswith("КОМАНДА")]
 
@@ -353,7 +384,9 @@ def build(md_text, whitelist, max_rows, base=Path(".")):
              % (htmlmod.escape(kicker), htmlmod.escape(h1),
                 htmlmod.escape(meta.get("Ответственный", "")), meta_html))
 
-    metric_cards, risks, carry, streams = [], [], [], 0
+    metric_cards, risks, carry, risk_blocks, streams = [], [], [], [], 0
+    metrics_team = ""
+    team_names = [t.split(":", 1)[1].split("—")[0].strip() for t in teams]
     ctx = None                       # текущий служебный раздел ## для вложенных ###
 
     for level, title, sec_lines in sections:
@@ -379,6 +412,8 @@ def build(md_text, whitelist, max_rows, base=Path(".")):
 
         if level == 2:
             ctx = title
+            if title.startswith("Метрик") and ":" in title:
+                metrics_team = title.split(":", 1)[1].strip()
             if title.startswith("Изменения"):
                 cards = []
                 for row in (tables[0][1:] if tables else []):
@@ -419,9 +454,15 @@ def build(md_text, whitelist, max_rows, base=Path(".")):
         elif level == 3 and ctx and ctx.startswith("Итог"):
             target = carry if title.startswith("Перенос") else risks
             target.extend(plain)
+        elif level == 3 and ctx and ctx.upper().startswith("РИСК"):
+            body = " ".join(l.strip() for l in plain
+                            if l.strip() and l.strip() != "---")
+            if body:
+                risk_blocks.append((title, body))
 
-    metrics_slide(deck, metric_cards, sprint, whitelist, base)
-    summary_slide(deck, sprint, tally, streams, risks, carry, whitelist)
+    metrics_slide(deck, metric_cards, sprint, whitelist, base, metrics_team)
+    summary_slide(deck, sprint, tally, streams, risks, carry, whitelist, team_names)
+    risks_slide(deck, risk_blocks, whitelist)
     return h1, sprint, deck, tally
 
 
@@ -432,7 +473,7 @@ def main():
     ap.add_argument("--link-whitelist", default="",
                     help="хосты через запятую; пусто — ссылки остаются текстом (О5)")
     ap.add_argument("--max-rows", type=int, default=MAX_ROWS_PER_SLIDE,
-                    help="строк на слайд, дальше стрим режется на «(продолжение)»")
+                    help="строк на слайд; 0 — не резать (по эталону слайд растёт)")
     args = ap.parse_args()
 
     src = Path(args.source)
@@ -491,8 +532,9 @@ def main():
 
     out = Path(args.output) if args.output else src.with_suffix(".html")
     out.write_text(page, encoding="utf-8")
-    print("колода: %s (слайдов: %d, строк: %d)"
-          % (out, len(deck.slides), tally["green"] + tally["yellow"] + tally["red"]))
+    print("колода: %s (слайдов: %d, строк: %d, из них по шкале: %d)"
+          % (out, len(deck.slides), tally["rows"],
+             tally["green"] + tally["yellow"] + tally["red"]))
 
 
 if __name__ == "__main__":

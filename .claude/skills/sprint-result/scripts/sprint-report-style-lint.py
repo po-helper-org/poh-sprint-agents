@@ -8,6 +8,11 @@
 Словарь — `resources/writing_register.md`, но источник правды по составу
 паттернов здесь: правило живёт в коде, документ его объясняет.
 
+Применяется к отчётам, **не к файлам правил** (`resources/writing_register.md`,
+`resources/comment_logic.md`): они цитируют запрещённые обороты, чтобы их
+запретить, и срабатывание на цитате — ложное. Так же устроен оригинал в
+poh-bft-writer.
+
     python3 sprint-report-style-lint.py ФАКТ-{sprint}.md [ещё.md ...]
     python3 sprint-report-style-lint.py --format json ФАКТ-{sprint}.md
 
@@ -117,7 +122,10 @@ ALL_PATTERNS = STOP_WORDS + HEDGES + META + QUALIFIERS + BUZZWORDS + WATER
 # --- Пороги caveman ---------------------------------------------------------
 
 SENTENCE_WORD_LIMIT = 40      # длиннота: предложение не читается с первого раза
-CELL_WORD_LIMIT = 45          # ячейка таблицы: дальше строка рвёт слайд 720px
+CELL_WORD_LIMIT = 45          # ячейка целиком: дальше её проматывают глазами
+# Пункт комментария. Замер по черновой колоде: медиана 8 слов, 61% строк ≤ 12.
+# Цель — 12, потолок — 20: дальше в пункте больше одной мысли.
+COMMENT_ITEM_WORD_LIMIT = 20
 HEADING_WORD_LIMIT = 6        # заголовок слайда: до трёх слов + служебный префикс
 
 WORD_RE = re.compile(r"[А-Яа-яёЁA-Za-z0-9-]+")
@@ -199,6 +207,14 @@ def lint(path: Path) -> list[Finding]:
 
         for unit in _units(raw):
             words = len(WORD_RE.findall(unit))
+            if raw.strip().startswith("|"):
+                for item in re.split(r"<br\s*/?>", unit):
+                    n = len(WORD_RE.findall(item))
+                    if n > COMMENT_ITEM_WORD_LIMIT:
+                        out.append(Finding(idx, "ERROR", "CV003",
+                                           f"пункт комментария из {n} слов при пороге "
+                                           f"{COMMENT_ITEM_WORD_LIMIT} — в пункте больше "
+                                           "одной мысли, разбить", excerpt))
             if raw.strip().startswith("|") and words > CELL_WORD_LIMIT:
                 out.append(Finding(idx, "ERROR", "CV002",
                                    f"ячейка из {words} слов при пороге {CELL_WORD_LIMIT} — "

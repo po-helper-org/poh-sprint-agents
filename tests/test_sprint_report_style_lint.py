@@ -67,3 +67,14 @@ def test_annotation_quote_is_skipped(tmp_path):
 
 def test_fenced_block_is_skipped(tmp_path):
     assert _codes("```\nобеспечивает\n```\n", tmp_path) == set()
+
+
+def test_long_comment_item_flagged(tmp_path):
+    # Пункт комментария несёт одну мысль: 25 слов — это две.
+    item = " ".join(["слово"] * 25)
+    assert "CV003" in _codes(f"| Задача | - {item}<br>- Коротко | 100% |\n", tmp_path)
+
+
+def test_short_comment_items_pass(tmp_path):
+    assert _codes("| Задача | - Коротко и по делу<br>- Ещё пункт | 100% |\n",
+                  tmp_path) == set()
