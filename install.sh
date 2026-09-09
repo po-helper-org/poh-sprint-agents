@@ -8,7 +8,10 @@ TARGET="${1:-$PWD}"
 copy() { # src rel-path
   local dest="$TARGET/$1"
   if [ -e "$dest" ]; then echo "skip (exists): $1"; return; fi
-  mkdir -p "$(dirname "$dest")"; cp -R "$SCRIPT_DIR/$1" "$dest"; echo "add: $1"
+  mkdir -p "$(dirname "$dest")"; cp -R "$SCRIPT_DIR/$1" "$dest"
+  # Байткод питона в рабочем чекауте — не часть навыка.
+  find "$dest" -name __pycache__ -type d -prune -exec rm -rf {} + 2>/dev/null || true
+  echo "add: $1"
 }
 copy ".claude/skills/sprint-planner"
 copy ".claude/skills/sprint-result"

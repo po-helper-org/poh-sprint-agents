@@ -1,13 +1,13 @@
 (function(){
   "use strict";
-  /* Правки живут в браузере: страница лежит файлом и работает без сети
+  /* Правки живут в браузере: колода лежит файлом и работает без сети
      (НФТ-SR-10). Круг правок закрывается по ревизии содержимого — пересобрали
      отчёт, значит правки уехали в работу и в следующий промт не идут. */
   var DOC = __DOC_JSON__;
   var KEY = __KEY_JSON__;
   var REV_KEY = KEY + ":rev";
   var REV = (function(){
-    var s = (document.querySelector("main") || document.body).textContent, h = 5381;
+    var s = document.querySelector(".deck").textContent, h = 5381;
     for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
     return (h >>> 0).toString(16);
   })();
@@ -30,32 +30,24 @@
   var revOut = document.getElementById("revOut");
   if (revOut) revOut.textContent = REV;
 
-  /* Раздел правки — ближайший заголовок над ней: агент правит раздел, а не
-     «третий абзац сверху». */
-  function sectionOf(node){
+  /* Раздел правки — слайд, на котором она стоит: агент правит слайд, а не
+     «третью строку сверху». */
+  function slideOf(node){
     var el = node.nodeType === 1 ? node : node.parentElement;
-    while (el && el !== document.body){
-      var prev = el.previousElementSibling;
-      while (prev){
-        if (/^H[123]$/.test(prev.tagName)){
-          var h = prev.cloneNode(true), k = h.querySelector(".kicker");
-          if (k) k.remove();
-          return h.textContent.trim();
-        }
-        prev = prev.previousElementSibling;
-      }
-      el = el.parentElement;
-    }
-    return "Отчёт";
+    return el && el.closest ? el.closest(".slide") : null;
+  }
+  function sectionOf(node){
+    var slide = slideOf(node);
+    if (!slide) return "Колода";
+    var h = slide.querySelector(".slide-title, h1");
+    return h ? h.textContent.trim() : "Слайд";
   }
   function anchorOf(node){
     var el = node.nodeType === 1 ? node : node.parentElement;
     var row = el && el.closest ? el.closest("tr.row") : null;
-    if (row){
-      var t = row.querySelector("td.task");
-      return t ? t.textContent.replace(/\s+/g, " ").trim() : null;
-    }
-    return null;
+    if (!row) return null;
+    var t = row.querySelector("td.task");
+    return t ? t.textContent.replace(/\s+/g, " ").trim() : null;
   }
 
   var pop = null;
@@ -69,7 +61,7 @@
     pop.innerHTML =
       (quote ? '<div class="pquote">' + esc(quote.slice(0, 160)) + '</div>' : "") +
       (existing.length ? '<div class="pquote">Уже есть: ' + esc(existing[0].text.slice(0, 90)) + '</div>' : "") +
-      '<textarea placeholder="Что поправить в этой строке"></textarea>' +
+      '<textarea placeholder="Что поправить"></textarea>' +
       '<div class="prow"><button type="button" data-a="ok">Сохранить</button>' +
       '<button type="button" class="cancel" data-a="no">Отмена</button></div>';
     document.body.appendChild(pop);
@@ -107,9 +99,8 @@
     var row = e.target.closest("tr.row");
     if (row){
       var t = row.querySelector("td.task");
-      openPop(e.clientX, e.clientY, sectionOf(row),
-              t ? t.textContent.replace(/\s+/g, " ").trim() : null,
-              t ? t.textContent.replace(/\s+/g, " ").trim() : "");
+      var name = t ? t.textContent.replace(/\s+/g, " ").trim() : null;
+      openPop(e.clientX, e.clientY, sectionOf(row), name, name || "");
     }
   });
 
@@ -131,22 +122,22 @@
                (c.anchor ? " (строка: «" + c.anchor + "»)" : "") + " " + c.text);
     });
     out.push("", "После правок — обязательно:",
-             "1. Ре-прогон гейтов отчёта (docs/bft-sprint-result-slice1.md §3.2).",
-             "2. Пересборка этой страницы — без неё правки придут повторно.");
+             "1. Ре-прогон гейтов отчёта (resources/fact_gates.md).",
+             "2. Валидаторы: check_report_structure.py и sprint-report-style-lint.py.",
+             "3. Пересборка колоды — без неё правки придут повторно.");
     return out.join("\n");
   }
 
   function render(){
     var list = open();
     document.getElementById("editBtn").textContent = "Правки (" + list.length + ")";
-    var body = list.length
+    document.getElementById("editList").innerHTML = list.length
       ? list.map(function(c, i){
           return '<div class="item"><div class="where">' + esc(c.section) +
                  (c.anchor ? " · " + esc(c.anchor) : "") + '</div>' + esc(c.text) +
                  ' <button type="button" data-del="' + i + '">снять</button></div>';
         }).join("")
       : '<p class="empty">Правок нет. Кликните строку таблицы или выделите текст.</p>';
-    document.getElementById("editList").innerHTML = body;
     document.getElementById("editWalk").innerHTML = list.length
       ? list.map(function(c){
           return '<div class="edit-item"><span class="sec">' + esc(c.section) + '</span>' +
@@ -187,16 +178,19 @@
   document.getElementById("finalBtn").addEventListener("click", function(){
     var n = open().length;
     document.getElementById("hint").textContent = n
-      ? "Осталось " + n + " незакрытых правок — отчёт можно финализировать, но они не учтены."
+      ? "Осталось " + n + " незакрытых правок — колоду можно финализировать, но они не учтены."
       : "Отчёт финальный. Команда для агента: /sr-final " + __SPRINT_JSON__;
   });
 
-  /* Оглавление строится из фактических h2 — не хардкодится. */
+  /* Оглавление — список слайдов из фактической колоды, не хардкод. */
   document.getElementById("tocList").innerHTML =
-    Array.prototype.map.call(document.querySelectorAll("main h2"), function(h){
-      var c = h.cloneNode(true), k = c.querySelector(".kicker");
-      if (k) k.remove();
-      return '<a class="toc-link" href="#' + h.id + '">' + esc(c.textContent.trim()) + "</a>";
+    Array.prototype.map.call(document.querySelectorAll(".slide"), function(s, i){
+      var h = s.querySelector(".slide-title, h1");
+      var kind = s.classList.contains("hero-slide") ? "команда"
+               : s.classList.contains("title-slide") ? "титул" : "слайд";
+      return '<a class="toc-link" href="#' + s.id + '"><span class="kind">' +
+             (i + 1) + " · " + kind + '</span>' +
+             esc(h ? h.textContent.trim() : "") + "</a>";
     }).join("");
 
   function drawer(tab, el){
@@ -204,22 +198,11 @@
       var d = document.getElementById(el), was = d.classList.contains("open");
       document.querySelectorAll(".drawer").forEach(function(x){ x.classList.remove("open"); });
       if (!was) d.classList.add("open");
-      document.body.classList.toggle("drawer-open",
-        !!document.querySelector(".drawer.open"));
+      document.body.classList.toggle("drawer-open", !!document.querySelector(".drawer.open"));
     });
   }
   drawer("tocTab", "tocDrawer");
   drawer("editTab", "editDrawer");
-
-  Array.prototype.forEach.call(document.querySelectorAll("mark.unc"), function(m){
-    var b = document.createElement("button");
-    b.type = "button"; b.className = "unc-dot"; b.title = "Ответить на уточнение";
-    m.after(b);
-    b.addEventListener("click", function(e){
-      e.stopPropagation();
-      openPop(e.clientX, e.clientY, sectionOf(m), m.textContent.trim(), m.textContent.trim());
-    });
-  });
 
   render();
 })();

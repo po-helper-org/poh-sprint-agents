@@ -1,16 +1,16 @@
-"""Dev-time валидатор структуры отчёта ФАКТ.
+"""Валидатор структуры отчёта ФАКТ — машинная часть гейтов.
 
-Проверяет НФТ-SR-8 (обязательные блоки + колонки таблицы) и машинную часть
-гейтов отчёта (`.claude/skills/sprint-result/resources/fact_gates.md`):
+Проверяет НФТ-SR-8 (обязательные блоки и колонки) и то из гейтов
+`resources/fact_gates.md`, что проверяется без знания ПЛАН:
 
-  гейт 2 — строка с «Результат» < 100% несёт «Причина» и «Следующий шаг»;
+  гейт 2 — строка с «Результат» < 100% несёт причину и следующий шаг;
   гейт 3 — у каждого значения «Результат» названа ступень лестницы;
-  гейт 4 — у каждой инициативы есть вердикт по Sprint Goal (наличие, не качество);
-  гейт 6 — читаемость: ≤ 5 инициатив, ≤ 6 строк на инициативу (предупреждение).
+  гейт 4 — у каждого стрима есть вердикт по Sprint Goal (наличие, не качество);
+  гейт 6 — строк на стрим не больше, чем влезает в слайд (предупреждение).
 
-Не входит в scope: гейт 1 (трассировка к ПЛАН — валидатор не знает плана),
-качество вердикта и гейт 5 (чистота публикации — нужен вайтлист домен-профиля).
-Это ответственность агента через fact_gates.md.
+Вне scope: гейт 1 (трассировка к ПЛАН — валидатор не знает плана), качество
+вердикта, гейт 5 (чистота публикации — нужен вайтлист домен-профиля), гейт 9
+(регистр текста — отдельный `sprint-report-style-lint.py`).
 
 CLI: python3 .claude/skills/sprint-result/scripts/check_report_structure.py \
          ФАКТ-{sprint}.md
@@ -19,15 +19,18 @@ CLI: python3 .claude/skills/sprint-result/scripts/check_report_structure.py \
 import re
 import sys
 
-REQUIRED_BLOCKS = ["Итог для бизнеса", "Перенос"]
-REPORT_COLUMNS = ["Задача", "Комментарий", "Результат"]
+REPORT_COLUMNS = ["Задачи", "Комментарий", "Результат"]
 META_FIELDS = ["Период", "Ответственный", "Статус", "Версия"]
+REQUIRED_BLOCKS = ["Итоги спринта"]
 
-MAX_INITIATIVES = 5
-MAX_ROWS_PER_INITIATIVE = 6
+# Стрим без Sprint Goal по природе: это не цель, а сборник влётов.
+NO_VERDICT_STREAMS = ("Внеплановые", "Прочие активности", "Техдолг")
 
-# «100% · в Production» — число и ступень, из которой оно выведено (гейт 3).
-RESULT_RE = re.compile(r"^\s*(\d{1,3}\s*%|ACTIVITY|заблокировано)\s*(·\s*(.+))?$", re.I)
+MAX_ROWS_PER_STREAM = 6
+
+# «100% · в Production», «🛑 0% · ждём смежников», «ACTIVITY · фоновая»
+RESULT_RE = re.compile(
+    r"^\s*(?:[^\w\s%]+\s*)?(\d{1,3}\s*%|ACTIVITY|заблокировано)\s*(?:·\s*(.+))?$", re.I)
 
 
 def _strip_bold(cell):
@@ -42,14 +45,14 @@ def _is_divider(cells):
 
 
 def _tables(text):
-    """Markdown-таблицы документа → [(шапка, [строки], заголовок раздела)]."""
+    """Таблицы документа → [(шапка, [строки], заголовок ближайшего раздела)]."""
     out, header, rows, section = [], None, [], None
     for line in text.splitlines():
-        if line.startswith("## "):
+        if re.match(r"^#{2,3}\s+", line):
             if header:
                 out.append((header, rows, section))
             header, rows = None, []
-            section = line[3:].strip()
+            section = re.sub(r"^#{2,3}\s+", "", line).strip()
             continue
         stripped = line.strip()
         if not stripped.startswith("|"):
@@ -69,12 +72,23 @@ def _tables(text):
     return out
 
 
+def _streams(text):
+    """[(название, тело раздела)] по каждому `### СТРИМ:`."""
+    out = []
+    for chunk in re.split(r"^###\s+", text, flags=re.M)[1:]:
+        head = chunk.splitlines()[0].strip()
+        if head.startswith("СТРИМ"):
+            name = head.split(":", 1)[1].strip() if ":" in head else head
+            out.append((name, chunk))
+    return out
+
+
 def _row_issues(header, rows, section):
-    """Гейты 2 и 3 по строкам одной таблицы."""
     issues = []
     idx = {name.strip().lower(): i for i, name in enumerate(header)}
-    i_res, i_comment, i_task = (idx.get("результат"), idx.get("комментарий"),
-                               idx.get("задача"))
+    i_res = idx.get("результат")
+    i_comment = idx.get("комментарий")
+    i_task = idx.get("задачи", idx.get("задача"))
     if i_res is None:
         return issues
     for row in rows:
@@ -86,25 +100,23 @@ def _row_issues(header, rows, section):
         if not m:
             issues.append(f"гейт 3: «{task}» — значение «{value}» не по шкале")
             continue
-        if not (m.group(3) or "").strip():
-            issues.append(f"гейт 3: «{task}» — процент без ступени лестницы")
-        head = m.group(1).lower()
-        if head.startswith("activity"):
-            continue
-        done = head.replace(" ", "") == "100%"
-        if done:
+        if not (m.group(2) or "").strip():
+            issues.append(f"гейт 3: «{task}» — результат без ступени лестницы")
+        head = m.group(1).lower().replace(" ", "")
+        if head.startswith("activity") or head == "100%":
             continue
         comment = row[i_comment] if i_comment is not None and i_comment < len(row) else ""
         low = comment.lower()
-        if "причина" not in low:
+        if "причина" not in low and "блокатор" not in low and "блокер" not in low:
             issues.append(f"гейт 2: «{task}» — незакрытая строка без причины")
-        if "следующий шаг" not in low:
+        if not re.search(r"след\.?\s*шаг|следующий шаг|следующий спринт|"
+                         r"в след(ующем|\.)?\s*спринте", low):
             issues.append(f"гейт 2: «{task}» — незакрытая строка без следующего шага")
     return issues
 
 
 def validate_report(text):
-    """Блокирующие нарушения структуры и машинных гейтов. [] — чисто."""
+    """Блокирующие нарушения. [] — чисто."""
     issues = []
     if not re.search(r"^#\s*ФАКТ\s*\|", text, re.M):
         issues.append("нет шапки «# ФАКТ | {sprint}»")
@@ -112,48 +124,43 @@ def validate_report(text):
         if not re.search(r"\*\*%s:?\*\*" % field, text):
             issues.append(f"нет поля шапки: {field}")
 
-    initiatives = re.findall(r"^##\s*ИНИЦИАТИВА:\s*(.+)$", text, re.M)
-    if not initiatives:
-        issues.append("нет ни одного блока «## ИНИЦИАТИВА:»")
+    streams = _streams(text)
+    if not streams:
+        issues.append("нет ни одного блока «### СТРИМ:»")
 
     for block in REQUIRED_BLOCKS:
         if not re.search(r"^##\s*%s" % re.escape(block), text, re.M):
             issues.append(f"нет блока: {block}")
-    if "Следующие шаги" not in text:
-        issues.append("нет блока: Следующие шаги")
+    if not re.search(r"^###\s*Ключевые риски", text, re.M):
+        issues.append("нет блока: Ключевые риски и блокеры")
 
-    # гейт 4 — вердикт в каждой секции инициативы
-    for chunk in re.split(r"^##\s+", text, flags=re.M)[1:]:
-        if chunk.startswith("ИНИЦИАТИВА") and "Вердикт по Sprint Goal" not in chunk:
-            name = chunk.splitlines()[0].strip()
+    for name, chunk in streams:
+        if name.startswith(NO_VERDICT_STREAMS):
+            continue
+        if "Вердикт по Sprint Goal" not in chunk:
             issues.append(f"гейт 4: «{name}» — нет вердикта по Sprint Goal")
 
-    # колонки таблицы строк (первые три в порядке)
     tables = _tables(text)
-    row_tables = [t for t in tables
-                  if [c.strip() for c in t[0][:3]] == REPORT_COLUMNS]
+    row_tables = [t for t in tables if [c.strip() for c in t[0][:3]] == REPORT_COLUMNS]
     if not row_tables:
         issues.append("колонки таблицы строк нарушены/не в порядке "
-                      "(ожидается Задача | Комментарий | Результат)")
+                      "(ожидается Задачи | Комментарий | Результат)")
     for header, rows, section in row_tables:
         issues.extend(_row_issues(header, rows, section))
     return issues
 
 
 def readability_warnings(text):
-    """Гейт 6 — 🟡, не блокирует. Агент предупреждает, разрез решает PO (Д2)."""
+    """Гейт 6 — 🟡. Агент предупреждает, разрез решает PO (решение Д2)."""
     warnings = []
-    initiatives = re.findall(r"^##\s*ИНИЦИАТИВА:\s*(.+)$", text, re.M)
-    if len(initiatives) > MAX_INITIATIVES:
-        warnings.append(f"гейт 6: инициатив {len(initiatives)}, порог {MAX_INITIATIVES}")
     for header, rows, section in _tables(text):
-        if not section or not section.startswith("ИНИЦИАТИВА"):
+        if not section or not section.startswith("СТРИМ"):
             continue
         filled = [r for r in rows if any(r)]
-        if len(filled) > MAX_ROWS_PER_INITIATIVE:
+        if len(filled) > MAX_ROWS_PER_STREAM:
             name = section.split(":", 1)[-1].strip()
-            warnings.append(f"гейт 6: «{name}» — строк {len(filled)}, "
-                            f"порог {MAX_ROWS_PER_INITIATIVE}")
+            warnings.append(f"гейт 6: «{name}» — строк {len(filled)}, порог "
+                            f"{MAX_ROWS_PER_STREAM}; экспортёр разрежет на «(продолжение)»")
     return warnings
 
 

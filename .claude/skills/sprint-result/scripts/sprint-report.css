@@ -1,230 +1,179 @@
-/* Отчётная страница спринта. Макет-мишень: к этой раскладке навык
- * sprint-result приводит любой входящий контекст.
+/* Отчётная колода спринта — слайд-лента.
  *
- * Типографика — из poh-bft-writer (bft-html-export.css): чёрно-белый документ,
- * Georgia, колонка 860px. Цвет на странице ровно один — шкала готовности из
- * референсной колоды. Он несёт смысл, поэтому и остался единственным: рядом с
- * ним заливка «для красоты» читалась бы как статус.
+ * Геометрия, палитра и типографика — из эталонной колоды
+ * (docs/reference/sprint-report-deck-reference.md). Слайд 1280×720 не
+ * переливается по высоте: что не влезло, разрезается на два слайда, а не
+ * прокручивается.
+ *
+ * Поверх эталона добавлена только механика правок (рейка слева, панель
+ * справа, попап комментария). В @media print её нет — на показе и в печати
+ * колода выглядит ровно как эталон.
  */
 :root{
-  --bg:#ffffff; --fg:#000000; --muted:#555555; --faint:#888888;
-  --line:#000000; --line-soft:#cccccc; --mark:#f2f2f2;
-  --link:#0000ee; --visited:#551a8b;
-  /* Шкала готовности — палитра источника. */
-  --ok:#d9ead3; --ok-line:#6aa84f;
-  --half:#fff2cc; --half-line:#e0a800;
-  --low:#f4cccc; --low-line:#cc0000;
-  --idle:#eeeeee; --idle-line:#999999;
-  --drawer-w:min(340px, 86vw);
+  --gray-border:#9E9E9E;
+  --gray-dark:#595959;
+  --green-fill:#D9EAD3;  --green-pill:#B6D7A8;
+  --yellow-fill:#FFF2CC; --yellow-pill:#FFE599;
+  --red-fill:#FDE9E9;    --red-pill:#F4CCCC;
+  --deck-bg:#e9e9e9;
   color-scheme:light;
 }
-*{ box-sizing:border-box; }
-body{ margin:0; background:var(--bg); color:var(--fg);
-      font:15px/1.55 Georgia,"Times New Roman",serif; }
-code,.mono{ font-family:"Courier New",Consolas,monospace; }
-a{ color:var(--link); } a:visited{ color:var(--visited); }
+*{box-sizing:border-box;}
+body{
+  margin:0; padding:0; background:var(--deck-bg);
+  font-family:Arial,"Helvetica Neue",sans-serif; color:#111;
+}
+.deck{display:flex; flex-direction:column; align-items:center; gap:28px; padding:28px 0 80px;}
+.slide{
+  width:1280px; min-height:720px; background:#fff; position:relative;
+  box-shadow:0 2px 10px rgba(0,0,0,.18); padding:36px 48px 40px;
+}
+.slide-num{position:absolute; bottom:14px; right:20px; font-size:11px; color:#999;}
 
-.layout{ max-width:860px; margin:0 auto; padding:2rem 1.5rem 6rem; }
+h1.slide-title{font-size:30px; font-weight:400; margin:0 0 4px; color:#111;}
+.slide-sub{font-size:14px; color:#666; margin:0 0 18px;}
 
-/* ---------- шапка ---------- */
-.doc-head{ border-bottom:2px solid var(--line); padding-bottom:1rem; margin-bottom:1.4rem; }
-h1{ font-size:1.75rem; line-height:1.2; margin:0 0 .5rem; letter-spacing:.01em; }
-h1 .sep{ color:var(--faint); font-weight:normal; }
-.meta{ font-family:"Courier New",monospace; font-size:.78rem; color:var(--muted);
-       display:flex; flex-wrap:wrap; gap:.2rem 1.2rem; }
-.meta b{ color:var(--fg); font-weight:normal; }
+/* Легенда объясняет заливку строк, поэтому стоит на каждом слайде стрима. */
+.legend{position:absolute; top:32px; right:40px; display:flex; gap:8px;}
+.legend .pill{
+  font-size:10px; text-align:center; line-height:1.25; padding:6px 10px;
+  border-radius:2px; border:1px solid var(--gray-dark); min-width:92px;
+}
+.legend .pill.green{background:var(--green-pill);}
+.legend .pill.yellow{background:var(--yellow-pill);}
+.legend .pill.red{background:var(--red-pill);}
 
-/* ---------- светофор спринта ---------- */
-.tally{ border:1px solid var(--line); margin:0 0 1.6rem; }
-.tally-bar{ display:flex; height:26px; }
-.tally-bar span{ display:flex; align-items:center; justify-content:center;
-  font-family:"Courier New",monospace; font-size:.72rem; color:#1a1a1a;
-  border-right:1px solid var(--line); }
-.tally-bar span:last-child{ border-right:none; }
-.tally-bar .s-ok{ background:var(--ok); }
-.tally-bar .s-half{ background:var(--half); }
-.tally-bar .s-low{ background:var(--low); }
-.tally-bar .s-idle{ background:var(--idle); }
-.tally-legend{ display:flex; flex-wrap:wrap; gap:.1rem 1.1rem; padding:.5rem .7rem;
-  border-top:1px solid var(--line-soft); font-family:"Courier New",monospace;
-  font-size:.72rem; color:var(--muted); }
-.tally-legend i{ display:inline-block; width:10px; height:10px; margin-right:.35rem;
-  border:1px solid var(--line-soft); vertical-align:-1px; font-style:normal; }
+table.rep{width:100%; border-collapse:collapse; margin-top:8px; table-layout:fixed;}
+table.rep col.c1{width:26%;}
+table.rep col.c2{width:58%;}
+table.rep col.c3{width:16%;}
+table.rep th{
+  font-size:13px; font-weight:700; text-align:center;
+  border:1px solid var(--gray-border); padding:8px 10px; background:#fff;
+}
+table.rep td{
+  font-size:12.5px; line-height:1.45; vertical-align:top;
+  border:1px solid var(--gray-border); padding:10px 12px;
+}
+table.rep td.task{font-weight:600;}
+table.rep td.task .role{display:block; font-weight:400; font-size:11px; color:var(--gray-dark);}
+table.rep td.result{text-align:left; white-space:nowrap; font-weight:700;}
+/* Статус красит строку целиком: слайд читается светофором сверху вниз,
+   а не сверкой колонки чисел. */
+table.rep tr.stat-green td{background:var(--green-fill);}
+table.rep tr.stat-yellow td{background:var(--yellow-fill);}
+table.rep tr.stat-red td{background:var(--red-fill);}
+table.rep ul{margin:0; padding-left:16px;}
+table.rep li{margin-bottom:3px;}
+table.rep .next{margin-top:6px; font-weight:700;}
+table.rep .next-item{font-weight:400;}
+.sort-note{font-size:11px; color:#888; margin:6px 0 0; font-style:italic;}
 
-/* ---------- заголовки ---------- */
-h2{ font-size:1.2rem; margin:2.6rem 0 .3rem; padding-top:1.6rem;
-    border-top:1px solid var(--line-soft); }
-h2:first-of-type{ border-top:none; padding-top:0; }
-h2 .kicker{ display:block; font-family:"Courier New",monospace; font-size:.68rem;
-  text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
-  margin-bottom:.3rem; font-weight:normal; }
-h3{ font-size:1rem; margin:1.5rem 0 .5rem; }
-p{ margin:0 0 .9rem; }
-ul,ol{ margin:0 0 .9rem; padding-left:1.4rem; }
-li{ margin-bottom:.35rem; }
-.lead{ font-size:1.02rem; }
-.krline{ font-family:"Courier New",monospace; font-size:.78rem; color:var(--muted);
-  margin:.2rem 0 .8rem; }
+/* титульный слайд */
+.title-slide{display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding-left:90px;}
+.title-slide h1{font-size:52px; font-weight:400; margin:0 0 10px;}
+.title-slide .author{font-size:20px; color:#444;}
+.title-slide .kicker{font-size:16px; color:#888; margin-bottom:18px;}
+.title-slide .meta{font-size:13px; color:#888; margin-top:26px; line-height:1.7;}
 
-/* ---------- вердикт по Sprint Goal ---------- */
-.verdict{ border:1px solid var(--line); border-left-width:5px; padding:.7rem .9rem;
-  margin:0 0 1.1rem; }
-.verdict.v-ok{ border-left-color:var(--ok-line); }
-.verdict.v-part{ border-left-color:var(--half-line); }
-.verdict.v-no{ border-left-color:var(--low-line); }
-.verdict .vlabel{ font-family:"Courier New",monospace; font-size:.68rem;
-  text-transform:uppercase; letter-spacing:.07em; color:var(--muted); display:block;
-  margin-bottom:.25rem; }
-.verdict .vstate{ font-weight:bold; }
-.verdict p{ margin:.35rem 0 0; font-size:.94rem; }
+/* HERO-разделитель команды */
+.hero-slide{display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding-left:90px;}
+.hero-slide .hero-line{width:64px; height:3px; background:#111; margin-bottom:22px;}
+.hero-slide h1{font-size:46px; font-weight:400; margin:0 0 10px;}
+.hero-slide .hero-sub{font-size:16px; color:#666;}
 
-/* ---------- таблица строк ---------- */
-.table-wrap{ overflow-x:auto; margin:0 0 1rem; }
-table{ border-collapse:collapse; width:100%; font-size:.86rem; }
-th,td{ border:1px solid var(--line-soft); padding:.55rem .6rem; text-align:left;
-       vertical-align:top; }
-th{ background:var(--mark); font-family:"Courier New",monospace; font-size:.68rem;
-    text-transform:uppercase; letter-spacing:.04em; font-weight:normal; }
-col.c-task{ width:23%; } col.c-res{ width:15%; } col.c-okr{ width:14%; }
-tr.row:hover{ background:#fafafa; }
-td.task{ font-weight:bold; }
-td.task .role{ font-family:"Courier New",monospace; font-weight:normal;
-  font-size:.74rem; color:var(--muted); display:block; }
+/* слайд итогов */
+.summary-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:24px;}
+.kpi{border:1px solid var(--gray-border); border-radius:4px; padding:18px; text-align:center;}
+.kpi .n{font-size:34px; font-weight:700;}
+.kpi.green{background:var(--green-fill);}
+.kpi.yellow{background:var(--yellow-fill);}
+.kpi.red{background:var(--red-fill);}
+.kpi .label{font-size:12px; color:#333; margin-top:4px;}
+.risks{margin-top:26px;}
+.risks h2{font-size:16px; margin:0 0 10px;}
+.risks ul{font-size:13px; line-height:1.7; padding-left:20px; margin:0;}
 
-/* Комментарий — не абзац, а помеченные строки: у каждой метки свой вес.
-   Обещание приглушено, факт основной, причина и блокатор отбиты чертой. */
-.c{ display:block; margin-bottom:.4rem; }
-.c:last-child{ margin-bottom:0; }
-.c b{ font-family:"Courier New",monospace; font-size:.7rem; font-weight:normal;
-  text-transform:uppercase; letter-spacing:.05em; color:var(--faint);
-  display:block; margin-bottom:.05rem; }
-.c-goal{ color:var(--muted); }
-.c-why,.c-block{ border-left:2px solid var(--low-line); padding-left:.55rem; }
-.c-next{ border-left:2px solid var(--line-soft); padding-left:.55rem; }
-.c-block b{ color:var(--low-line); }
+/* слайд метрик */
+.metrics-grid{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:14px;}
+.metric-card{border:1px solid var(--gray-border); border-radius:4px; padding:14px;}
+.metric-card h3{font-size:13px; font-weight:700; margin:0 0 8px;}
+.metric-card img{width:100%; height:auto; display:block; border:1px solid #e3e3e3;}
+.metric-card .noshot{
+  border:1px dashed var(--gray-border); background:#f6f6f6; color:#999;
+  font-size:12px; text-align:center; padding:38px 12px;
+}
+.metric-card p{font-size:11.5px; color:#555; margin:8px 0 0; line-height:1.5;}
 
-/* Ячейка результата: число + ступень лестницы, из которой оно выведено. */
-td.res{ text-align:center; white-space:nowrap; }
-td.res .num{ display:block; font-size:1.05rem; font-weight:bold; }
-td.res .step{ display:block; font-family:"Courier New",monospace; font-size:.66rem;
-  color:#333; margin-top:.15rem; white-space:normal; }
-td.res.r-ok{ background:var(--ok); }
-td.res.r-half{ background:var(--half); }
-td.res.r-low{ background:var(--low); }
-td.res.r-idle{ background:var(--idle); }
-td.okr{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted); }
-.tag{ display:inline-block; font-family:"Courier New",monospace; font-size:.68rem;
-  border:1px solid var(--line-soft); padding:.05rem .35rem; white-space:nowrap; }
+/* слайд изменений в процессе спринта */
+.change{border:1px solid var(--gray-border); border-radius:4px; padding:14px; margin-bottom:14px;}
+.change .who{font-size:12px; color:var(--gray-dark); margin-bottom:10px;}
+.change .ba{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:10px;}
+.change .ba div{border:1px solid #e3e3e3; padding:10px 12px; font-size:12.5px;}
+.change .ba b{display:block; font-size:11px; color:#888; font-weight:700; margin-bottom:3px;}
+.change .out{border-left:3px solid #111; padding-left:10px; font-size:12.5px; margin:0;}
 
-/* ---------- изменения в процессе спринта ---------- */
-.change{ border:1px solid var(--line); padding:.8rem .9rem; margin:0 0 1rem; }
-.change .who{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted);
-  margin-bottom:.5rem; }
-.change .ba{ display:grid; grid-template-columns:1fr 1fr; gap:.7rem; margin-bottom:.6rem; }
-.change .ba div{ border:1px solid var(--line-soft); padding:.5rem .6rem; font-size:.88rem; }
-.change .ba b{ font-family:"Courier New",monospace; font-size:.68rem; letter-spacing:.06em;
-  color:var(--faint); font-weight:normal; display:block; margin-bottom:.2rem; }
-.change .out{ border-left:3px solid var(--line); padding-left:.6rem; font-size:.92rem; }
-@media(max-width:620px){ .change .ba{ grid-template-columns:1fr; } }
+/* слайд демо */
+ul.demo{font-size:13px; line-height:1.7; padding-left:20px; margin:14px 0 0;}
+ul.demo .cap{color:#666;}
 
-/* ---------- метрики и демо ---------- */
-.shot{ border:1px solid var(--line-soft); padding:.7rem; margin:0 0 .8rem; }
-.shot .ph{ background:var(--mark); border:1px dashed var(--line-soft); height:150px;
-  display:flex; align-items:center; justify-content:center; color:var(--faint);
-  font-family:"Courier New",monospace; font-size:.74rem; text-align:center; padding:1rem; }
-.shot figcaption{ font-size:.86rem; color:var(--muted); margin-top:.5rem; }
-.shot figcaption b{ color:var(--fg); font-weight:normal;
-  font-family:"Courier New",monospace; font-size:.7rem; text-transform:uppercase;
-  letter-spacing:.05em; display:block; }
-ul.demo{ list-style:none; padding:0; }
-ul.demo li{ border-bottom:1px solid var(--line-soft); padding:.55rem 0; }
-ul.demo .cap{ display:block; color:var(--muted); font-size:.86rem; }
+mark.unc{background:#f2f2f2; border:1px solid var(--gray-border); padding:.02em .3em; font-size:.92em;}
 
-/* ---------- уточнить ---------- */
-mark.unc{ background:var(--mark); border:1px solid var(--line-soft); padding:.02em .35em;
-  font-family:"Courier New",monospace; font-size:.85em; }
-.unc-dot{ display:inline-block; width:8px; height:8px; margin-left:.3rem; border-radius:50%;
-  background:#e00000; cursor:pointer; border:none; padding:0; vertical-align:middle;
-  animation:pulse 1.4s ease-in-out infinite; }
-@keyframes pulse{ 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(224,0,0,.5);}
-                  50%{opacity:.55;box-shadow:0 0 0 4px rgba(224,0,0,0);} }
-.unc-dot.has-comment{ background:#1a7a1a; animation:none; }
-@media(prefers-reduced-motion:reduce){ .unc-dot{ animation:none; } }
+/* ---------- механика правок: в эталоне её нет, на печати её нет ---------- */
+.promptbox{
+  position:fixed; top:14px; right:14px; z-index:50; display:flex;
+  flex-direction:column; align-items:flex-end; gap:6px; font-size:12px;
+}
+.promptbox>button{background:#111; color:#fff; border:1px solid #111; padding:6px 11px; cursor:pointer; font:inherit;}
+.promptbox>button.finalbtn{background:#fff; color:#1a7a1a; border-color:#1a7a1a;}
+.promptbox>button.finalbtn:hover{background:#1a7a1a; color:#fff;}
+.panel{display:none; width:340px; max-height:70vh; overflow-y:auto; background:#fff; border:1px solid #111; padding:12px;}
+.panel.open{display:block;}
+.panel h4{margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.05em;}
+.panel .item{border-bottom:1px solid #ddd; padding:6px 0;}
+.panel .item .where{color:#777; font-size:11px;}
+.panel .item button{font-size:11px; border:none; background:none; color:#777; cursor:pointer; text-decoration:underline; padding:0;}
+.panel textarea{width:100%; min-height:120px; font:11px/1.4 "Courier New",monospace; padding:7px; border:1px solid #ddd; margin-top:7px;}
+.panel .copybtn{margin-top:6px; width:100%; border:1px solid #111; background:#111; color:#fff; padding:5px; cursor:pointer; font:inherit;}
+.panel .empty{color:#999; font-style:italic;}
+.hint{max-width:320px; margin:0; text-align:right; font-size:11px; line-height:1.4; color:#555; background:#fff; border:1px solid #ddd; padding:5px 7px;}
+.hint:empty{display:none;}
 
-footer{ border-top:1px solid var(--line); margin-top:3rem; padding-top:1.2rem;
-  font-size:.84rem; color:var(--muted); }
-footer .anchors{ font-family:"Courier New",monospace; font-size:.74rem; }
+.rail{position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:57; display:flex; flex-direction:column; gap:6px; transition:left .12s ease;}
+body.drawer-open .rail{left:min(320px,86vw);}
+.rail-tab{
+  writing-mode:vertical-rl; transform:rotate(180deg); border:none; cursor:pointer;
+  color:#fff; background:#111; font:inherit; font-size:11px; letter-spacing:.03em; padding:12px 6px;
+}
+.rail-tab.edit-tab{background:#1a7a1a;}
+.drawer{
+  display:none; position:fixed; left:0; top:0; bottom:0; width:min(320px,86vw); z-index:56;
+  background:#fff; border-right:1px solid #111; padding:14px; overflow-y:auto; font-size:12px;
+}
+.drawer.open{display:block;}
+.drawer h4{margin:0 0 10px; text-transform:uppercase; font-size:12px; letter-spacing:.05em;}
+.toc-link{display:block; padding:5px 0; color:#111; text-decoration:none; border-bottom:1px solid #ddd;}
+.toc-link:visited{color:#111;}
+.toc-link:hover{background:#f2f2f2;}
+.toc-link .kind{color:#999; font-size:10px; text-transform:uppercase; letter-spacing:.05em;}
+.edit-item{display:block; border-bottom:1px solid #ddd; padding:8px 0;}
+.edit-item .sec{display:block; color:#999; font-size:10px; text-transform:uppercase;}
+.edit-item .said{display:block; margin-top:4px; padding-left:7px; border-left:2px solid #1a7a1a; color:#555;}
 
-/* ---------- правый верхний угол ---------- */
-.promptbox{ position:fixed; top:1rem; right:1rem; z-index:50; display:flex;
-  flex-direction:column; align-items:flex-end; gap:.4rem;
-  font-family:"Courier New",monospace; font-size:.75rem; }
-.promptbox>button{ background:var(--fg); color:var(--bg); border:1px solid var(--fg);
-  padding:.4rem .7rem; cursor:pointer; font:inherit; }
-.promptbox>button.finalbtn{ background:var(--bg); color:#1a7a1a; border-color:#1a7a1a; }
-.promptbox>button.finalbtn:hover{ background:#1a7a1a; color:#fff; }
-.panel{ display:none; width:360px; max-height:72vh; overflow-y:auto; background:var(--bg);
-  border:1px solid var(--fg); padding:.9rem; box-shadow:3px 3px 0 var(--line-soft); }
-.panel.open{ display:block; }
-.panel h4{ margin:0 0 .5rem; font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
-.panel .item{ border-bottom:1px solid var(--line-soft); padding:.4rem 0; }
-.panel .item .where{ color:var(--muted); font-size:.7rem; }
-.panel .item button{ font-size:.68rem; border:none; background:none; color:var(--muted);
-  cursor:pointer; text-decoration:underline; padding:0; }
-.panel textarea{ width:100%; min-height:130px; font:.72rem/1.4 "Courier New",monospace;
-  padding:.5rem; border:1px solid var(--line-soft); margin-top:.5rem; }
-.panel .copybtn{ margin-top:.4rem; width:100%; border:1px solid var(--fg);
-  background:var(--fg); color:var(--bg); padding:.35rem; cursor:pointer; font:inherit; }
-.panel .empty{ color:var(--faint); font-style:italic; }
-.hint{ max-width:340px; margin:0; text-align:right; font-size:.68rem; line-height:1.4;
-  color:var(--muted); background:var(--bg); border:1px solid var(--line-soft);
-  padding:.35rem .5rem; }
-.hint:empty{ display:none; }
-
-/* ---------- левая рейка ---------- */
-.rail{ position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:57;
-  display:flex; flex-direction:column; gap:6px; align-items:flex-start; transition:left .12s ease; }
-body.drawer-open .rail{ left:var(--drawer-w); }
-.rail-tab{ writing-mode:vertical-rl; transform:rotate(180deg); border:none; cursor:pointer;
-  color:#fff; font-family:"Courier New",monospace; font-size:.72rem; letter-spacing:.03em;
-  padding:.8rem .4rem; background:var(--fg); }
-.rail-tab.edit-tab{ background:#1a7a1a; }
-.drawer{ display:none; position:fixed; left:0; top:0; bottom:0; width:var(--drawer-w);
-  z-index:56; background:var(--bg); border-right:1px solid var(--fg);
-  box-shadow:3px 0 0 var(--line-soft); padding:1rem; overflow-y:auto;
-  font-family:"Courier New",monospace; font-size:.78rem; }
-.drawer.open{ display:block; }
-.drawer h4{ margin:0 0 .8rem; text-transform:uppercase; font-size:.78rem; letter-spacing:.05em; }
-.toc-link{ display:block; padding:.32rem 0; color:var(--fg); text-decoration:none;
-  border-bottom:1px solid var(--line-soft); }
-.toc-link:visited{ color:var(--fg); }
-.toc-link:hover{ background:var(--mark); }
-.edit-item{ display:block; width:100%; text-align:left; background:none; border:none;
-  border-bottom:1px solid var(--line-soft); padding:.55rem 0; cursor:pointer;
-  color:var(--fg); font:inherit; font-size:.76rem; }
-.edit-item:hover{ background:var(--mark); }
-.edit-item .sec{ display:block; color:var(--faint); font-size:.68rem;
-  text-transform:uppercase; margin-bottom:.15rem; }
-.edit-item .said{ display:block; margin-top:.25rem; padding-left:.5rem;
-  border-left:2px solid #1a7a1a; color:var(--muted); }
-
-/* ---------- попап комментария ---------- */
-.popover{ position:absolute; z-index:60; width:290px; background:var(--bg);
-  border:1px solid var(--fg); box-shadow:3px 3px 0 var(--line-soft); padding:.6rem;
-  font-family:"Courier New",monospace; font-size:.76rem; }
-.popover .pquote{ color:var(--muted); font-size:.72rem; margin-bottom:.4rem;
-  max-height:4.2em; overflow-y:auto; border-left:2px solid var(--line-soft);
-  padding-left:.5rem; }
-.popover textarea{ width:100%; min-height:64px; font:.76rem/1.4 "Courier New",monospace;
-  padding:.4rem; border:1px solid var(--line-soft); resize:vertical; }
-.popover .prow{ display:flex; gap:.4rem; margin-top:.4rem; }
-.popover button{ font:inherit; font-size:.72rem; border:1px solid var(--fg);
-  background:var(--fg); color:var(--bg); padding:.25rem .6rem; cursor:pointer; }
-.popover button.cancel{ background:var(--bg); color:var(--fg); }
-tr.commented td:first-child{ box-shadow:inset 3px 0 0 #1a7a1a; }
+.popover{
+  position:absolute; z-index:60; width:290px; background:#fff; border:1px solid #111;
+  box-shadow:3px 3px 0 #ccc; padding:9px; font-size:12px;
+}
+.popover .pquote{color:#777; font-size:11px; margin-bottom:6px; max-height:4.2em; overflow-y:auto; border-left:2px solid #ddd; padding-left:7px;}
+.popover textarea{width:100%; min-height:62px; font:12px/1.4 Arial,sans-serif; padding:6px; border:1px solid #ddd; resize:vertical;}
+.popover .prow{display:flex; gap:6px; margin-top:6px;}
+.popover button{font:inherit; font-size:11px; border:1px solid #111; background:#111; color:#fff; padding:4px 9px; cursor:pointer;}
+.popover button.cancel{background:#fff; color:#111;}
+tr.commented td:first-child{box-shadow:inset 3px 0 0 #1a7a1a;}
 
 @media print{
-  .promptbox,.rail,.drawer,.popover{ display:none !important; }
-  body{ font-size:11pt; } .layout{ max-width:none; padding:0; }
-  h2{ break-after:avoid; } table{ break-inside:auto; } tr{ break-inside:avoid; }
+  .promptbox,.rail,.drawer,.popover{display:none !important;}
+  body{background:#fff;}
+  .deck{gap:0; padding:0;}
+  .slide{box-shadow:none; break-after:page; page-break-after:always;}
 }

@@ -3,7 +3,7 @@
 Автономный скрам-мастер-агент.
 
 - `sprint-planner` (slice 1): спринт → согласованный vault-ПЛАН + операционный контракт + гейт консенсуса.
-- `sprint-result` (slice 2): закрытие спринта → `ФАКТ-{sprint}.md` + отчётная `.html`-страница для бизнеса. Правки собираются на самой странице.
+- `sprint-result` (slice 2): закрытие спринта → `ФАКТ-{sprint}.md` + отчётная HTML-колода для бизнеса (команда → стрим → строки). Правки собираются на самой колоде.
 
 ## Установка
 `bash install.sh [target-проект]` — копирует навык и команды (non-destructive), кладёт `domain-profile.md` из шаблона.
@@ -11,8 +11,8 @@
 ## Команды (STOP после каждой)
 **Планирование:** `/sm-sync` → `/sm-goal` → `/sm-decompose` → `/sm-load` → `/sm-deliver` → `/sm-consensus`
 
-**Отчёт:** `/sprint-result` → правки на странице → `/sr-revise` → `/sr-final`
-(`/sr-html` — сервисная пересборка страницы)
+**Отчёт:** `/sprint-result` → правки на колоде → `/sr-revise` → `/sr-final`
+(`/sr-html` — сервисная пересборка колоды)
 
 Контур замкнут: незакрытые строки отчёта уходят кандидатами в carryover, `/sm-sync` следующего спринта читает их из того же файла.
 
@@ -20,10 +20,12 @@
 - Видение: `VISION.md`
 - БФТ: `docs/bft-sprint-planner-slice1.md` · `docs/bft-sprint-result-slice1.md`
 - Дизайн: `docs/superpowers/specs/2026-07-17-sprint-planner-slice1-design.md` · `docs/superpowers/specs/2026-09-08-sprint-result-html-design.md`
-- Формат отчёта: `docs/reference/sprint-report-reference.md` (разбор референса, обезличено) · `docs/reference/sprint-report-page-mockup.html` (макет страницы)
+- Формат отчёта: `docs/reference/sprint-report-deck-reference.md` (эталонная колода, обезличено) · `docs/reference/sprint-report-reference.md` (разбор исходной `.pptx`)
 
 ## Проверки
 ```
-python3 .claude/skills/sprint-result/scripts/check_report_structure.py ФАКТ-{sprint}.md
-bash .claude/skills/sprint-result/scripts/test-sprint-report-html.sh
+python3 .claude/skills/sprint-result/scripts/check_report_structure.py   ФАКТ-{sprint}.md
+python3 .claude/skills/sprint-result/scripts/sprint-report-style-lint.py ФАКТ-{sprint}.md
+bash   .claude/skills/sprint-result/scripts/test-sprint-report-html.sh
 ```
+Оба валидатора прогоняются до сборки колоды и повторно до финализации.
