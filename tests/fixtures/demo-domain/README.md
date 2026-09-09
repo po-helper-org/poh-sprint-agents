@@ -1,4 +1,4 @@
-# demo-domain — golden fixture (Ticketland)
+# demo-domain — golden fixture (демо-домен «Витрина»)
 
 Golden fixture для прогона `/sm-sync … /sm-consensus` (полный пайплайн sprint-planner) на **2026Q3-S7**.
 
@@ -13,12 +13,12 @@ Golden fixture для прогона `/sm-sync … /sm-consensus` (полный 
 | `domain-profile.md` | профиль домена, все paths → эта директория |
 | `team.md` | ростер (BE-1, BE-2, FE-1, SA-1) |
 | `availability.md` | реестр отсутствий на 2026Q3 (отпуск SA-1 28–31 июля) |
-| `SPRINT-ROADMAP-2026Q3.md` | матрица KR×спринт (OBJ2 KR2.1 — кино через UMC, OBJ3 KR3.1 — B2B через extapi_go), срез на S7 |
+| `SPRINT-ROADMAP-2026Q3.md` | матрица KR×спринт (OBJ2 KR2.1 — медиа через HUB, OBJ3 KR3.1 — B2B через gw_go), срез на S7 |
 
 ## Ожидаемый выход
 
 Прогон пайплайна на S7 с этими входами должен дать план, приблизительно эквивалентный эталону `.claude/skills/sprint-planner/examples/ideal_sprint_plan.md`:
-- цель по OBJ2/KR2.1: кино в `web_db` через UMC, отображается на витрине с фильтрацией (BE-2, FE-1, SA-1);
-- цель по OBJ3/KR3.1: B2B pay/sell на 100% через `extapi_go` (BE-1);
+- цель по OBJ2/KR2.1: медиа в `store_db` через HUB, отображается на витрине с фильтрацией (BE-2, FE-1, SA-1);
+- цель по OBJ3/KR3.1: B2B pay/sell на 100% через `gw_go` (BE-1);
 - capacity по исполнителям посчитана через fallback (velocity недоступна из-за отсутствующего S6-ФАКТ), с учётом отпуска SA-1 в конце спринта;
 - признак cold-start (нет ФАКТ) явно отражён в плане/логах прогона, а не замаскирован выдуманными цифрами.

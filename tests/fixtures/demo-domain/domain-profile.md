@@ -1,4 +1,4 @@
-# Domain Profile — demo-domain (Ticketland, golden fixture)
+# Domain Profile — demo-domain («Витрина», golden fixture)
 
 > Заполнено из `domain-profile.template.md` для golden fixture `tests/fixtures/demo-domain/`.
 > Cold-start намеренно: `sprint_fact_doc` указывает на несуществующий S6 → ФАКТ отсутствует, ёмкость резолвится через `sp_per_person_sprint`-fallback.
