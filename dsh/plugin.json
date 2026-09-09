@@ -1,0 +1,53 @@
+{
+  "name": "poh-sprint-plugin",
+  "version": "0.1.0",
+  "description": "Контур скрам-мастера для DeepSeek Harness: планирование спринта и отчётная колода для бизнеса. Работает из чата, без UI-раздела.",
+  "license": "MIT",
+  "mode": "skill-root",
+  "skillRoot": ".claude/skills",
+  "commandRoot": ".claude/commands",
+  "skills": [
+    {
+      "name": "sprint-planner",
+      "entry": ".claude/skills/sprint-planner/SKILL.md",
+      "commands": ["sm-sync", "sm-goal", "sm-decompose", "sm-load", "sm-deliver", "sm-consensus"]
+    },
+    {
+      "name": "sprint-result",
+      "entry": ".claude/skills/sprint-result/SKILL.md",
+      "commands": ["sprint-result", "sr-revise", "sr-final", "sr-html"]
+    }
+  ],
+  "triggers": [
+    "собери отчет по спринту",
+    "собери отчёт по спринту",
+    "отчет по спринту",
+    "отчёт по спринту",
+    "итоги спринта",
+    "закрой спринт",
+    "спланируй спринт"
+  ],
+  "requires": {
+    "node": ">=22.19",
+    "python3": ">=3.9",
+    "harness": "deepseek-ai/deepseek-harness"
+  },
+  "config": {
+    "workspaceRoot": {
+      "required": true,
+      "description": "Корень воркспейса: там лежат GROUND/ со спринтами и .claude/domain-profile.md. Не каталог харнесса."
+    },
+    "linkWhitelist": {
+      "required": false,
+      "default": "",
+      "description": "Хосты через запятую, ссылки на которые допустимы в отчёте (гейт 5). Пусто — любой внешний адрес остаётся текстом."
+    }
+  },
+  "harnessProfile": {
+    "profile": "web",
+    "patch": "dsh/cordis.patch.example.yml",
+    "requiresPlugins": ["@deepseek-ai/dsh-skill-filesystem", "@deepseek-ai/dsh-tool-skill"]
+  },
+  "install": "dsh/install.sh",
+  "verify": "dsh/test-contract.sh"
+}

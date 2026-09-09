@@ -6,7 +6,11 @@
 - `sprint-result` (slice 2): закрытие спринта → `ФАКТ-{sprint}.md` + отчётная HTML-колода для бизнеса (команда → стрим → строки). Правки собираются на самой колоде.
 
 ## Установка
-`bash install.sh [target-проект]` — копирует навык и команды (non-destructive), кладёт `domain-profile.md` из шаблона.
+
+Два способа, не взаимоисключающие:
+
+- **В проект под Claude Code:** `bash install.sh [target-проект]` — копирует навыки и команды (non-destructive), кладёт `domain-profile.md` из шаблона.
+- **В DeepSeek Harness:** `bash dsh/install.sh --harness /путь/к/harness --workspace /путь/к/воркспейсу` — подключает навыки как skill-root, вызов из чата. Демо-сценарий: `dsh/README.md`.
 
 ## Команды (STOP после каждой)
 **Планирование:** `/sm-sync` → `/sm-goal` → `/sm-decompose` → `/sm-load` → `/sm-deliver` → `/sm-consensus`
@@ -27,5 +31,6 @@
 python3 .claude/skills/sprint-result/scripts/check_report_structure.py   ФАКТ-{sprint}.md
 python3 .claude/skills/sprint-result/scripts/sprint-report-style-lint.py ФАКТ-{sprint}.md
 bash   .claude/skills/sprint-result/scripts/test-sprint-report-html.sh
+bash   dsh/test-contract.sh
 ```
 Оба валидатора прогоняются до сборки колоды и повторно до финализации.
