@@ -1,0 +1,19 @@
+# Блок для harness/.dsh-data/profiles/web/cordis.patch.yml
+#
+# Ставит его install.sh — руками копировать не нужно. Файл лежит в репозитории,
+# чтобы было видно, что именно установщик добавит в профиль.
+#
+# Оба плагина в профиле web выключены по умолчанию. Без явного `disabled: false`
+# у обоих получится заданный customSkillDirs, который ни на что не влияет:
+# инструмент skill при этом не существует.
+
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  disabled: false
+  config:
+    customSkillDirs:
+      - '/абсолютный/путь/к/репозиторию/.claude/skills'
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'
+  disabled: false
