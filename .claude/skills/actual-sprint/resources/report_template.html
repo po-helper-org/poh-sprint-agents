@@ -68,7 +68,6 @@
   td.epic .no-epic { color: var(--muted); font-weight: 600; }
 
   td.actions { white-space: nowrap; width: 1%; }
-  td.actions .btn-group { display: flex; gap: 8px; }
   .action-btn {
     font: inherit;
     font-size: 13px;
@@ -82,6 +81,7 @@
   }
   .action-btn:hover { background: var(--fg); color: var(--bg); }
   .action-btn.has-note { border-color: #111; font-weight: 600; }
+  .action-btn.has-note::after { content: " •"; }
 
   /* сайдбар */
   .overlay {
@@ -141,10 +141,35 @@
   }
   .sidebar-close:hover { color: var(--fg); }
 
-  .sidebar-body { padding: 16px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+  .sidebar-body { padding: 16px 20px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+
+  .section-label {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+  }
+  .section + .section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+
+  .note-area {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--fg);
+    line-height: 1.6;
+  }
+  .note-area:focus { outline: none; border-color: var(--fg); }
+  .note-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
 
   /* список историй эпика, с разворотом подзадач */
   .story-item { border-bottom: 1px solid #eee; }
+  .story-item:last-child { border-bottom: none; }
   .story-row {
     display: flex;
     justify-content: space-between;
@@ -197,23 +222,7 @@
   .sub-item a { color: var(--muted); text-decoration: none; }
   .sub-item a:hover { color: var(--fg); text-decoration: underline; }
 
-  .sidebar-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-
-  .note-area {
-    flex: 1;
-    width: 100%;
-    min-height: 240px;
-    resize: vertical;
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 12px;
-    font: inherit;
-    font-size: 13px;
-    color: var(--fg);
-    line-height: 1.6;
-  }
-  .note-area:focus { outline: none; border-color: var(--fg); }
-  .note-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .sidebar-empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
 </style>
 </head>
 <body>
@@ -301,24 +310,15 @@
       return (
         '<tr data-row="' + esc(e.rowId) + '">' +
           '<td class="epic">' + epicCell + '</td>' +
-          '<td class="actions"><div class="btn-group">' +
-            '<button class="action-btn" data-open="' + esc(e.rowId) + '">Статус историй</button>' +
-            '<button class="action-btn" data-note="' + esc(e.rowId) + '">Прогресс</button>' +
-          '</div></td>' +
+          '<td class="actions"><button class="action-btn" data-open="' + esc(e.rowId) + '">Статус</button></td>' +
         '</tr>'
       );
     }).join('');
 
     document.querySelectorAll('[data-open]').forEach(function (btn) {
-      btn.addEventListener('click', function () { openStoriesSidebar(btn.dataset.open); });
-    });
-    document.querySelectorAll('[data-note]').forEach(function (btn) {
-      var rowId = btn.dataset.note;
-      refreshNoteButton(rowId);
-      btn.addEventListener('click', function () {
-        var epic = EPICS.find(function (e) { return e.rowId === rowId; });
-        if (epic) openNoteSidebar(epic);
-      });
+      var rowId = btn.dataset.open;
+      refreshStatusButton(rowId);
+      btn.addEventListener('click', function () { openSidebar(rowId); });
     });
   }
 
@@ -329,23 +329,51 @@
   var sbLink = document.getElementById('sbLink');
   var sbBody = document.getElementById('sbBody');
 
-  function openStoriesSidebar(rowId) {
-    var epic = EPICS.find(function (e) { return e.rowId === rowId; });
-    if (!epic) return;
-    sbKey.textContent = epic.epicKey || 'Без эпика';
-    sbTitle.textContent = epic.epicTitle || 'Без эпика';
-    if (epic.epicKey) { sbLink.href = jiraUrl(epic.epicKey); sbLink.style.display = ''; }
-    else { sbLink.style.display = 'none'; }
+  function noteStorageKey(rowId) { return 'actual-sprint:' + REPORT_ID + ':note:' + rowId; }
 
-    sbBody.innerHTML = '';
-    sbBody.style.display = 'block';
+  function buildNoteSection(epic) {
+    var section = document.createElement('div');
+    section.className = 'section';
+
+    var label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'Прогресс';
+    section.appendChild(label);
+
+    var storageKey = noteStorageKey(epic.rowId);
+    var textarea = document.createElement('textarea');
+    textarea.className = 'note-area';
+    textarea.placeholder = 'Заметка о прогрессе по эпику…';
+    textarea.value = localStorage.getItem(storageKey) || '';
+    textarea.addEventListener('input', function () {
+      localStorage.setItem(storageKey, textarea.value);
+      refreshStatusButton(epic.rowId);
+    });
+    section.appendChild(textarea);
+
+    var hint = document.createElement('div');
+    hint.className = 'note-hint';
+    hint.textContent = 'Сохраняется автоматически в этом браузере.';
+    section.appendChild(hint);
+
+    return section;
+  }
+
+  function buildStoriesSection(epic) {
+    var section = document.createElement('div');
+    section.className = 'section';
+
+    var label = document.createElement('div');
+    label.className = 'section-label';
+    label.textContent = 'Истории';
+    section.appendChild(label);
+
     if (!epic.stories || !epic.stories.length) {
       var empty = document.createElement('div');
       empty.className = 'sidebar-empty';
       empty.textContent = 'Историй нет.';
-      sbBody.appendChild(empty);
-      openPanel();
-      return;
+      section.appendChild(empty);
+      return section;
     }
 
     epic.stories.forEach(function (story, idx) {
@@ -353,7 +381,6 @@
       wrap.className = 'story-item';
 
       var hasSubtasks = story.subtasks && story.subtasks.length > 0;
-      var subListId = 'sub-' + rowId + '-' + idx;
 
       var row = document.createElement('div');
       row.className = 'story-row';
@@ -367,7 +394,6 @@
 
       var subList = document.createElement('div');
       subList.className = 'sub-list';
-      subList.id = subListId;
       if (hasSubtasks) {
         story.subtasks.forEach(function (sub) {
           var subRow = document.createElement('div');
@@ -388,50 +414,35 @@
         });
       }
 
-      sbBody.appendChild(wrap);
+      section.appendChild(wrap);
     });
 
-    openPanel();
+    return section;
   }
 
-  function noteStorageKey(rowId) { return 'actual-sprint:' + REPORT_ID + ':note:' + rowId; }
+  function openSidebar(rowId) {
+    var epic = EPICS.find(function (e) { return e.rowId === rowId; });
+    if (!epic) return;
 
-  function openNoteSidebar(epic) {
     sbKey.textContent = epic.epicKey || 'Без эпика';
     sbTitle.textContent = epic.epicTitle || 'Без эпика';
     if (epic.epicKey) { sbLink.href = jiraUrl(epic.epicKey); sbLink.style.display = ''; }
     else { sbLink.style.display = 'none'; }
 
     sbBody.innerHTML = '';
-    sbBody.style.display = 'flex';
+    sbBody.appendChild(buildNoteSection(epic));
+    sbBody.appendChild(buildStoriesSection(epic));
 
-    var storageKey = noteStorageKey(epic.rowId);
-    var textarea = document.createElement('textarea');
-    textarea.className = 'note-area';
-    textarea.placeholder = 'Заметка о прогрессе по эпику…';
-    textarea.value = localStorage.getItem(storageKey) || '';
-    textarea.addEventListener('input', function () {
-      localStorage.setItem(storageKey, textarea.value);
-      refreshNoteButton(epic.rowId);
-    });
-    sbBody.appendChild(textarea);
-
-    var hint = document.createElement('div');
-    hint.className = 'note-hint';
-    hint.textContent = 'Сохраняется автоматически в этом браузере.';
-    sbBody.appendChild(hint);
-
-    openPanel();
-    textarea.focus();
+    overlay.classList.add('open');
+    sidebar.classList.add('open');
   }
 
-  function refreshNoteButton(rowId) {
-    var btn = document.querySelector('[data-note="' + rowId + '"]');
+  function refreshStatusButton(rowId) {
+    var btn = document.querySelector('[data-open="' + rowId + '"]');
     if (!btn) return;
     btn.classList.toggle('has-note', !!localStorage.getItem(noteStorageKey(rowId)));
   }
 
-  function openPanel() { overlay.classList.add('open'); sidebar.classList.add('open'); }
   function closeSidebar() { overlay.classList.remove('open'); sidebar.classList.remove('open'); }
 
   overlay.addEventListener('click', closeSidebar);
