@@ -83,7 +83,7 @@
   .action-btn.has-note { border-color: #111; font-weight: 600; }
   .action-btn.has-note::after { content: " •"; }
 
-  /* сайдбар */
+  /* сайдбары — два независимых панеля, открываются/закрываются вместе */
   .overlay {
     position: fixed;
     inset: 0;
@@ -95,23 +95,32 @@
   }
   .overlay.open { opacity: 1; pointer-events: auto; }
 
-  .sidebar {
+  .panel-stack {
     position: fixed;
     top: 0;
     right: 0;
     height: 100%;
-    width: 420px;
-    max-width: 90vw;
+    display: flex;
+    z-index: 11;
+    pointer-events: none;
+  }
+
+  .sidebar {
+    position: relative;
+    height: 100%;
+    width: 340px;
+    max-width: 45vw;
     background: var(--bg);
     border-left: 1px solid var(--line);
     box-shadow: -8px 0 24px rgba(0,0,0,0.08);
-    transform: translateX(100%);
+    transform: translateX(110%);
     transition: transform 0.2s ease;
-    z-index: 11;
     display: flex;
     flex-direction: column;
+    pointer-events: none;
   }
-  .sidebar.open { transform: translateX(0); }
+  .sidebar.open { transform: translateX(0); pointer-events: auto; }
+  .sidebar#panelStories { width: 380px; }
 
   .sidebar-head {
     padding: 20px 20px 16px;
@@ -125,7 +134,7 @@
     color: var(--muted);
     margin-bottom: 6px;
   }
-  .sidebar-head h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.35; padding-right: 24px; }
+  .sidebar-head h2 { margin: 0 0 6px; font-size: 15px; line-height: 1.35; padding-right: 24px; }
   .sidebar-head a { font-size: 13px; color: var(--muted); }
 
   .sidebar-close {
@@ -143,18 +152,10 @@
 
   .sidebar-body { padding: 16px 20px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
 
-  .section-label {
-    font-size: 12px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin: 0 0 8px;
-  }
-  .section + .section { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
-
   .note-area {
+    flex: 1;
     width: 100%;
-    min-height: 120px;
+    min-height: 200px;
     resize: vertical;
     border: 1px solid var(--line);
     border-radius: 6px;
@@ -250,15 +251,29 @@
 </main>
 
 <div class="overlay" id="overlay"></div>
-<aside class="sidebar" id="sidebar">
-  <div class="sidebar-head">
-    <button class="sidebar-close" id="sidebarClose">&times;</button>
-    <div class="eyebrow" id="sbKey">—</div>
-    <h2 id="sbTitle">—</h2>
-    <a id="sbLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
-  </div>
-  <div class="sidebar-body" id="sbBody"></div>
-</aside>
+<div class="panel-stack">
+  <!-- Сайдбар 1: заметка о прогрессе эпика -->
+  <aside class="sidebar" id="panelProgress">
+    <div class="sidebar-head">
+      <button class="sidebar-close" data-close>&times;</button>
+      <div class="eyebrow">Прогресс</div>
+      <h2 id="progTitle">—</h2>
+      <a id="progLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
+    </div>
+    <div class="sidebar-body" id="progBody"></div>
+  </aside>
+
+  <!-- Сайдбар 2: список историй эпика -->
+  <aside class="sidebar" id="panelStories">
+    <div class="sidebar-head">
+      <button class="sidebar-close" data-close>&times;</button>
+      <div class="eyebrow">Истории</div>
+      <h2 id="storiesTitle">—</h2>
+      <a id="storiesLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
+    </div>
+    <div class="sidebar-body" id="storiesBody"></div>
+  </aside>
+</div>
 
 <script>
   // -------------------------------------------------------------------
@@ -318,27 +333,31 @@
     document.querySelectorAll('[data-open]').forEach(function (btn) {
       var rowId = btn.dataset.open;
       refreshStatusButton(rowId);
-      btn.addEventListener('click', function () { openSidebar(rowId); });
+      btn.addEventListener('click', function () { openPanels(rowId); });
     });
   }
 
   var overlay = document.getElementById('overlay');
-  var sidebar = document.getElementById('sidebar');
-  var sbKey = document.getElementById('sbKey');
-  var sbTitle = document.getElementById('sbTitle');
-  var sbLink = document.getElementById('sbLink');
-  var sbBody = document.getElementById('sbBody');
+  var panelProgress = document.getElementById('panelProgress');
+  var panelStories = document.getElementById('panelStories');
+  var progTitle = document.getElementById('progTitle');
+  var progLink = document.getElementById('progLink');
+  var progBody = document.getElementById('progBody');
+  var storiesTitle = document.getElementById('storiesTitle');
+  var storiesLink = document.getElementById('storiesLink');
+  var storiesBody = document.getElementById('storiesBody');
 
   function noteStorageKey(rowId) { return 'actual-sprint:' + REPORT_ID + ':note:' + rowId; }
 
-  function buildNoteSection(epic) {
-    var section = document.createElement('div');
-    section.className = 'section';
+  function setEpicHead(titleEl, linkEl, epic) {
+    titleEl.textContent = epic.epicTitle || 'Без эпика';
+    if (epic.epicKey) { linkEl.href = jiraUrl(epic.epicKey); linkEl.style.display = ''; }
+    else { linkEl.style.display = 'none'; }
+  }
 
-    var label = document.createElement('div');
-    label.className = 'section-label';
-    label.textContent = 'Прогресс';
-    section.appendChild(label);
+  function fillProgressPanel(epic) {
+    setEpicHead(progTitle, progLink, epic);
+    progBody.innerHTML = '';
 
     var storageKey = noteStorageKey(epic.rowId);
     var textarea = document.createElement('textarea');
@@ -349,34 +368,27 @@
       localStorage.setItem(storageKey, textarea.value);
       refreshStatusButton(epic.rowId);
     });
-    section.appendChild(textarea);
+    progBody.appendChild(textarea);
 
     var hint = document.createElement('div');
     hint.className = 'note-hint';
     hint.textContent = 'Сохраняется автоматически в этом браузере.';
-    section.appendChild(hint);
-
-    return section;
+    progBody.appendChild(hint);
   }
 
-  function buildStoriesSection(epic) {
-    var section = document.createElement('div');
-    section.className = 'section';
-
-    var label = document.createElement('div');
-    label.className = 'section-label';
-    label.textContent = 'Истории';
-    section.appendChild(label);
+  function fillStoriesPanel(epic) {
+    setEpicHead(storiesTitle, storiesLink, epic);
+    storiesBody.innerHTML = '';
 
     if (!epic.stories || !epic.stories.length) {
       var empty = document.createElement('div');
       empty.className = 'sidebar-empty';
       empty.textContent = 'Историй нет.';
-      section.appendChild(empty);
-      return section;
+      storiesBody.appendChild(empty);
+      return;
     }
 
-    epic.stories.forEach(function (story, idx) {
+    epic.stories.forEach(function (story) {
       var wrap = document.createElement('div');
       wrap.className = 'story-item';
 
@@ -414,27 +426,20 @@
         });
       }
 
-      section.appendChild(wrap);
+      storiesBody.appendChild(wrap);
     });
-
-    return section;
   }
 
-  function openSidebar(rowId) {
+  function openPanels(rowId) {
     var epic = EPICS.find(function (e) { return e.rowId === rowId; });
     if (!epic) return;
 
-    sbKey.textContent = epic.epicKey || 'Без эпика';
-    sbTitle.textContent = epic.epicTitle || 'Без эпика';
-    if (epic.epicKey) { sbLink.href = jiraUrl(epic.epicKey); sbLink.style.display = ''; }
-    else { sbLink.style.display = 'none'; }
-
-    sbBody.innerHTML = '';
-    sbBody.appendChild(buildNoteSection(epic));
-    sbBody.appendChild(buildStoriesSection(epic));
+    fillProgressPanel(epic);
+    fillStoriesPanel(epic);
 
     overlay.classList.add('open');
-    sidebar.classList.add('open');
+    panelProgress.classList.add('open');
+    panelStories.classList.add('open');
   }
 
   function refreshStatusButton(rowId) {
@@ -443,11 +448,17 @@
     btn.classList.toggle('has-note', !!localStorage.getItem(noteStorageKey(rowId)));
   }
 
-  function closeSidebar() { overlay.classList.remove('open'); sidebar.classList.remove('open'); }
+  function closePanels() {
+    overlay.classList.remove('open');
+    panelProgress.classList.remove('open');
+    panelStories.classList.remove('open');
+  }
 
-  overlay.addEventListener('click', closeSidebar);
-  document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSidebar(); });
+  overlay.addEventListener('click', closePanels);
+  document.querySelectorAll('[data-close]').forEach(function (btn) {
+    btn.addEventListener('click', closePanels);
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePanels(); });
 
   renderTable();
 </script>
