@@ -271,6 +271,19 @@
     text-align: right;
   }
   .age.stale { color: var(--c-blocked); font-weight: 600; }
+  .age.done { color: var(--c-done); font-weight: 600; }
+
+  /* инициалы исполнителя слева от задачи; полное имя — в подсказке */
+  .who {
+    flex-shrink: 0;
+    width: 30px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    cursor: default;
+  }
+  .who.none { color: var(--c-zero); font-weight: 400; }
   .sub-item .age { font-size: 10px; }
   .story-toggle {
     flex-shrink: 0;
@@ -318,7 +331,7 @@
     border-top: 1px dashed #eee;
   }
   .sub-item:first-child { border-top: none; }
-  .sub-item a { color: var(--muted); text-decoration: none; }
+  .sub-item a { color: var(--muted); text-decoration: none; flex: 1; min-width: 0; }
   .sub-item a:hover { color: var(--fg); text-decoration: underline; }
 
   .sidebar-empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
@@ -382,8 +395,8 @@
   // {
   //   rowId, epicKey|null, epicTitle,   // epicKey=null -> псевдо-эпик "Без эпика"
   //   stories: [
-  //     { key, title, status, category, statusChanged,   // statusChanged — ISO-дата последней смены статуса
-  //       subtasks: [ { key, summary, status, category, statusChanged } ] }
+  //     { key, title, status, category, statusChanged, assignee,  // statusChanged — ISO-дата смены статуса; assignee — ФИО
+  //       subtasks: [ { key, summary, status, category, statusChanged, assignee } ] }
   //   ]
   // }
   var EPICS = [
@@ -473,14 +486,29 @@
     return days;
   }
 
-  function ageHtml(iso) {
+  // Готовые задачи по определению стоят без движения — красить их «просрочкой» смысла нет,
+  // поэтому для бакета done возраст всегда зелёный и никогда не stale.
+  function ageHtml(iso, status, category) {
+    var isDone = classifyBucket(status, category) === 'done';
     var days = statusAge(iso);
-    if (days === null) return '<span class="age" title="Дата смены статуса неизвестна">—</span>';
+    if (days === null) {
+      return '<span class="age' + (isDone ? ' done' : '') + '" title="Дата смены статуса неизвестна">—</span>';
+    }
     var label = days + 'д';
-    var title = days === 0
-      ? 'Статус изменён сегодня'
-      : 'Статус не менялся ' + days + ' дн.';
-    return '<span class="age' + (days > STALE_DAYS ? ' stale' : '') + '" title="' + esc(title) + '">' + label + '</span>';
+    var title = isDone
+      ? 'Закрыто ' + (days === 0 ? 'сегодня' : days + ' дн. назад')
+      : (days === 0 ? 'Статус изменён сегодня' : 'Статус не менялся ' + days + ' дн.');
+    var cls = isDone ? ' done' : (days > STALE_DAYS ? ' stale' : '');
+    return '<span class="age' + cls + '" title="' + esc(title) + '">' + label + '</span>';
+  }
+
+  // Инициалы исполнителя: "Ишманов Алексей Юрьевич" -> "ИА" (фамилия + имя).
+  // Полное имя показывается подсказкой при наведении.
+  function whoHtml(name) {
+    if (!name) return '<span class="who none" title="Исполнитель не назначен">—</span>';
+    var parts = String(name).trim().split(/\s+/);
+    var initials = parts.slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
+    return '<span class="who" title="' + esc(name) + '">' + esc(initials) + '</span>';
   }
 
   function esc(s) {
@@ -595,11 +623,12 @@
       row.innerHTML =
         '<div class="story-title-wrap">' +
           '<button class="story-toggle" ' + (hasSubtasks ? '' : 'disabled') + '>▶</button>' +
+          whoHtml(story.assignee) +
           '<a href="' + jiraUrl(story.key) + '" target="_blank" rel="noopener">' + esc(story.key) + ' — ' + esc(story.title) + '</a>' +
         '</div>' +
         '<div class="meta-wrap">' +
           '<span class="status ' + bucketClass(story.status, story.category) + '">' + esc(story.status) + '</span>' +
-          ageHtml(story.statusChanged) +
+          ageHtml(story.statusChanged, story.status, story.category) +
         '</div>';
       wrap.appendChild(row);
 
@@ -610,10 +639,11 @@
           var subRow = document.createElement('div');
           subRow.className = 'sub-item';
           subRow.innerHTML =
+            whoHtml(sub.assignee) +
             '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
             '<div class="meta-wrap">' +
               '<span class="status ' + bucketClass(sub.status, sub.category) + '">' + esc(sub.status) + '</span>' +
-              ageHtml(sub.statusChanged) +
+              ageHtml(sub.statusChanged, sub.status, sub.category) +
             '</div>';
           subList.appendChild(subRow);
         });
