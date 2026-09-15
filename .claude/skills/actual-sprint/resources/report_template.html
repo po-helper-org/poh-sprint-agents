@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Отчёт {{TEAM_NAME}} — {{SPRINT_NAME}}</title>
+<style>
+  :root {
+    --fg: #111;
+    --bg: #fff;
+    --muted: #666;
+    --line: #ddd;
+    --accent: #111;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--fg);
+    background: var(--bg);
+    line-height: 1.5;
+  }
+  .hero {
+    padding: 48px 32px 32px;
+    border-bottom: 3px solid var(--fg);
+  }
+  .hero .team {
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .hero h1 {
+    margin: 0 0 12px;
+    font-size: 32px;
+    font-weight: 700;
+  }
+  .hero .meta {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .hero .meta strong { color: var(--fg); }
+
+  main { padding: 32px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    border-bottom: 2px solid var(--fg);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  tbody tr:hover { background: #fafafa; }
+  td.epic { font-size: 13px; color: var(--muted); }
+  td.epic a { color: var(--muted); }
+  td.epic a:hover { color: var(--fg); }
+  td a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line); }
+  td a:hover { border-bottom-color: var(--accent); }
+
+  td.actions { white-space: nowrap; width: 1%; }
+  td.actions .btn-group { display: flex; gap: 8px; }
+  .action-btn {
+    font: inherit;
+    font-size: 13px;
+    padding: 5px 12px;
+    border: 1px solid var(--fg);
+    background: var(--bg);
+    color: var(--fg);
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .action-btn:hover { background: var(--fg); color: var(--bg); }
+  .action-btn.has-note { border-color: #111; font-weight: 600; }
+
+  /* сайдбар */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 10;
+  }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 380px;
+    max-width: 90vw;
+    background: var(--bg);
+    border-left: 1px solid var(--line);
+    box-shadow: -8px 0 24px rgba(0,0,0,0.08);
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 11;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .sidebar-head {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+  }
+  .sidebar-head .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .sidebar-head h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.35; padding-right: 24px; }
+  .sidebar-head a { font-size: 13px; color: var(--muted); }
+
+  .sidebar-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    border: none;
+    background: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .sidebar-close:hover { color: var(--fg); }
+
+  .sidebar-body { padding: 16px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+
+  .sub-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+  }
+  .sub-item a { color: var(--fg); text-decoration: none; }
+  .sub-item a:hover { text-decoration: underline; }
+  .sub-item .status {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .sub-item .status.done { border-color: #111; font-weight: 600; }
+  .sub-item .status.progress { border-color: #999; }
+  .sub-item .status.backlog { color: var(--muted); }
+
+  .sidebar-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  .note-area {
+    flex: 1;
+    width: 100%;
+    min-height: 240px;
+    resize: vertical;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--fg);
+    line-height: 1.6;
+  }
+  .note-area:focus { outline: none; border-color: var(--fg); }
+  .note-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="team">Команда</div>
+  <h1>{{TEAM_NAME}}</h1>
+  <div class="meta">
+    <div>Спринт: <strong>{{SPRINT_NAME}}</strong></div>
+    <div>Доска: <strong>{{BOARD_NAME}}</strong></div>
+    <div>Истории в отчёте: <strong id="storyCount">0</strong></div>
+  </div>
+</div>
+
+<main>
+  <table>
+    <thead>
+      <tr>
+        <th>Эпик</th>
+        <th>История</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</main>
+
+<div class="overlay" id="overlay"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-head">
+    <button class="sidebar-close" id="sidebarClose">&times;</button>
+    <div class="eyebrow" id="sbKey">—</div>
+    <h2 id="sbTitle">—</h2>
+    <a id="sbLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
+  </div>
+  <div class="sidebar-body" id="sbBody"></div>
+</aside>
+
+<script>
+  // -------------------------------------------------------------------
+  // REPORT_ID: уникальный префикс localStorage-заметок для ЭТОГО отчёта,
+  // чтобы заметки разных отчётов, открытых в одном браузере, не пересекались.
+  // Заполняется генератором навыка (team-slug + спринт), например "gds-live-2026q3s6".
+  var REPORT_ID = "{{REPORT_ID}}";
+
+  // JIRA_BASE: базовый URL для ссылок вида {JIRA_BASE}/browse/{key}
+  var JIRA_BASE = "{{JIRA_BASE_URL}}";
+
+  // STORIES: заполняется генератором навыка (см. resources/data_shape.md).
+  // Каждый элемент: { rowId, epicKey|null, epicTitle, key, title, subtasks:[{key,summary,status,category}] }
+  var STORIES = [
+    // {{STORIES_JSON}}
+  ];
+  // -------------------------------------------------------------------
+
+  function jiraUrl(key) { return JIRA_BASE + '/browse/' + key; }
+
+  function statusClass(category) {
+    if (category === 'Выполнено') return 'done';
+    if (category === 'В работе') return 'progress';
+    return 'backlog';
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : s;
+    return d.innerHTML;
+  }
+
+  var tableBody = document.getElementById('tableBody');
+  var storyCountEl = document.getElementById('storyCount');
+
+  function renderTable() {
+    storyCountEl.textContent = STORIES.length;
+    tableBody.innerHTML = STORIES.map(function (s) {
+      var epicCell = s.epicKey
+        ? '<a href="' + jiraUrl(s.epicKey) + '" target="_blank" rel="noopener">' + esc(s.epicTitle) + '</a>'
+        : '—';
+      return (
+        '<tr data-row="' + esc(s.rowId) + '">' +
+          '<td class="epic">' + epicCell + '</td>' +
+          '<td><a href="' + jiraUrl(s.key) + '" target="_blank" rel="noopener">' + esc(s.title) + '</a></td>' +
+          '<td class="actions"><div class="btn-group">' +
+            '<button class="action-btn" data-open="' + esc(s.rowId) + '">Статус подзадач</button>' +
+            '<button class="action-btn" data-note="' + esc(s.rowId) + '">Прогресс</button>' +
+          '</div></td>' +
+        '</tr>'
+      );
+    }).join('');
+
+    document.querySelectorAll('[data-open]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openSubtasksSidebar(btn.dataset.open); });
+    });
+    document.querySelectorAll('[data-note]').forEach(function (btn) {
+      var rowId = btn.dataset.note;
+      refreshNoteButton(rowId);
+      btn.addEventListener('click', function () {
+        var story = STORIES.find(function (s) { return s.rowId === rowId; });
+        if (story) openNoteSidebar(story);
+      });
+    });
+  }
+
+  var overlay = document.getElementById('overlay');
+  var sidebar = document.getElementById('sidebar');
+  var sbKey = document.getElementById('sbKey');
+  var sbTitle = document.getElementById('sbTitle');
+  var sbLink = document.getElementById('sbLink');
+  var sbBody = document.getElementById('sbBody');
+
+  function openSubtasksSidebar(rowId) {
+    var story = STORIES.find(function (s) { return s.rowId === rowId; });
+    if (!story) return;
+    sbKey.textContent = story.key;
+    sbTitle.textContent = story.title;
+    sbLink.href = jiraUrl(story.key);
+
+    sbBody.innerHTML = '';
+    sbBody.style.display = 'block';
+    if (!story.subtasks || !story.subtasks.length) {
+      var empty = document.createElement('div');
+      empty.className = 'sidebar-empty';
+      empty.textContent = 'Подзадач нет.';
+      sbBody.appendChild(empty);
+    } else {
+      story.subtasks.forEach(function (sub) {
+        var row = document.createElement('div');
+        row.className = 'sub-item';
+        row.innerHTML =
+          '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
+          '<span class="status ' + statusClass(sub.category) + '">' + esc(sub.status) + '</span>';
+        sbBody.appendChild(row);
+      });
+    }
+    openPanel();
+  }
+
+  function noteStorageKey(rowId) { return 'actual-sprint:' + REPORT_ID + ':note:' + rowId; }
+
+  function openNoteSidebar(story) {
+    sbKey.textContent = story.key;
+    sbTitle.textContent = story.title;
+    sbLink.href = jiraUrl(story.key);
+
+    sbBody.innerHTML = '';
+    sbBody.style.display = 'flex';
+
+    var storageKey = noteStorageKey(story.rowId);
+    var textarea = document.createElement('textarea');
+    textarea.className = 'note-area';
+    textarea.placeholder = 'Заметка о прогрессе…';
+    textarea.value = localStorage.getItem(storageKey) || '';
+    textarea.addEventListener('input', function () {
+      localStorage.setItem(storageKey, textarea.value);
+      refreshNoteButton(story.rowId);
+    });
+    sbBody.appendChild(textarea);
+
+    var hint = document.createElement('div');
+    hint.className = 'note-hint';
+    hint.textContent = 'Сохраняется автоматически в этом браузере.';
+    sbBody.appendChild(hint);
+
+    openPanel();
+    textarea.focus();
+  }
+
+  function refreshNoteButton(rowId) {
+    var btn = document.querySelector('[data-note="' + rowId + '"]');
+    if (!btn) return;
+    btn.classList.toggle('has-note', !!localStorage.getItem(noteStorageKey(rowId)));
+  }
+
+  function openPanel() { overlay.classList.add('open'); sidebar.classList.add('open'); }
+  function closeSidebar() { overlay.classList.remove('open'); sidebar.classList.remove('open'); }
+
+  overlay.addEventListener('click', closeSidebar);
+  document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeSidebar(); });
+
+  renderTable();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,34 @@
+{
+  "_comment": "Пример заполненного STORIES для report_template.html — реальный срез спринта GDS/Live 2026Q3-S6, укороченный до нескольких строк для образца формата.",
+  "REPORT_ID": "gds-live-2026q3s6",
+  "JIRA_BASE_URL": "https://jira.mts.ru",
+  "STORIES": [
+    {
+      "rowId": "GDSLV-1919",
+      "epicKey": "GDSLV-1737",
+      "epicTitle": "AI Harness (Bartello)",
+      "key": "GDSLV-1919",
+      "title": "Harness DEV агент",
+      "subtasks": []
+    },
+    {
+      "rowId": "GDSLV-1870-mvp",
+      "epicKey": "GDSLV-1610",
+      "epicTitle": "FAQ из Direct",
+      "key": "GDSLV-1870",
+      "title": "FAQ MVP для мероприятий",
+      "subtasks": [
+        { "key": "GDSLV-1881", "summary": "[FAQ] Direct: новый таб FAQ на страницах", "status": "Ревью", "category": "В работе" },
+        { "key": "GDSLV-1896", "summary": "[FAQ] E2E-контур локального тестирования FAQ MVP", "status": "Закрыт", "category": "Выполнено" }
+      ]
+    },
+    {
+      "rowId": "GDSLV-1921",
+      "epicKey": null,
+      "epicTitle": null,
+      "key": "GDSLV-1921",
+      "title": "Спека Тбанк: переход на схему Яндекса",
+      "subtasks": []
+    }
+  ]
+}
