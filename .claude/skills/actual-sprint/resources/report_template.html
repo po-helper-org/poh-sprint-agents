@@ -53,7 +53,7 @@
   }
   th, td {
     text-align: left;
-    padding: 10px 12px;
+    padding: 12px;
     border-bottom: 1px solid var(--line);
     vertical-align: top;
   }
@@ -63,11 +63,9 @@
     white-space: nowrap;
   }
   tbody tr:hover { background: #fafafa; }
-  td.epic { font-size: 13px; color: var(--muted); }
-  td.epic a { color: var(--muted); }
-  td.epic a:hover { color: var(--fg); }
-  td a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--line); }
-  td a:hover { border-bottom-color: var(--accent); }
+  td.epic a { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--line); font-weight: 600; }
+  td.epic a:hover { border-bottom-color: var(--fg); }
+  td.epic .no-epic { color: var(--muted); font-weight: 600; }
 
   td.actions { white-space: nowrap; width: 1%; }
   td.actions .btn-group { display: flex; gap: 8px; }
@@ -102,7 +100,7 @@
     top: 0;
     right: 0;
     height: 100%;
-    width: 380px;
+    width: 420px;
     max-width: 90vw;
     background: var(--bg);
     border-left: 1px solid var(--line);
@@ -145,18 +143,34 @@
 
   .sidebar-body { padding: 16px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
 
-  .sub-item {
+  /* список историй эпика, с разворотом подзадач */
+  .story-item { border-bottom: 1px solid #eee; }
+  .story-row {
     display: flex;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     align-items: baseline;
     padding: 10px 0;
-    border-bottom: 1px solid #eee;
     font-size: 13px;
   }
-  .sub-item a { color: var(--fg); text-decoration: none; }
-  .sub-item a:hover { text-decoration: underline; }
-  .sub-item .status {
+  .story-row .story-title-wrap { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .story-toggle {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 4px 0 0;
+    width: 14px;
+    transform: rotate(0deg);
+    transition: transform 0.15s ease;
+  }
+  .story-toggle.open { transform: rotate(90deg); }
+  .story-toggle:disabled { visibility: hidden; }
+  .story-row a { color: var(--fg); text-decoration: none; }
+  .story-row a:hover { text-decoration: underline; }
+  .story-row .status {
     flex-shrink: 0;
     padding: 2px 8px;
     border: 1px solid var(--line);
@@ -164,9 +178,24 @@
     font-size: 11px;
     white-space: nowrap;
   }
-  .sub-item .status.done { border-color: #111; font-weight: 600; }
-  .sub-item .status.progress { border-color: #999; }
-  .sub-item .status.backlog { color: var(--muted); }
+  .status.done { border-color: #111; font-weight: 600; }
+  .status.progress { border-color: #999; }
+  .status.backlog { color: var(--muted); }
+
+  .sub-list { display: none; padding: 0 0 10px 20px; }
+  .sub-list.open { display: block; }
+  .sub-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+    padding: 6px 0;
+    font-size: 12px;
+    border-top: 1px dashed #eee;
+  }
+  .sub-item:first-child { border-top: none; }
+  .sub-item a { color: var(--muted); text-decoration: none; }
+  .sub-item a:hover { color: var(--fg); text-decoration: underline; }
 
   .sidebar-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 
@@ -195,7 +224,7 @@
   <div class="meta">
     <div>Спринт: <strong>{{SPRINT_NAME}}</strong></div>
     <div>Доска: <strong>{{BOARD_NAME}}</strong></div>
-    <div>Истории в отчёте: <strong id="storyCount">0</strong></div>
+    <div>Эпиков в отчёте: <strong id="epicCount">0</strong></div>
   </div>
 </div>
 
@@ -204,7 +233,6 @@
     <thead>
       <tr>
         <th>Эпик</th>
-        <th>История</th>
         <th></th>
       </tr>
     </thead>
@@ -233,10 +261,17 @@
   // JIRA_BASE: базовый URL для ссылок вида {JIRA_BASE}/browse/{key}
   var JIRA_BASE = "{{JIRA_BASE_URL}}";
 
-  // STORIES: заполняется генератором навыка (см. resources/data_shape.md).
-  // Каждый элемент: { rowId, epicKey|null, epicTitle, key, title, subtasks:[{key,summary,status,category}] }
-  var STORIES = [
-    // {{STORIES_JSON}}
+  // EPICS: заполняется генератором навыка (см. resources/data_shape.md).
+  // Единица отчёта — ЭПИК. Каждый элемент:
+  // {
+  //   rowId, epicKey|null, epicTitle,   // epicKey=null -> псевдо-эпик "Без эпика"
+  //   stories: [
+  //     { key, title, status, category,
+  //       subtasks: [ { key, summary, status, category } ] }
+  //   ]
+  // }
+  var EPICS = [
+    // {{EPICS_JSON}}
   ];
   // -------------------------------------------------------------------
 
@@ -255,35 +290,34 @@
   }
 
   var tableBody = document.getElementById('tableBody');
-  var storyCountEl = document.getElementById('storyCount');
+  var epicCountEl = document.getElementById('epicCount');
 
   function renderTable() {
-    storyCountEl.textContent = STORIES.length;
-    tableBody.innerHTML = STORIES.map(function (s) {
-      var epicCell = s.epicKey
-        ? '<a href="' + jiraUrl(s.epicKey) + '" target="_blank" rel="noopener">' + esc(s.epicTitle) + '</a>'
-        : '—';
+    epicCountEl.textContent = EPICS.length;
+    tableBody.innerHTML = EPICS.map(function (e) {
+      var epicCell = e.epicKey
+        ? '<a href="' + jiraUrl(e.epicKey) + '" target="_blank" rel="noopener">' + esc(e.epicTitle) + '</a>'
+        : '<span class="no-epic">' + esc(e.epicTitle || 'Без эпика') + '</span>';
       return (
-        '<tr data-row="' + esc(s.rowId) + '">' +
+        '<tr data-row="' + esc(e.rowId) + '">' +
           '<td class="epic">' + epicCell + '</td>' +
-          '<td><a href="' + jiraUrl(s.key) + '" target="_blank" rel="noopener">' + esc(s.title) + '</a></td>' +
           '<td class="actions"><div class="btn-group">' +
-            '<button class="action-btn" data-open="' + esc(s.rowId) + '">Статус подзадач</button>' +
-            '<button class="action-btn" data-note="' + esc(s.rowId) + '">Прогресс</button>' +
+            '<button class="action-btn" data-open="' + esc(e.rowId) + '">Статус историй</button>' +
+            '<button class="action-btn" data-note="' + esc(e.rowId) + '">Прогресс</button>' +
           '</div></td>' +
         '</tr>'
       );
     }).join('');
 
     document.querySelectorAll('[data-open]').forEach(function (btn) {
-      btn.addEventListener('click', function () { openSubtasksSidebar(btn.dataset.open); });
+      btn.addEventListener('click', function () { openStoriesSidebar(btn.dataset.open); });
     });
     document.querySelectorAll('[data-note]').forEach(function (btn) {
       var rowId = btn.dataset.note;
       refreshNoteButton(rowId);
       btn.addEventListener('click', function () {
-        var story = STORIES.find(function (s) { return s.rowId === rowId; });
-        if (story) openNoteSidebar(story);
+        var epic = EPICS.find(function (e) { return e.rowId === rowId; });
+        if (epic) openNoteSidebar(epic);
       });
     });
   }
@@ -295,51 +329,90 @@
   var sbLink = document.getElementById('sbLink');
   var sbBody = document.getElementById('sbBody');
 
-  function openSubtasksSidebar(rowId) {
-    var story = STORIES.find(function (s) { return s.rowId === rowId; });
-    if (!story) return;
-    sbKey.textContent = story.key;
-    sbTitle.textContent = story.title;
-    sbLink.href = jiraUrl(story.key);
+  function openStoriesSidebar(rowId) {
+    var epic = EPICS.find(function (e) { return e.rowId === rowId; });
+    if (!epic) return;
+    sbKey.textContent = epic.epicKey || 'Без эпика';
+    sbTitle.textContent = epic.epicTitle || 'Без эпика';
+    if (epic.epicKey) { sbLink.href = jiraUrl(epic.epicKey); sbLink.style.display = ''; }
+    else { sbLink.style.display = 'none'; }
 
     sbBody.innerHTML = '';
     sbBody.style.display = 'block';
-    if (!story.subtasks || !story.subtasks.length) {
+    if (!epic.stories || !epic.stories.length) {
       var empty = document.createElement('div');
       empty.className = 'sidebar-empty';
-      empty.textContent = 'Подзадач нет.';
+      empty.textContent = 'Историй нет.';
       sbBody.appendChild(empty);
-    } else {
-      story.subtasks.forEach(function (sub) {
-        var row = document.createElement('div');
-        row.className = 'sub-item';
-        row.innerHTML =
-          '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
-          '<span class="status ' + statusClass(sub.category) + '">' + esc(sub.status) + '</span>';
-        sbBody.appendChild(row);
-      });
+      openPanel();
+      return;
     }
+
+    epic.stories.forEach(function (story, idx) {
+      var wrap = document.createElement('div');
+      wrap.className = 'story-item';
+
+      var hasSubtasks = story.subtasks && story.subtasks.length > 0;
+      var subListId = 'sub-' + rowId + '-' + idx;
+
+      var row = document.createElement('div');
+      row.className = 'story-row';
+      row.innerHTML =
+        '<div class="story-title-wrap">' +
+          '<button class="story-toggle" ' + (hasSubtasks ? '' : 'disabled') + '>▶</button>' +
+          '<a href="' + jiraUrl(story.key) + '" target="_blank" rel="noopener">' + esc(story.key) + ' — ' + esc(story.title) + '</a>' +
+        '</div>' +
+        '<span class="status ' + statusClass(story.category) + '">' + esc(story.status) + '</span>';
+      wrap.appendChild(row);
+
+      var subList = document.createElement('div');
+      subList.className = 'sub-list';
+      subList.id = subListId;
+      if (hasSubtasks) {
+        story.subtasks.forEach(function (sub) {
+          var subRow = document.createElement('div');
+          subRow.className = 'sub-item';
+          subRow.innerHTML =
+            '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
+            '<span class="status ' + statusClass(sub.category) + '">' + esc(sub.status) + '</span>';
+          subList.appendChild(subRow);
+        });
+      }
+      wrap.appendChild(subList);
+
+      var toggleBtn = row.querySelector('.story-toggle');
+      if (hasSubtasks) {
+        toggleBtn.addEventListener('click', function () {
+          toggleBtn.classList.toggle('open');
+          subList.classList.toggle('open');
+        });
+      }
+
+      sbBody.appendChild(wrap);
+    });
+
     openPanel();
   }
 
   function noteStorageKey(rowId) { return 'actual-sprint:' + REPORT_ID + ':note:' + rowId; }
 
-  function openNoteSidebar(story) {
-    sbKey.textContent = story.key;
-    sbTitle.textContent = story.title;
-    sbLink.href = jiraUrl(story.key);
+  function openNoteSidebar(epic) {
+    sbKey.textContent = epic.epicKey || 'Без эпика';
+    sbTitle.textContent = epic.epicTitle || 'Без эпика';
+    if (epic.epicKey) { sbLink.href = jiraUrl(epic.epicKey); sbLink.style.display = ''; }
+    else { sbLink.style.display = 'none'; }
 
     sbBody.innerHTML = '';
     sbBody.style.display = 'flex';
 
-    var storageKey = noteStorageKey(story.rowId);
+    var storageKey = noteStorageKey(epic.rowId);
     var textarea = document.createElement('textarea');
     textarea.className = 'note-area';
-    textarea.placeholder = 'Заметка о прогрессе…';
+    textarea.placeholder = 'Заметка о прогрессе по эпику…';
     textarea.value = localStorage.getItem(storageKey) || '';
     textarea.addEventListener('input', function () {
       localStorage.setItem(storageKey, textarea.value);
-      refreshNoteButton(story.rowId);
+      refreshNoteButton(epic.rowId);
     });
     sbBody.appendChild(textarea);
 
