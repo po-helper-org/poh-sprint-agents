@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "base_url": "https://jira.demo.local",
+    "board_id": "42",
+    "story_points_field": "customfield_10016",
+    "fetched_at": "2026-07-24T12:00:00+03:00",
+    "note": "Офлайн-фикстура для sprint-sync: тот же домен, что tests/fixtures/demo-domain (Ticketland, 2026Q3-S7). Сетевого доступа не требует."
+  },
+  "sprint": {
+    "id": 77,
+    "name": "2026Q3-S7",
+    "state": "active",
+    "startDate": "2026-07-18T10:00:00.000+03:00",
+    "endDate": "2026-07-31T19:00:00.000+03:00",
+    "goal": "Кино доступно в web_db через UMC и отображается на витрине с фильтрацией"
+  },
+  "issues": [
+    {
+      "key": "GDSLV-1501",
+      "fields": {
+        "summary": "BE: Загрузка P24 → UMC → web_db",
+        "status": {"name": "In Progress", "statusCategory": {"key": "indeterminate", "name": "In Progress"}},
+        "assignee": {"displayName": "BE-2", "name": "be2"},
+        "issuetype": {"name": "Story", "subtask": false},
+        "parent": {"key": "GDSLV-1400", "fields": {"summary": "Кино через UMC"}},
+        "subtasks": [],
+        "updated": "2026-07-24T09:12:00.000+03:00",
+        "duedate": null,
+        "labels": [],
+        "priority": {"name": "High"},
+        "resolutiondate": null,
+        "customfield_10016": 8
+      }
+    },
+    {
+      "key": "GDSLV-1502",
+      "fields": {
+        "summary": "[SA] Изучить контракт P24",
+        "status": {"name": "Done", "statusCategory": {"key": "done", "name": "Done"}},
+        "assignee": {"displayName": "SA-1", "name": "sa1"},
+        "issuetype": {"name": "Sub-task", "subtask": true},
+        "parent": {"key": "GDSLV-1501", "fields": {"summary": "BE: Загрузка P24 → UMC → web_db"}},
+        "subtasks": [],
+        "updated": "2026-07-21T16:40:00.000+03:00",
+        "duedate": null,
+        "labels": [],
+        "priority": {"name": "Medium"},
+        "resolutiondate": "2026-07-21T16:40:00.000+03:00",
+        "customfield_10016": null
+      }
+    },
+    {
+      "key": "GDSLV-1503",
+      "fields": {
+        "summary": "[BE] Endpoint загрузки в UMC",
+        "status": {"name": "In Progress", "statusCategory": {"key": "indeterminate", "name": "In Progress"}},
+        "assignee": {"displayName": "BE-2", "name": "be2"},
+        "issuetype": {"name": "Sub-task", "subtask": true},
+        "parent": {"key": "GDSLV-1501", "fields": {"summary": "BE: Загрузка P24 → UMC → web_db"}},
+        "subtasks": [],
+        "updated": "2026-07-24T09:12:00.000+03:00",
+        "duedate": null,
+        "labels": [],
+        "priority": {"name": "High"},
+        "resolutiondate": null,
+        "customfield_10016": null
+      }
+    },
+    {
+      "key": "GDSLV-1504",
+      "fields": {
+        "summary": "[QA] Отладка загрузки в staging",
+        "status": {"name": "To Do", "statusCategory": {"key": "new", "name": "To Do"}},
+        "assignee": {"displayName": "BE-2", "name": "be2"},
+        "issuetype": {"name": "Sub-task", "subtask": true},
+        "parent": {"key": "GDSLV-1501", "fields": {"summary": "BE: Загрузка P24 → UMC → web_db"}},
+        "subtasks": [],
+        "updated": "2026-07-18T11:05:00.000+03:00",
+        "duedate": null,
+        "labels": [],
+        "priority": {"name": "Medium"},
+        "resolutiondate": null,
+        "customfield_10016": null
+      }
+    },
+    {
+      "key": "GDSLV-1510",
+      "fields": {
+        "summary": "FE: Витрина кино с фильтрацией по категориям",
+        "status": {"name": "To Do", "statusCategory": {"key": "new", "name": "To Do"}},
+        "assignee": {"displayName": "FE-1", "name": "fe1"},
+        "issuetype": {"name": "Story", "subtask": false},
+        "parent": {"key": "GDSLV-1400", "fields": {"summary": "Кино через UMC"}},
+        "subtasks": [
+          {
+            "key": "GDSLV-1511",
+            "fields": {
+              "summary": "[FE] Адаптация PHP-шаблонов",
+              "status": {"name": "To Do", "statusCategory": {"key": "new", "name": "To Do"}},
+              "issuetype": {"name": "Sub-task", "subtask": true}
+            }
+          },
+          {
+            "key": "GDSLV-1512",
+            "fields": {
+              "summary": "[FE] Фильтрация по категориям",
+              "status": {"name": "To Do", "statusCategory": {"key": "new", "name": "To Do"}},
+              "issuetype": {"name": "Sub-task", "subtask": true}
+            }
+          }
+        ],
+        "updated": "2026-07-18T10:30:00.000+03:00",
+        "duedate": null,
+        "labels": [],
+        "priority": {"name": "High"},
+        "resolutiondate": null,
+        "customfield_10016": 6
+      }
+    },
+    {
+      "key": "GDSLV-1456",
+      "fields": {
+        "summary": "SA: Требования по фильтрам кино",
+        "status": {"name": "Done", "statusCategory": {"key": "done", "name": "Done"}},
+        "assignee": {"displayName": "SA-1", "name": "sa1"},
+        "issuetype": {"name": "Story", "subtask": false},
+        "parent": {"key": "GDSLV-1400", "fields": {"summary": "Кино через UMC"}},
+        "subtasks": [],
+        "updated": "2026-07-23T18:20:00.000+03:00",
+        "duedate": null,
+        "labels": [],
+        "priority": {"name": "High"},
+        "resolutiondate": "2026-07-23T18:20:00.000+03:00",
+        "customfield_10016": 3
+      }
+    },
+    {
+      "key": "GDSLV-1151",
+      "fields": {
+        "summary": "BE: POST order/pay через extapi_go",
+        "status": {"name": "Done", "statusCategory": {"key": "done", "name": "Done"}},
+        "assignee": {"displayName": "BE-1", "name": "be1"},
+        "issuetype": {"name": "Story", "subtask": false},
+        "parent": {"key": "GDSLV-1100", "fields": {"summary": "B2B трафик через GDS"}},
+        "subtasks": [],
+        "updated": "2026-07-22T15:00:00.000+03:00",
+        "duedate": null,
+        "labels": ["gds"],
+        "priority": {"name": "High"},
+        "resolutiondate": "2026-07-22T15:00:00.000+03:00",
+        "customfield_10016": 3
+      }
+    },
+    {
+      "key": "GDSLV-1152",
+      "fields": {
+        "summary": "BE: POST order/sell через extapi_go",
+        "status": {"name": "In Progress", "statusCategory": {"key": "indeterminate", "name": "In Progress"}},
+        "assignee": {"displayName": "BE-1", "name": "be1"},
+        "issuetype": {"name": "Story", "subtask": false},
+        "parent": {"key": "GDSLV-1100", "fields": {"summary": "B2B трафик через GDS"}},
+        "subtasks": [],
+        "updated": "2026-07-23T11:30:00.000+03:00",
+        "duedate": "2026-07-22",
+        "labels": ["gds"],
+        "priority": {"name": "High"},
+        "resolutiondate": null,
+        "customfield_10016": 2
+      }
+    },
+    {
+      "key": "GDSLV-1602",
+      "fields": {
+        "summary": "BE: Кэш заказов — datarace при параллельном бронировании",
+        "status": {"name": "To Do", "statusCategory": {"key": "new", "name": "To Do"}},
+        "assignee": null,
+        "issuetype": {"name": "Bug", "subtask": false},
+        "parent": null,
+        "subtasks": [],
+        "updated": "2026-07-19T08:00:00.000+03:00",
+        "duedate": null,
+        "labels": ["tech-debt"],
+        "priority": {"name": "Critical"},
+        "resolutiondate": null,
+        "customfield_10016": null
+      }
+    }
+  ]
+}

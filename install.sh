@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# poh-sprint-agents installer — копирует навык sprint-planner в target-проект (Claude Code).
+# poh-sprint-agents installer — копирует навыки sprint-planner и sprint-sync в target-проект (Claude Code).
 # Non-destructive: существующие файлы не перезаписываются. domain-profile.md не трогается.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,7 +10,8 @@ copy() { # src rel-path
   mkdir -p "$(dirname "$dest")"; cp -R "$SCRIPT_DIR/$1" "$dest"; echo "add: $1"
 }
 copy ".claude/skills/sprint-planner"
-for c in sm-sync sm-goal sm-decompose sm-load sm-deliver sm-consensus; do
+copy ".claude/skills/sprint-sync"
+for c in sm-sync sm-goal sm-decompose sm-load sm-deliver sm-consensus sprint-sync; do
   copy ".claude/commands/$c.md"
 done
 # профиль — только если отсутствует
@@ -18,4 +19,4 @@ if [ ! -e "$TARGET/.claude/domain-profile.md" ]; then
   mkdir -p "$TARGET/.claude"; cp "$SCRIPT_DIR/domain-profile.template.md" "$TARGET/.claude/domain-profile.md"
   echo "add: .claude/domain-profile.md (из шаблона — заполнить)"
 fi
-echo "=== SPRINT-PLANNER-INSTALL: done → $TARGET ==="
+echo "=== POH-SPRINT-AGENTS-INSTALL: done → $TARGET ==="

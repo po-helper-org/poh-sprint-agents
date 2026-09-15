@@ -25,6 +25,17 @@ sp_per_person_sprint: 8      # cold-start fallback, если velocity из ФА�
 registry: GROUND/SPRINTS/availability.md
 updated:  [УТОЧНИТЬ дату актуализации]   # НФТ-SP-3: должна быть ≤ старта спринта
 
+## jira                    # источник ФАКТА для /sprint-sync (только чтение)
+base_url:            [УТОЧНИТЬ, напр. https://jira.company.ru]
+board_id:            [УТОЧНИТЬ id доски команды]
+jql:                                # опционально: своя выборка вместо активного спринта доски
+story_points_field:  customfield_10016
+done_statuses:       Done, Closed, Готово   # запасной путь, если в ответе нет statusCategory
+stale_days:          3               # порог детектора «без движения»
+sync_output_dir:     GROUND/SPRINTS/{sprint}/sync
+# доступ — через окружение, не через профиль:
+# Server/DC: JIRA_TOKEN · Cloud: JIRA_EMAIL + JIRA_API_TOKEN · корпоративный CA: JIRA_CA_BUNDLE
+
 ## meta
 current_quarter: [УТОЧНИТЬ, напр. 2026Q3]
 po_name:         [УТОЧНИТЬ]

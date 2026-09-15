@@ -25,6 +25,14 @@ sp_per_person_sprint: 8      # cold-start fallback, если velocity из ФА�
 registry: tests/fixtures/demo-domain/availability.md
 updated:  2026-07-17
 
+## jira                    # офлайн-фикстура: сети нет, sprint-sync рендерится из --from-json
+base_url:            https://jira.demo.local
+board_id:            42
+story_points_field:  customfield_10016
+done_statuses:       Done, Closed
+stale_days:          3
+sync_output_dir:     tests/fixtures/demo-domain/output
+
 ## meta
 current_quarter: 2026Q3
 po_name:         PO (demo)
