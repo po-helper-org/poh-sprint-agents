@@ -17,7 +17,7 @@ bash install.sh [target-проект]
 
 ```bash
 export JIRA_PERSONAL_TOKEN=…
-export JIRA_URL=https://jira.example.com   # по умолчанию jira.mts.ru
+export JIRA_URL=https://jira.example.com   # хост вашего инстанса
 ```
 
 ## Команды

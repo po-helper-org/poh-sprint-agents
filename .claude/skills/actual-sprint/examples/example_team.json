@@ -1,27 +1,27 @@
 {
-  "_comment": "Образец ОДНОГО элемента массива TEAMS — то, что отдаёт scripts/collect.py на команду. Реальный срез GDS/Live, укорочен до трёх эпиков. Тяжёлые наборы (metrics, burndown, control, velocity, logs) показаны формой, а не полными данными.",
+  "_comment": "Образец ОДНОГО элемента массива TEAMS — то, что отдаёт scripts/collect.py на команду. Реальный срез демо-команды, укорочен до трёх эпиков. Тяжёлые наборы (metrics, burndown, control, velocity, logs) показаны формой, а не полными данными.",
   "slug": "gds-live",
   "team": "GDS / Live",
   "boardId": 16383,
   "boardName": "Scrum Board GDS",
-  "boardUrl": "https://jira.mts.ru/secure/RapidBoard.jspa?rapidView=16383",
-  "jiraBase": "https://jira.mts.ru",
+  "boardUrl": "https://jira.example.com/secure/RapidBoard.jspa?rapidView=16383",
+  "jiraBase": "https://jira.example.com",
   "sprintName": "2026Q3-S6",
   "epics": [
     {
-      "rowId": "GDSLV-1737",
-      "epicKey": "GDSLV-1737",
+      "rowId": "INIT-1737",
+      "epicKey": "INIT-1737",
       "epicTitle": "AI Harness (Bartello)",
       "stories": [
         {
-          "key": "GDSLV-1919",
+          "key": "INIT-1919",
           "title": "Harness DEV агент",
           "status": "Бэклог",
           "category": "К выполнению",
           "subtasks": []
         },
         {
-          "key": "GDSLV-1798",
+          "key": "INIT-1798",
           "title": "AI-тематика от Васи (архитектура Харнесса под Юру и Егора)",
           "status": "Бэклог",
           "category": "К выполнению",
@@ -30,24 +30,24 @@
       ]
     },
     {
-      "rowId": "GDSLV-1610",
-      "epicKey": "GDSLV-1610",
+      "rowId": "INIT-1610",
+      "epicKey": "INIT-1610",
       "epicTitle": "FAQ из Direct",
       "stories": [
         {
-          "key": "GDSLV-1870",
+          "key": "INIT-1870",
           "title": "FAQ MVP на события",
           "status": "Тестирование",
           "category": "В работе",
           "subtasks": [
             {
-              "key": "GDSLV-1881",
+              "key": "INIT-1881",
               "summary": "[FAQ] Direct: новый таб FAQ на страницах",
               "status": "Ревью",
               "category": "В работе"
             },
             {
-              "key": "GDSLV-1896",
+              "key": "INIT-1896",
               "summary": "[FAQ] E2E-контур локального тестирования FAQ MVP",
               "status": "Закрыт",
               "category": "Выполнено"
@@ -62,14 +62,14 @@
       "epicTitle": "Без эпика",
       "stories": [
         {
-          "key": "GDSLV-1921",
+          "key": "INIT-1921",
           "title": "Спека Тбанк: переход на схему Яндекса",
           "status": "Бэклог",
           "category": "К выполнению",
           "subtasks": []
         },
         {
-          "key": "GDSLV-1928",
+          "key": "INIT-1928",
           "title": "extapigo: отключение фискализации (Т-Банк)",
           "status": "В работе",
           "category": "В работе",
@@ -166,7 +166,7 @@
       "today": "2026-09-15",
       "points": [
         {
-          "key": "GDSLV-1365",
+          "key": "INIT-1365",
           "title": "Переключить трафик в ExtapiGo",
           "status": "Закрыт",
           "category": "Выполнено",
@@ -177,11 +177,11 @@
       ],
       "risks": [
         {
-          "key": "GDSLV-1468",
+          "key": "INIT-1468",
           "title": "Customer Order Service",
           "status": "В работе",
           "category": "В работе",
-          "assignee": "Ковальчук Вячеслав Васильевич",
+          "assignee": "Фамилия3 Имя3 Отчество3",
           "elapsed": 40.25
         }
       ]
@@ -226,16 +226,16 @@
     },
     "authors": [
       [
-        "Гимранов Тимур Серикович",
+        "Фамилия Имя Отчество",
         52
       ]
     ],
     "events": [
       {
         "kind": "status",
-        "key": "GDSLV-1931",
+        "key": "INIT-1931",
         "title": "[SA] ADR по идентификаторам",
-        "author": "Ананьев Дмитрий Сергеевич",
+        "author": "Фамилия2 Имя2 Отчество2",
         "at": "2026-09-15T09:58:00+03:00",
         "from": "Backlog",
         "to": "In progress",
@@ -243,17 +243,17 @@
       },
       {
         "kind": "comment",
-        "key": "GDSLV-1926",
+        "key": "INIT-1926",
         "title": "Доработки Direct",
-        "author": "Гимранов Тимур Серикович",
+        "author": "Фамилия Имя Отчество",
         "at": "2026-09-15T12:09:00+03:00",
-        "body": "MR создан: ветка feature/GDSLV-1926 → master"
+        "body": "MR создан: ветка feature/INIT-1926 → master"
       },
       {
         "kind": "created",
-        "key": "GDSLV-1933",
+        "key": "INIT-1933",
         "title": "Фрейм организатора",
-        "author": "Гимранов Тимур Серикович",
+        "author": "Фамилия Имя Отчество",
         "at": "2026-09-15T15:29:00+03:00",
         "issueType": "Задача"
       }

@@ -9,12 +9,12 @@
     python3 collect.py --board 16383 --team "GDS / Live" --slug gds-live
     python3 collect.py --board 6834  --team "LIVE"       --slug live
 
-Токен берётся из JIRA_PERSONAL_TOKEN, база — из JIRA_URL (по умолчанию jira.mts.ru).
+Токен берётся из JIRA_PERSONAL_TOKEN, база — из JIRA_URL (по умолчанию jira.example.com).
 """
 import argparse, json, os, re, ssl, statistics, sys, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 
-JIRA = os.environ.get('JIRA_URL', 'https://jira.mts.ru').rstrip('/')
+JIRA = os.environ.get('JIRA_URL', 'https://jira.example.com').rstrip('/')
 TOKEN = os.environ.get('JIRA_PERSONAL_TOKEN')
 CTX = ssl.create_default_context()
 CTX.check_hostname = False

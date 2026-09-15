@@ -4,21 +4,21 @@
 
 ```js
 {
-  rowId: "GDSLV-1737",              // уникален на СТРОКУ — обычно = epicKey; "no-epic" для псевдо-эпика
-  epicKey: "GDSLV-1737",             // null → строка рендерится как псевдо-эпик "Без эпика"
+  rowId: "INIT-1737",              // уникален на СТРОКУ — обычно = epicKey; "no-epic" для псевдо-эпика
+  epicKey: "INIT-1737",             // null → строка рендерится как псевдо-эпик "Без эпика"
   epicTitle: "AI Harness (Bartello)",
   stories: [
     {
-      key: "GDSLV-1919",
+      key: "INIT-1919",
       title: "Harness DevAgent",     // summary истории
       status: "Бэклог",              // status.name истории — текст на бейдже
       category: "К выполнению",      // statusCategory.name истории — для цвета бейджа
       statusChanged: "2026-09-07T10:48:42.000+0300",  // ISO-дата последней смены статуса (из changelog)
-      assignee: "Ишманов Алексей Юрьевич",            // displayName исполнителя; null если не назначен
+      assignee: "Фамилия Имя Отчество",            // displayName исполнителя; null если не назначен
       subtasks: [
-        { key: "GDSLV-1881", summary: "[FAQ] Direct: новый таб FAQ на страницах",
+        { key: "INIT-1881", summary: "[FAQ] Direct: новый таб FAQ на страницах",
           status: "Ревью", category: "В работе", statusChanged: "2026-09-14T16:41:58.368+0300",
-          assignee: "Сморкалов Алексей Владимирович" }
+          assignee: "Фамилия2 Имя2 Отчество2" }
       ]
     }
   ]

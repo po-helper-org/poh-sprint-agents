@@ -692,7 +692,7 @@
     return '<span class="age' + cls + '" title="' + esc(title) + '">' + label + '</span>';
   }
 
-  // Инициалы исполнителя: "Ишманов Алексей Юрьевич" -> "ИА" (фамилия + имя).
+  // Инициалы исполнителя: "Фамилия Имя Отчество" -> "ФИ" (фамилия + имя).
   // Полное имя показывается подсказкой при наведении.
   function whoHtml(name) {
     if (!name) {
@@ -700,8 +700,12 @@
     }
     var parts = String(name).trim().split(/\s+/);
     var initials = parts.slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
-    // в подсказке — Имя Фамилия (JIRA отдаёт «Фамилия Имя Отчество»)
-    var full = parts.length >= 2 ? parts[1] + ' ' + parts[0] : name;
+    // В подсказке переставляем «Фамилия Имя Отчество» в «Имя Фамилия».
+    // Но если вторая часть — одна буква (инициал или метка вида «Участник А»),
+    // переставлять нечего: получится «А Участник».
+    var full = (parts.length >= 2 && parts[1].replace('.', '').length > 1)
+      ? parts[1] + ' ' + parts[0]
+      : name;
     return '<span class="who" title="' + esc(name) + '">' + esc(initials) +
       '<span class="who-tip">' + esc(full) + '</span></span>';
   }
