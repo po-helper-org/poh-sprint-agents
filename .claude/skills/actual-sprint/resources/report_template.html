@@ -63,11 +63,15 @@
   }
   .hero .metrics-link:hover { border-bottom-style: solid; border-bottom-color: var(--fg); }
 
-  .logs-btn {
+  .top-actions {
     position: fixed;
     top: 20px;
     right: 24px;
     z-index: 9;
+    display: flex;
+    gap: 8px;
+  }
+  .logs-btn {
     font: inherit;
     font-size: 13px;
     padding: 6px 14px;
@@ -518,7 +522,12 @@
 </head>
 <body>
 
-<button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
+<div class="top-actions">
+  <button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
+  <button class="logs-btn" id="notesExport" title="Скачать все заметки в файл — перенести на другую машину или сохранить между запусками">Заметки ⬇</button>
+  <button class="logs-btn" id="notesImport" title="Загрузить заметки из файла">⬆</button>
+  <input type="file" id="notesFile" accept="application/json,.json" hidden>
+</div>
 
 <div class="hero">
   <div class="team">Команда</div>
@@ -759,6 +768,67 @@
 
   function noteStorageKey(rowId) { return 'actual-sprint:' + REPORT_ID + ':note:' + rowId; }
 
+  // Заметка живёт в localStorage браузера, а он привязан к origin: открыли отчёт
+  // с другого порта или как file:// — и всё пропало. Поэтому при генерации заметки
+  // прошлого запуска вшиваются в team.notes и служат запасным источником.
+  function noteValue(rowId) {
+    var live = localStorage.getItem(noteStorageKey(rowId));
+    if (live !== null) return live;
+    var baked = (team.notes || {})[rowId];
+    if (baked) {
+      localStorage.setItem(noteStorageKey(rowId), baked);  // переносим в этот origin
+      return baked;
+    }
+    return '';
+  }
+
+  function allNotes() {
+    var out = {};
+    TEAMS.forEach(function (t) {
+      var bag = {};
+      Object.keys(t.notes || {}).forEach(function (k) { bag[k] = t.notes[k]; });
+      Object.keys(localStorage).forEach(function (k) {
+        var prefix = 'actual-sprint:' + t.slug + ':note:';
+        if (k.indexOf(prefix) === 0) {
+          var v = localStorage.getItem(k);
+          if (v) bag[k.slice(prefix.length)] = v;
+        }
+      });
+      if (Object.keys(bag).length) out[t.slug] = bag;
+    });
+    return out;
+  }
+
+  function exportNotes() {
+    var blob = new Blob([JSON.stringify(allNotes(), null, 2)], {type: 'application/json'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sprint-report-notes.json';
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  function importNotes(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var data = JSON.parse(fr.result);
+        var n = 0;
+        Object.keys(data).forEach(function (slug) {
+          Object.keys(data[slug]).forEach(function (rowId) {
+            localStorage.setItem('actual-sprint:' + slug + ':note:' + rowId, data[slug][rowId]);
+            n++;
+          });
+        });
+        alert('Загружено заметок: ' + n);
+        renderTable();
+      } catch (e) {
+        alert('Не похоже на файл заметок: ' + e.message);
+      }
+    };
+    fr.readAsText(file);
+  }
+
   // общая шапка панели — заполняется один раз на открытие, не дублируется по колонкам
   function setStackHead(epic) {
     stackKey.textContent = epic.epicKey || 'Без эпика';
@@ -774,7 +844,7 @@
     var textarea = document.createElement('textarea');
     textarea.className = 'note-area';
     textarea.placeholder = 'Заметка о прогрессе по эпику…';
-    textarea.value = localStorage.getItem(storageKey) || '';
+    textarea.value = noteValue(epic.rowId);
     textarea.addEventListener('input', function () {
       localStorage.setItem(storageKey, textarea.value);
       refreshStatusButton(epic.rowId);
@@ -1254,7 +1324,7 @@
     var ta = document.createElement('textarea');
     ta.className = 'note-area';
     ta.placeholder = 'Заметки по активности команды…';
-    ta.value = localStorage.getItem(storageKey) || '';
+    ta.value = noteValue('__logs__');
     ta.addEventListener('input', function () { localStorage.setItem(storageKey, ta.value); });
     progBody.appendChild(ta);
     var hint = document.createElement('div');
@@ -1282,7 +1352,7 @@
     var ta = document.createElement('textarea');
     ta.className = 'note-area';
     ta.placeholder = 'Выводы по динамике команды…';
-    ta.value = localStorage.getItem(storageKey) || '';
+    ta.value = noteValue('__metrics__');
     ta.addEventListener('input', function () { localStorage.setItem(storageKey, ta.value); });
     progBody.appendChild(ta);
     var hint = document.createElement('div');
@@ -1313,7 +1383,7 @@
   function refreshStatusButton(rowId) {
     var btn = document.querySelector('[data-open="' + rowId + '"]');
     if (!btn) return;
-    btn.classList.toggle('has-note', !!localStorage.getItem(noteStorageKey(rowId)));
+    btn.classList.toggle('has-note', !!(localStorage.getItem(noteStorageKey(rowId)) || (team.notes || {})[rowId]));
   }
 
   function closePanels() {
@@ -1355,6 +1425,14 @@
   renderTable();
   renderMetricsLink();
   document.getElementById('logsBtn').addEventListener('click', openLogs);
+  document.getElementById('notesExport').addEventListener('click', exportNotes);
+  document.getElementById('notesImport').addEventListener('click', function () {
+    document.getElementById('notesFile').click();
+  });
+  document.getElementById('notesFile').addEventListener('change', function (e) {
+    if (e.target.files[0]) importNotes(e.target.files[0]);
+    e.target.value = '';
+  });
   document.getElementById('metricsLink').addEventListener('click', function (e) {
     e.preventDefault();
     openMetrics();
