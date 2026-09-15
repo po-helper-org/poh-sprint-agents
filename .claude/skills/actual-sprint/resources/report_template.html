@@ -64,10 +64,11 @@
     font-weight: 700;
     white-space: nowrap;
   }
+  /* вся строка кликабельна — открывает панель эпика */
+  tbody tr { cursor: pointer; }
   tbody tr:hover { background: #fafafa; }
-  td.epic a { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--line); font-weight: 600; }
-  td.epic a:hover { border-bottom-color: var(--fg); }
-  td.epic .no-epic { color: var(--muted); font-weight: 600; }
+  td.epic { font-weight: 600; }
+  td.epic .no-epic { color: var(--muted); }
 
   /* цвета бакетов статусов */
   :root {
@@ -159,7 +160,7 @@
     top: 0;
     right: 0;
     height: 100%;
-    width: 760px;
+    width: 1040px;
     max-width: 100vw;
     display: flex;
     flex-direction: column;
@@ -252,7 +253,25 @@
     padding: 10px 0;
     font-size: 13px;
   }
-  .story-row .story-title-wrap { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .story-row .story-title-wrap { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; }
+  .story-row .meta-wrap, .sub-item .meta-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* возраст статуса: сколько дней статус не менялся */
+  .age {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    min-width: 26px;
+    text-align: right;
+  }
+  .age.stale { color: var(--c-blocked); font-weight: 600; }
+  .sub-item .age { font-size: 10px; }
   .story-toggle {
     flex-shrink: 0;
     border: none;
@@ -363,8 +382,8 @@
   // {
   //   rowId, epicKey|null, epicTitle,   // epicKey=null -> псевдо-эпик "Без эпика"
   //   stories: [
-  //     { key, title, status, category,
-  //       subtasks: [ { key, summary, status, category } ] }
+  //     { key, title, status, category, statusChanged,   // statusChanged — ISO-дата последней смены статуса
+  //       subtasks: [ { key, summary, status, category, statusChanged } ] }
   //   ]
   // }
   var EPICS = [
@@ -440,6 +459,30 @@
 
   function jiraUrl(key) { return JIRA_BASE + '/browse/' + key; }
 
+  // Сколько дней статус не менялся. Считается в браузере от текущей даты,
+  // поэтому страница не «протухает»: в данных лежит ISO-дата последней смены статуса.
+  // Больше STALE_DAYS дней без движения — подсвечиваем красным.
+  var STALE_DAYS = 3;
+
+  function statusAge(iso) {
+    if (!iso) return null;
+    var then = new Date(iso);
+    if (isNaN(then.getTime())) return null;
+    var days = Math.floor((Date.now() - then.getTime()) / 86400000);
+    if (days < 0) days = 0;
+    return days;
+  }
+
+  function ageHtml(iso) {
+    var days = statusAge(iso);
+    if (days === null) return '<span class="age" title="Дата смены статуса неизвестна">—</span>';
+    var label = days + 'д';
+    var title = days === 0
+      ? 'Статус изменён сегодня'
+      : 'Статус не менялся ' + days + ' дн.';
+    return '<span class="age' + (days > STALE_DAYS ? ' stale' : '') + '" title="' + esc(title) + '">' + label + '</span>';
+  }
+
   function esc(s) {
     var d = document.createElement('div');
     d.textContent = s == null ? '' : s;
@@ -470,8 +513,10 @@
     epicCountEl.textContent = EPICS.length;
 
     tableBody.innerHTML = EPICS.map(function (e) {
+      // название эпика — просто текст: ссылка на JIRA живёт в шапке панели,
+      // иначе клик по строке конфликтует с переходом по ссылке
       var epicCell = e.epicKey
-        ? '<a href="' + jiraUrl(e.epicKey) + '" target="_blank" rel="noopener">' + esc(e.epicTitle) + '</a>'
+        ? esc(e.epicTitle)
         : '<span class="no-epic">' + esc(e.epicTitle || 'Без эпика') + '</span>';
       return (
         '<tr data-row="' + esc(e.rowId) + '">' +
@@ -482,10 +527,11 @@
       );
     }).join('');
 
-    document.querySelectorAll('[data-open]').forEach(function (btn) {
-      var rowId = btn.dataset.open;
+    // клик по любому месту строки открывает панель
+    tableBody.querySelectorAll('tr').forEach(function (tr) {
+      var rowId = tr.dataset.row;
       refreshStatusButton(rowId);
-      btn.addEventListener('click', function () { openPanels(rowId); });
+      tr.addEventListener('click', function () { openPanels(rowId); });
     });
   }
 
@@ -551,7 +597,10 @@
           '<button class="story-toggle" ' + (hasSubtasks ? '' : 'disabled') + '>▶</button>' +
           '<a href="' + jiraUrl(story.key) + '" target="_blank" rel="noopener">' + esc(story.key) + ' — ' + esc(story.title) + '</a>' +
         '</div>' +
-        '<span class="status ' + bucketClass(story.status, story.category) + '">' + esc(story.status) + '</span>';
+        '<div class="meta-wrap">' +
+          '<span class="status ' + bucketClass(story.status, story.category) + '">' + esc(story.status) + '</span>' +
+          ageHtml(story.statusChanged) +
+        '</div>';
       wrap.appendChild(row);
 
       var subList = document.createElement('div');
@@ -562,7 +611,10 @@
           subRow.className = 'sub-item';
           subRow.innerHTML =
             '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
-            '<span class="status ' + bucketClass(sub.status, sub.category) + '">' + esc(sub.status) + '</span>';
+            '<div class="meta-wrap">' +
+              '<span class="status ' + bucketClass(sub.status, sub.category) + '">' + esc(sub.status) + '</span>' +
+              ageHtml(sub.statusChanged) +
+            '</div>';
           subList.appendChild(subRow);
         });
       }
