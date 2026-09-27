@@ -14,7 +14,15 @@ for c in sm-sync sm-goal sm-decompose sm-load sm-deliver sm-consensus; do
   copy ".claude/commands/$c.md"
 done
 copy ".claude/skills/actual-sprint"
-copy ".claude/commands/actual-sprint.md"
+for c in actual-sprint sprint-setup collector-new collector-validate; do
+  copy ".claude/commands/$c.md"
+done
+# образец конфига отчёта: рабочий конфиг пишет /sprint-setup, здесь только пример
+if [ ! -e "$TARGET/sprint-report.config.toml" ] && [ ! -e "$TARGET/sprint-report.config.toml.example" ]; then
+  cp "$SCRIPT_DIR/.claude/skills/actual-sprint/examples/sprint-report.config.toml" \
+     "$TARGET/sprint-report.config.toml.example"
+  echo "add: sprint-report.config.toml.example (заполнить через /sprint-setup)"
+fi
 # профиль — только если отсутствует
 if [ ! -e "$TARGET/.claude/domain-profile.md" ]; then
   mkdir -p "$TARGET/.claude"; cp "$SCRIPT_DIR/domain-profile.template.md" "$TARGET/.claude/domain-profile.md"

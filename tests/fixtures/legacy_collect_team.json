@@ -1,0 +1,1507 @@
+{
+ "boardId": 101,
+ "boardName": "Scrum Board Платформа",
+ "boardUrl": "https://jira.demo-workspace.local/secure/RapidBoard.jspa?rapidView=101",
+ "burndown": {
+  "days": [
+   {
+    "closed": 0,
+    "date": "2026-09-08",
+    "future": false,
+    "remaining": 0,
+    "scope": 0,
+    "weekend": false
+   },
+   {
+    "closed": 0,
+    "date": "2026-09-09",
+    "future": false,
+    "remaining": 24,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 0,
+    "date": "2026-09-10",
+    "future": false,
+    "remaining": 24,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 1,
+    "date": "2026-09-11",
+    "future": false,
+    "remaining": 23,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 1,
+    "date": "2026-09-12",
+    "future": false,
+    "remaining": 23,
+    "scope": 24,
+    "weekend": true
+   },
+   {
+    "closed": 2,
+    "date": "2026-09-13",
+    "future": false,
+    "remaining": 22,
+    "scope": 24,
+    "weekend": true
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-14",
+    "future": false,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-15",
+    "future": false,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-16",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-17",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-18",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-19",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": true
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-20",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": true
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-21",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-22",
+    "future": true,
+    "remaining": 20,
+    "scope": 24,
+    "weekend": false
+   }
+  ],
+  "end": "2026-09-22",
+  "sprintName": "Спринт 74",
+  "start": "2026-09-08"
+ },
+ "control": {
+  "days": 30,
+  "stories": {
+   "days": 30,
+   "limit": 5.11,
+   "mean": 3.9,
+   "median": 4.5,
+   "outliers": 0,
+   "points": [
+    {
+     "category": "Выполнено",
+     "cycle": 4.25,
+     "doneAt": "2026-08-17",
+     "key": "INIT-1002",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Технический долг: Схема БД"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.58,
+     "doneAt": "2026-08-17",
+     "key": "INIT-1023",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Технический долг: Бизнес-логика"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 1.25,
+     "doneAt": "2026-08-28",
+     "key": "INIT-1028",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Ранжирование выдачи"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 2.75,
+     "doneAt": "2026-08-29",
+     "key": "INIT-1024",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Мониторинг работоспособности"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.58,
+     "doneAt": "2026-08-31",
+     "key": "INIT-1026",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Технический долг: Мониторинг и алерты"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.5,
+     "doneAt": "2026-08-31",
+     "key": "INIT-1041",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Автотесты интеграционного слоя"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.75,
+     "doneAt": "2026-08-31",
+     "key": "INIT-1046",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Технический долг: Обновление контракта"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.75,
+     "doneAt": "2026-09-14",
+     "key": "INIT-1050",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Структура хранения заказов"
+    }
+   ],
+   "risks": [
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 33.62,
+     "key": "INIT-1001",
+     "status": "В ожидании",
+     "title": "География и города"
+    },
+    {
+     "assignee": "Участник Д",
+     "category": "В работе",
+     "elapsed": 33.62,
+     "key": "INIT-1008",
+     "status": "В ожидании",
+     "title": "Мониторинг работоспособности"
+    },
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "elapsed": 33.62,
+     "key": "INIT-1013",
+     "status": "Ревью",
+     "title": "Технический долг: Бизнес-логика"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 33.61,
+     "key": "INIT-1019",
+     "status": "Тестирование",
+     "title": "Поиск по синонимам"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 33.61,
+     "key": "INIT-1022",
+     "status": "Ревью",
+     "title": "Мониторинг работоспособности"
+    },
+    {
+     "assignee": "Участник Д",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1027",
+     "status": "Тестирование",
+     "title": "География и города"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1030",
+     "status": "Ревью",
+     "title": "Структура хранения заказов"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1033",
+     "status": "Тестирование",
+     "title": "Автотесты интеграционного слоя"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1037",
+     "status": "В ожидании",
+     "title": "Технический долг: Ревью безопасности"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1038",
+     "status": "Ревью",
+     "title": "Поиск по синонимам"
+    },
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1039",
+     "status": "Тестирование",
+     "title": "Автотесты интеграционного слоя"
+    },
+    {
+     "assignee": "Участник Д",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1042",
+     "status": "В ожидании",
+     "title": "Автотесты интеграционного слоя"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "elapsed": 5.88,
+     "key": "INIT-1047",
+     "status": "Анализ",
+     "title": "Автотесты интеграционного слоя"
+    },
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1051",
+     "status": "В ожидании",
+     "title": "География и города"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1052",
+     "status": "Ревью",
+     "title": "Метрики загрузчика"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1054",
+     "status": "Ревью",
+     "title": "Мониторинг работоспособности"
+    },
+    {
+     "assignee": "Участник Д",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1057",
+     "status": "Дизайн",
+     "title": "Технический долг: Ревью безопасности"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1058",
+     "status": "Ревью",
+     "title": "Метрики загрузчика"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1060",
+     "status": "Ревью",
+     "title": "Контракт внешнего API"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1064",
+     "status": "Дизайн",
+     "title": "География и города"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1067",
+     "status": "Тестирование",
+     "title": "Контракт внешнего API"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1070",
+     "status": "Дизайн",
+     "title": "Технический долг: Бизнес-логика"
+    }
+   ],
+   "sd": 1.2,
+   "today": "2026-09-15"
+  },
+  "subtasks": {
+   "days": 30,
+   "limit": 4.24,
+   "mean": 2.9,
+   "median": 2.8,
+   "outliers": 3,
+   "points": [
+    {
+     "category": "Выполнено",
+     "cycle": 4.17,
+     "doneAt": "2026-08-17",
+     "key": "INIT-1021",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 1.33,
+     "doneAt": "2026-08-28",
+     "key": "INIT-1031",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Схема БД"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 1.08,
+     "doneAt": "2026-08-28",
+     "key": "INIT-1040",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Покрытие тестами"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 1.08,
+     "doneAt": "2026-08-28",
+     "key": "INIT-1044",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 2.75,
+     "doneAt": "2026-08-29",
+     "key": "INIT-1025",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Покрытие тестами"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 2.67,
+     "doneAt": "2026-08-29",
+     "key": "INIT-1045",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.38,
+     "doneAt": "2026-08-31",
+     "key": "INIT-1032",
+     "outlier": true,
+     "status": "Закрыт",
+     "title": "Бизнес-логика"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.46,
+     "doneAt": "2026-08-31",
+     "key": "INIT-1043",
+     "outlier": true,
+     "status": "Закрыт",
+     "title": "Схема БД"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 1.54,
+     "doneAt": "2026-09-11",
+     "key": "INIT-1061",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Обновление контракта"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 3.33,
+     "doneAt": "2026-09-13",
+     "key": "INIT-1068",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.71,
+     "doneAt": "2026-09-14",
+     "key": "INIT-1062",
+     "outlier": true,
+     "status": "Закрыт",
+     "title": "Покрытие тестами"
+    }
+   ],
+   "risks": [
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "elapsed": 33.62,
+     "key": "INIT-1004",
+     "status": "Анализ",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 33.62,
+     "key": "INIT-1012",
+     "status": "В ожидании",
+     "title": "Ревью безопасности"
+    },
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "elapsed": 33.61,
+     "key": "INIT-1016",
+     "status": "Анализ",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "assignee": "Участник В",
+     "category": "В работе",
+     "elapsed": 33.61,
+     "key": "INIT-1020",
+     "status": "Ревью",
+     "title": "Покрытие тестами"
+    },
+    {
+     "assignee": "Участник В",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1029",
+     "status": "Анализ",
+     "title": "Обновление контракта"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1034",
+     "status": "Анализ",
+     "title": "Обновление контракта"
+    },
+    {
+     "assignee": "Участник В",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1035",
+     "status": "Тестирование",
+     "title": "Покрытие тестами"
+    },
+    {
+     "assignee": "Участник В",
+     "category": "В работе",
+     "elapsed": 19.49,
+     "key": "INIT-1036",
+     "status": "Тестирование",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1053",
+     "status": "В ожидании",
+     "title": "Обновление контракта"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1056",
+     "status": "Тестирование",
+     "title": "Покрытие тестами"
+    },
+    {
+     "assignee": "Участник Д",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1059",
+     "status": "Ревью",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1063",
+     "status": "В работе",
+     "title": "Ревью безопасности"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1065",
+     "status": "Дизайн",
+     "title": "Покрытие тестами"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1066",
+     "status": "В ожидании",
+     "title": "Мониторинг и алерты"
+    },
+    {
+     "assignee": "Участник Д",
+     "category": "В работе",
+     "elapsed": 5.87,
+     "key": "INIT-1069",
+     "status": "Дизайн",
+     "title": "Покрытие тестами"
+    }
+   ],
+   "sd": 1.4,
+   "today": "2026-09-15"
+  }
+ },
+ "epics": [
+  {
+   "epicKey": "INIT-900",
+   "epicTitle": "Приём заказов из внешнего канала",
+   "rowId": "INIT-900",
+   "stories": [
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "key": "INIT-1047",
+     "status": "Анализ",
+     "statusChanged": "2026-09-13T08:01:11.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник Е",
+       "category": "К выполнению",
+       "key": "INIT-1048",
+       "status": "Бэклог",
+       "statusChanged": "2026-09-02T09:00:00.000+0300",
+       "summary": "Схема БД"
+      }
+     ],
+     "title": "Автотесты интеграционного слоя"
+    },
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "key": "INIT-1051",
+     "status": "В ожидании",
+     "statusChanged": "2026-09-11T14:02:59.000+0300",
+     "subtasks": [],
+     "title": "География и города"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "key": "INIT-1052",
+     "status": "Ревью",
+     "statusChanged": "2026-09-11T10:03:35.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "key": "INIT-1053",
+       "status": "В ожидании",
+       "statusChanged": "2026-09-10T22:04:23.000+0300",
+       "summary": "Обновление контракта"
+      }
+     ],
+     "title": "Метрики загрузчика"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "key": "INIT-1058",
+     "status": "Ревью",
+     "statusChanged": "2026-09-14T10:05:34.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "key": "INIT-1059",
+       "status": "Ревью",
+       "statusChanged": "2026-09-11T15:06:10.000+0300",
+       "summary": "Мониторинг и алерты"
+      }
+     ],
+     "title": "Метрики загрузчика"
+    }
+   ]
+  },
+  {
+   "epicKey": null,
+   "epicTitle": "Без эпика",
+   "rowId": "no-epic",
+   "stories": [
+    {
+     "assignee": "Участник Г",
+     "category": "Выполнено",
+     "key": "INIT-1050",
+     "status": "Закрыт",
+     "statusChanged": "2026-09-14T14:02:23.000+0300",
+     "subtasks": [],
+     "title": "Структура хранения заказов"
+    }
+   ]
+  },
+  {
+   "epicKey": "INIT-902",
+   "epicTitle": "Наблюдаемость сервисов",
+   "rowId": "INIT-902",
+   "stories": [
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "key": "INIT-1054",
+     "status": "Ревью",
+     "statusChanged": "2026-09-14T00:04:59.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник Е",
+       "category": "К выполнению",
+       "key": "INIT-1055",
+       "status": "Готово к проверке",
+       "statusChanged": "2026-09-09T20:05:34.000+0300",
+       "summary": "Бизнес-логика"
+      },
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "key": "INIT-1056",
+       "status": "Тестирование",
+       "statusChanged": "2026-09-11T03:05:59.000+0300",
+       "summary": "Покрытие тестами"
+      }
+     ],
+     "title": "Мониторинг работоспособности"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "key": "INIT-1060",
+     "status": "Ревью",
+     "statusChanged": "2026-09-12T00:06:46.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник Е",
+       "category": "Выполнено",
+       "key": "INIT-1061",
+       "status": "Закрыт",
+       "statusChanged": "2026-09-11T09:07:34.000+0300",
+       "summary": "Обновление контракта"
+      },
+      {
+       "assignee": "Участник Е",
+       "category": "Выполнено",
+       "key": "INIT-1062",
+       "status": "Закрыт",
+       "statusChanged": "2026-09-14T13:08:10.000+0300",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "key": "INIT-1063",
+       "status": "В работе",
+       "statusChanged": "2026-09-09T20:08:26.000+0300",
+       "summary": "Ревью безопасности"
+      }
+     ],
+     "title": "Контракт внешнего API"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "key": "INIT-1064",
+     "status": "Дизайн",
+     "statusChanged": "2026-09-13T02:09:10.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник Е",
+       "category": "В работе",
+       "key": "INIT-1065",
+       "status": "Дизайн",
+       "statusChanged": "2026-09-13T05:09:46.000+0300",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "key": "INIT-1066",
+       "status": "В ожидании",
+       "statusChanged": "2026-09-14T15:10:22.000+0300",
+       "summary": "Мониторинг и алерты"
+      }
+     ],
+     "title": "География и города"
+    }
+   ]
+  },
+  {
+   "epicKey": "INIT-901",
+   "epicTitle": "Единый каталог позиций",
+   "rowId": "INIT-901",
+   "stories": [
+    {
+     "assignee": "Участник Е",
+     "category": "В работе",
+     "key": "INIT-1067",
+     "status": "Тестирование",
+     "statusChanged": "2026-09-11T09:10:58.000+0300",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "Выполнено",
+       "key": "INIT-1068",
+       "status": "Закрыт",
+       "statusChanged": "2026-09-13T04:11:34.000+0300",
+       "summary": "Мониторинг и алерты"
+      },
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "key": "INIT-1069",
+       "status": "Дизайн",
+       "statusChanged": "2026-09-14T14:12:10.000+0300",
+       "summary": "Покрытие тестами"
+      }
+     ],
+     "title": "Контракт внешнего API"
+    }
+   ]
+  }
+ ],
+ "jiraBase": "https://jira.demo-workspace.local",
+ "logs": {
+  "authors": [
+   [
+    "Участник Е",
+    15
+   ],
+   [
+    "Участник А",
+    11
+   ],
+   [
+    "Участник Д",
+    8
+   ],
+   [
+    "Участник Г",
+    6
+   ],
+   [
+    "Участник Б",
+    5
+   ]
+  ],
+  "days": 7,
+  "events": [
+   {
+    "at": "2026-09-14T15:10:22+03:00",
+    "author": "Участник А",
+    "from": "В работе",
+    "key": "INIT-1066",
+    "kind": "status",
+    "title": "Мониторинг и алерты",
+    "to": "В ожидании",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-14T14:12:10+03:00",
+    "author": "Участник Д",
+    "from": "В работе",
+    "key": "INIT-1069",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "Дизайн",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-14T14:02:23+03:00",
+    "author": "Участник Г",
+    "from": "В работе",
+    "key": "INIT-1050",
+    "kind": "status",
+    "title": "Структура хранения заказов",
+    "to": "Закрыт",
+    "toCat": "Выполнено"
+   },
+   {
+    "at": "2026-09-14T13:08:10+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1062",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "Закрыт",
+    "toCat": "Выполнено"
+   },
+   {
+    "at": "2026-09-14T10:05:34+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1058",
+    "kind": "status",
+    "title": "Метрики загрузчика",
+    "to": "Ревью",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-14T09:04:58+03:00",
+    "author": "Участник Д",
+    "from": "В работе",
+    "key": "INIT-1057",
+    "kind": "status",
+    "title": "Технический долг: Ревью безопасности",
+    "to": "Дизайн",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-14T00:04:59+03:00",
+    "author": "Участник А",
+    "from": "В работе",
+    "key": "INIT-1054",
+    "kind": "status",
+    "title": "Мониторинг работоспособности",
+    "to": "Ревью",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-13T14:12:46+03:00",
+    "author": "Участник Б",
+    "from": "В работе",
+    "key": "INIT-1070",
+    "kind": "status",
+    "title": "Технический долг: Бизнес-логика",
+    "to": "Дизайн",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-13T08:01:11+03:00",
+    "author": "Участник Б",
+    "from": "В работе",
+    "key": "INIT-1047",
+    "kind": "status",
+    "title": "Автотесты интеграционного слоя",
+    "to": "Анализ",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-13T05:09:46+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1065",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "Дизайн",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-13T04:11:34+03:00",
+    "author": "Участник Д",
+    "from": "В работе",
+    "key": "INIT-1068",
+    "kind": "status",
+    "title": "Мониторинг и алерты",
+    "to": "Закрыт",
+    "toCat": "Выполнено"
+   },
+   {
+    "at": "2026-09-13T02:09:10+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1064",
+    "kind": "status",
+    "title": "География и города",
+    "to": "Дизайн",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-12T08:00:00+03:00",
+    "author": "Участник Б",
+    "body": "Завис на стенде — жду доступ, вернусь к задаче завтра.",
+    "key": "INIT-1060",
+    "kind": "comment",
+    "title": "Контракт внешнего API"
+   },
+   {
+    "at": "2026-09-12T01:00:00+03:00",
+    "author": "Участник Г",
+    "body": "Собрал ветку, отправил на ревью.",
+    "key": "INIT-1052",
+    "kind": "comment",
+    "title": "Метрики загрузчика"
+   },
+   {
+    "at": "2026-09-12T00:06:46+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1060",
+    "kind": "status",
+    "title": "Контракт внешнего API",
+    "to": "Ревью",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-11T15:06:10+03:00",
+    "author": "Участник Д",
+    "from": "В работе",
+    "key": "INIT-1059",
+    "kind": "status",
+    "title": "Мониторинг и алерты",
+    "to": "Ревью",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-11T14:02:59+03:00",
+    "author": "Участник Г",
+    "from": "В работе",
+    "key": "INIT-1051",
+    "kind": "status",
+    "title": "География и города",
+    "to": "В ожидании",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-11T10:03:35+03:00",
+    "author": "Участник А",
+    "from": "В работе",
+    "key": "INIT-1052",
+    "kind": "status",
+    "title": "Метрики загрузчика",
+    "to": "Ревью",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-11T09:10:58+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1067",
+    "kind": "status",
+    "title": "Контракт внешнего API",
+    "to": "Тестирование",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-11T09:07:34+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1061",
+    "kind": "status",
+    "title": "Обновление контракта",
+    "to": "Закрыт",
+    "toCat": "Выполнено"
+   },
+   {
+    "at": "2026-09-11T03:05:59+03:00",
+    "author": "Участник А",
+    "from": "В работе",
+    "key": "INIT-1056",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "Тестирование",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-10T22:04:23+03:00",
+    "author": "Участник А",
+    "from": "В работе",
+    "key": "INIT-1053",
+    "kind": "status",
+    "title": "Обновление контракта",
+    "to": "В ожидании",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-10T11:00:00+03:00",
+    "author": "Участник Г",
+    "body": "Собрал ветку, отправил на ревью.",
+    "key": "INIT-1047",
+    "kind": "comment",
+    "title": "Автотесты интеграционного слоя"
+   },
+   {
+    "at": "2026-09-09T20:12:06+03:00",
+    "author": "Участник Б",
+    "from": "Бэклог",
+    "key": "INIT-1070",
+    "kind": "status",
+    "title": "Технический долг: Бизнес-логика",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:11:33+03:00",
+    "author": "Участник Д",
+    "from": "Бэклог",
+    "key": "INIT-1069",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:11:00+03:00",
+    "author": "Участник Д",
+    "from": "Бэклог",
+    "key": "INIT-1068",
+    "kind": "status",
+    "title": "Мониторинг и алерты",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:10:27+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1067",
+    "kind": "status",
+    "title": "Контракт внешнего API",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:09:54+03:00",
+    "author": "Участник А",
+    "from": "Бэклог",
+    "key": "INIT-1066",
+    "kind": "status",
+    "title": "Мониторинг и алерты",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:09:21+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1065",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:08:48+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1064",
+    "kind": "status",
+    "title": "География и города",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:08:26+03:00",
+    "author": "Участник А",
+    "from": "Бэклог",
+    "key": "INIT-1063",
+    "kind": "status",
+    "title": "Ревью безопасности",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:07:53+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1062",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:07:20+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1061",
+    "kind": "status",
+    "title": "Обновление контракта",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:06:36+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1060",
+    "kind": "status",
+    "title": "Контракт внешнего API",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:06:03+03:00",
+    "author": "Участник Д",
+    "from": "Бэклог",
+    "key": "INIT-1059",
+    "kind": "status",
+    "title": "Мониторинг и алерты",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:05:34+03:00",
+    "author": "Участник Е",
+    "from": "В работе",
+    "key": "INIT-1055",
+    "kind": "status",
+    "title": "Бизнес-логика",
+    "to": "Готово к проверке",
+    "toCat": "К выполнению"
+   },
+   {
+    "at": "2026-09-09T20:05:30+03:00",
+    "author": "Участник Е",
+    "from": "Бэклог",
+    "key": "INIT-1058",
+    "kind": "status",
+    "title": "Метрики загрузчика",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:04:57+03:00",
+    "author": "Участник Д",
+    "from": "Бэклог",
+    "key": "INIT-1057",
+    "kind": "status",
+    "title": "Технический долг: Ревью безопасности",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:04:24+03:00",
+    "author": "Участник А",
+    "from": "Бэклог",
+    "key": "INIT-1056",
+    "kind": "status",
+    "title": "Покрытие тестами",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:03:29+03:00",
+    "author": "Участник А",
+    "from": "Бэклог",
+    "key": "INIT-1054",
+    "kind": "status",
+    "title": "Мониторинг работоспособности",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:02:56+03:00",
+    "author": "Участник А",
+    "from": "Бэклог",
+    "key": "INIT-1053",
+    "kind": "status",
+    "title": "Обновление контракта",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:02:12+03:00",
+    "author": "Участник А",
+    "from": "Бэклог",
+    "key": "INIT-1052",
+    "kind": "status",
+    "title": "Метрики загрузчика",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:01:39+03:00",
+    "author": "Участник Г",
+    "from": "Бэклог",
+    "key": "INIT-1051",
+    "kind": "status",
+    "title": "География и города",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:01:06+03:00",
+    "author": "Участник Г",
+    "from": "Бэклог",
+    "key": "INIT-1050",
+    "kind": "status",
+    "title": "Структура хранения заказов",
+    "to": "В работе",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-09T20:00:00+03:00",
+    "author": "Участник Б",
+    "from": "Бэклог",
+    "key": "INIT-1047",
+    "kind": "status",
+    "title": "Автотесты интеграционного слоя",
+    "to": "В работе",
+    "toCat": "В работе"
+   }
+  ],
+  "kinds": {
+   "comment": 3,
+   "status": 42
+  }
+ },
+ "metrics": {
+  "overall": {
+   "closed": 30,
+   "cycle": {
+    "count": 30,
+    "mean": 2.8,
+    "median": 2.8
+   },
+   "lead": {
+    "count": 30,
+    "mean": 10.2,
+    "median": 9.9
+   },
+   "leadStory": {
+    "count": 9,
+    "mean": 11.4,
+    "median": 13.4
+   },
+   "leadTask": {
+    "count": 4,
+    "mean": 14.4,
+    "median": 13.9
+   },
+   "total": 70
+  },
+  "sprints": [
+   {
+    "closed": 14,
+    "cycle": {
+     "count": 14,
+     "mean": 2.5,
+     "median": 2.4
+    },
+    "lead": {
+     "count": 14,
+     "mean": 11.4,
+     "median": 12.1
+    },
+    "leadStory": {
+     "count": 5,
+     "mean": 9.9,
+     "median": 10.8
+    },
+    "leadTask": {
+     "count": 2,
+     "mean": 17.5,
+     "median": 17.5
+    },
+    "name": "Спринт 72",
+    "open": 9,
+    "points": [
+     4.88,
+     5.8,
+     6.01,
+     6.96,
+     10.8,
+     11.14,
+     11.76,
+     12.43,
+     13.43,
+     13.59,
+     14.14,
+     14.3,
+     16.26,
+     18.76
+    ],
+    "throughputPct": 61,
+    "total": 23
+   },
+   {
+    "closed": 12,
+    "cycle": {
+     "count": 12,
+     "mean": 3.0,
+     "median": 2.8
+    },
+    "lead": {
+     "count": 12,
+     "mean": 9.1,
+     "median": 8.5
+    },
+    "leadStory": {
+     "count": 3,
+     "mean": 12.3,
+     "median": 13.8
+    },
+    "leadTask": {
+     "count": 2,
+     "mean": 11.3,
+     "median": 11.3
+    },
+    "name": "Спринт 73",
+    "open": 11,
+    "points": [
+     4.39,
+     5.93,
+     6.22,
+     7.18,
+     7.8,
+     8.31,
+     8.64,
+     8.68,
+     10.97,
+     11.63,
+     13.76,
+     15.3
+    ],
+    "throughputPct": 52,
+    "total": 23
+   },
+   {
+    "closed": 4,
+    "cycle": {
+     "count": 4,
+     "mean": 3.6,
+     "median": 4.0
+    },
+    "lead": {
+     "count": 4,
+     "mean": 9.5,
+     "median": 8.2
+    },
+    "leadStory": {
+     "count": 1,
+     "mean": 16.3,
+     "median": 16.3
+    },
+    "leadTask": null,
+    "name": "Спринт 74",
+    "open": 20,
+    "points": [
+     5.38,
+     7.3,
+     9.01,
+     16.29
+    ],
+    "throughputPct": 17,
+    "total": 24
+   }
+  ]
+ },
+ "slug": "team-a",
+ "sprintName": "Спринт 74",
+ "team": "Команда А",
+ "velocity": {
+  "avgDone": 10.0,
+  "sprints": [
+   {
+    "done": 14,
+    "name": "Спринт 72",
+    "planned": 23,
+    "split": {
+     "blocked": 3,
+     "done": 14,
+     "open": 0,
+     "progress": 2,
+     "review": 3,
+     "testing": 1
+    }
+   },
+   {
+    "done": 12,
+    "name": "Спринт 73",
+    "planned": 23,
+    "split": {
+     "blocked": 2,
+     "done": 12,
+     "open": 0,
+     "progress": 2,
+     "review": 2,
+     "testing": 5
+    }
+   },
+   {
+    "done": 4,
+    "name": "Спринт 74",
+    "planned": 24,
+    "split": {
+     "blocked": 3,
+     "done": 4,
+     "open": 2,
+     "progress": 7,
+     "review": 6,
+     "testing": 2
+    }
+   }
+  ],
+  "unit": "задач"
+ }
+}

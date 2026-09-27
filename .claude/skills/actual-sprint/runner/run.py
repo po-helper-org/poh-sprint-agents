@@ -1,0 +1,340 @@
+#!/usr/bin/env python3
+"""Runner отчёта actual-sprint: конфиг → сборщики → валидация → HTML.
+
+Единственный способ получить данные отчёта. Модель сюда не заглядывает: она
+запускает `run` и показывает сводку. Сама в JIRA не ходит.
+
+    run.py run       [--config sprint-report.config.toml] [--only team-a,team-b]
+    run.py validate  <slug> [--sample 5] [--seed N] [--lock]
+    run.py lock      <slug>
+    run.py new       <slug> [--lang python]
+
+Коды выхода: 0 — успех, 2 — конфиг, 3 — JIRA недоступна, 1 — остальное.
+"""
+import argparse
+import json
+import os
+import shutil
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+for _p in (HERE, HERE.parent / 'contract'):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+import build
+import buckets as buckets_mod
+import config as config_mod
+import validate as validate_mod
+
+EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
+DEFAULT_CONFIG = 'sprint-report.config.toml'
+
+
+class RunFailure(Exception):
+    """Сбор одной команды не удался. code — код выхода runner."""
+
+    def __init__(self, message, code=EXIT_ERROR, hint=None):
+        super().__init__(message)
+        self.code = code
+        self.hint = hint
+
+
+def eprint(*parts):
+    print(*parts, file=sys.stderr)
+
+
+def now_iso(explicit=None):
+    if explicit:
+        return explicit
+    return datetime.now().astimezone().replace(microsecond=0).isoformat()
+
+
+# --------------------------------------------------------------- запуск сборщика
+
+def collector_env(cfg):
+    """Окружение сборщика: своё плюс путь к контракту. Токен уже в os.environ."""
+    env = dict(os.environ)
+    env[buckets_mod.ENV_CONTRACT] = str(config_mod.SCHEMA_PATH.parent)
+    env[buckets_mod.ENV_RULES] = str(buckets_mod.DEFAULT_RULES)
+    return env
+
+
+def request_payload(cfg, team, url, now):
+    return {
+        'protocol': config_mod.PROTOCOL,
+        'team': {'slug': team.slug, 'name': team.name, 'board': team.board},
+        'params': team.params,
+        'jira': {'url': url, 'caBundle': str(cfg.ca_bundle) if cfg.ca_bundle else None},
+        'now': now,
+    }
+
+
+def run_build_step(team):
+    if not team.build:
+        return
+    eprint(f'[{team.slug}] сборка: {" ".join(team.build)}')
+    proc = subprocess.run(team.build, cwd=str(team.cwd), capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RunFailure(f'этап сборки упал (код {proc.returncode})\n{proc.stderr.strip()}')
+
+
+def run_collector(cfg, team, url, now, extra_args=()):
+    """Запускает сборщик по протоколу и возвращает (объект команды, секунды)."""
+    run_build_step(team)
+    argv = team.argv() + list(extra_args)
+    payload = json.dumps(request_payload(cfg, team, url, now), ensure_ascii=False)
+    eprint(f'[{team.slug}] запускаю сборщик: {" ".join(argv)}')
+    started = datetime.now()
+    try:
+        # communicate, а не живой поток: так таймаут гарантированно снимает процесс,
+        # а stderr показывается целиком и с префиксом команды сразу после
+        proc = subprocess.Popen(argv, cwd=str(team.cwd), stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, env=collector_env(cfg))
+    except FileNotFoundError as exc:
+        raise RunFailure(f'сборщик не запускается: {exc}', EXIT_CONFIG) from exc
+    try:
+        out, err = proc.communicate(payload, timeout=team.timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.communicate()
+        raise RunFailure(f'сборщик не уложился в timeout {team.timeout} с и был снят', EXIT_ERROR)
+    elapsed = (datetime.now() - started).total_seconds()
+    for line in (err or '').splitlines():
+        eprint(f'[{team.slug}] {line}')
+
+    if proc.returncode == EXIT_CONFIG:
+        raise RunFailure('сборщик отверг конфигурацию или params — проверьте конфиг', EXIT_CONFIG)
+    if proc.returncode == EXIT_JIRA:
+        raise RunFailure('JIRA недоступна или не авторизует — проверьте VPN и токен', EXIT_JIRA)
+    if proc.returncode != 0:
+        raise RunFailure(f'сборщик вышел с кодом {proc.returncode} (см. stderr выше)')
+
+    if not (out or '').strip():
+        raise RunFailure('сборщик ничего не отдал в stdout — ожидается один JSON-объект команды')
+    try:
+        data = json.loads(out)
+    except json.JSONDecodeError as exc:
+        head = out.strip()[:200]
+        raise RunFailure(f'stdout не разбирается как JSON ({exc}). Начало вывода: {head!r}')
+    if not isinstance(data, dict):
+        raise RunFailure('в stdout ожидается один JSON-объект команды, получен другой тип')
+    got = data.get('_meta', {}).get('protocol')
+    if got != config_mod.PROTOCOL:
+        raise RunFailure(f'сборщик отвечает по протоколу {got!r}, runner знает '
+                         f'{config_mod.PROTOCOL}', EXIT_CONFIG)
+    return data, elapsed
+
+
+def check_lock(cfg, team, lock):
+    """strict: непроверенный или изменённый сборщик не запускается (ФТ-8)."""
+    state, entry, digest = config_mod.lock_state(team, lock)
+    if state == 'ok':
+        return f'✓ проверен {str(entry.get("validatedAt", ""))[:10]}'
+    if not cfg.strict:
+        return {'missing': '⚠ не проверен (strict выключен)',
+                'changed': '⚠ изменён после проверки (strict выключен)'}[state]
+    if state == 'missing':
+        raise RunFailure(f'сборщик не проверен — в {cfg.lock_path.name} нет записи.\n'
+                         f'         Запустите /collector-validate {team.slug}. HTML не сгенерирован.',
+                         EXIT_CONFIG)
+    raise RunFailure(f'сборщик изменён после проверки '
+                     f'(sha {entry["sha256"][:7]} → {digest[:7]}).\n'
+                     f'         Запустите /collector-validate {team.slug}. HTML не сгенерирован.',
+                     EXIT_CONFIG)
+
+
+def team_line(team, data, elapsed):
+    m = data['metrics']['overall']
+    return (f'[{team.slug}] доска «{data["boardName"]}» (#{data["boardId"]}), '
+            f'спринт «{data["sprintName"]}» | эпиков {len(data["epics"])} | '
+            f'закрыто {m["closed"]}/{m["total"]} | событий {len(data["logs"]["events"])} | '
+            f'{data["_meta"]["requests"]} запросов | {elapsed:.1f}s')
+
+
+# --------------------------------------------------------------- команды CLI
+
+def cmd_run(args):
+    cfg = config_mod.load(args.config)
+    url = cfg.jira_url()
+    cfg.token()  # проверяем до запуска: без токена сборщик всё равно упадёт
+    lock = config_mod.read_lock(cfg)
+    now = now_iso(args.now)
+
+    wanted = [s.strip() for s in args.only.split(',')] if args.only else None
+    teams = [cfg.team(s) for s in wanted] if wanted else cfg.teams
+
+    collected, reports, failures, codes = [], [], [], set()
+    for team in teams:
+        try:
+            head = check_lock(cfg, team, lock)
+            version_tag = f'{team.collector_name}@{config_mod.PLUGIN_VERSION}' if team.is_base \
+                else f'{os.path.relpath(team.cwd, cfg.root)}  sha {team.digest()[:7]}'
+            print(f'[{team.slug}] {version_tag:30} {head}')
+            data, elapsed = run_collector(cfg, team, url, now)
+            report = validate_mod.check(data, cfg_team=team)
+            reports.append(report)
+            if not report.ok:
+                failures.append((team.slug, 'валидация не прошла'))
+                for line in report.lines():
+                    print(line)
+                continue
+            # sha сборщика знает runner, а не сборщик: подвал страницы показывает,
+            # какой именно код дал эти цифры
+            data['_meta']['sha'] = team.digest()
+            collected.append(data)
+            print(team_line(team, data, elapsed))
+        except RunFailure as exc:
+            print(f'[{team.slug}] ✗ {exc}')
+            failures.append((team.slug, str(exc)))
+            codes.add(exc.code)
+            if exc.code == EXIT_JIRA:
+                return EXIT_JIRA
+
+    if failures:
+        print(f'\n✗ не собраны команды: {", ".join(s for s, _ in failures)}. '
+              f'HTML не сгенерирован, прошлый файл не тронут.')
+        # код выхода сохраняет причину: конфиг и lock — это 2, остальное 1
+        return EXIT_CONFIG if codes == {EXIT_CONFIG} else EXIT_ERROR
+
+    notes = build.read_notes(cfg.notes)
+    picked = build.attach_notes(collected, notes)
+    # порядок команд в файле = порядок в конфиге = порядок вкладок
+    order = {t.slug: i for i, t in enumerate(teams)}
+    collected.sort(key=lambda d: order.get(d['slug'], 0))
+    html = build.render(collected, config_mod.TEMPLATE_PATH)
+    out = build.write_atomic(cfg.output, html)
+
+    warnings = sum(len(r.warnings) for r in reports)
+    invariants = sum(r.passed for r in reports)
+    total_inv = sum(r.invariants_total for r in reports)
+    for r in reports:
+        for w in r.warnings:
+            print(f'[{r.slug}] предупреждение: {w}')
+    print(f'схема ✓   инварианты {invariants}/{total_inv} ✓   '
+          f'предупреждений {warnings}   заметок подхвачено {picked}')
+    print(f'→ {os.path.relpath(out, Path.cwd()) if str(out).startswith(str(Path.cwd())) else out}')
+    return EXIT_OK
+
+
+def cmd_validate(args):
+    cfg = config_mod.load(args.config)
+    url = cfg.jira_url()
+    cfg.token()
+    team = cfg.team(args.slug)
+    now = now_iso(args.now)
+    try:
+        data, elapsed = run_collector(cfg, team, url, now)
+    except RunFailure as exc:
+        print(f'запуск сборщика ✗ {exc}')
+        return exc.code
+    print(f'запуск сборщика ✓ (exit 0, {elapsed:.1f}s, {data["_meta"]["requests"]} запросов)')
+    report = validate_mod.check(data, cfg_team=team)
+    for line in report.lines():
+        print(line)
+    if not report.ok:
+        print(f'\n✗ команда «{team.slug}» не прошла валидацию. Поправьте сборщик и повторите.')
+        return EXIT_ERROR
+
+    rows, seed = validate_mod.sample(data, args.sample, args.seed)
+    print(f'выборка для сверки с JIRA (seed {seed}):')
+    for line in validate_mod.format_sample(rows):
+        print(line)
+    print('\nСверьте эти задачи в JIRA поле за полем. Совпало и PO подтвердил → '
+          f'python3 {Path(__file__).name} lock {team.slug}')
+    if args.lock:
+        entry = config_mod.write_lock(cfg, team.slug, team.digest(), now,
+                                      {'collector': team.collector_name})
+        print(f'lock записан: {team.slug} sha {entry["sha256"][:7]} → {cfg.lock_path.name}')
+    return EXIT_OK
+
+
+def cmd_lock(args):
+    cfg = config_mod.load(args.config)
+    team = cfg.team(args.slug)
+    entry = config_mod.write_lock(cfg, team.slug, team.digest(), now_iso(args.now),
+                                  {'collector': team.collector_name})
+    print(f'lock записан: {team.slug} sha {entry["sha256"][:7]} '
+          f'({entry["validatedAt"]}) → {cfg.lock_path.name}')
+    return EXIT_OK
+
+
+def cmd_new(args):
+    # конфиг может быть ещё не дописан — на этом шаге команды в нём как раз нет
+    try:
+        cfg = config_mod.load(args.config) if Path(args.config).is_file() else None
+    except config_mod.ConfigError:
+        cfg = None
+    root = cfg.root if cfg else Path(args.config).resolve().parent
+    src = Path(__file__).resolve().parent.parent / 'templates' / args.lang
+    if not src.is_dir():
+        print(f'нет шаблона для языка «{args.lang}». Есть: '
+              f'{", ".join(sorted(p.name for p in src.parent.iterdir() if p.is_dir()))}')
+        return EXIT_CONFIG
+    dest = root / 'collectors' / args.slug
+    if dest.exists() and any(dest.iterdir()):
+        print(f'каталог уже есть и не пуст: {dest}')
+        return EXIT_CONFIG
+    dest.mkdir(parents=True, exist_ok=True)
+    for item in sorted(src.iterdir()):
+        if item.is_file() and not item.name.endswith('.pyc'):
+            shutil.copy2(item, dest / item.name)
+    entry = sorted(p.name for p in dest.iterdir())[0]
+    print(f'шаблон скопирован: {dest}')
+    print('Дальше:')
+    print(f'  1. Правьте точки «# TEAM RULE:» в {dest / entry}')
+    print(f'  2. Опишите команду в конфиге:\n'
+          f'     [[teams]]\n     slug = "{args.slug}"\n     name = "…"\n     board = 0\n'
+          f'     [teams.collector]\n     cmd = ["python3", "collector.py"]\n'
+          f'     cwd = "./collectors/{args.slug}"')
+    print(f'  3. python3 {Path(__file__).name} validate {args.slug} --sample 5')
+    return EXIT_OK
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description='Runner отчёта actual-sprint')
+    ap.add_argument('--config', default=DEFAULT_CONFIG, help=f'по умолчанию {DEFAULT_CONFIG}')
+    ap.add_argument('--now', default=None, help='ISO-время отчёта; по умолчанию текущее')
+    sub = ap.add_subparsers(dest='cmd')
+
+    p_run = sub.add_parser('run', help='собрать отчёт по всем командам конфига')
+    p_run.add_argument('--only', default=None, help='список slug через запятую')
+
+    p_val = sub.add_parser('validate', help='прогнать одну команду: схема, инварианты, выборка')
+    p_val.add_argument('slug')
+    p_val.add_argument('--sample', type=int, default=5)
+    p_val.add_argument('--seed', type=int, default=None)
+    p_val.add_argument('--lock', action='store_true',
+                       help='записать хеш сразу (только после сверки и подтверждения PO)')
+
+    p_lock = sub.add_parser('lock', help='записать хеш проверенного сборщика')
+    p_lock.add_argument('slug')
+
+    p_new = sub.add_parser('new', help='скопировать шаблон сборщика под команду')
+    p_new.add_argument('slug')
+    p_new.add_argument('--lang', default='python')
+
+    args = ap.parse_args(argv)
+    handlers = {'run': cmd_run, 'validate': cmd_validate, 'lock': cmd_lock, 'new': cmd_new}
+    if not args.cmd:
+        args.cmd = 'run'
+        args.only = None
+    try:
+        return handlers[args.cmd](args)
+    except config_mod.ConfigError as exc:
+        print(f'конфиг: {exc}')
+        return EXIT_CONFIG
+    except build.BuildError as exc:
+        print(f'сборка страницы: {exc}')
+        return EXIT_ERROR
+    except RunFailure as exc:
+        print(f'✗ {exc}')
+        return exc.code
+
+
+if __name__ == '__main__':
+    sys.exit(main())

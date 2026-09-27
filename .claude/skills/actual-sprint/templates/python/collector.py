@@ -1,0 +1,645 @@
+#!/usr/bin/env python3
+"""Базовый сборщик данных отчёта по спринту (протокол 1, Python, только stdlib).
+
+Забирает из JIRA всё, что нужно одной команде: эпики с историями и подзадачами,
+метрики за N спринтов, burndown, диаграммы управления, velocity и ленту активности.
+Читает запрос из stdin, отдаёт один объект команды в stdout (contract/PROTOCOL.md).
+
+    echo '{"protocol":1,"team":{...},"params":{},"jira":{...},"now":"…"}' | collector.py
+    collector.py --record fixtures/   # сохранить сырые ответы JIRA
+    collector.py --replay fixtures/   # работать из них, без сети
+
+Те же режимы доступны через params.record и params.replay — так их можно включить
+из конфига, не меняя строку запуска (на этом стоят тесты и сверка после правок).
+
+Все правила команды — в params, дефолты равны поведению до вынесения:
+
+    story_types      ["История", "История Enabler", "Story"]  что считать историей
+    done_statuses    doneExact из status_rules.json            что считать закрытым по имени
+    status_buckets   {}                 «у нас "Ожидает релиза" на самом деле ревью»
+    epic_link_field  "auto"             или customfield_XXXXX
+    epic_link_names  ["ссылка на эпик", "epic link"]  по каким именам искать поле
+    sprints_back     3                  глубина метрик по спринтам
+    activity_days    7                  окно ленты активности
+    control_days     30                 окно диаграмм управления
+    categories       из status_rules.json               допустимые категории JIRA
+
+Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
+"""
+import argparse
+import hashlib
+import json
+import os
+import ssl
+import statistics
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timedelta
+from pathlib import Path
+
+PROTOCOL = 1
+VERSION = '1.0.0'
+NAME = 'base'
+
+EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
+
+CONTRACT_ENV = 'ACTUAL_SPRINT_CONTRACT'
+
+
+class ConfigProblem(Exception):
+    """Запрос или params непригодны — код выхода 2."""
+
+
+class JiraProblem(Exception):
+    """JIRA недоступна или не авторизует — код выхода 3."""
+
+
+def log(msg):
+    """Прогресс идёт в stderr: stdout занят единственным JSON-объектом."""
+    print(msg, file=sys.stderr, flush=True)
+
+
+# --------------------------------------------------------------- правила бакетов
+
+def load_rules(params):
+    """Правила раскладки статусов. Общий модуль контракта, чтобы не плодить копии."""
+    contract = os.environ.get(CONTRACT_ENV)
+    candidates = [Path(contract)] if contract else []
+    candidates += [Path(__file__).resolve().parents[2] / 'contract', Path(__file__).resolve().parent]
+    for path in candidates:
+        if (path / 'buckets.py').is_file():
+            sys.path.insert(0, str(path))
+            import buckets
+            try:
+                return buckets.load(overrides=params.get('status_buckets') or {},
+                                    done_exact=params.get('done_statuses'),
+                                    categories=params.get('categories'))
+            except ValueError as exc:
+                raise ConfigProblem(str(exc)) from exc
+    raise ConfigProblem(
+        f'не найден contract/buckets.py с правилами бакетов. Укажите каталог контракта '
+        f'в переменной {CONTRACT_ENV}.')
+
+
+# --------------------------------------------------------------- доступ к JIRA
+
+class Jira:
+    """GET-клиент JIRA со включённой проверкой TLS, счётчиком запросов и record/replay.
+
+    Только чтение: другого метода, кроме GET, у клиента нет (НФТ-4).
+    """
+
+    def __init__(self, base, token, ca_bundle=None, record=None, replay=None):
+        self.base = base.rstrip('/')
+        self.token = token
+        self.requests = 0
+        self.record = Path(record) if record else None
+        self.replay = Path(replay) if replay else None
+        if self.record:
+            self.record.mkdir(parents=True, exist_ok=True)
+        # проверка сертификата включена всегда; корпоративный CA — через ca_bundle
+        self.ctx = ssl.create_default_context(cafile=str(ca_bundle) if ca_bundle else None)
+
+    @staticmethod
+    def _key(path, params):
+        canon = path + '?' + urllib.parse.urlencode(sorted(params.items()))
+        return hashlib.sha1(canon.encode()).hexdigest()[:16], canon
+
+    def api(self, path, **params):
+        key, canon = self._key(path, params)
+        self.requests += 1
+        if self.replay:
+            fixture = self.replay / f'{key}.json'
+            if not fixture.is_file():
+                raise JiraProblem(f'в replay-каталоге нет ответа на GET {canon} '
+                                  f'(ожидался файл {fixture.name})')
+            return json.loads(fixture.read_text(encoding='utf-8'))
+
+        url = self.base + path + ('?' + urllib.parse.urlencode(params) if params else '')
+        req = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + self.token})
+        try:
+            with urllib.request.urlopen(req, context=self.ctx, timeout=120) as resp:
+                data = json.load(resp)
+        except urllib.error.HTTPError as exc:
+            if exc.code in (401, 403):
+                raise JiraProblem(f'JIRA не авторизует запрос (HTTP {exc.code}) — проверьте токен') from exc
+            raise JiraProblem(f'JIRA вернула HTTP {exc.code} на GET {canon}') from exc
+        except urllib.error.URLError as exc:
+            raise JiraProblem(f'JIRA недоступна ({exc.reason}) — проверьте VPN и адрес') from exc
+        if self.record:
+            # в дамп идут только путь, параметры и тело ответа: заголовок с токеном — никогда
+            (self.record / f'{key}.json').write_text(
+                json.dumps(data, ensure_ascii=False, sort_keys=True), encoding='utf-8')
+            index = self.record / '_index.json'
+            known = json.loads(index.read_text(encoding='utf-8')) if index.is_file() else {}
+            known[key] = canon
+            index.write_text(json.dumps(known, ensure_ascii=False, indent=1, sort_keys=True),
+                             encoding='utf-8')
+        return data
+
+    def paged(self, path, key='values', **params):
+        """Обходит постраничный ответ целиком: у досок с длинной историей спринтов
+        первая страница отдаёт самые старые записи, и активный спринт теряется."""
+        out, start = [], 0
+        while True:
+            d = self.api(path, startAt=start, maxResults=50, **params)
+            vals = d.get(key, [])
+            out += vals
+            start += len(vals)
+            if d.get('isLast', True) or not vals:
+                return out
+
+    def sprint_issues(self, sprint_id, fields, expand=None):
+        out, start = [], 0
+        while True:
+            params = {'fields': fields, 'maxResults': 200, 'startAt': start}
+            if expand:
+                params['expand'] = expand
+            d = self.api(f'/rest/agile/1.0/sprint/{sprint_id}/issue', **params)
+            out += d['issues']
+            start += len(d['issues'])
+            if start >= d.get('total', 0) or not d['issues']:
+                return out
+
+
+# --------------------------------------------------------------- помощники
+
+def parse(ts):
+    return datetime.fromisoformat(ts)
+
+
+def plural(n, one, few, many):
+    """Склонение числительного: предупреждения читают люди."""
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        return few
+    return many
+
+
+def stats(vals):
+    vals = [v for v in vals if v is not None]
+    if not vals:
+        return None
+    return {'mean': round(statistics.mean(vals), 1),
+            'median': round(statistics.median(vals), 1),
+            'count': len(vals)}
+
+
+def last_status_change(issue):
+    """Дата последней смены статуса. Нет смен — дата создания.
+    fields.updated не годится: двигается от любой правки."""
+    last = None
+    for h in issue.get('changelog', {}).get('histories', []):
+        for it in h['items']:
+            if it['field'] == 'status' and (last is None or h['created'] > last):
+                last = h['created']
+    return last or issue['fields']['created']
+
+
+def lead_cycle(issue, cats):
+    """(lead, cycle, done_at) в днях. Переоткрытие сбрасывает дату закрытия."""
+    f = issue['fields']
+    created = parse(f['created'])
+    done_at = start_at = None
+    for h in sorted(issue.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
+        for it in h['items']:
+            if it['field'] != 'status':
+                continue
+            cat = cats.get(str(it.get('to')))
+            when = parse(h['created'])
+            if cat == 'В работе' and start_at is None:
+                start_at = when
+            if cat == 'Выполнено':
+                done_at = when
+            elif done_at is not None:
+                done_at = None
+    is_done = cats.get(str(f['status']['id'])) == 'Выполнено'
+    if not (is_done and done_at):
+        return None, None, None
+    lead = round((done_at - created).total_seconds() / 86400, 2)
+    cycle = round((done_at - start_at).total_seconds() / 86400, 2) if start_at else None
+    return lead, cycle, done_at
+
+
+def in_progress_since(issue, cats):
+    """Когда задачу взяли в работу, если она до сих пор не закрыта. Иначе None."""
+    if cats.get(str(issue['fields']['status']['id'])) == 'Выполнено':
+        return None
+    start = None
+    for h in sorted(issue.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
+        for it in h['items']:
+            if it['field'] == 'status' and cats.get(str(it.get('to'))) == 'В работе' and start is None:
+                start = parse(h['created'])
+    return start
+
+
+class Collector:
+    def __init__(self, jira, request, rules):
+        self.jira = jira
+        self.rules = rules
+        self.params = request.get('params') or {}
+        self.team = request['team']
+        self.now = parse(request['now'])
+        self.warnings = []
+        self.status_map = {}
+        p = self.params
+        # TEAM RULE: что считать историей внутри эпика
+        self.story_types = tuple(p.get('story_types') or ('История', 'История Enabler', 'Story'))
+        self.sprints_back = int(p.get('sprints_back', 3))
+        self.activity_days = int(p.get('activity_days', 7))
+        self.control_days = int(p.get('control_days', 30))
+
+    # ---------------------------------------------------------- инфраструктура
+
+    def warn(self, text):
+        if text not in self.warnings:
+            self.warnings.append(text)
+
+    def bucket(self, status, category):
+        """Бакет статуса + запись в statusMap: раскладка считается один раз (ФТ-18)."""
+        bucket, rule = self.rules.classify(status, category)
+        self.status_map[status] = bucket
+        if rule == 'category-default' and bucket == 'progress':
+            self.warn(f'статус «{status}» не покрыт правилами бакетов → progress')
+        return bucket
+
+    def status_categories(self):
+        """Карта «id статуса → категория». По id, а не по имени: в changelog имена
+        приходят на языке workflow (Closed/In progress), а /status отдаёт русские."""
+        return {str(s['id']): s['statusCategory']['name']
+                for s in self.jira.api('/rest/api/2/status')}
+
+    def epic_link_field(self):
+        """TEAM RULE: через какое поле история связана с эпиком."""
+        explicit = self.params.get('epic_link_field', 'auto')
+        if explicit and explicit != 'auto':
+            return explicit
+        names = [n.lower() for n in (self.params.get('epic_link_names')
+                                     or ('ссылка на эпик', 'epic link'))]
+        for f in self.jira.api('/rest/api/2/field'):
+            if f['name'].strip().lower() in names:
+                return f['id']
+        self.warn('поле связи с эпиком не найдено — все истории уйдут в «Без эпика». '
+                  'Задайте params.epic_link_field.')
+        return None
+
+    # ---------------------------------------------------------- сбор
+
+    def collect(self):
+        board_id = self.team['board']
+        cats = self.status_categories()
+        epic_field = self.epic_link_field()
+
+        board = next((b for b in self.jira.paged('/rest/agile/1.0/board') if b['id'] == board_id), None)
+        if board is None:
+            self.warn(f'доски #{board_id} нет в списке доступных — имя доски будет техническим')
+        board_name = board['name'] if board else f'board {board_id}'
+
+        sprints = [s for s in self.jira.paged(f'/rest/agile/1.0/board/{board_id}/sprint',
+                                              state='closed,active')
+                   if s.get('originBoardId') == board_id]
+        sprints.sort(key=lambda s: s.get('startDate') or '')
+        if not sprints:
+            raise ConfigProblem(f'у доски {board_id} нет спринтов — проверьте board в конфиге')
+        # активный спринт — якорь отчёта; последние N отсчитываем от него, а не от конца списка
+        active = next((s for s in reversed(sprints) if s['state'] == 'active'), sprints[-1])
+        idx = sprints.index(active)
+        last = sprints[max(0, idx - (self.sprints_back - 1)):idx + 1]
+        if len(last) < self.sprints_back:
+            self.warn(f'спринтов у доски меньше, чем sprints_back={self.sprints_back}: '
+                      f'метрики посчитаны по {len(last)}')
+        log(f'доска «{board_name}», спринт «{active["name"]}», метрики по {len(last)} спринтам')
+
+        fields = 'key,summary,status,issuetype,created,creator,assignee,subtasks'
+        if epic_field:
+            fields += ',' + epic_field  # иначе пришлось бы делать запрос на каждую историю
+        per_sprint = {s['id']: self.jira.sprint_issues(s['id'], fields, expand='changelog')
+                      for s in last}
+        extra = {s['id']: self.jira.sprint_issues(s['id'], 'key,summary,issuetype,created,creator,comment')
+                 for s in last}
+
+        issues = per_sprint[active['id']]
+        epics = self.build_epics(issues, epic_field, cats)
+        metrics, velocity = self.build_metrics(last, per_sprint, cats)
+        burndown = self.build_burndown(active, issues, cats)
+        control = self.build_control(last, per_sprint, cats)
+        logs = self.build_logs(last, per_sprint, extra, cats)
+
+        return {
+            'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
+            'boardName': board_name,
+            'boardUrl': f'{self.jira.base}/secure/RapidBoard.jspa?rapidView={board_id}',
+            'jiraBase': self.jira.base, 'sprintName': active['name'],
+            'epics': epics, 'metrics': metrics, 'burndown': burndown, 'control': control,
+            'velocity': velocity, 'logs': logs,
+            'statusMap': dict(sorted(self.status_map.items())),
+        }
+
+    def build_epics(self, issues, epic_field, cats):
+        stories = [i for i in issues if i['fields']['issuetype']['name'] in self.story_types]
+        if issues and not stories:
+            self.warn(f'ни одна задача спринта не попала в story_types {list(self.story_types)} — '
+                      f'таблица эпиков будет пустой')
+        groups, order, epic_cache = {}, [], {}
+
+        # ключи эпиков уже пришли в полях историй; названия добираем одним запросом на все
+        epic_keys = sorted({st['fields'].get(epic_field) for st in stories
+                            if epic_field and st['fields'].get(epic_field)})
+        if epic_keys:
+            jql = 'key in (' + ','.join(epic_keys) + ')'
+            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary',
+                                  maxResults=200)['issues']
+            epic_cache = {i['key']: i['fields']['summary'] for i in found}
+
+        orphans = 0
+        for st in stories:
+            f = st['fields']
+            ek = f.get(epic_field) if epic_field else None
+            gkey = ek or 'no-epic'
+            if not ek:
+                orphans += 1
+            row = groups.setdefault(gkey, {
+                'rowId': gkey, 'epicKey': ek,
+                'epicTitle': epic_cache.get(ek) if ek else 'Без эпика', 'stories': []})
+            if gkey not in order:
+                order.append(gkey)
+            row['stories'].append({
+                'key': st['key'], 'title': f['summary'],
+                'status': f['status']['name'],
+                'category': cats.get(str(f['status']['id'])) or '',
+                'statusChanged': last_status_change(st),
+                'assignee': (f.get('assignee') or {}).get('displayName'),
+                'subtasks': [{
+                    'key': s['key'], 'summary': s['fields']['summary'],
+                    'status': s['fields']['status']['name'],
+                    'category': s['fields']['status']['statusCategory']['name'],
+                    'statusChanged': None, 'assignee': None,
+                } for s in (f.get('subtasks') or [])],
+            })
+        if orphans:
+            self.warn(f'{orphans} {plural(orphans, "история", "истории", "историй")} '
+                      f'без эпика → псевдо-эпик «Без эпика»')
+
+        # даты и исполнители подзадач — из общего списка спринта, без запроса на каждую
+        by_key = {i['key']: i for i in issues}
+        for row in groups.values():
+            for st in row['stories']:
+                self.bucket(st['status'], st['category'])
+                for sub in st['subtasks']:
+                    self.bucket(sub['status'], sub['category'])
+                    src = by_key.get(sub['key'])
+                    if src:
+                        sub['statusChanged'] = last_status_change(src)
+                        sub['assignee'] = (src['fields'].get('assignee') or {}).get('displayName')
+        return [groups[k] for k in order]
+
+    def build_metrics(self, sprints, per_sprint, cats):
+        sprint_rows, all_closed, velocity = [], [], []
+        for s in sprints:
+            rows = []
+            counts = self.rules.empty_counts()
+            for i in per_sprint[s['id']]:
+                f = i['fields']
+                counts[self.bucket(f['status']['name'], cats.get(str(f['status']['id'])) or '')] += 1
+                lead, cycle, _ = lead_cycle(i, cats)
+                rows.append({'lead': lead, 'cycle': cycle,
+                             'story': f['issuetype']['name'] in self.story_types,
+                             'subtask': bool(f['issuetype'].get('subtask')),
+                             'done': lead is not None})
+            closed = [r for r in rows if r['done']]
+            all_closed += closed
+            sprint_rows.append({
+                'name': s['name'], 'total': len(rows), 'closed': len(closed),
+                'open': len(rows) - len(closed),
+                'throughputPct': round(100 * len(closed) / len(rows)) if rows else 0,
+                'lead': stats([r['lead'] for r in closed]),
+                'cycle': stats([r['cycle'] for r in closed]),
+                'leadStory': stats([r['lead'] for r in closed if r['story']]),
+                'leadTask': stats([r['lead'] for r in closed if not r['story'] and not r['subtask']]),
+                'points': sorted(r['lead'] for r in closed if r['lead'] is not None),
+            })
+            velocity.append({'name': s['name'], 'planned': sum(counts.values()),
+                             'done': counts['done'], 'split': counts})
+
+        metrics = {'sprints': sprint_rows, 'overall': {
+            'lead': stats([r['lead'] for r in all_closed]),
+            'cycle': stats([r['cycle'] for r in all_closed]),
+            'leadStory': stats([r['lead'] for r in all_closed if r['story']]),
+            'leadTask': stats([r['lead'] for r in all_closed if not r['story'] and not r['subtask']]),
+            'total': sum(s['total'] for s in sprint_rows), 'closed': len(all_closed)}}
+        vel = {'sprints': velocity, 'unit': 'задач',
+               'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)}
+        return metrics, vel
+
+    def build_burndown(self, active, issues, cats):
+        start, end = parse(active['startDate']), parse(active['endDate'])
+        members = []
+        for i in issues:
+            entered = left = None
+            for h in sorted(i.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
+                for it in h['items']:
+                    if it['field'].lower() != 'sprint':
+                        continue
+                    was = active['name'] in (it.get('fromString') or '')
+                    now_in = active['name'] in (it.get('toString') or '')
+                    if now_in and not was:
+                        entered = parse(h['created'])
+                    if was and not now_in:
+                        left = parse(h['created'])
+            _, _, done_at = lead_cycle(i, cats)
+            members.append({'entered': entered or start, 'left': left, 'doneAt': done_at})
+
+        days, cur = [], start
+        today = self.now.date().isoformat()
+        while cur <= end:
+            scope = closed_n = 0
+            for m in members:
+                if m['entered'] > cur or (m['left'] and m['left'] <= cur):
+                    continue
+                scope += 1
+                if m['doneAt'] and m['doneAt'] <= cur:
+                    closed_n += 1
+            days.append({'date': cur.date().isoformat(), 'scope': scope,
+                         'remaining': scope - closed_n, 'closed': closed_n,
+                         'weekend': cur.weekday() >= 5, 'future': cur.date().isoformat() > today})
+            cur += timedelta(days=1)
+        return {'sprintName': active['name'], 'start': start.date().isoformat(),
+                'end': end.date().isoformat(), 'days': days}
+
+    def build_control(self, sprints, per_sprint, cats):
+        """Точки — закрытые за control_days (Cycle Time). Зона риска — НЕзакрытые задачи,
+        которые идут дольше медианы своей группы."""
+        since = self.now - timedelta(days=self.control_days)
+        closed_by_group = {'stories': {}, 'subtasks': {}}
+        open_by_group = {'stories': [], 'subtasks': []}
+
+        for s in sprints:
+            for i in per_sprint[s['id']]:
+                f = i['fields']
+                grp = 'subtasks' if f['issuetype'].get('subtask') else 'stories'
+                lead, cycle, done_at = lead_cycle(i, cats)
+                category = cats.get(str(f['status']['id'])) or ''
+                if done_at and cycle is not None and done_at >= since:
+                    closed_by_group[grp][i['key']] = {
+                        'key': i['key'], 'title': f['summary'],
+                        'status': f['status']['name'], 'category': category,
+                        'doneAt': done_at.date().isoformat(), 'cycle': cycle}
+                    continue
+                started = in_progress_since(i, cats)
+                if started:
+                    open_by_group[grp].append({
+                        'key': i['key'], 'title': f['summary'],
+                        'status': f['status']['name'], 'category': category,
+                        'assignee': (f.get('assignee') or {}).get('displayName'),
+                        'elapsed': round((self.now - started).total_seconds() / 86400, 2)})
+
+        def chart(group):
+            points = sorted(closed_by_group[group].values(), key=lambda p: p['doneAt'])
+            if not points:
+                return {'points': [], 'risks': [], 'days': self.control_days}
+            vals = [p['cycle'] for p in points]
+            mean, median = statistics.mean(vals), statistics.median(vals)
+            sd = statistics.pstdev(vals)
+            limit = round(mean + sd, 2)
+            for p in points:
+                p['outlier'] = p['cycle'] > limit
+            seen_risk = {}
+            for r in open_by_group[group]:
+                if r['elapsed'] > median and r['key'] not in seen_risk:
+                    seen_risk[r['key']] = r
+            risks = sorted(seen_risk.values(), key=lambda r: (-r['elapsed'], r['key']))
+            return {'points': points, 'risks': risks, 'days': self.control_days,
+                    'mean': round(mean, 1), 'median': round(median, 1), 'sd': round(sd, 1),
+                    'limit': limit, 'outliers': sum(1 for p in points if p['outlier']),
+                    'today': self.now.date().isoformat()}
+
+        return {'stories': chart('stories'), 'subtasks': chart('subtasks'),
+                'days': self.control_days}
+
+    def build_logs(self, sprints, per_sprint, extra, cats):
+        since = self.now - timedelta(days=self.activity_days)
+        events, seen = [], set()
+        for s in sprints:
+            for i in per_sprint[s['id']]:
+                f = i['fields']
+                for h in i.get('changelog', {}).get('histories', []):
+                    when = parse(h['created'])
+                    if when < since:
+                        continue
+                    for it in h['items']:
+                        if it['field'] != 'status':
+                            continue
+                        uid = f"st:{h['id']}:{i['key']}"
+                        if uid in seen:
+                            continue
+                        seen.add(uid)
+                        events.append({'kind': 'status', 'key': i['key'], 'title': f['summary'],
+                                       'author': (h.get('author') or {}).get('displayName') or 'Система',
+                                       'at': when.isoformat(),
+                                       'from': it.get('fromString') or '—',
+                                       'to': it.get('toString') or '—',
+                                       'toCat': cats.get(str(it.get('to'))) or ''})
+            for i in extra[s['id']]:
+                f = i['fields']
+                created = parse(f['created'])
+                if created >= since and f'cr:{i["key"]}' not in seen:
+                    seen.add(f'cr:{i["key"]}')
+                    events.append({'kind': 'created', 'key': i['key'], 'title': f['summary'],
+                                   'author': (f.get('creator') or {}).get('displayName') or 'Система',
+                                   'at': created.isoformat(),
+                                   'issueType': f['issuetype']['name']})
+                for c in (f.get('comment') or {}).get('comments', []):
+                    when = parse(c['created'])
+                    if when < since or f'cm:{c["id"]}' in seen:
+                        continue
+                    seen.add(f'cm:{c["id"]}')
+                    body = ' '.join((c.get('body') or '').split())
+                    events.append({'kind': 'comment', 'key': i['key'], 'title': f['summary'],
+                                   'author': (c.get('author') or {}).get('displayName') or 'Система',
+                                   'at': when.isoformat(),
+                                   'body': body[:160] + '…' if len(body) > 160 else body})
+        # ключ сортировки со вторичным полем: одинаковые метки времени не должны
+        # переставляться между запусками (НФТ-1)
+        events.sort(key=lambda e: (e['at'], e['key'], e['kind']), reverse=True)
+        authors, kinds = {}, {}
+        for e in events:
+            authors[e['author']] = authors.get(e['author'], 0) + 1
+            kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
+        return {'events': events, 'days': self.activity_days, 'kinds': kinds,
+                'authors': sorted(authors.items(), key=lambda x: (-x[1], x[0]))}
+
+
+def read_request(stream):
+    raw = stream.read()
+    if not raw.strip():
+        raise ConfigProblem('на stdin не пришёл JSON-запрос (см. contract/PROTOCOL.md)')
+    try:
+        req = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ConfigProblem(f'запрос на stdin не разбирается как JSON: {exc}') from exc
+    if req.get('protocol') != PROTOCOL:
+        raise ConfigProblem(f'сборщик знает protocol {PROTOCOL}, в запросе {req.get("protocol")!r}')
+    for field in ('team', 'now'):
+        if field not in req:
+            raise ConfigProblem(f'в запросе нет поля {field}')
+    for field in ('slug', 'name', 'board'):
+        if field not in (req.get('team') or {}):
+            raise ConfigProblem(f'в запросе нет team.{field}')
+    return req
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument('--record', default=None, help='каталог для сырых ответов JIRA')
+    ap.add_argument('--replay', default=None, help='каталог с ответами: работать без сети')
+    args = ap.parse_args(argv)
+
+    started = datetime.now()
+    try:
+        req = read_request(sys.stdin)
+        params = req.get('params') or {}
+        rules = load_rules(params)
+        record = args.record or params.get('record')
+        replay = args.replay or params.get('replay')
+        jira_spec = req.get('jira') or {}
+        base = (jira_spec.get('url') or '').rstrip('/')
+        if not base and not replay:
+            raise ConfigProblem('в запросе нет jira.url')
+        token_env = params.get('token_env', 'JIRA_PERSONAL_TOKEN')
+        token = os.environ.get(token_env, '')
+        if not token and not replay:
+            raise JiraProblem(f'нет токена в переменной окружения {token_env}')
+        jira = Jira(base or 'https://replay.invalid', token, jira_spec.get('caBundle'),
+                    record=record, replay=replay)
+        collector = Collector(jira, req, rules)
+        data = collector.collect()
+    except ConfigProblem as exc:
+        log(f'ошибка конфигурации: {exc}')
+        return EXIT_CONFIG
+    except JiraProblem as exc:
+        log(f'JIRA: {exc}')
+        return EXIT_JIRA
+    except KeyError as exc:
+        log(f'неожиданная форма ответа JIRA: нет поля {exc}')
+        return EXIT_ERROR
+
+    data['_meta'] = {
+        'collector': NAME, 'version': VERSION, 'protocol': PROTOCOL,
+        'collectedAt': req['now'], 'requests': jira.requests,
+        'durationMs': int((datetime.now() - started).total_seconds() * 1000),
+        'warnings': collector.warnings,
+    }
+    # sort_keys — часть детерминизма: одинаковый вход даёт побайтово одинаковый stdout
+    json.dump(data, sys.stdout, ensure_ascii=False, sort_keys=True)
+    sys.stdout.write('\n')
+    m = data['metrics']['overall']
+    log(f'эпиков {len(data["epics"])} | закрыто {m["closed"]}/{m["total"]} | '
+        f'событий {len(data["logs"]["events"])} | запросов {jira.requests}')
+    return EXIT_OK
+
+
+if __name__ == '__main__':
+    sys.exit(main())

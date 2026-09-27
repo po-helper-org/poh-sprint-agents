@@ -1,0 +1,48 @@
+# Конфиг отчёта actual-sprint. Редактирует человек; runner его не перезаписывает.
+# Положить в корень рабочего проекта как sprint-report.config.toml.
+version = 1
+
+output = "./reports/sprint-report.html"          # одна страница на все команды
+notes  = "./reports/sprint-report-notes.json"    # выгрузка кнопки «Заметки ⬇»
+strict = true                                    # непроверенный или изменённый сборщик не запускается
+
+[jira]
+url_env   = "JIRA_URL"                # адрес инстанса берётся из окружения
+token_env = "JIRA_PERSONAL_TOKEN"     # токен — только через env, в файлы не пишем
+# ca_bundle = "./certs/corp-ca.pem"   # корпоративный CA вместо отключения проверки TLS
+
+# порядок команд = порядок вкладок на странице; первая открыта по умолчанию
+[[teams]]
+slug  = "team-a"            # он же REPORT_ID заметок, должен быть уникален
+name  = "Команда A"
+board = 101                 # id agile-доски
+collector = "base"          # базовый сборщик плагина: только params, своего кода нет
+
+[teams.params]
+story_types   = ["История", "История Enabler", "Story"]
+sprints_back  = 3           # глубина метрик по спринтам
+activity_days = 7           # окно ленты активности
+control_days  = 30          # окно диаграмм управления
+epic_link_field = "auto"    # или "customfield_10101", если автопоиск не находит
+
+# Статусы, которые не раскладываются правилами по умолчанию.
+# Здесь же гасятся предупреждения детектора дрейфа workflow.
+[teams.params.status_buckets]
+"Ожидает релиза" = "review"
+"На паузе" = "blocked"
+"Дизайн" = "progress"
+
+[[teams]]
+slug  = "team-b"
+name  = "Команда B"
+board = 202
+
+# Свой сборщик нужен только тогда, когда отличается алгоритм, а не настройки.
+[teams.collector]
+cmd     = ["python3", "collector.py"]
+cwd     = "./collectors/team-b"
+timeout = 300
+# build = ["go", "build", "-o", "collector", "."]   # если сборщик компилируется
+
+[teams.params]
+boards_extra = [203]        # произвольные параметры: runner передаёт их как есть

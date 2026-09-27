@@ -518,6 +518,16 @@
   .sub-item a:hover { color: var(--fg); text-decoration: underline; }
 
   .sidebar-empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+
+  /* подвал: чем и когда собраны данные команды — чтобы цифрам можно было доверять */
+  .provenance {
+    max-width: 1100px; margin: 32px auto 24px; padding: 10px 24px 0;
+    border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 11px; line-height: 1.7;
+  }
+  .provenance .warn {
+    color: #b45309; border-bottom: 1px dotted #b45309; cursor: help; margin-left: 6px;
+  }
 </style>
 </head>
 <body>
@@ -548,6 +558,8 @@
   </table>
 </main>
 
+<footer class="provenance" id="provenance"></footer>
+
 <div class="overlay" id="overlay"></div>
 <aside class="panel-stack" id="panelStack">
   <!-- общая шапка: одна кнопка закрытия на всю панель -->
@@ -575,19 +587,23 @@
 
 <script>
   // -------------------------------------------------------------------
-  // TEAMS: по одному объекту на команду (сборщик scripts/collect.py).
-  // Каждый — { slug, team, boardName, boardUrl, jiraBase, sprintName,
-  //            epics, metrics, burndown, control, velocity, logs }.
+  // TEAMS: по одному объекту на команду — то, что отдаёт сборщик команды
+  // (contract/team.schema.json). Каждый — { slug, team, boardName, boardUrl,
+  //            jiraBase, sprintName, epics, metrics, burndown, control,
+  //            velocity, logs, statusMap?, notes?, _meta }.
   // Одна страница обслуживает все команды: переключатель в шапке.
   var TEAMS = {{TEAMS_JSON}};
 
   var team = TEAMS[0];
-  var REPORT_ID, JIRA_BASE, EPICS, METRICS, BURNDOWN, CONTROL, VELOCITY, LOGS;
+  var REPORT_ID, JIRA_BASE, EPICS, METRICS, BURNDOWN, CONTROL, VELOCITY, LOGS, STATUS_MAP;
 
   function useTeam(slug) {
     team = TEAMS.find(function (t) { return t.slug === slug; }) || TEAMS[0];
     // REPORT_ID разводит localStorage-заметки: у каждой команды свои
     REPORT_ID = team.slug;
+    // раскладку статусов считает сборщик команды и кладёт в statusMap: у команд
+    // разные workflow. Нет карты (старый файл данных) — падаем в classifyBucket.
+    STATUS_MAP = team.statusMap || null;
     JIRA_BASE = team.jiraBase;
     EPICS = team.epics; METRICS = team.metrics; BURNDOWN = team.burndown;
     CONTROL = team.control; VELOCITY = team.velocity; LOGS = team.logs;
@@ -614,6 +630,10 @@
   ];
 
   function classifyBucket(status, category) {
+    if (STATUS_MAP) {
+      var mapped = STATUS_MAP[status];
+      if (mapped) return mapped;
+    }
     var s = (status || '').trim().toLowerCase();
 
     // 1. Категория JIRA "Выполнено" — авторитетный и единственный широкий признак готовности.
@@ -1416,6 +1436,31 @@
     });
   }
 
+  // «собрано 28.09 09:00 · team-b@1.2.0 · 9b01e4d» — паспорт сбора из _meta.
+  // Объект без _meta (данные до контракта) просто не показывает подвал.
+  function renderProvenance() {
+    var box = document.getElementById('provenance');
+    var rows = TEAMS.map(function (t) {
+      var m = t._meta;
+      if (!m) return '';
+      var when = new Date(m.collectedAt);
+      var stamp = isNaN(when.getTime()) ? m.collectedAt :
+        ('0' + when.getDate()).slice(-2) + '.' + ('0' + (when.getMonth() + 1)).slice(-2) + ' ' +
+        ('0' + when.getHours()).slice(-2) + ':' + ('0' + when.getMinutes()).slice(-2);
+      var parts = [esc(t.team) + ': собрано ' + esc(stamp),
+                   esc(m.collector) + '@' + esc(m.version)];
+      if (m.sha) parts.push(esc(String(m.sha).slice(0, 7)));
+      if (m.requests !== undefined) parts.push(m.requests + ' запросов');
+      var line = parts.join(' · ');
+      if ((m.warnings || []).length) {
+        line += '<span class="warn" title="' + esc(m.warnings.join('\n')) + '">' +
+          m.warnings.length + ' предупр.</span>';
+      }
+      return '<div>' + line + '</div>';
+    }).join('');
+    box.innerHTML = rows;
+  }
+
   function switchTeam(slug) {
     closePanels();
     useTeam(slug);
@@ -1428,6 +1473,7 @@
   renderHero();
   renderTable();
   renderMetricsLink();
+  renderProvenance();
   document.getElementById('logsBtn').addEventListener('click', openLogs);
   document.getElementById('notesExport').addEventListener('click', exportNotes);
   document.getElementById('notesImport').addEventListener('click', function () {

@@ -1,0 +1,289 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://po-helper-org/poh-sprint-agents/actual-sprint/team.schema.json",
+  "title": "Объект команды отчёта actual-sprint",
+  "description": "Источник истины по форме данных, которые сборщик отдаёт в stdout, а шаблон страницы получает в массиве TEAMS. Пояснения «почему так» — resources/data_shape.md.",
+  "type": "object",
+  "required": ["slug", "team", "boardId", "boardName", "boardUrl", "jiraBase",
+               "sprintName", "epics", "metrics", "burndown", "control", "velocity",
+               "logs", "_meta"],
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "description": "Уникальный идентификатор команды. Он же REPORT_ID для localStorage-заметок и имя каталога сборщика, поэтому безопасен для путей."
+    },
+    "team": { "type": "string", "minLength": 1, "description": "Отображаемое название команды." },
+    "boardId": { "type": "integer", "description": "id agile-доски, с которой собран спринт." },
+    "boardName": { "type": "string", "minLength": 1 },
+    "boardUrl": { "type": "string", "pattern": "^https?://" },
+    "jiraBase": { "type": "string", "pattern": "^https?://" },
+    "sprintName": { "type": "string", "minLength": 1, "description": "Имя активного спринта — якоря отчёта." },
+    "epics": {
+      "type": "array",
+      "description": "Единица отчёта — эпик. Порядок = порядок строк таблицы.",
+      "items": { "$ref": "#/definitions/epic" }
+    },
+    "metrics": { "$ref": "#/definitions/metrics" },
+    "burndown": { "$ref": "#/definitions/burndown" },
+    "control": { "$ref": "#/definitions/control" },
+    "velocity": { "$ref": "#/definitions/velocity" },
+    "logs": { "$ref": "#/definitions/logs" },
+    "notes": {
+      "type": "object",
+      "description": "Заметки прошлого запуска: rowId эпика → текст, плюс служебные ключи __metrics__ и __logs__. Подставляет runner из файла notes, сборщик это поле не заполняет.",
+      "additionalProperties": { "type": "string" }
+    },
+    "statusMap": {
+      "type": "object",
+      "description": "Итоговая раскладка всех встреченных статусов по бакетам. Шаблон берёт бакет отсюда, если статус есть в карте, иначе падает в classifyBucket.",
+      "additionalProperties": { "$ref": "#/definitions/bucket" }
+    },
+    "_meta": { "$ref": "#/definitions/meta" }
+  },
+  "definitions": {
+    "bucket": {
+      "type": "string",
+      "enum": ["open", "blocked", "progress", "testing", "review", "done"]
+    },
+    "meta": {
+      "type": "object",
+      "description": "Паспорт сбора: чем, когда и какой ценой собраны данные команды. Показывается в подвале страницы.",
+      "required": ["collector", "version", "protocol", "collectedAt", "requests", "durationMs", "warnings"],
+      "properties": {
+        "collector": { "type": "string", "minLength": 1, "description": "Имя сборщика: base или slug команды." },
+        "version": { "type": "string", "minLength": 1 },
+        "protocol": { "type": "integer", "minimum": 1 },
+        "collectedAt": { "type": "string", "minLength": 10, "description": "ISO-дата: время из запроса (now), не системные часы." },
+        "requests": { "type": "integer", "minimum": 0, "description": "Сколько запросов к JIRA сделал сборщик." },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "array", "items": { "type": "string" } },
+        "sha": { "type": "string", "description": "Хеш проверенного сборщика. Дописывает runner, не сборщик." }
+      }
+    },
+    "epic": {
+      "type": "object",
+      "required": ["rowId", "epicKey", "epicTitle", "stories"],
+      "properties": {
+        "rowId": { "type": "string", "minLength": 1, "description": "Уникален на строку. Обычно = epicKey, для псевдо-эпика — no-epic." },
+        "epicKey": { "type": ["string", "null"], "description": "null → строка рендерится как псевдо-эпик «Без эпика»." },
+        "epicTitle": { "type": ["string", "null"] },
+        "stories": { "type": "array", "items": { "$ref": "#/definitions/story" } }
+      }
+    },
+    "story": {
+      "type": "object",
+      "required": ["key", "title", "status", "category", "subtasks"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "status": { "type": "string", "minLength": 1, "description": "status.name как вернул JIRA. Бакеты в данных не считаются — они в statusMap." },
+        "category": { "type": "string", "description": "statusCategory.name как вернул JIRA." },
+        "statusChanged": { "type": ["string", "null"], "description": "ISO-дата последней смены статуса из changelog." },
+        "assignee": { "type": ["string", "null"], "description": "displayName исполнителя; null — не назначен." },
+        "subtasks": { "type": "array", "items": { "$ref": "#/definitions/subtask" } }
+      }
+    },
+    "subtask": {
+      "type": "object",
+      "required": ["key", "summary", "status", "category"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "status": { "type": "string", "minLength": 1 },
+        "category": { "type": "string" },
+        "statusChanged": { "type": ["string", "null"] },
+        "assignee": { "type": ["string", "null"] }
+      }
+    },
+    "stats": {
+      "type": ["object", "null"],
+      "description": "Сводка по выборке. null — выборка пуста.",
+      "required": ["mean", "median", "count"],
+      "properties": {
+        "mean": { "type": "number" },
+        "median": { "type": "number" },
+        "count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["sprints", "overall"],
+      "properties": {
+        "sprints": {
+          "type": "array",
+          "description": "По спринту на элемент, от старого к новому. Последний = активный.",
+          "items": {
+            "type": "object",
+            "required": ["name", "total", "closed", "open", "throughputPct",
+                         "lead", "cycle", "leadStory", "leadTask", "points"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "total": { "type": "integer", "minimum": 0 },
+              "closed": { "type": "integer", "minimum": 0 },
+              "open": { "type": "integer", "minimum": 0 },
+              "throughputPct": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "lead": { "$ref": "#/definitions/stats" },
+              "cycle": { "$ref": "#/definitions/stats" },
+              "leadStory": { "$ref": "#/definitions/stats" },
+              "leadTask": { "$ref": "#/definitions/stats" },
+              "points": { "type": "array", "items": { "type": "number" } }
+            }
+          }
+        },
+        "overall": {
+          "type": "object",
+          "required": ["lead", "cycle", "leadStory", "leadTask", "total", "closed"],
+          "properties": {
+            "lead": { "$ref": "#/definitions/stats" },
+            "cycle": { "$ref": "#/definitions/stats" },
+            "leadStory": { "$ref": "#/definitions/stats" },
+            "leadTask": { "$ref": "#/definitions/stats" },
+            "total": { "type": "integer", "minimum": 0 },
+            "closed": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "burndown": {
+      "type": "object",
+      "required": ["sprintName", "start", "end", "days"],
+      "properties": {
+        "sprintName": { "type": "string", "minLength": 1 },
+        "start": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "end": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "days": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["date", "scope", "remaining", "closed", "weekend", "future"],
+            "properties": {
+              "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+              "scope": { "type": "integer", "minimum": 0 },
+              "remaining": { "type": "integer" },
+              "closed": { "type": "integer", "minimum": 0 },
+              "weekend": { "type": "boolean" },
+              "future": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "required": ["days", "stories", "subtasks"],
+      "description": "Две независимые выборки: у подзадач свой масштаб Cycle Time.",
+      "properties": {
+        "days": { "type": "integer", "minimum": 1 },
+        "stories": { "$ref": "#/definitions/chart" },
+        "subtasks": { "$ref": "#/definitions/chart" }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "required": ["points", "risks", "days"],
+      "properties": {
+        "days": { "type": "integer", "minimum": 1 },
+        "points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "title", "status", "category", "doneAt", "cycle"],
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "title": { "type": "string" },
+              "status": { "type": "string" },
+              "category": { "type": "string" },
+              "doneAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+              "cycle": { "type": "number", "minimum": 0 },
+              "outlier": { "type": "boolean" }
+            }
+          }
+        },
+        "risks": {
+          "type": "array",
+          "description": "Незакрытые задачи, идущие дольше медианы своей выборки.",
+          "items": {
+            "type": "object",
+            "required": ["key", "title", "status", "category", "elapsed"],
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "title": { "type": "string" },
+              "status": { "type": "string" },
+              "category": { "type": "string" },
+              "assignee": { "type": ["string", "null"] },
+              "elapsed": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "mean": { "type": "number" },
+        "median": { "type": "number" },
+        "sd": { "type": "number" },
+        "limit": { "type": "number" },
+        "outliers": { "type": "integer", "minimum": 0 },
+        "today": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      }
+    },
+    "velocity": {
+      "type": "object",
+      "required": ["sprints", "unit", "avgDone"],
+      "properties": {
+        "unit": { "type": "string" },
+        "avgDone": { "type": "number" },
+        "sprints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "planned", "done", "split"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "planned": { "type": "integer", "minimum": 0 },
+              "done": { "type": "integer", "minimum": 0 },
+              "split": {
+                "type": "object",
+                "description": "Разбивка планового столбца по 6 бакетам. Сумма = planned.",
+                "required": ["open", "blocked", "progress", "testing", "review", "done"],
+                "additionalProperties": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "logs": {
+      "type": "object",
+      "required": ["events", "days", "kinds", "authors"],
+      "properties": {
+        "days": { "type": "integer", "minimum": 1 },
+        "kinds": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "authors": {
+          "type": "array",
+          "description": "Пары [автор, число событий], по убыванию.",
+          "items": { "type": "array", "minItems": 2, "maxItems": 2 }
+        },
+        "events": {
+          "type": "array",
+          "description": "Отсортированы по at по убыванию.",
+          "items": {
+            "type": "object",
+            "required": ["kind", "key", "title", "author", "at"],
+            "properties": {
+              "kind": { "type": "string", "enum": ["status", "comment", "created"] },
+              "key": { "type": "string", "minLength": 1 },
+              "title": { "type": "string" },
+              "author": { "type": "string" },
+              "at": { "type": "string", "minLength": 10 },
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "toCat": { "type": "string" },
+              "body": { "type": "string" },
+              "issueType": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
