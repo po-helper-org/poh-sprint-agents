@@ -4,6 +4,7 @@
   "buckets": ["open", "blocked", "progress", "testing", "review", "done"],
   "doneCategories": ["Выполнено", "Done"],
   "openCategories": ["К выполнению", "To Do"],
+  "progressCategories": ["В работе", "In Progress"],
   "categories": ["К выполнению", "В работе", "Выполнено", "To Do", "In Progress", "Done"],
   "doneExact": [
     "закрыт", "закрыта", "закрыто", "готово", "сделано", "выполнено", "выполнена",

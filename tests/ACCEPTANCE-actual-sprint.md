@@ -25,7 +25,7 @@ python3 -m unittest discover tests
 
 | НФТ | Проверка | ☑ |
 |---|---|---|
-| НФТ-1 Детерминизм | `test_byte_identical_between_runs` (исключение — `_meta.durationMs`: это измерение времени, а не данные), `test_now_comes_from_request_only` | ☑ |
+| НФТ-1 Детерминизм | `test_byte_identical_between_runs` — на replay stdout совпадает побайтово (длительность там не измеряется, иначе байты расходились бы), `test_now_comes_from_request_only` | ☑ |
 | НФТ-2 Токен | см. критерий 7 | ☑ |
 | НФТ-3 TLS | см. критерий 8; `ssl.create_default_context(cafile=…)` в базовом сборщике | ☑ |
 | НФТ-4 Только чтение | у клиента сборщика есть единственный метод `api()` — GET; записи в JIRA нет ни в одном режиме | ☑ |
@@ -34,6 +34,14 @@ python3 -m unittest discover tests
 | НФТ-7 Обратная совместимость | `test_contract.SchemaTest.test_example_passes` — прежний `example_team.json` проходит схему после добавления `_meta`, без `statusMap` | ☑ |
 | НФТ-8 Обезличивание | фикстуры синтетические (`tests/fake_jira.py`): `INIT-*`, «Участник А…», `jira.demo-workspace.local` | ☑ |
 | НФТ-9 Понятные ошибки | `test_config_errors_name_team_and_field`, сообщения называют команду, этап и следующий шаг | ☑ |
+
+## Что поправил двухосевой ревью (Standards + Spec)
+
+- **Категории «выполнено» и «в работе» были строками в коде** `lead_cycle`/`in_progress_since` — четвёртая копия правила, до которой не доходил `params`. На англоязычном инстансе это дало бы нули во всех метриках при зелёных инвариантах. Теперь категории берутся из `contract/status_rules.json` и переопределяются `params.done_categories` / `params.progress_categories`. Регрессия: `test_contract.LocalisedWorkflowTest`.
+- **Детектор дрейфа ругался на статус, который свой сборщик осознанно разложил** в своей `statusMap`. По ФТ-12.12 «покрыт картой» — это и есть карта команды; у базового сборщика карта выведена из тех же правил плагина, поэтому там проверка осталась. `test_contract.DriftDetectorTest`.
+- **`validate --lock` обходил гейт PO** (ФТ-14) — флаг убран, хеш пишет только отдельная команда `lock`.
+- Снята проверка порядка `logs.authors`: спек её не требует, а лишняя строгость валит корректный сборщик.
+- Мелочи: `_schema_path()` (middle man), неиспользуемый аргумент `collector_env(cfg)`, no-op копия словаря в инварианте 11, `cats` переехал в состояние сборщика, `extra` → `with_comments`.
 
 ## Отклонения от исходного среза
 

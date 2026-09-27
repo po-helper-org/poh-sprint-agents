@@ -8,6 +8,7 @@
 runner печатает его как есть (НФТ-9).
 """
 import hashlib
+import json
 import os
 import re
 import tomllib
@@ -202,27 +203,28 @@ def load(path):
 
 # ---------------------------------------------------------------- lock-файл
 
-def read_lock(cfg):
-    """{slug: запись}. Пишет этот файл только runner, человек его не редактирует (ФТ-6)."""
-    import json
+def _lock_document(cfg, strict=True):
+    """Содержимое lock-файла целиком. Нет файла — пустой документ."""
+    empty = {'version': 1, 'collectors': {}}
     if not cfg.lock_path.is_file():
-        return {}
+        return empty
     try:
-        data = json.loads(cfg.lock_path.read_text(encoding='utf-8'))
+        return json.loads(cfg.lock_path.read_text(encoding='utf-8'))
     except json.JSONDecodeError as exc:
+        if not strict:
+            return empty
         raise ConfigError(f'{cfg.lock_path.name} повреждён ({exc}). Удалите его и повторите '
                           f'/collector-validate по каждой команде.') from exc
-    return data.get('collectors', {})
+
+
+def read_lock(cfg):
+    """{slug: запись}. Пишет этот файл только runner, человек его не редактирует (ФТ-6)."""
+    return _lock_document(cfg).get('collectors', {})
 
 
 def write_lock(cfg, slug, digest, collected_at, extra=None):
-    import json
-    data = {'version': 1, 'collectors': {}}
-    if cfg.lock_path.is_file():
-        try:
-            data = json.loads(cfg.lock_path.read_text(encoding='utf-8'))
-        except json.JSONDecodeError:
-            data = {'version': 1, 'collectors': {}}
+    # битый lock при записи не спорим, а перезаписываем: он машинный
+    data = _lock_document(cfg, strict=False)
     data.setdefault('version', 1)
     entry = {'sha256': digest, 'validatedAt': collected_at}
     entry.update(extra or {})

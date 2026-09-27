@@ -40,10 +40,15 @@ def rules_path(explicit=None):
 
 
 class Rules:
-    def __init__(self, data, overrides=None, done_exact=None, categories=None):
+    def __init__(self, data, overrides=None, done_exact=None, categories=None,
+                 done_categories=None, progress_categories=None):
         self.buckets = tuple(data.get('buckets') or BUCKETS)
-        self.done_categories = set(data.get('doneCategories', []))
+        self.done_categories = set(done_categories if done_categories is not None
+                                   else data.get('doneCategories', []))
         self.open_categories = set(data.get('openCategories', []))
+        # по этим категориям считаются Lead/Cycle Time: «взяли в работу» и «закрыли»
+        self.progress_categories = set(progress_categories if progress_categories is not None
+                                       else data.get('progressCategories', []))
         self.categories = list(categories if categories is not None else data.get('categories', []))
         source = done_exact if done_exact is not None else data.get('doneExact', [])
         self.done_exact = {s.strip().lower() for s in source}
@@ -73,11 +78,18 @@ class Rules:
     def bucket(self, status, category):
         return self.classify(status, category)[0]
 
+    def is_done(self, category):
+        return category in self.done_categories
+
+    def is_progress(self, category):
+        return category in self.progress_categories
+
     def empty_counts(self):
         return dict.fromkeys(self.buckets, 0)
 
 
-def load(path=None, overrides=None, done_exact=None, categories=None):
-    """Правила из файла. done_exact и categories переопределяются params команды (ФТ-15)."""
+def load(path=None, overrides=None, done_exact=None, categories=None,
+         done_categories=None, progress_categories=None):
+    """Правила из файла; всё, что перечислено, переопределяется params команды (ФТ-15)."""
     data = json.loads(rules_path(path).read_text(encoding='utf-8'))
-    return Rules(data, overrides, done_exact, categories)
+    return Rules(data, overrides, done_exact, categories, done_categories, progress_categories)

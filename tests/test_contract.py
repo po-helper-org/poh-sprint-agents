@@ -63,6 +63,81 @@ class SchemaTest(unittest.TestCase):
                 self.assertEqual(want, rules.bucket(status, category))
 
 
+class LocalisedWorkflowTest(unittest.TestCase):
+    """Категории «выполнено» и «в работе» — данные правил, а не строки в коде.
+
+    На англоязычном инстансе захардкоженные «Выполнено»/«В работе» дали бы
+    lead = None у всех задач: закрыто 0, пустые графики — и все инварианты при
+    этом проходят, потому что нули согласованы между собой.
+    """
+
+    @staticmethod
+    def issue(created, moved, closed):
+        return {'key': 'EN-1', 'fields': {'created': created, 'status': {'id': '9'}},
+                'changelog': {'histories': [
+                    {'created': moved, 'items': [{'field': 'status', 'to': '4'}]},
+                    {'created': closed, 'items': [{'field': 'status', 'to': '9'}]}]}}
+
+    def setUp(self):
+        self.collector = support.load_module(support.BASE_COLLECTOR, 'collector_for_rules')
+        self.issue_data = self.issue('2026-09-01T10:00:00+03:00',
+                                     '2026-09-03T10:00:00+03:00',
+                                     '2026-09-05T10:00:00+03:00')
+
+    def test_english_categories(self):
+        import buckets
+        rules = buckets.load()
+        cats = {'4': 'In Progress', '9': 'Done'}
+        lead, cycle, done_at = self.collector.lead_cycle(self.issue_data, cats, rules)
+        self.assertEqual(4.0, lead)
+        self.assertEqual(2.0, cycle)
+        self.assertIsNotNone(done_at)
+
+    def test_russian_categories(self):
+        import buckets
+        rules = buckets.load()
+        cats = {'4': 'В работе', '9': 'Выполнено'}
+        lead, cycle, _ = self.collector.lead_cycle(self.issue_data, cats, rules)
+        self.assertEqual((4.0, 2.0), (lead, cycle))
+
+    def test_params_can_rename_categories(self):
+        """Команда со своим workflow задаёт категории в params, а не форкает сборщик."""
+        import buckets
+        rules = buckets.load(done_categories=['Ready for release'],
+                             progress_categories=['Doing'])
+        cats = {'4': 'Doing', '9': 'Ready for release'}
+        lead, cycle, _ = self.collector.lead_cycle(self.issue_data, cats, rules)
+        self.assertEqual((4.0, 2.0), (lead, cycle))
+
+
+class DriftDetectorTest(unittest.TestCase):
+    """ФТ-12.12: предупреждение на статус, не покрытый ни картой, ни правилами."""
+
+    def team(self, collector, status, status_map):
+        return {'slug': 'team-x', '_meta': {'collector': collector},
+                'statusMap': status_map,
+                'epics': [{'rowId': 'no-epic', 'epicKey': None, 'epicTitle': 'Без эпика',
+                           'stories': [{'key': 'X-1', 'title': 'x', 'status': status,
+                                        'category': 'В работе', 'subtasks': []}]}]}
+
+    def test_base_collector_map_does_not_silence(self):
+        """Карта базового сборщика выведена из тех же правил — она не аргумент."""
+        warnings = validate_mod.drift_warnings(
+            self.team('base', 'Дизайн', {'Дизайн': 'progress'}))
+        self.assertTrue(any('Дизайн' in w for w in warnings), warnings)
+
+    def test_custom_collector_map_silences(self):
+        """Свой сборщик решает за свой workflow сам — это и есть «покрыт картой»."""
+        warnings = validate_mod.drift_warnings(
+            self.team('team-x', 'Дизайн', {'Дизайн': 'progress'}))
+        self.assertEqual([], warnings)
+
+    def test_custom_collector_still_warns_on_uncovered(self):
+        warnings = validate_mod.drift_warnings(
+            self.team('team-x', 'Дизайн', {'Другой статус': 'progress'}))
+        self.assertTrue(any('Дизайн' in w for w in warnings), warnings)
+
+
 class InvariantTest(unittest.TestCase):
     """ФТ-12: каждый инвариант ловит свою поломку и называет команду."""
 

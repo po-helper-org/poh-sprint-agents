@@ -60,17 +60,12 @@ class ProtocolTest(unittest.TestCase):
 
 class DeterminismTest(unittest.TestCase):
     def test_byte_identical_between_runs(self):
-        """НФТ-1: одинаковый вход и один now → побайтово одинаковый stdout.
-
-        Исключение одно и оно измерение, а не данные: durationMs — потраченное
-        время, оно от запуска к запуску разное по определению.
-        """
-        first = json.loads(support.run_collector().stdout)
-        second = json.loads(support.run_collector().stdout)
-        for data in (first, second):
-            data['_meta']['durationMs'] = 0
-        self.assertEqual(json.dumps(first, ensure_ascii=False, sort_keys=True),
-                         json.dumps(second, ensure_ascii=False, sort_keys=True))
+        """НФТ-1: одни и те же replay-данные и один now → побайтово одинаковый stdout."""
+        first = support.run_collector().stdout
+        second = support.run_collector().stdout
+        self.assertEqual(first, second)
+        self.assertEqual(0, json.loads(first)['_meta']['durationMs'],
+                         'на replay длительность не измеряется — иначе байты разойдутся')
 
     def test_now_comes_from_request_only(self):
         """Сдвинули now — сдвинулись производные от «сейчас», а не всё подряд."""

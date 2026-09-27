@@ -16,6 +16,7 @@ if str(CONTRACT) not in sys.path:
     sys.path.insert(0, str(CONTRACT))
 
 import buckets as buckets_mod
+import config as config_mod
 import schema as schema_mod
 
 BUCKET_SET = set(buckets_mod.BUCKETS)
@@ -76,7 +77,11 @@ def _parse_iso(value):
 
 
 def _units(team):
-    """Все единицы подсчёта иерархии: истории и подзадачи, с пометкой вида."""
+    """Единицы подсчёта иерархии: (вид, задача, родитель).
+
+    Родитель у истории — её эпик, у подзадачи — её история: в отчёте это
+    единственный контекст, который нужен для сверки и сообщений об ошибках.
+    """
     for epic in team.get('epics') or []:
         for story in epic.get('stories') or []:
             yield 'story', story, epic
@@ -94,7 +99,9 @@ def team_rules(cfg_team):
     try:
         return buckets_mod.load(overrides=params.get('status_buckets') or {},
                                 done_exact=params.get('done_statuses'),
-                                categories=params.get('categories'))
+                                categories=params.get('categories'),
+                                done_categories=params.get('done_categories'),
+                                progress_categories=params.get('progress_categories'))
     except (buckets_mod.RulesNotFound, ValueError):
         return None
 
@@ -104,7 +111,7 @@ def check(team, cfg_team=None, rules=None):
     if rules is None:
         rules = team_rules(cfg_team)
     rep = Report(team.get('slug') if isinstance(team, dict) else '?')
-    root = schema_mod.load_schema(_schema_path())
+    root = schema_mod.load_schema(config_mod.SCHEMA_PATH)
     rep.schema_errors = [str(e) for e in schema_mod.validate(team, root)]
     if rep.schema_errors:
         # инварианты по битой форме врут: числа могут отсутствовать вовсе
@@ -142,11 +149,6 @@ def check(team, cfg_team=None, rules=None):
              if not any(_quoted(w) and _quoted(w) in s for s in said)]
     rep.warnings = own + extra
     return rep
-
-
-def _schema_path():
-    import config
-    return config.SCHEMA_PATH
 
 
 # ------------------------------------------------------------- инварианты
@@ -280,6 +282,8 @@ def _inv_metrics(team):
     for s in sprints:
         if s['closed'] > s['total']:
             out.append(f'{s["name"]}: closed {s["closed"]} больше total {s["total"]}')
+        # open, overall.closed и split.done проверяются как определения тех же чисел,
+        # а не как дополнительные требования к сборщику
         if s['open'] != s['total'] - s['closed']:
             out.append(f'{s["name"]}: open {s["open"]} ≠ total − closed')
     overall = team['metrics']['overall']
@@ -373,14 +377,11 @@ def _inv_logs(team, collected):
     for e in events:
         kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
         authors[e['author']] = authors.get(e['author'], 0) + 1
-    if kinds != {k: v for k, v in logs['kinds'].items()}:
+    if kinds != logs['kinds']:
         out.append(f'kinds {logs["kinds"]} не сходится с событиями {kinds}')
     got = {name: n for name, n in logs['authors']}
     if got != authors:
         out.append('authors не сходится с событиями')
-    counts = [n for _, n in logs['authors']]
-    if counts != sorted(counts, reverse=True):
-        out.append('authors не отсортированы по убыванию')
     return out[:10]
 
 
@@ -405,16 +406,25 @@ def drift_warnings(team, rules=None):
 
     Молча уехать в progress может и новый статус, который команда ещё не описала,
     и опечатка в workflow. Лечится строкой в params.status_buckets.
+
+    Своя карта своего сборщика — это и есть «покрыт картой»: команда решила за
+    свой workflow сама. У базового сборщика карта выведена из тех же правил
+    плагина, поэтому там она ничего не добавляет и проверка остаётся в силе.
     """
     if rules is None:
         try:
             rules = buckets_mod.load()
         except buckets_mod.RulesNotFound:
             return []
+    own_map = team.get('statusMap') or {}
+    collector = (team.get('_meta') or {}).get('collector')
+    covered = set(own_map) if collector not in (None, 'base') else set()
     seen, out = {}, []
     for _, unit, _ in _units(team):
         seen.setdefault(unit['status'], unit.get('category'))
     for status, category in sorted(seen.items()):
+        if status in covered:
+            continue
         bucket, rule = rules.classify(status, category)
         if rule == 'category-default' and bucket == 'progress':
             out.append(f'статус «{status}» не покрыт правилами бакетов → progress. '

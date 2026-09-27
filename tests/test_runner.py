@@ -262,10 +262,13 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual([l for l in proc.stdout.splitlines() if 'status=«' in l],
                          [l for l in again.splitlines() if 'status=«' in l])
 
-    def test_validate_with_lock_writes_lock(self):
-        proc = self.p.run('validate', 'team-b', '--sample', '2', '--lock')
+    def test_validate_does_not_write_lock_itself(self):
+        """ФТ-14: хеш пишется только отдельной командой, после подтверждения PO."""
+        proc = self.p.run('validate', 'team-b', '--sample', '2')
         self.assertEqual(0, proc.returncode, proc.stdout)
-        self.assertIn('lock записан', proc.stdout)
+        self.assertFalse(self.p.lock.exists())
+        self.assertIn('lock team-b', proc.stdout)
+        self.assertEqual(0, self.p.run('lock', 'team-b').returncode)
         self.assertIn('team-b', json.loads(self.p.lock.read_text(encoding='utf-8'))['collectors'])
 
     def test_validate_reports_broken_collector(self):

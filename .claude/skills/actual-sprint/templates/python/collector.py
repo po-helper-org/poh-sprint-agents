@@ -23,6 +23,8 @@
     activity_days    7                  окно ленты активности
     control_days     30                 окно диаграмм управления
     categories       из status_rules.json               допустимые категории JIRA
+    done_categories  ["Выполнено", "Done"]      категории «закрыто» для Lead/Cycle Time
+    progress_categories ["В работе", "In Progress"]   категории «взято в работу"
 
 Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
 """
@@ -75,7 +77,9 @@ def load_rules(params):
             try:
                 return buckets.load(overrides=params.get('status_buckets') or {},
                                     done_exact=params.get('done_statuses'),
-                                    categories=params.get('categories'))
+                                    categories=params.get('categories'),
+                                    done_categories=params.get('done_categories'),
+                                    progress_categories=params.get('progress_categories'))
             except ValueError as exc:
                 raise ConfigProblem(str(exc)) from exc
     raise ConfigProblem(
@@ -199,8 +203,12 @@ def last_status_change(issue):
     return last or issue['fields']['created']
 
 
-def lead_cycle(issue, cats):
-    """(lead, cycle, done_at) в днях. Переоткрытие сбрасывает дату закрытия."""
+def lead_cycle(issue, cats, rules):
+    """(lead, cycle, done_at) в днях. Переоткрытие сбрасывает дату закрытия.
+
+    Что считать «взяли в работу» и «закрыли» — категории из правил, а не строки
+    здесь: у англоязычного workflow они называются иначе.
+    """
     f = issue['fields']
     created = parse(f['created'])
     done_at = start_at = None
@@ -210,13 +218,13 @@ def lead_cycle(issue, cats):
                 continue
             cat = cats.get(str(it.get('to')))
             when = parse(h['created'])
-            if cat == 'В работе' and start_at is None:
+            if rules.is_progress(cat) and start_at is None:
                 start_at = when
-            if cat == 'Выполнено':
+            if rules.is_done(cat):
                 done_at = when
             elif done_at is not None:
                 done_at = None
-    is_done = cats.get(str(f['status']['id'])) == 'Выполнено'
+    is_done = rules.is_done(cats.get(str(f['status']['id'])))
     if not (is_done and done_at):
         return None, None, None
     lead = round((done_at - created).total_seconds() / 86400, 2)
@@ -224,14 +232,15 @@ def lead_cycle(issue, cats):
     return lead, cycle, done_at
 
 
-def in_progress_since(issue, cats):
+def in_progress_since(issue, cats, rules):
     """Когда задачу взяли в работу, если она до сих пор не закрыта. Иначе None."""
-    if cats.get(str(issue['fields']['status']['id'])) == 'Выполнено':
+    if rules.is_done(cats.get(str(issue['fields']['status']['id']))):
         return None
     start = None
     for h in sorted(issue.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
         for it in h['items']:
-            if it['field'] == 'status' and cats.get(str(it.get('to'))) == 'В работе' and start is None:
+            if it['field'] == 'status' and rules.is_progress(cats.get(str(it.get('to')))) \
+                    and start is None:
                 start = parse(h['created'])
     return start
 
@@ -245,6 +254,7 @@ class Collector:
         self.now = parse(request['now'])
         self.warnings = []
         self.status_map = {}
+        self.cats = {}      # id статуса -> категория; заполняется в collect()
         p = self.params
         # TEAM RULE: что считать историей внутри эпика
         self.story_types = tuple(p.get('story_types') or ('История', 'История Enabler', 'Story'))
@@ -290,7 +300,7 @@ class Collector:
 
     def collect(self):
         board_id = self.team['board']
-        cats = self.status_categories()
+        self.cats = self.status_categories()
         epic_field = self.epic_link_field()
 
         board = next((b for b in self.jira.paged('/rest/agile/1.0/board') if b['id'] == board_id), None)
@@ -318,15 +328,16 @@ class Collector:
             fields += ',' + epic_field  # иначе пришлось бы делать запрос на каждую историю
         per_sprint = {s['id']: self.jira.sprint_issues(s['id'], fields, expand='changelog')
                       for s in last}
-        extra = {s['id']: self.jira.sprint_issues(s['id'], 'key,summary,issuetype,created,creator,comment')
-                 for s in last}
+        # второй пакетный проход: в ответе с expand=changelog комментариев нет
+        with_comments = {s['id']: self.jira.sprint_issues(
+            s['id'], 'key,summary,issuetype,created,creator,comment') for s in last}
 
         issues = per_sprint[active['id']]
-        epics = self.build_epics(issues, epic_field, cats)
-        metrics, velocity = self.build_metrics(last, per_sprint, cats)
-        burndown = self.build_burndown(active, issues, cats)
-        control = self.build_control(last, per_sprint, cats)
-        logs = self.build_logs(last, per_sprint, extra, cats)
+        epics = self.build_epics(issues, epic_field)
+        metrics, velocity = self.build_metrics(last, per_sprint)
+        burndown = self.build_burndown(active, issues)
+        control = self.build_control(last, per_sprint)
+        logs = self.build_logs(last, per_sprint, with_comments)
 
         return {
             'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
@@ -338,7 +349,7 @@ class Collector:
             'statusMap': dict(sorted(self.status_map.items())),
         }
 
-    def build_epics(self, issues, epic_field, cats):
+    def build_epics(self, issues, epic_field):
         stories = [i for i in issues if i['fields']['issuetype']['name'] in self.story_types]
         if issues and not stories:
             self.warn(f'ни одна задача спринта не попала в story_types {list(self.story_types)} — '
@@ -369,7 +380,7 @@ class Collector:
             row['stories'].append({
                 'key': st['key'], 'title': f['summary'],
                 'status': f['status']['name'],
-                'category': cats.get(str(f['status']['id'])) or '',
+                'category': self.cats.get(str(f['status']['id'])) or '',
                 'statusChanged': last_status_change(st),
                 'assignee': (f.get('assignee') or {}).get('displayName'),
                 'subtasks': [{
@@ -396,15 +407,15 @@ class Collector:
                         sub['assignee'] = (src['fields'].get('assignee') or {}).get('displayName')
         return [groups[k] for k in order]
 
-    def build_metrics(self, sprints, per_sprint, cats):
+    def build_metrics(self, sprints, per_sprint):
         sprint_rows, all_closed, velocity = [], [], []
         for s in sprints:
             rows = []
             counts = self.rules.empty_counts()
             for i in per_sprint[s['id']]:
                 f = i['fields']
-                counts[self.bucket(f['status']['name'], cats.get(str(f['status']['id'])) or '')] += 1
-                lead, cycle, _ = lead_cycle(i, cats)
+                counts[self.bucket(f['status']['name'], self.cats.get(str(f['status']['id'])) or '')] += 1
+                lead, cycle, _ = lead_cycle(i, self.cats, self.rules)
                 rows.append({'lead': lead, 'cycle': cycle,
                              'story': f['issuetype']['name'] in self.story_types,
                              'subtask': bool(f['issuetype'].get('subtask')),
@@ -434,7 +445,7 @@ class Collector:
                'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)}
         return metrics, vel
 
-    def build_burndown(self, active, issues, cats):
+    def build_burndown(self, active, issues):
         start, end = parse(active['startDate']), parse(active['endDate'])
         members = []
         for i in issues:
@@ -449,7 +460,7 @@ class Collector:
                         entered = parse(h['created'])
                     if was and not now_in:
                         left = parse(h['created'])
-            _, _, done_at = lead_cycle(i, cats)
+            _, _, done_at = lead_cycle(i, self.cats, self.rules)
             members.append({'entered': entered or start, 'left': left, 'doneAt': done_at})
 
         days, cur = [], start
@@ -469,7 +480,7 @@ class Collector:
         return {'sprintName': active['name'], 'start': start.date().isoformat(),
                 'end': end.date().isoformat(), 'days': days}
 
-    def build_control(self, sprints, per_sprint, cats):
+    def build_control(self, sprints, per_sprint):
         """Точки — закрытые за control_days (Cycle Time). Зона риска — НЕзакрытые задачи,
         которые идут дольше медианы своей группы."""
         since = self.now - timedelta(days=self.control_days)
@@ -480,15 +491,15 @@ class Collector:
             for i in per_sprint[s['id']]:
                 f = i['fields']
                 grp = 'subtasks' if f['issuetype'].get('subtask') else 'stories'
-                lead, cycle, done_at = lead_cycle(i, cats)
-                category = cats.get(str(f['status']['id'])) or ''
+                lead, cycle, done_at = lead_cycle(i, self.cats, self.rules)
+                category = self.cats.get(str(f['status']['id'])) or ''
                 if done_at and cycle is not None and done_at >= since:
                     closed_by_group[grp][i['key']] = {
                         'key': i['key'], 'title': f['summary'],
                         'status': f['status']['name'], 'category': category,
                         'doneAt': done_at.date().isoformat(), 'cycle': cycle}
                     continue
-                started = in_progress_since(i, cats)
+                started = in_progress_since(i, self.cats, self.rules)
                 if started:
                     open_by_group[grp].append({
                         'key': i['key'], 'title': f['summary'],
@@ -519,7 +530,7 @@ class Collector:
         return {'stories': chart('stories'), 'subtasks': chart('subtasks'),
                 'days': self.control_days}
 
-    def build_logs(self, sprints, per_sprint, extra, cats):
+    def build_logs(self, sprints, per_sprint, with_comments):
         since = self.now - timedelta(days=self.activity_days)
         events, seen = [], set()
         for s in sprints:
@@ -541,8 +552,8 @@ class Collector:
                                        'at': when.isoformat(),
                                        'from': it.get('fromString') or '—',
                                        'to': it.get('toString') or '—',
-                                       'toCat': cats.get(str(it.get('to'))) or ''})
-            for i in extra[s['id']]:
+                                       'toCat': self.cats.get(str(it.get('to'))) or ''})
+            for i in with_comments[s['id']]:
                 f = i['fields']
                 created = parse(f['created'])
                 if created >= since and f'cr:{i["key"]}' not in seen:
@@ -626,10 +637,13 @@ def main(argv=None):
         log(f'неожиданная форма ответа JIRA: нет поля {exc}')
         return EXIT_ERROR
 
+    # на replay длительность не измеряется: иначе прогон по одним и тем же
+    # фикстурам давал бы разный stdout, а НФТ-1 требует побайтового совпадения
+    duration = 0 if replay else int((datetime.now() - started).total_seconds() * 1000)
     data['_meta'] = {
         'collector': NAME, 'version': VERSION, 'protocol': PROTOCOL,
         'collectedAt': req['now'], 'requests': jira.requests,
-        'durationMs': int((datetime.now() - started).total_seconds() * 1000),
+        'durationMs': duration,
         'warnings': collector.warnings,
     }
     # sort_keys — часть детерминизма: одинаковый вход даёт побайтово одинаковый stdout

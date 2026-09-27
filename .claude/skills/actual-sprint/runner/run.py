@@ -5,7 +5,7 @@
 запускает `run` и показывает сводку. Сама в JIRA не ходит.
 
     run.py run       [--config sprint-report.config.toml] [--only team-a,team-b]
-    run.py validate  <slug> [--sample 5] [--seed N] [--lock]
+    run.py validate  <slug> [--sample 5] [--seed N]
     run.py lock      <slug>
     run.py new       <slug> [--lang python]
 
@@ -55,7 +55,7 @@ def now_iso(explicit=None):
 
 # --------------------------------------------------------------- запуск сборщика
 
-def collector_env(cfg):
+def collector_env():
     """Окружение сборщика: своё плюс путь к контракту. Токен уже в os.environ."""
     env = dict(os.environ)
     env[buckets_mod.ENV_CONTRACT] = str(config_mod.SCHEMA_PATH.parent)
@@ -94,7 +94,7 @@ def run_collector(cfg, team, url, now, extra_args=()):
         # а stderr показывается целиком и с префиксом команды сразу после
         proc = subprocess.Popen(argv, cwd=str(team.cwd), stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, env=collector_env(cfg))
+                                text=True, env=collector_env())
     except FileNotFoundError as exc:
         raise RunFailure(f'сборщик не запускается: {exc}', EXIT_CONFIG) from exc
     try:
@@ -244,12 +244,9 @@ def cmd_validate(args):
     print(f'выборка для сверки с JIRA (seed {seed}):')
     for line in validate_mod.format_sample(rows):
         print(line)
+    # хеш пишет отдельная команда: подтверждение PO — часть проверки, а не флаг
     print('\nСверьте эти задачи в JIRA поле за полем. Совпало и PO подтвердил → '
           f'python3 {Path(__file__).name} lock {team.slug}')
-    if args.lock:
-        entry = config_mod.write_lock(cfg, team.slug, team.digest(), now,
-                                      {'collector': team.collector_name})
-        print(f'lock записан: {team.slug} sha {entry["sha256"][:7]} → {cfg.lock_path.name}')
     return EXIT_OK
 
 
@@ -308,8 +305,6 @@ def main(argv=None):
     p_val.add_argument('slug')
     p_val.add_argument('--sample', type=int, default=5)
     p_val.add_argument('--seed', type=int, default=None)
-    p_val.add_argument('--lock', action='store_true',
-                       help='записать хеш сразу (только после сверки и подтверждения PO)')
 
     p_lock = sub.add_parser('lock', help='записать хеш проверенного сборщика')
     p_lock.add_argument('slug')
