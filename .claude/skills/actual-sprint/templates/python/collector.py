@@ -104,7 +104,12 @@ class Jira:
         if self.record:
             self.record.mkdir(parents=True, exist_ok=True)
         # проверка сертификата включена всегда; корпоративный CA — через ca_bundle
-        self.ctx = ssl.create_default_context(cafile=str(ca_bundle) if ca_bundle else None)
+        try:
+            self.ctx = ssl.create_default_context(cafile=str(ca_bundle) if ca_bundle else None)
+        except OSError as exc:
+            # голый «No such file or directory» без пути стоит часа отладки
+            raise ConfigProblem(f'не читается CA-бандл {ca_bundle}: {exc.strerror}. '
+                                f'Проверьте jira.ca_bundle в конфиге.') from exc
 
     @staticmethod
     def _key(path, params):
@@ -131,6 +136,12 @@ class Jira:
                 raise JiraProblem(f'JIRA не авторизует запрос (HTTP {exc.code}) — проверьте токен') from exc
             raise JiraProblem(f'JIRA вернула HTTP {exc.code} на GET {canon}') from exc
         except urllib.error.URLError as exc:
+            if isinstance(exc.reason, ssl.SSLCertVerificationError):
+                raise JiraProblem(
+                    f'сертификат JIRA не проверился ({exc.reason.verify_message or exc.reason}). '
+                    f'Если инстанс за корпоративным CA, укажите путь к бандлу в jira.ca_bundle '
+                    f'конфига. Проверку сертификата не отключаем: по этому соединению идёт '
+                    f'личный токен.') from exc
             raise JiraProblem(f'JIRA недоступна ({exc.reason}) — проверьте VPN и адрес') from exc
         if self.record:
             # в дамп идут только путь, параметры и тело ответа: заголовок с токеном — никогда
@@ -282,6 +293,17 @@ class Collector:
         return {str(s['id']): s['statusCategory']['name']
                 for s in self.jira.api('/rest/api/2/status')}
 
+    def board_name(self, board_id):
+        """Имя доски одним запросом по id: на инстансе с сотнями досок обход списка
+        стоит десяток запросов и упирается в права видимости."""
+        try:
+            return self.jira.api(f'/rest/agile/1.0/board/{board_id}')['name']
+        except JiraProblem as exc:
+            if 'HTTP 404' in str(exc):
+                raise ConfigProblem(f'доски #{board_id} не существует или она не видна этому '
+                                    f'токену — проверьте board в конфиге') from exc
+            raise
+
     def epic_link_field(self):
         """TEAM RULE: через какое поле история связана с эпиком."""
         explicit = self.params.get('epic_link_field', 'auto')
@@ -303,10 +325,7 @@ class Collector:
         self.cats = self.status_categories()
         epic_field = self.epic_link_field()
 
-        board = next((b for b in self.jira.paged('/rest/agile/1.0/board') if b['id'] == board_id), None)
-        if board is None:
-            self.warn(f'доски #{board_id} нет в списке доступных — имя доски будет техническим')
-        board_name = board['name'] if board else f'board {board_id}'
+        board_name = self.board_name(board_id)
 
         sprints = [s for s in self.jira.paged(f'/rest/agile/1.0/board/{board_id}/sprint',
                                               state='closed,active')
@@ -359,11 +378,18 @@ class Collector:
         # ключи эпиков уже пришли в полях историй; названия добираем одним запросом на все
         epic_keys = sorted({st['fields'].get(epic_field) for st in stories
                             if epic_field and st['fields'].get(epic_field)})
-        if epic_keys:
-            jql = 'key in (' + ','.join(epic_keys) + ')'
+        # пачками: длина JQL и maxResults не резиновые, а эпиков у команды бывает много
+        chunk = int(self.params.get('epic_batch', 50))
+        for start in range(0, len(epic_keys), chunk):
+            batch = epic_keys[start:start + chunk]
+            jql = 'key in (' + ','.join(batch) + ')'
             found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary',
-                                  maxResults=200)['issues']
-            epic_cache = {i['key']: i['fields']['summary'] for i in found}
+                                  maxResults=len(batch))['issues']
+            epic_cache.update({i['key']: i['fields']['summary'] for i in found})
+        missing = [k for k in epic_keys if k not in epic_cache]
+        if missing:
+            self.warn(f'{len(missing)} эпиков не отдались по ключу (нет прав или удалены): '
+                      f'{", ".join(missing[:3])}')
 
         orphans = 0
         for st in stories:
@@ -623,6 +649,13 @@ def main(argv=None):
         token = os.environ.get(token_env, '')
         if not token and not replay:
             raise JiraProblem(f'нет токена в переменной окружения {token_env}')
+        if token:
+            try:
+                token.encode('latin-1')
+            except UnicodeEncodeError:
+                raise ConfigProblem(
+                    f'в {token_env} есть символы вне latin-1 — такой заголовок нельзя отправить. '
+                    f'Похоже, в переменную попал не токен: скопируйте его заново.') from None
         jira = Jira(base or 'https://replay.invalid', token, jira_spec.get('caBundle'),
                     record=record, replay=replay)
         collector = Collector(jira, req, rules)

@@ -17,7 +17,8 @@ LEGACY_GOLDEN = HERE / 'fixtures' / 'legacy_collect_team.json'
 CUSTOM_COLLECTOR = HERE / 'fixtures' / 'collectors' / 'team-b'
 
 NOW = '2026-09-15T17:00:00.000+0300'
-FAKE_TOKEN = 'токен-который-не-должен-утечь-42'
+# ASCII, как настоящий PAT, но заметный: по нему grep ищет утечку токена
+FAKE_TOKEN = 'nOtARealToken-must-not-leak-42'
 
 for path in (RUNNER, CONTRACT):
     if str(path) not in sys.path:

@@ -4,6 +4,7 @@
 Единственный способ получить данные отчёта. Модель сюда не заглядывает: она
 запускает `run` и показывает сводку. Сама в JIRA не ходит.
 
+    run.py doctor    [--config sprint-report.config.toml]
     run.py run       [--config sprint-report.config.toml] [--only team-a,team-b]
     run.py validate  <slug> [--sample 5] [--seed N]
     run.py lock      <slug>
@@ -19,6 +20,14 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
+MIN_PYTHON = (3, 11)
+if sys.version_info < MIN_PYTHON:
+    # tomllib появился в 3.11; без этой проверки первый запуск падает ImportError
+    sys.exit(f'runner требует Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ '
+             f'(конфиг читается stdlib-модулем tomllib), запущен '
+             f'{sys.version_info.major}.{sys.version_info.minor}. '
+             f'Запустите его другим интерпретатором: python3.11 run.py …')
 
 HERE = Path(__file__).resolve().parent
 for _p in (HERE, HERE.parent / 'contract'):
@@ -138,12 +147,7 @@ def check_lock(cfg, team, lock):
     if not cfg.strict:
         return {'missing': '⚠ не проверен (strict выключен)',
                 'changed': '⚠ изменён после проверки (strict выключен)'}[state]
-    if state == 'missing':
-        raise RunFailure(f'сборщик не проверен — в {cfg.lock_path.name} нет записи.\n'
-                         f'         Запустите /collector-validate {team.slug}. HTML не сгенерирован.',
-                         EXIT_CONFIG)
-    raise RunFailure(f'сборщик изменён после проверки '
-                     f'(sha {entry["sha256"][:7]} → {digest[:7]}).\n'
+    raise RunFailure(f'{lock_reason(team, state, entry)}.\n'
                      f'         Запустите /collector-validate {team.slug}. HTML не сгенерирован.',
                      EXIT_CONFIG)
 
@@ -157,6 +161,91 @@ def team_line(team, data, elapsed):
 
 
 # --------------------------------------------------------------- команды CLI
+
+def lock_reason(team, state, entry):
+    """Почему сборщик не считается проверенным — словами, а не кодом состояния.
+
+    У базового сборщика «изменился» почти всегда значит «обновился плагин»:
+    это не подозрительная правка, но проверять его всё равно надо заново.
+    """
+    if state == 'missing':
+        return 'не проверен'
+    if team.is_base:
+        was = entry.get('version') or 'прошлой версии'
+        return f'базовый сборщик обновился с проверки ({was} → {config_mod.PLUGIN_VERSION})'
+    return f'изменён после проверки (sha {entry["sha256"][:7]} → {team.digest()[:7]})'
+
+
+def cmd_doctor(args):
+    """Проверка стенда до первого похода в JIRA: что на месте, что задано, что проверено.
+
+    Намеренно не ходит в сеть: сетевые и доступовые проблемы показывает первый же
+    `validate <slug>`, а здесь отвечаем на вопрос «всё ли разложено по местам».
+    """
+    ok = True
+    print(f'python         ✓ {sys.version_info.major}.{sys.version_info.minor}.'
+          f'{sys.version_info.micro}')
+
+    parts = {'схема': config_mod.SCHEMA_PATH,
+             'протокол': config_mod.SCHEMA_PATH.parent / 'PROTOCOL.md',
+             'правила бакетов': buckets_mod.DEFAULT_RULES,
+             'шаблон страницы': config_mod.TEMPLATE_PATH,
+             'базовый сборщик': config_mod.BASE_COLLECTOR}
+    missing = [name for name, path in parts.items() if not Path(path).is_file()]
+    if missing:
+        ok = False
+        print(f'плагин         ✗ не хватает файлов: {", ".join(missing)}')
+    else:
+        print(f'плагин         ✓ {config_mod.PLUGIN_VERSION}, контракт и шаблоны на месте')
+
+    try:
+        cfg = config_mod.load(args.config)
+    except config_mod.ConfigError as exc:
+        print(f'конфиг         ✗ {exc}')
+        print('\nСтенд не готов. Конфиг пишет /sprint-setup.')
+        return EXIT_CONFIG
+    print(f'конфиг         ✓ {cfg.path.name}, команд {len(cfg.teams)}, '
+          f'strict {"вкл" if cfg.strict else "выкл"}')
+
+    # значения переменных не печатаем никогда: в одной из них токен
+    for label, env_name, getter in (('адрес JIRA', cfg.url_env, cfg.jira_url),
+                                    ('токен', cfg.token_env, cfg.token)):
+        try:
+            getter()
+            print(f'{label:14} ✓ {env_name} задан')
+        except config_mod.ConfigError as exc:
+            ok = False
+            print(f'{label:14} ✗ {exc}')
+    if cfg.ca_bundle:
+        print(f'ca_bundle      ✓ {cfg.ca_bundle}')
+    else:
+        print('ca_bundle      — не задан (нужен, только если инстанс за корпоративным CA)')
+
+    lock = config_mod.read_lock(cfg)
+    for team in cfg.teams:
+        where = 'base' if team.is_base else os.path.relpath(team.cwd, cfg.root)
+        if not team.is_base:
+            exe = Path(team.argv()[0])
+            if not team.build and not exe.exists() and '/' in team.cmd[0]:
+                ok = False
+                print(f'[{team.slug}] ✗ сборщик не найден: {exe}')
+                continue
+        state, entry, digest = config_mod.lock_state(team, lock)
+        if state == 'ok':
+            print(f'[{team.slug}] ✓ {where}, проверен {str(entry.get("validatedAt", ""))[:10]}')
+            continue
+        if cfg.strict:
+            ok = False
+        print(f'[{team.slug}] {"✗" if cfg.strict else "⚠"} {where}, '
+              f'{lock_reason(team, state, entry)} — запустите /collector-validate {team.slug}')
+
+    print()
+    if ok:
+        print('Стенд готов. Первый поход в JIRA — python3 run.py validate <slug> --sample 5')
+        return EXIT_OK
+    print('Стенд не готов: разберитесь со строками ✗ выше.')
+    return EXIT_CONFIG
+
 
 def cmd_run(args):
     cfg = config_mod.load(args.config)
@@ -254,7 +343,8 @@ def cmd_lock(args):
     cfg = config_mod.load(args.config)
     team = cfg.team(args.slug)
     entry = config_mod.write_lock(cfg, team.slug, team.digest(), now_iso(args.now),
-                                  {'collector': team.collector_name})
+                                  {'collector': team.collector_name,
+                                   'version': config_mod.PLUGIN_VERSION})
     print(f'lock записан: {team.slug} sha {entry["sha256"][:7]} '
           f'({entry["validatedAt"]}) → {cfg.lock_path.name}')
     return EXIT_OK
@@ -298,6 +388,8 @@ def main(argv=None):
     ap.add_argument('--now', default=None, help='ISO-время отчёта; по умолчанию текущее')
     sub = ap.add_subparsers(dest='cmd')
 
+    sub.add_parser('doctor', help='проверить стенд локально, без похода в JIRA')
+
     p_run = sub.add_parser('run', help='собрать отчёт по всем командам конфига')
     p_run.add_argument('--only', default=None, help='список slug через запятую')
 
@@ -314,7 +406,8 @@ def main(argv=None):
     p_new.add_argument('--lang', default='python')
 
     args = ap.parse_args(argv)
-    handlers = {'run': cmd_run, 'validate': cmd_validate, 'lock': cmd_lock, 'new': cmd_new}
+    handlers = {'run': cmd_run, 'validate': cmd_validate, 'lock': cmd_lock, 'new': cmd_new,
+                'doctor': cmd_doctor}
     if not args.cmd:
         args.cmd = 'run'
         args.only = None
