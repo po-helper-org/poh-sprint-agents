@@ -56,6 +56,14 @@ COMMENTS = ['Согласовал контракт со смежной кома�
             'Проверил на препроде: сценарий проходит, ошибок нет.']
 
 
+class HttpError(Exception):
+    """Ответ трекера с кодом ошибки — фикстура должна уметь и это."""
+
+    def __init__(self, code, message=''):
+        super().__init__(f'HTTP {code}: {message}')
+        self.code = code
+
+
 def iso(dt):
     """JIRA отдаёт миллисекунды и смещение без двоеточия — форма тоже часть фикстуры."""
     return dt.strftime('%Y-%m-%dT%H:%M:%S.') + f'{dt.microsecond // 1000:03d}' + dt.strftime('%z')
@@ -240,6 +248,12 @@ def make_api(dataset=None):
             return {'values': [{'id': BOARD_ID, 'name': BOARD_NAME},
                                {'id': OTHER_BOARD_ID, 'name': 'Scrum Board Другая'}],
                     'isLast': True}
+        if path.startswith('/rest/agile/1.0/board/') and path.count('/') == 5:
+            known = {BOARD_ID: BOARD_NAME, OTHER_BOARD_ID: 'Scrum Board Другая'}
+            wanted = int(path.rsplit('/', 1)[-1])
+            if wanted not in known:
+                raise HttpError(404, f'board {wanted} does not exist')
+            return {'id': wanted, 'name': known[wanted], 'type': 'scrum'}
         if path == f'/rest/agile/1.0/board/{BOARD_ID}/sprint':
             wanted = set((params.get('state') or 'active').split(','))
             return {'values': [s for s in ds.sprints if s['state'] in wanted], 'isLast': True}

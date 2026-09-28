@@ -80,11 +80,14 @@ story_types = ["История", "История Enabler", "Story"]
 python3 -m unittest discover tests
 ```
 
+🛠 **[Отладка на реальном инстансе](docs/actual-sprint-debug.md)** — `doctor`, таблица отказов (VPN, токен, корпоративный CA, чужие статусы), record/replay.
+
 📖 **[Полная инструкция](docs/actual-sprint-guide.md)** — как запускать, что означает каждая метрика, как найти доску команды, что делать, если собралось не то.
 
 ## Документы
 
 - Инструкция по `/actual-sprint`: `docs/actual-sprint-guide.md`
+- Отладка на реальном инстансе: `docs/actual-sprint-debug.md`
 - Видение: `VISION.md`
 - БФТ `sprint-planner`: `docs/bft-sprint-planner-slice1.md`
 - Дизайн `sprint-planner`: `docs/superpowers/specs/2026-07-17-sprint-planner-slice1-design.md`
