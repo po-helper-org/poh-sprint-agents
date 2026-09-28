@@ -3,8 +3,8 @@
 
 Нужен, чтобы показывать навык и снимать скриншоты, не таская корпоративные данные.
 Всё синтетическое: вымышленные команды, задачи `INIT-*`, люди «Участник А…».
-Форма данных совпадает с тем, что отдаёт collect.py, поэтому демо рендерится
-тем же шаблоном, что и боевой отчёт.
+Форма данных — та же схема, что у сборщиков (`contract/team.schema.json`),
+поэтому демо рендерится тем же шаблоном, что и боевой отчёт.
 
     python3 demo_data.py --out demo-teams.json
     python3 demo_data.py --html demo-report.html    # сразу собрать страницу
@@ -269,6 +269,11 @@ def build_team(spec, rnd, keys):
                 {'sprints': velocity, 'unit': 'задач',
                  'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)},
             'logs': logs,
+            'statusMap': dict(sorted({(u.get('status')): bucket(u['status'], u['category'])
+                                      for u in all_units}.items())),
+            '_meta': {'collector': 'demo', 'version': '1.0.0', 'protocol': 1,
+                      'collectedAt': NOW.isoformat(), 'requests': 0, 'durationMs': 0,
+                      'warnings': ['демо-данные: в JIRA не ходили']},
             'notes': {}}
 
 

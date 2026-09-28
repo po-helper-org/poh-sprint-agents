@@ -20,6 +20,8 @@ export JIRA_PERSONAL_TOKEN=…
 export JIRA_URL=https://jira.example.com   # хост вашего инстанса
 ```
 
+Токен живёт только в окружении: ни в конфиг, ни в lock-файл, ни на страницу он не попадает.
+
 ## Команды
 
 ### Планирование (STOP после каждой)
@@ -28,7 +30,9 @@ export JIRA_URL=https://jira.example.com   # хост вашего инстан�
 
 ### Факт спринта
 
-`/actual-sprint {команда?}` — уточняет команду и спринт, показывает что соберёт, читает JIRA и кладёт рядом `sprint-report.html`. **Одна страница на все команды**: переключатель вкладок в шапке.
+`/sprint-setup` → `/collector-new {slug}` (если нужно) → `/collector-validate {slug}` → `/actual-sprint {команда?}`
+
+`/actual-sprint` запускает runner и показывает сводку; страница одна на все команды — переключатель вкладок в шапке. Первые три команды — настройка, они нужны один раз на команду.
 
 Что на странице:
 
@@ -38,7 +42,43 @@ export JIRA_URL=https://jira.example.com   # хост вашего инстан�
 
 Заметки сохраняются в браузере и переносятся между запусками через `sprint-report-notes.json` — кнопка «Заметки ⬇» на странице.
 
-Данные собирает `scripts/collect.py --board <id> --team "<Название>" --slug <slug>` — один JSON на команду. Только чтение JIRA, ничего не публикует.
+#### Данные собирают сборщики, а не модель
+
+ИИ пишет и проверяет код сборщика, но никогда сам не собирает данные отчёта. Граница между ними — жёсткий контракт:
+
+```bash
+python3 .claude/skills/actual-sprint/runner/run.py run --config sprint-report.config.toml
+```
+
+- **Контракт** — `contract/team.schema.json` (форма данных) и `contract/PROTOCOL.md` (как запускается сборщик, что на stdin/stdout, коды выхода).
+- **Сборщик** — программа на команду. Базовый шаблон на Python покрывает большинство случаев: все правила команды вынесены в `params` конфига (типы задач, статусы, поле эпика, глубина по спринтам).
+- **Runner** — читает конфиг, запускает сборщики, валидирует результат схемой и 12 инвариантами, переносит заметки, собирает HTML.
+- **Проверка** — `/collector-validate` сверяет выборку задач с JIRA и фиксирует хеш сборщика в `sprint-report.lock.json`. Изменённый сборщик не запускается, пока проверку не пройдут заново.
+
+Если хотя бы одна команда не собралась, HTML не пишется: прошлый отчёт остаётся целым, а полуправды на странице не появляется. В подвале страницы по каждой команде видно, чем и когда собраны данные.
+
+Конфиг проекта (TOML, без зависимостей — `tomllib` из stdlib):
+
+```toml
+version = 1
+[[teams]]
+slug = "team-a"
+name = "Команда A"
+board = 101
+collector = "base"
+[teams.params]
+story_types = ["История", "История Enabler", "Story"]
+```
+
+Полный образец — `.claude/skills/actual-sprint/examples/sprint-report.config.toml`.
+
+Только чтение JIRA, ничего не публикует. Проверка TLS включена всегда; корпоративный CA подключается через `jira.ca_bundle`.
+
+Тесты идут без сети, на записанных ответах JIRA:
+
+```bash
+python3 -m unittest discover tests
+```
 
 📖 **[Полная инструкция](docs/actual-sprint-guide.md)** — как запускать, что означает каждая метрика, как найти доску команды, что делать, если собралось не то.
 
@@ -49,8 +89,14 @@ export JIRA_URL=https://jira.example.com   # хост вашего инстан�
 - БФТ `sprint-planner`: `docs/bft-sprint-planner-slice1.md`
 - Дизайн `sprint-planner`: `docs/superpowers/specs/2026-07-17-sprint-planner-slice1-design.md`
 - Внутренняя документация навыка, всё в `.claude/skills/actual-sprint/`:
-  - `SKILL.md` — стадии и дизайн-контракт
+  - `SKILL.md` — стадии и дизайн-контракт страницы
+  - `contract/team.schema.json` — форма объекта команды (источник истины)
+  - `contract/PROTOCOL.md` — протокол сборщика
+  - `contract/status_rules.json` — правила бакетов данными
+  - `runner/run.py` — `run | validate | lock | new`
+  - `templates/python/collector.py` — базовый сборщик, правила в `params`
   - `resources/metrics.md` — что именно считается и почему
   - `resources/status_mapping.md` — раскладка статусов JIRA по шести бакетам
-  - `resources/data_collection.md` — алгоритм запросов к JIRA
-  - `scripts/collect.py` — сборщик данных по доске
+  - `resources/data_collection.md` — алгоритм запросов, документация для авторов сборщиков
+  - `resources/data_shape.md` — почему форма данных такая
+  - `scripts/demo_data.py` — демо-страница без похода в трекер
