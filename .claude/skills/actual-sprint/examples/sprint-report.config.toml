@@ -3,7 +3,7 @@
 version = 1
 
 output = "./reports/sprint-report.html"          # одна страница на все команды
-notes  = "./reports/sprint-report-notes.json"    # заметки прошлой версии страницы, если остались: переедут в лог
+notes  = "./reports/sprint-report-notes.json"    # заметки прошлой версии страницы, если остались: переедут в корзину
 data   = "./reports/sprint-report.data.json"     # снимок данных для PDF /sprint-status
 strict = true                                    # непроверенный или изменённый сборщик не запускается
 

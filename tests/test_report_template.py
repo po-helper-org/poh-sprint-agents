@@ -1,4 +1,4 @@
-"""Страница отчёта: комментарии логом, правый клик, общее поле, приоритеты.
+"""Страница отчёта: корзина заметок, правый клик, привязка к сущности, приоритеты.
 
 Поведение в браузере проверяет tests/e2e/report_comments.mjs (Chromium); здесь —
 быстрые проверки шаблона, которые идут в каждом прогоне без браузера.
@@ -21,25 +21,29 @@ class TemplateTest(unittest.TestCase):
     def setUpClass(cls):
         cls.html = TEMPLATE.read_text(encoding='utf-8')
 
-    def test_no_file_notes(self):
-        """Заметки файлом убраны: ни выгрузки, ни загрузки, ни большой textarea в панели."""
-        for gone in ('notesExport', 'notesImport', 'notesFile', 'note-area', 'panelProgress'):
+    def test_no_file_notes_no_log_block(self):
+        """Ни заметок файлом, ни textarea в панели, ни лога над таблицей: всё в корзине."""
+        for gone in ('notesExport', 'notesImport', 'notesFile', 'note-area', 'panelProgress',
+                     'id="clog"', 'genInput'):
             self.assertNotIn(gone, self.html)
 
-    def test_comment_log_on_top(self):
-        """Лог комментариев стоит над таблицей эпиков и копируется текстом."""
-        self.assertLess(self.html.index('id="clog"'), self.html.index('id="tableBody"'))
-        self.assertIn('id="clogCopy"', self.html)
-        self.assertIn('function commentsText()', self.html)
+    def test_basket_in_top_right(self):
+        """Как на странице ревью БФТ: кнопка «Комментарии (N)», под ней панель и промт."""
+        box = self.html[self.html.index('<div class="promptbox"'):self.html.index('<div class="hero">')]
+        for part in ('id="notesToggle"', 'id="cCount"', 'id="nText"', 'id="nRef"', 'id="itemsList"',
+                     'id="promptOut"', 'id="copyBtn"'):
+            self.assertIn(part, box)
 
-    def test_general_field_in_top_right(self):
-        top = self.html[self.html.index('<div class="top-actions">'):self.html.index('<div class="hero">')]
-        self.assertIn('id="genInput"', top)
+    def test_notes_edit_delete_and_bind(self):
+        for fn in ('function updateComment(', 'function removeComment(', 'function resolveRef(',
+                   'function buildPrompt(', 'data-edit', 'data-del'):
+            self.assertIn(fn, self.html)
 
-    def test_right_click_comments(self):
+    def test_right_click_notes(self):
         self.assertIn("addEventListener('contextmenu'", self.html)
         for target in ("ctxAttr(epicTarget(e))", "itemTarget('story'", "itemTarget('subtask'"):
             self.assertIn(target, self.html)
+        self.assertIn('Уже оставлено', self.html)
 
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):

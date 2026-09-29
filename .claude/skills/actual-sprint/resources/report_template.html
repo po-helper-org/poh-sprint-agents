@@ -63,14 +63,6 @@
   }
   .hero .metrics-link:hover { border-bottom-style: solid; border-bottom-color: var(--fg); }
 
-  .top-actions {
-    position: fixed;
-    top: 20px;
-    right: 24px;
-    z-index: 9;
-    display: flex;
-    gap: 8px;
-  }
   .logs-btn {
     font: inherit;
     font-size: 13px;
@@ -374,9 +366,6 @@
     overflow-y: auto;
   }
   #panelStories { flex: 1; }
-  .epic-comments { margin: 0 0 14px; padding: 0 0 12px; border-bottom: 1px solid var(--line); }
-  .epic-comments .pane-label { margin-bottom: 6px; }
-  .epic-comments .clog-item { padding: 6px 0; grid-template-columns: 86px minmax(0, 1fr); }
 
   .pane-label {
     font-size: 12px;
@@ -516,45 +505,67 @@
     color: #b45309; border-bottom: 1px dotted #b45309; cursor: help; margin-left: 6px;
   }
 
-  /* общий комментарий без привязки — всегда под рукой в правом верхнем углу */
-  .gen-form { display: flex; align-items: flex-start; gap: 6px; }
-  .gen-input {
-    width: 340px; height: 32px; resize: none; overflow: hidden;
-    font: inherit; font-size: 13px; line-height: 1.4; color: var(--fg);
-    padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg);
-    transition: height 0.12s ease;
+  /* Корзина заметок в правом верхнем углу — тот же приём, что на странице ревью
+     БФТ (poh-bft-writer): кнопка «Комментарии (N)», под ней панель со списком
+     заметок и готовым промтом для ИИ. */
+  .promptbox {
+    position: fixed; top: 20px; right: 24px; z-index: 9;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
   }
-  .gen-input:focus { outline: none; border-color: var(--fg); height: 84px; overflow: auto;
-                     box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .pb-row { display: flex; gap: 8px; }
+  .pb-toggle {
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 4px; cursor: pointer;
+    background: var(--fg); color: var(--bg); border: 1px solid var(--fg);
+  }
+  .pb-toggle[aria-expanded="true"] { background: var(--bg); color: var(--fg); }
+  .notes-panel {
+    display: none; width: 400px; max-height: calc(100vh - 90px); overflow-y: auto;
+    background: var(--bg); border: 1px solid var(--fg); border-radius: 6px;
+    box-shadow: 3px 3px 0 var(--line); padding: 14px;
+  }
+  .notes-panel.open { display: block; }
+  .notes-panel h4 {
+    margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  }
+  .notes-panel h4.sp { margin-top: 16px; }
+  .nform textarea, .nedit textarea, .notes-panel .prompt {
+    width: 100%; font: inherit; font-size: 13px; line-height: 1.5; color: var(--fg);
+    border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; resize: vertical;
+  }
+  .nform textarea, .nedit textarea { min-height: 58px; }
+  .nform textarea:focus, .nedit textarea:focus, .nref:focus { outline: none; border-color: var(--fg); }
+  .nref {
+    width: 100%; margin-top: 6px; font: inherit; font-size: 12px; color: var(--fg);
+    border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px;
+  }
+  .prow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .prow .hint { flex: 1; font-size: 11px; color: var(--muted); }
+  .nbtn {
+    font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--fg); background: var(--fg); color: var(--bg);
+  }
+  .nbtn.ghost { background: var(--bg); color: var(--fg); }
+  .nitems { margin-top: 12px; border-top: 1px solid var(--line); }
+  .nitem { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+  .nitem .where { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .nitem .where b { color: var(--fg); font-weight: 600; }
+  .nitem .body { white-space: pre-wrap; word-break: break-word; margin: 2px 0; }
+  .nitem .acts { display: flex; gap: 10px; font-size: 11px; color: var(--muted); }
+  .nitem .acts button {
+    border: none; background: none; padding: 0; font: inherit; color: var(--muted);
+    text-decoration: underline; cursor: pointer;
+  }
+  .nitem .acts button:hover { color: var(--fg); }
+  .nitem .acts .when { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .notes-panel .empty { color: var(--muted); font-style: italic; font-size: 13px; padding: 8px 0; }
+  .notes-panel .prompt { min-height: 130px; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; color: var(--muted); }
+  .notes-panel .copybtn { width: 100%; margin-top: 6px; padding: 6px; }
 
-  /* лог комментариев: всё, что оставили на странице, в одном месте и по времени */
-  .clog { margin: 24px 32px 0; border: 1px solid var(--line); border-radius: 6px; }
-  .clog-head {
-    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
-    border-bottom: 1px solid var(--line);
-  }
-  .clog.empty .clog-head { border-bottom: none; }
-  .clog-title { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
-  .clog-title .n { color: var(--muted); font-weight: 400; margin-left: 4px; letter-spacing: 0; }
-  .clog-hint { flex: 1; font-size: 12px; color: var(--muted); }
-  .clog-copy.done { background: var(--fg); color: var(--bg); }
-  .clog-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; }
-  .clog-item {
-    display: grid; grid-template-columns: 86px minmax(0, 1fr) 22px; gap: 4px 12px;
-    padding: 8px 14px; border-bottom: 1px solid #f0f0f0; font-size: 13px;
-  }
-  .clog-item:last-child { border-bottom: none; }
-  .clog-time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
-  .clog-target { font-size: 12px; color: var(--muted); }
-  .clog-target a { color: var(--fg); text-decoration: none; border-bottom: 1px dotted var(--muted); cursor: pointer; }
-  .clog-target a:hover { border-bottom-style: solid; }
-  .clog-target .general { color: var(--fg); font-weight: 600; }
-  .clog-text { grid-column: 2; white-space: pre-wrap; word-break: break-word; }
-  .clog-del {
-    grid-column: 3; grid-row: 1 / span 2; align-self: start;
-    border: none; background: none; color: var(--c-zero); font-size: 16px; line-height: 1; cursor: pointer;
-  }
-  .clog-del:hover { color: var(--fg); }
+  /* уже оставленное к этой сущности — в поле правого клика */
+  .pexisting { margin-bottom: 8px; }
+  .pexisting-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+  .pex-item { border-left: 2px solid var(--c-done); padding: 2px 8px; margin-bottom: 4px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
+  .pex-item button { border: none; background: none; padding: 0; margin-left: 6px; font: inherit; font-size: 11px; color: var(--muted); text-decoration: underline; cursor: pointer; }
 
   /* поле комментария по правому клику */
   .cpop {
@@ -590,22 +601,36 @@
   td.epic .prio { margin-right: 6px; }
 
   @media (max-width: 900px) {
-    .top-actions { position: static; padding: 12px 16px 0; justify-content: flex-end; }
-    .gen-input { width: 100%; }
-    .gen-form { flex: 1; }
-    .clog { margin: 16px 16px 0; }
+    .promptbox { position: static; padding: 12px 16px 0; }
+    .notes-panel { width: 100%; }
   }
 </style>
 </head>
 <body>
 
-<div class="top-actions">
-  <form class="gen-form" id="genForm" autocomplete="off">
-    <textarea class="gen-input" id="genInput" rows="1"
-      placeholder="Общий комментарий: процесс, истории вне спринта, замечания к агенту…"
-      title="Enter — добавить в лог комментариев, Shift+Enter — перенос строки"></textarea>
-  </form>
-  <button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
+<div class="promptbox" id="promptbox">
+  <div class="pb-row">
+    <button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
+    <button class="pb-toggle" id="notesToggle" aria-expanded="false" aria-controls="notesPanel"
+      title="Заметки к спринту и промт для ИИ">Комментарии (<span id="cCount">0</span>)</button>
+  </div>
+  <div class="notes-panel" id="notesPanel">
+    <h4>Заметки к спринту</h4>
+    <div class="nform">
+      <textarea id="nText" placeholder="Короткая заметка: процесс, история вне спринта, замечание к агенту…"></textarea>
+      <input class="nref" id="nRef" list="refList" autocomplete="off"
+        placeholder="К чему (необязательно): ключ эпика или задачи">
+      <div class="prow">
+        <span class="hint">Enter — добавить · правый клик по строке — заметка к ней</span>
+        <button class="nbtn" id="nAdd" type="button">Добавить</button>
+      </div>
+    </div>
+    <div class="nitems" id="itemsList"></div>
+    <h4 class="sp">Промт для ИИ</h4>
+    <textarea class="prompt" id="promptOut" readonly></textarea>
+    <button class="nbtn copybtn" id="copyBtn" type="button">Скопировать промт</button>
+  </div>
+  <datalist id="refList"></datalist>
 </div>
 
 <div class="hero">
@@ -620,15 +645,6 @@
     </div>
   </div>
 </div>
-
-<section class="clog empty" id="clog" aria-label="Лог комментариев">
-  <div class="clog-head">
-    <span class="clog-title">Комментарии<span class="n" id="clogCount">0</span></span>
-    <span class="clog-hint">Правый клик по эпику или задаче — комментарий к ней. Общий — в поле справа вверху.</span>
-    <button class="logs-btn clog-copy" id="clogCopy" title="Скопировать весь лог текстом — вставить в чат агенту">Копировать</button>
-  </div>
-  <ol class="clog-list" id="clogList"></ol>
-</section>
 
 <main>
   <table>
@@ -657,9 +673,10 @@
   </div>
 </aside>
 
-<div class="cpop" id="cpop" hidden role="dialog" aria-label="Комментарий">
+<div class="cpop" id="cpop" hidden role="dialog" aria-label="Заметка">
   <div class="cpop-target" id="cpopTarget"></div>
-  <textarea id="cpopText" placeholder="Комментарий…"></textarea>
+  <div class="pexisting" id="cpopExisting" hidden></div>
+  <textarea id="cpopText" placeholder="Короткая заметка…"></textarea>
   <div class="cpop-actions">
     <span class="hint">Enter — сохранить · Shift+Enter — перенос · Esc — отмена</span>
     <button class="action-btn" id="cpopSave">Сохранить</button>
@@ -869,10 +886,12 @@
   var storiesLabel = document.getElementById('storiesLabel');
   var storiesBody = document.getElementById('storiesBody');
 
-  // ------------------------- комментарии -------------------------
-  // Один лог на команду и спринт: всё, что человек оставил на странице, по времени.
-  // Живёт в localStorage браузера; наружу уходит текстом через «Копировать» —
-  // вставить в чат агенту, без файлов и загрузок.
+  // ------------------------- заметки (корзина) -------------------------
+  // Как на странице ревью БФТ: заметки копятся в корзине справа вверху, каждую
+  // можно поправить или удалить, наружу они уходят готовым промтом для ИИ.
+  // У заметки необязательная привязка к сущности (эпик, история, подзадача или
+  // любой ключ вне отчёта) — чтобы LLM сразу понимала, о чём речь.
+  // Хранение — localStorage браузера, своя корзина у каждой команды и спринта.
   function commentsKey() { return 'actual-sprint:' + REPORT_ID + ':comments:' + team.sprintName; }
 
   function loadComments() {
@@ -882,15 +901,28 @@
     } catch (e) { return []; }
   }
 
-  function saveComments(list) { localStorage.setItem(commentsKey(), JSON.stringify(list)); }
+  function saveComments(list) {
+    try { localStorage.setItem(commentsKey(), JSON.stringify(list)); } catch (e) {}
+  }
+
+  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   function addComment(target, text) {
     text = String(text || '').trim();
     if (!text) return false;
     var list = loadComments();
-    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-                at: new Date().toISOString(), target: target, text: text });
+    list.push({ id: newId(), at: new Date().toISOString(), target: target, text: text });
     saveComments(list);
+    refreshComments();
+    return true;
+  }
+
+  function updateComment(id, text, target) {
+    text = String(text || '').trim();
+    if (!text) return false;
+    saveComments(loadComments().map(function (c) {
+      return c.id === id ? Object.assign({}, c, { text: text, target: target, editedAt: new Date().toISOString() }) : c;
+    }));
     refreshComments();
     return true;
   }
@@ -900,8 +932,8 @@
     refreshComments();
   }
 
-  // Заметки прошлой версии страницы (textarea в панели и файл sprint-report-notes.json)
-  // один раз переезжают в лог, чтобы ничего не потерялось. Старые ключи не трогаем.
+  // Заметки прошлых версий страницы (textarea в панели и файл sprint-report-notes.json)
+  // один раз переезжают в корзину, чтобы ничего не потерялось. Старые ключи не трогаем.
   function migrateNotes() {
     var flag = 'actual-sprint:' + REPORT_ID + ':notes-migrated';
     if (localStorage.getItem(flag)) return;
@@ -917,16 +949,15 @@
       if (!text) return;
       var epic = EPICS.find(function (e) { return e.rowId === rowId; });
       var target = epic ? epicTarget(epic)
-        : { kind: 'general', title: rowId === '__metrics__' ? 'Сводный отчёт' : rowId === '__logs__' ? 'Лента изменений' : 'Общее' };
-      list.push({ id: 'm-' + rowId, at: new Date().toISOString(), target: target,
-                  text: text, migrated: true });
+        : { kind: 'general', title: rowId === '__metrics__' ? 'Сводный отчёт' : rowId === '__logs__' ? 'Лента изменений' : '' };
+      list.push({ id: 'm-' + rowId, at: new Date().toISOString(), target: target, text: text, migrated: true });
     });
     saveComments(list);
     localStorage.setItem(flag, '1');
   }
 
-  // --- что комментируем: снимок на момент комментария, чтобы текст лога
-  //     читался и тогда, когда данные отчёта уже пересобраны
+  // --- к чему заметка: снимок сущности на момент записи, чтобы промт читался
+  //     и тогда, когда данные отчёта уже пересобраны
   function epicTarget(epic) {
     return { kind: 'epic', key: epic.epicKey, title: epic.epicTitle || 'Без эпика',
              rowId: epic.rowId, priority: epic.epicPriority || null };
@@ -938,15 +969,56 @@
              epicKey: epic.epicKey, epicTitle: epic.epicTitle, rowId: epic.rowId };
   }
 
-  var KIND_NAME = { epic: 'Эпик', story: 'История', subtask: 'Подзадача', event: 'Задача', general: 'Общее' };
+  var GENERAL = { kind: 'general' };
+  var KIND_NAME = { epic: 'Эпик', story: 'История', subtask: 'Подзадача', event: 'Задача',
+                    ref: 'Вне отчёта' };
 
+  // все сущности текущей команды по ключу: для привязки из корзины и подсказок
+  function entityIndex() {
+    var idx = {};
+    EPICS.forEach(function (e) {
+      if (e.epicKey) idx[e.epicKey.toUpperCase()] = epicTarget(e);
+      (e.stories || []).forEach(function (st) {
+        idx[st.key.toUpperCase()] = itemTarget('story', st, e);
+        (st.subtasks || []).forEach(function (sub) { idx[sub.key.toUpperCase()] = itemTarget('subtask', sub, e); });
+      });
+    });
+    return idx;
+  }
+
+  function fillRefList() {
+    var idx = entityIndex();
+    document.getElementById('refList').innerHTML = Object.keys(idx).map(function (k) {
+      var t = idx[k];
+      return '<option value="' + esc(t.key) + '">' + esc(KIND_NAME[t.kind] + ' · ' + t.title) + '</option>';
+    }).join('');
+  }
+
+  // «INIT-132» или «INIT-132 — что угодно» → снимок сущности; ключ не из отчёта
+  // (история вне спринта) тоже годится; пусто → заметка без привязки
+  function resolveRef(value) {
+    value = String(value || '').trim();
+    if (!value) return GENERAL;
+    var m = value.match(/^[A-Za-zА-Яа-яЁё][\wЀ-ӿ]*-\d+/);
+    var key = m ? m[0].toUpperCase() : null;
+    var known = key ? entityIndex()[key] : null;
+    if (known) return known;
+    return { kind: 'ref', key: key || value, title: key ? value.slice(m[0].length).replace(/^[\s—–-]+/, '') : '' };
+  }
+
+  function refValue(t) { return t && t.kind !== 'general' && t.key ? t.key : ''; }
+
+  // одна строка «к чему»: и для корзины, и для промта
   function targetLine(t) {
-    if (!t || t.kind === 'general') return t && t.title && t.title !== 'Общее' ? 'Общее · ' + t.title : 'Общее';
-    var parts = [KIND_NAME[t.kind] + (t.key ? ' ' + t.key : '') + ' «' + t.title + '»'];
-    if (t.kind !== 'epic' && t.epicTitle) parts.push('эпик ' + (t.epicKey ? t.epicKey + ' ' : '') + '«' + t.epicTitle + '»');
+    if (!t || t.kind === 'general') return 'без привязки' + (t && t.title ? ' · ' + t.title : '');
+    var head = KIND_NAME[t.kind] + (t.key ? ' ' + t.key : '') + (t.title ? ' «' + t.title + '»' : '');
+    var parts = [head];
+    if ((t.kind === 'story' || t.kind === 'subtask') && t.epicTitle) {
+      parts.push('эпик ' + (t.epicKey ? t.epicKey + ' ' : '') + '«' + t.epicTitle + '»');
+    }
     if (t.priority) parts.push('приоритет ' + t.priority);
-    if (t.status) parts.push(t.status);
-    if (t.assignee) parts.push(t.assignee);
+    if (t.status) parts.push('статус ' + t.status);
+    if (t.assignee) parts.push('исполнитель ' + t.assignee);
     return parts.join(' · ');
   }
 
@@ -957,15 +1029,18 @@
       ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
   }
 
-  // Текст для чата: шапка с контекстом отчёта и комментарии по порядку
-  function commentsText() {
-    var list = loadComments();
-    var out = ['Комментарии к отчёту спринта',
-               'Команда «' + team.team + '» · ' + team.sprintName + ' · доска «' + team.boardName + '»',
-               'Скопировано ' + stamp(new Date().toISOString(), true) + ' · комментариев ' + list.length, ''];
+  // Промт для ИИ: контекст отчёта, формат строки и заметки по порядку.
+  // В квадратных скобках — к чему заметка; по ним LLM сразу находит сущность.
+  function buildPrompt(list) {
+    if (!list.length) return '';
+    var when = team._meta && team._meta.collectedAt ? ' · данные JIRA на ' + stamp(team._meta.collectedAt, true) : '';
+    var out = ['Заметки PO к отчёту спринта — учти их при разборе спринта и в ответах.',
+               'Команда «' + team.team + '» · ' + team.sprintName + ' · доска «' + team.boardName + '»' + when + '.',
+               'Формат: номер. [к чему относится] текст заметки. [без привязки] — заметка о процессе в целом.', ''];
     list.forEach(function (c, i) {
-      out.push((i + 1) + '. ' + stamp(c.at) + ' · ' + targetLine(c.target) + (c.migrated ? ' · из заметки' : ''));
-      String(c.text).split('\n').forEach(function (line) { out.push('   ' + line); });
+      var lines = String(c.text).split('\n');
+      out.push((i + 1) + '. [' + targetLine(c.target) + '] ' + lines[0]);
+      lines.slice(1).forEach(function (line) { out.push('   ' + line); });
     });
     return out.join('\n');
   }
@@ -987,41 +1062,82 @@
     return fallback();
   }
 
-  function commentItemHtml(c, compact) {
-    var t = c.target || {};
-    var label;
-    if (t.kind === 'general' || !t.kind) {
-      label = '<span class="general">' + esc(targetLine(t)) + '</span>';
-    } else {
-      label = '<a data-goto="' + esc(t.rowId || '') + '">' + esc((t.key ? t.key + ' — ' : '') + t.title) + '</a>' +
-        esc(' · ' + KIND_NAME[t.kind].toLowerCase() + (t.priority ? ' · ' + t.priority : '') +
-            (t.status ? ' · ' + t.status : ''));
+  // --- корзина
+  var notesPanel = document.getElementById('notesPanel');
+  var notesToggle = document.getElementById('notesToggle');
+  var editingId = null;
+
+  function whereHtml(t) {
+    if (!t || t.kind === 'general') return '<b>без привязки</b>' + (t && t.title ? ' · ' + esc(t.title) : '');
+    var line = targetLine(t);
+    var head = KIND_NAME[t.kind] + (t.key ? ' ' + t.key : '');
+    return '<b>' + esc(head) + '</b>' + esc(line.slice(head.length));
+  }
+
+  function noteItemHtml(c) {
+    if (c.id === editingId) {
+      return '<div class="nitem nedit" data-id="' + esc(c.id) + '">' +
+        '<textarea class="nedit-text">' + esc(c.text) + '</textarea>' +
+        '<input class="nref nedit-ref" list="refList" autocomplete="off" value="' + esc(refValue(c.target)) + '"' +
+        ' placeholder="К чему (необязательно): ключ эпика или задачи">' +
+        '<div class="prow"><span class="hint">Enter — сохранить · Esc — отмена</span>' +
+        '<button class="nbtn ghost" data-cancel type="button">Отмена</button>' +
+        '<button class="nbtn" data-save type="button">Сохранить</button></div></div>';
     }
-    return '<li class="clog-item" data-id="' + esc(c.id) + '">' +
-      '<span class="clog-time">' + esc(stamp(c.at)) + '</span>' +
-      '<span class="clog-target">' + label + (c.migrated ? ' · из заметки' : '') + '</span>' +
-      (compact ? '' : '<button class="clog-del" data-del="' + esc(c.id) + '" title="Удалить комментарий">×</button>') +
-      '<span class="clog-text">' + esc(c.text) + '</span>' +
-    '</li>';
+    return '<div class="nitem" data-id="' + esc(c.id) + '">' +
+      '<div class="where">' + whereHtml(c.target) + (c.migrated ? ' · из заметки' : '') + '</div>' +
+      '<div class="body">' + esc(c.text) + '</div>' +
+      '<div class="acts"><button data-edit type="button">изменить</button>' +
+      '<button data-del type="button">удалить</button>' +
+      '<span class="when" title="' + esc(c.editedAt ? 'Изменено ' + stamp(c.editedAt, true) : '') + '">' +
+        esc(stamp(c.at)) + (c.editedAt ? ' · изм.' : '') + '</span></div></div>';
   }
 
-  function renderCommentLog() {
+  function renderNotes() {
     var list = loadComments();
-    var box = document.getElementById('clog');
-    box.classList.toggle('empty', !list.length);
-    document.getElementById('clogCount').textContent = list.length;
-    var ol = document.getElementById('clogList');
-    ol.innerHTML = list.map(function (c) { return commentItemHtml(c, false); }).join('');
-    ol.scrollTop = ol.scrollHeight;  // свежее — внизу, как в чате
-    ol.querySelectorAll('[data-del]').forEach(function (b) {
-      b.addEventListener('click', function () { removeComment(b.dataset.del); });
-    });
-    ol.querySelectorAll('[data-goto]').forEach(function (a) {
-      a.addEventListener('click', function () { if (a.dataset.goto) openPanels(a.dataset.goto); });
+    document.getElementById('cCount').textContent = list.length;
+    var box = document.getElementById('itemsList');
+    box.innerHTML = list.length ? list.map(noteItemHtml).join('') : '<p class="empty">Заметок нет.</p>';
+    document.getElementById('promptOut').value = buildPrompt(list);
+
+    box.querySelectorAll('.nitem').forEach(function (item) {
+      var id = item.dataset.id;
+      var q = function (sel) { return item.querySelector(sel); };
+      if (q('[data-del]')) q('[data-del]').addEventListener('click', function () { removeComment(id); });
+      if (q('[data-edit]')) q('[data-edit]').addEventListener('click', function () {
+        editingId = id; renderNotes();
+        var ta = box.querySelector('.nedit-text');
+        ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+      });
+      if (q('[data-save]')) {
+        var save = function () {
+          // ключ не трогали — оставляем снимок сущности как был, а не пересобираем его
+          var old = loadComments().find(function (c) { return c.id === id; });
+          var ref = q('.nedit-ref').value.trim();
+          var target = old && ref === refValue(old.target) ? old.target : resolveRef(ref);
+          if (updateComment(id, q('.nedit-text').value, target)) editingId = null;
+          renderNotes();
+        };
+        var cancel = function () { editingId = null; renderNotes(); };
+        q('[data-save]').addEventListener('click', save);
+        q('[data-cancel]').addEventListener('click', cancel);
+        [q('.nedit-text'), q('.nedit-ref')].forEach(function (el) {
+          el.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); }
+            if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
+          });
+        });
+      }
     });
   }
 
-  // сколько комментариев у задачи и у эпика со всей его иерархией
+  function setNotesOpen(open) {
+    notesPanel.classList.toggle('open', open);
+    notesToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (!open) editingId = null;
+  }
+
+  // сколько заметок у задачи и у эпика со всей его иерархией
   function commentCounts() {
     var byKey = {}, byRow = {};
     loadComments().forEach(function (c) {
@@ -1032,34 +1148,45 @@
     return { byKey: byKey, byRow: byRow };
   }
 
-  function cmarkHtml(n) { return n ? '<span class="cmark" title="Комментариев: ' + n + '">' + n + '</span>' : ''; }
+  function cmarkHtml(n) { return n ? '<span class="cmark" title="Заметок: ' + n + '">' + n + '</span>' : ''; }
 
   function refreshComments() {
-    renderCommentLog();
+    renderNotes();
     var counts = commentCounts();
     tableBody.querySelectorAll('tr[data-row]').forEach(function (tr) {
       var btn = tr.querySelector('.action-btn');
       var n = counts.byRow[tr.dataset.row] || 0;
       btn.classList.toggle('has-note', !!n);
-      btn.title = n ? 'Комментариев по эпику: ' + n : '';
+      btn.title = n ? 'Заметок по эпику: ' + n : '';
     });
     document.querySelectorAll('[data-cmark]').forEach(function (el) {
       el.innerHTML = cmarkHtml(counts.byKey[el.dataset.cmark] || 0);
     });
-    if (currentEpic && panelStack.classList.contains('open')) renderEpicComments(currentEpic);
   }
 
-  // --- поле комментария по правому клику
+  // --- поле заметки по правому клику: сразу с привязкой к строке
   var cpop = document.getElementById('cpop');
   var cpopText = document.getElementById('cpopText');
   var cpopTarget = null;
 
+  function renderPopExisting(target) {
+    var box = document.getElementById('cpopExisting');
+    var list = target.key ? loadComments().filter(function (c) { return c.target && c.target.key === target.key; }) : [];
+    box.hidden = !list.length;
+    box.innerHTML = list.length
+      ? '<div class="pexisting-title">Уже оставлено</div>' + list.map(function (c) {
+          return '<div class="pex-item">' + esc(c.text) + '<button data-pdel="' + esc(c.id) + '" type="button">удалить</button></div>';
+        }).join('')
+      : '';
+    box.querySelectorAll('[data-pdel]').forEach(function (b) {
+      b.addEventListener('click', function () { removeComment(b.dataset.pdel); renderPopExisting(target); });
+    });
+  }
+
   function openCommentPopup(target, x, y) {
     cpopTarget = target;
-    var head = target.kind === 'general' ? '<b>Общий комментарий</b>'
-      : KIND_NAME[target.kind] + ' <b>' + esc((target.key ? target.key + ' — ' : '') + target.title) + '</b>' +
-        (target.priority ? ' · ' + esc(target.priority) : '');
-    document.getElementById('cpopTarget').innerHTML = head;
+    document.getElementById('cpopTarget').innerHTML = whereHtml(target);
+    renderPopExisting(target);
     cpopText.value = '';
     cpop.hidden = false;
     var w = cpop.offsetWidth, h = cpop.offsetHeight;
@@ -1084,7 +1211,7 @@
     if (!cpop.hidden && !cpop.contains(e.target) && !cpopText.value.trim()) closeCommentPopup();
   });
 
-  // Правый клик по любой строке с data-ctx открывает поле комментария к ней.
+  // Правый клик по любой строке с data-ctx открывает поле заметки к ней.
   // Цель берётся из реестра, заполняемого при отрисовке строк.
   var ctxTargets = {}, ctxSeq = 0;
   function ctxId(target) {
@@ -1125,25 +1252,8 @@
     else { stackLink.style.display = 'none'; }
   }
 
-  var currentEpic = null;
-
-  // комментарии по эпику и его задачам — над списком историй, только чтение
-  function renderEpicComments(epic) {
-    var box = document.getElementById('epicComments');
-    if (!box) return;
-    var list = loadComments().filter(function (c) { return c.target && c.target.rowId === epic.rowId; });
-    box.hidden = !list.length;
-    box.innerHTML = list.length
-      ? '<div class="pane-label">Комментарии · ' + list.length + '</div><ol class="clog-list">' +
-        list.map(function (c) { return commentItemHtml(c, true); }).join('') + '</ol>'
-      : '';
-  }
-
   function fillStoriesPanel(epic) {
-    // комментарии по эпику — первыми, подпись «Истории» — над самим списком
-    storiesBody.innerHTML = '<div class="epic-comments" id="epicComments" hidden></div>' +
-      '<div class="pane-label">Истории</div>';
-    renderEpicComments(epic);
+    storiesBody.innerHTML = '';
     var counts = commentCounts().byKey;
 
     if (!epic.stories || !epic.stories.length) {
@@ -1604,9 +1714,7 @@
   }
 
   function openLogs() {
-    currentEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
-    storiesLabel.hidden = false;
     storiesLabel.textContent = 'Изменения за неделю';
     stackKey.textContent = 'Logs';
     stackTitle.textContent = 'Кто что менял за последние ' + ((LOGS && LOGS.days) || 7) + ' дней';
@@ -1621,9 +1729,7 @@
   }
 
   function openMetrics() {
-    currentEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
-    storiesLabel.hidden = false;
     storiesLabel.textContent = 'Метрики';
     stackKey.textContent = 'Сводный отчёт';
     stackTitle.textContent = 'Команда за последние 3 спринта';
@@ -1639,8 +1745,7 @@
     var epic = EPICS.find(function (e) { return e.rowId === rowId; });
     if (!epic) return;
 
-    currentEpic = epic;
-    storiesLabel.hidden = true;  // подпись «Истории» рисуется в теле, под комментариями
+    storiesLabel.textContent = 'Истории';
     setStackHead(epic);
     fillStoriesPanel(epic);
 
@@ -1660,7 +1765,8 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (!cpop.hidden) { closeCommentPopup(); return; }  // сначала закрываем поле комментария
+    if (!cpop.hidden) { closeCommentPopup(); return; }  // сначала поле заметки
+    if (notesPanel.classList.contains('open')) { setNotesOpen(false); return; }  // потом корзина
     closePanels();
   });
 
@@ -1708,6 +1814,7 @@
     closePanels();
     useTeam(slug);
     migrateNotes();
+    fillRefList();
     renderHero();
     renderTable();
     renderMetricsLink();
@@ -1715,29 +1822,39 @@
 
   useTeam(TEAMS[0].slug);
   migrateNotes();
+  fillRefList();
   renderHero();
   renderTable();
   renderMetricsLink();
   renderProvenance();
   document.getElementById('logsBtn').addEventListener('click', openLogs);
-  // общий комментарий: Enter — в лог, Shift+Enter — перенос строки
-  var genInput = document.getElementById('genInput');
-  genInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-      e.preventDefault();
-      if (addComment({ kind: 'general', title: 'Общее' }, genInput.value)) { genInput.value = ''; genInput.blur(); }
-    }
+  // корзина: открыть/закрыть, новая заметка, промт
+  notesToggle.addEventListener('click', function () {
+    setNotesOpen(!notesPanel.classList.contains('open'));
+    if (notesPanel.classList.contains('open')) { renderNotes(); document.getElementById('nText').focus(); }
   });
-  document.getElementById('genForm').addEventListener('submit', function (e) { e.preventDefault(); });
+  var nText = document.getElementById('nText'), nRef = document.getElementById('nRef');
+  function addFromBasket() {
+    if (addComment(resolveRef(nRef.value), nText.value)) { nText.value = ''; nRef.value = ''; nText.focus(); }
+  }
+  document.getElementById('nAdd').addEventListener('click', addFromBasket);
+  [nText, nRef].forEach(function (el) {
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); addFromBasket(); }
+    });
+  });
 
-  var copyBtn = document.getElementById('clogCopy');
+  var copyBtn = document.getElementById('copyBtn');
   copyBtn.addEventListener('click', function () {
-    copyText(commentsText()).then(function () {
-      copyBtn.textContent = 'Скопировано ✓'; copyBtn.classList.add('done');
+    var text = document.getElementById('promptOut').value;
+    if (!text) return;
+    copyText(text).then(function () {
+      copyBtn.textContent = 'Скопировано ✓';
     }, function () {
-      copyBtn.textContent = 'Не скопировалось';
+      document.getElementById('promptOut').select();
+      copyBtn.textContent = 'Выделено — Ctrl+C';
     }).then(function () {
-      setTimeout(function () { copyBtn.textContent = 'Копировать'; copyBtn.classList.remove('done'); }, 1600);
+      setTimeout(function () { copyBtn.textContent = 'Скопировать промт'; }, 1600);
     });
   });
   document.getElementById('metricsLink').addEventListener('click', function (e) {

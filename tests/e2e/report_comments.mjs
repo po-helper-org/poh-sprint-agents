@@ -1,4 +1,4 @@
-// E2E страницы отчёта: комментарии, лог, копирование, приоритеты — в настоящем Chromium.
+// E2E страницы отчёта: корзина заметок, привязка, правка, промт, приоритеты — в настоящем Chromium.
 //
 //   cd tests/e2e && npm install && npm test
 //
@@ -26,24 +26,56 @@ const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 await p.goto(pathToFileURL(page).href);
 
-// старые заметки демо-данных переехали в лог, файловых кнопок больше нет
-check(await p.$('#notesExport') === null && await p.$('.note-area') === null, 'заметок и выгрузки файлом нет');
-check(await p.textContent('#clogCount') === '2', 'заметки прошлой версии перенесены в лог');
+const count = async () => (await p.textContent('#cCount')).trim();
+const openBasket = async () => { if (!(await p.isVisible('#notesPanel'))) await p.click('#notesToggle'); };
 
-// 4: общий комментарий в правом верхнем углу
-await p.fill('#genInput', 'Истории по SEO нет в спринте');
-await p.press('#genInput', 'Enter');
-check((await p.inputValue('#genInput')) === '', 'общее поле очищается после Enter');
+// корзина в правом верхнем углу; файлов и лога над таблицей больше нет
+check(await p.$('#notesExport') === null && await p.$('#clog') === null && await p.$('.note-area') === null,
+      'ни заметок-файлов, ни лога над таблицей');
+check(await p.isHidden('#notesPanel'), 'корзина закрыта, пока её не открыли');
+check(await count() === '2', 'заметки прошлой версии перенесены в корзину');
 
-// 3: правый клик по эпику в таблице → поле комментария
-await p.click('#tableBody tr:nth-child(2) td.epic', { button: 'right' });
-check(await p.isVisible('#cpop'), 'правый клик открывает поле комментария');
-check((await p.textContent('#cpopTarget')).includes('Эпик'), 'в поле видно, к чему комментарий');
+// заметка без привязки — из корзины
+await openBasket();
+await p.fill('#nText', 'Истории по SEO нет в спринте');
+await p.press('#nText', 'Enter');
+check(await count() === '3', 'заметка без привязки добавляется из корзины');
+check((await p.inputValue('#nText')) === '', 'поле очищается после добавления');
+
+// привязка из корзины: ключ из отчёта и ключ вне отчёта
+const epicKey = await p.evaluate(() => TEAMS[0].epics[0].epicKey);
+await p.fill('#nText', 'Проверить объём эпика');
+await p.fill('#nRef', epicKey);
+await p.click('#nAdd');
+await p.fill('#nText', 'Этой истории нет в спринте');
+await p.fill('#nRef', 'SEO-77 — перелинковка');
+await p.press('#nRef', 'Enter');
+let prompt = await p.inputValue('#promptOut');
+check(prompt.includes(`[Эпик ${epicKey} «`), 'ключ из отчёта раскрывается в сущность');
+check(prompt.includes('[Вне отчёта SEO-77 «перелинковка»] Этой истории нет в спринте'), 'ключ вне отчёта сохраняется как есть');
+check(prompt.includes('[без привязки] Истории по SEO нет в спринте'), 'заметка без привязки помечена в промте');
+
+// правка: текст и привязка
+const lastEdit = '.nitem:last-child [data-edit]';
+await p.click(lastEdit);
+await p.fill('.nedit-text', 'Истории SEO-77 нет в спринте — завести');
+await p.fill('.nedit-ref', '');
+await p.click('.nedit [data-save]');
+prompt = await p.inputValue('#promptOut');
+check(prompt.includes('[без привязки] Истории SEO-77 нет в спринте — завести') && !prompt.includes('Вне отчёта'),
+      'заметку можно отредактировать и отвязать');
+check((await p.textContent('.nitem:last-child .when')).includes('изм.'), 'у изменённой заметки пометка');
+
+// правый клик по строке → заметка с привязкой; «Уже оставлено» для той же сущности
+await p.keyboard.press('Escape');
+await p.click('#tableBody tr:nth-child(1) td.epic', { button: 'right' });
+check(await p.isVisible('#cpop'), 'правый клик открывает поле заметки');
+check(await p.isVisible('#cpopExisting') && (await p.textContent('#cpopExisting')).includes('Проверить объём эпика'),
+      'в поле видно уже оставленное к этой сущности');
 await p.fill('#cpopText', 'Ждём DBA');
 await p.press('#cpopText', 'Enter');
 check(await p.isHidden('#cpop'), 'Enter сохраняет и закрывает поле');
 
-// правый клик по истории и подзадаче в панели эпика
 await p.click('#tableBody tr:nth-child(1)');
 await p.waitForTimeout(250);
 await p.click('.story-row .story-title-wrap >> nth=0', { button: 'right', position: { x: 200, y: 8 } });
@@ -53,37 +85,37 @@ await p.click('.story-toggle:not([disabled]) >> nth=0');
 await p.click('.sub-list.open .story-title-wrap >> nth=0', { button: 'right', position: { x: 120, y: 6 } });
 await p.keyboard.press('Escape');
 check(await p.isHidden('#cpop') && await p.isVisible('#panelStack'), 'Esc закрывает поле, панель остаётся');
-check((await p.$$('.epic-comments .clog-item')).length === 2, 'комментарии эпика видны в его панели');
+check((await p.$$('.story-row .cmark')).length === 1, 'у истории с заметкой счётчик');
 await p.keyboard.press('Escape');
 
-// 1: лог сверху и копирование текстом
-check(await p.textContent('#clogCount') === '5', 'все комментарии в логе сверху');
-await p.click('#clogCopy');
+// промт и копирование
+await openBasket();
+check(await count() === '7', 'все заметки в корзине');
+await p.click('#copyBtn');
 await p.waitForTimeout(150);
 const text = await p.evaluate(() => navigator.clipboard.readText());
-check(text.startsWith('Комментарии к отчёту спринта'), 'копируется текст с шапкой');
-check(/3\. .*· Общее\n   Истории по SEO нет в спринте/.test(text), 'общий комментарий в тексте');
-check(/История INIT-\d+ «.+» · эпик .* · приоритет \S+/.test(text), 'у задачи в тексте эпик и приоритет');
-check(text.includes('   строка 1\n   строка 2'), 'многострочный комментарий сохраняет строки');
+check(text === await p.inputValue('#promptOut'), 'копируется ровно промт из корзины');
+check(text.startsWith('Заметки PO к отчёту спринта'), 'промт начинается с контекста');
+check(/\[История INIT-\d+ «.+» · эпик .* · приоритет \S+ · статус .+ · исполнитель .+\] строка 1\n   строка 2/.test(text),
+      'у задачи в промте эпик, приоритет, статус, исполнитель; строки сохраняются');
 
 // удаление и перезагрузка
-await p.click('.clog-del >> nth=0');
-check(await p.textContent('#clogCount') === '4', 'комментарий удаляется');
+await p.click('.nitem:first-child [data-del]');
+check(await count() === '6', 'заметка удаляется');
 await p.reload();
-check(await p.textContent('#clogCount') === '4', 'лог переживает перезагрузку, перенос заметок не повторяется');
+check(await count() === '6', 'корзина переживает перезагрузку, перенос не повторяется');
 
-// 2: приоритеты у эпиков, историй и подзадач
-const prios = await p.$$eval('#tableBody .prio[title^="Приоритет:"]', els => els.length);
-check(prios > 0, 'приоритет у эпиков в таблице');
+// приоритеты у эпиков, историй и подзадач
+check((await p.$$('#tableBody .prio[title^="Приоритет:"]')).length > 0, 'приоритет у эпиков в таблице');
 await p.click('#tableBody tr:nth-child(1)');
 await p.waitForTimeout(250);
 check((await p.$$('.story-row .prio[title^="Приоритет:"]')).length > 0, 'приоритет у историй');
 check((await p.$$('.sub-item .prio[title^="Приоритет:"]')).length > 0, 'приоритет у подзадач');
 
-// лог у каждой команды свой
+// у каждой команды своя корзина
 await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
-check(await p.textContent('#clogCount') === '0', 'у другой команды свой лог');
+check(await count() === '0', 'у другой команды своя корзина');
 
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();
