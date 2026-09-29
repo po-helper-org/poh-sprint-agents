@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ФАКТ 2026Q3 — GDS, Live (эталон, обезличен)</title>
+<!-- Собрано okr-fact-export.py. Вёрстка — страница отбора квартала (okr-fast/assets/page.css).
+     Страница ничего не пишет: правда живёт в .md. -->
+<style>
+/* Айдентика страниц PO: та же таблица стилей, что у страницы ревью БФТ
+   (poh-bft-writer/skills/bft-writer/scripts/bft-html-export.css). Копия, а не
+   ссылка: репозиторий навыков самодостаточен и не требует соседнего. */
+
+:root{
+  --bg:#ffffff;
+  --fg:#000000;
+  --muted:#555555;
+  --faint:#888888;
+  --line:#000000;
+  --line-soft:#cccccc;
+  --mark:#f2f2f2;
+  --link:#0000ee;
+  --visited:#551a8b;
+  /* Ширина выезжающей панели — токен: по ней же отводится рейка вкладок. */
+  --drawer-w:min(340px, 86vw);
+}
+*{ box-sizing:border-box; }
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:15px/1.55 Georgia, "Times New Roman", serif;
+}
+code, pre, .mono{ font-family:"Courier New", Consolas, monospace; }
+a{ color:var(--link); }
+a:visited{ color:var(--visited); }
+a.anchor-link{ text-decoration:none; border-bottom:1px dotted var(--link); }
+
+.layout{ max-width:860px; margin:0 auto; padding:2rem 1.5rem 6rem; }
+main{ min-width:0; max-width:760px; margin:0 auto; }
+
+/* Отбор квартала: таблица KR с ASIS/TOBE не читается в колонке 760px —
+   страница OKR идёт во всю ширину экрана. */
+.layout.wide{ max-width:100%; padding-left:1.5rem; padding-right:1.5rem; }
+.layout.wide main{ max-width:100%; }
+
+h1{ font-size:1.65rem; line-height:1.25; margin:0 0 .5rem; }
+h2{ font-size:1.25rem; margin:2.4rem 0 1rem; padding-top:1.6rem; border-top:1px solid var(--line-soft); }
+h2:first-of-type{ border-top:none; padding-top:0; }
+h3{ font-size:1.02rem; margin:1.4rem 0 .6rem; }
+p{ margin:0 0 .9rem; }
+ol, ul{ margin:0 0 .9rem; padding-left:1.4rem; }
+li{ margin-bottom:.35rem; }
+
+blockquote.quote{
+  border:1px solid var(--line); padding:.7rem .9rem; margin:1rem 0 1.6rem;
+  font-size:.92rem; background:var(--mark);
+}
+mark.unc{ background:var(--mark); border:1px solid var(--line-soft); padding:.02em .35em; font-family:"Courier New",monospace; font-size:.85em; }
+
+table{ border-collapse:collapse; width:100%; margin:0 0 .8rem; font-size:.86rem; }
+th, td{ border:1px solid var(--line-soft); padding:.5rem .6rem; text-align:left; vertical-align:top; }
+th{ background:var(--mark); font-family:"Courier New", monospace; font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; }
+tr[id]{ scroll-margin-top:1rem; }
+tr[id]:target{ background:var(--mark); outline:2px solid var(--fg); outline-offset:-2px; }
+td.rid{ font-family:"Courier New", monospace; font-weight:bold; white-space:nowrap; }
+.table-wrap{ overflow-x:auto; }
+
+.src{
+  font-size:.84rem; color:var(--muted); border-left:2px solid var(--line-soft);
+  padding:.3rem .8rem; margin:0 0 1.4rem;
+}
+
+/* Источник уехал в подвал страницы: в таблице требований остаётся сноска.
+   Цитата в каждой строке мешала читать сами требования (ЗМ-045). */
+td.src-cell{ text-align:center; white-space:nowrap; }
+.src-ref{ font-family:"Courier New", monospace; font-size:.78rem; text-decoration:none;
+  border-bottom:1px dotted var(--link); }
+ol.src-notes{ font-size:.86rem; color:var(--muted); padding-left:1.7rem; margin:0 0 1rem; }
+ol.src-notes li{ margin-bottom:.5rem; scroll-margin-top:1rem; }
+ol.src-notes li:target{ background:var(--mark); outline:2px solid var(--fg); outline-offset:2px; }
+.src-back{ text-decoration:none; margin-left:.3rem; }
+
+/* Схема — единственный блок, которому тесно в колонке чтения: она выходит на
+   всю ширину окна (колонка центрирована, поэтому хватает сдвига на половину).
+   Не влезла и так — прокручивается внутри своей рамки, а не тянет страницу. */
+.mermaid{
+  border:1px solid var(--line-soft); padding:1rem; margin:0 0 1.2rem;
+  overflow-x:auto; background:#fff;
+  width:min(1280px, calc(100vw - 3rem));
+  margin-left:50%; transform:translateX(-50%);
+}
+@media (max-width:820px){ .mermaid{ width:100%; margin-left:0; transform:none; } }
+
+/* Wireframe-раскадровка сценария: та же ширина, что у схемы. Рисунок
+   масштабируется по ширине колонки, узкий экран прокручивает его внутри рамки. */
+.wireframe{
+  border:1px solid var(--line-soft); padding:1rem; margin:0 0 1.2rem;
+  overflow-x:auto; background:#fff;
+  width:min(1280px, calc(100vw - 3rem));
+  margin-left:50%; transform:translateX(-50%);
+}
+.wireframe svg{ display:block; max-width:100%; height:auto; }
+@media (max-width:820px){ .wireframe{ width:100%; margin-left:0; transform:none; } }
+/* Mermaid раскрашивает подписи собственными правилами и перебивает тему, из-за
+   чего текст диаграммы уходил в серый по светлому. Цвет текста и линий важнее
+   чужих стилей, поэтому здесь он задан жёстко. */
+.mermaid svg text, .mermaid svg tspan{ fill:#000 !important; }
+.mermaid svg .actor{ fill:#fff !important; stroke:#000 !important; }
+.mermaid svg .messageLine0, .mermaid svg .messageLine1, .mermaid svg .actor-line{ stroke:#000 !important; }
+.mermaid svg .labelBox, .mermaid svg .note{ fill:#f2f2f2 !important; stroke:#000 !important; }
+
+/* Служебный раздел свёрнут: заголовок остаётся видимым и кликабельным. */
+details.fold{ margin:2.4rem 0 1rem; }
+details.fold > summary{ cursor:pointer; list-style:none; }
+details.fold > summary::-webkit-details-marker{ display:none; }
+details.fold > summary::before{ content:"▸"; color:var(--muted); margin-right:.4rem; }
+details.fold[open] > summary::before{ content:"▾"; }
+details.fold > summary h2{ display:inline; border-top:0; padding-top:0; margin:0; }
+details.fold > summary:hover h2{ text-decoration:underline; }
+details.fold > summary:focus-visible{ outline:2px solid var(--link); outline-offset:3px; }
+
+/* Вложенный <details> — блок с промтом внутри открытого поля. */
+main details:not(.fold){ border:1px solid var(--line-soft); padding:.6rem .9rem; margin:0 0 1rem; }
+main details:not(.fold) > summary{ cursor:pointer; font-family:"Courier New", Consolas, monospace; font-size:.8rem; }
+
+footer{ border-top:1px solid var(--line); margin-top:3rem; padding-top:1.4rem; font-size:.88rem; color:var(--muted); }
+
+/* comments panel (top-right) */
+.promptbox{
+  position:fixed; top:1rem; right:1rem; z-index:50;
+  display:flex; flex-direction:column; align-items:flex-end; gap:.4rem;
+  font-family:"Courier New", monospace; font-size:.75rem;
+}
+.promptbox > button{
+  background:var(--fg); color:var(--bg); border:1px solid var(--fg);
+  padding:.4rem .7rem; cursor:pointer; font-family:inherit; font-size:.78rem;
+}
+.panel{
+  /* В потоке колонки, а не на подобранном вручную отступе сверху: кнопок в
+     углу две, и любой фиксированный top разъехался бы при смене их числа. */
+  display:none; width:360px; max-height:75vh; overflow-y:auto;
+  background:var(--bg); border:1px solid var(--fg); padding:.9rem; box-shadow:3px 3px 0 var(--line-soft);
+}
+.panel.open{ display:block; }
+.panel h4{ margin:0 0 .5rem; font-size:.8rem; text-transform:uppercase; letter-spacing:.04em; }
+.panel .item{ border-bottom:1px solid var(--line-soft); padding:.4rem 0; }
+.panel .item .where{ color:var(--muted); font-size:.7rem; }
+.panel .item button{ font-size:.68rem; border:none; background:none; color:var(--muted); cursor:pointer; text-decoration:underline; padding:0; }
+.panel textarea{ width:100%; min-height:140px; font:.72rem/1.4 "Courier New",monospace; padding:.5rem; border:1px solid var(--line-soft); margin-top:.5rem; }
+.panel .copybtn{ margin-top:.4rem; width:100%; border:1px solid var(--fg); background:var(--fg); color:var(--bg); padding:.35rem; cursor:pointer; font-family:inherit; }
+.panel .empty{ color:var(--faint); font-style:italic; }
+/* Отгрузка — конец работы с документом, поэтому кнопка стоит в углу над
+   «Комментариями» и видна не открывая панель. Зелёный здесь тот же, что у
+   отвеченной точки: на этой странице он значит «закрыто», а не «нажми меня». */
+.promptbox > button.shipbtn{
+  padding:.4rem .7rem; cursor:pointer; font-family:inherit; font-size:.78rem;
+  border:1px solid #1a7a1a; background:var(--bg); color:#1a7a1a;
+}
+.promptbox > button.shipbtn:hover{ background:#1a7a1a; color:#fff; }
+.promptbox > button.shipbtn:focus-visible{ outline:2px solid var(--link); outline-offset:2px; }
+.shiphint{
+  max-width:340px; margin:0; text-align:right;
+  font-size:.68rem; line-height:1.4; color:var(--muted);
+  background:var(--bg); border:1px solid var(--line-soft); padding:.35rem .5rem;
+}
+.shiphint:empty{ display:none; }
+.shiphint.warn{ color:#a33; border-color:#a33; }
+
+/* blinking dot on every [УТОЧНИТЬ] */
+.unc-dot{
+  display:inline-block; width:8px; height:8px; margin-left:.3rem;
+  border-radius:50%; background:#e00000; cursor:pointer; border:none; padding:0;
+  vertical-align:middle; animation:pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse{ 0%,100%{ opacity:1; box-shadow:0 0 0 0 rgba(224,0,0,.5); } 50%{ opacity:.55; box-shadow:0 0 0 4px rgba(224,0,0,0); } }
+/* Прокомментированная точка перестаёт звать: зелёная и неподвижная. */
+.unc-dot.has-comment{ background:#1a7a1a; animation:none; }
+.unc-dot:focus-visible{ outline:2px solid var(--link); outline-offset:2px; }
+@media (prefers-reduced-motion:reduce){ .unc-dot{ animation:none; } }
+
+/* Подсказка по наведению — только чтение: реагировать можно в попоувере по клику,
+   поэтому она не перехватывает мышь и не мешает попасть в саму точку. */
+.unc-hint{
+  position:absolute; z-index:70; width:300px; pointer-events:none;
+  background:var(--fg); color:var(--bg); padding:.5rem .6rem;
+  font-family:"Courier New",monospace; font-size:.72rem; line-height:1.45;
+  box-shadow:3px 3px 0 var(--line-soft);
+}
+.unc-hint-title{ text-transform:uppercase; letter-spacing:.05em; font-size:.62rem; opacity:.7; margin-bottom:.35rem; }
+.unc-hint-item + .unc-hint-item{ margin-top:.4rem; padding-top:.4rem; border-top:1px solid rgba(255,255,255,.3); }
+.unc-hint-item.closed{ opacity:.75; }
+.unc-hint-item .when{ display:block; margin-top:.2rem; font-size:.64rem; opacity:.7; }
+
+/* floating popover for dot-comments and selection-comments */
+.popover{
+  position:absolute; z-index:60; width:280px;
+  background:var(--bg); border:1px solid var(--fg); box-shadow:3px 3px 0 var(--line-soft);
+  padding:.6rem; font-family:"Courier New",monospace; font-size:.76rem;
+}
+.popover .pquote{ color:var(--muted); font-size:.72rem; margin-bottom:.4rem; max-height:4.2em; overflow-y:auto; border-left:2px solid var(--line-soft); padding-left:.5rem; }
+.popover textarea{ width:100%; min-height:60px; font:.76rem/1.4 "Courier New",monospace; padding:.4rem; border:1px solid var(--line-soft); resize:vertical; }
+.popover .prow{ display:flex; gap:.4rem; margin-top:.4rem; }
+.popover button{ font-family:inherit; font-size:.72rem; border:1px solid var(--fg); background:var(--fg); color:var(--bg); padding:.25rem .6rem; cursor:pointer; }
+.popover button.cancel{ background:var(--bg); color:var(--fg); }
+/* Уже оставленные комментарии видны прямо в форме — на них и реагируют. */
+.popover .pexisting{ margin-bottom:.55rem; }
+.popover .pexisting-title{ text-transform:uppercase; letter-spacing:.05em; font-size:.62rem; color:var(--faint); margin-bottom:.3rem; }
+.popover .pex-item{ border-left:2px solid #1a7a1a; padding:.15rem .5rem; margin-bottom:.3rem; color:var(--muted); }
+.popover .pex-del{ background:none; border:none; color:var(--faint); text-decoration:underline; padding:0; margin-top:.15rem; font-family:inherit; font-size:.68rem; cursor:pointer; }
+
+/* left drawer: quick walk through УТОЧНИТЬ points */
+/* left rail: two drawers share one edge, so flexbox spaces them instead of
+   two hand-tuned `top` offsets that drift apart when a label changes length */
+.rail{
+  position:fixed; left:0; top:50%; transform:translateY(-50%); z-index:57;
+  display:flex; flex-direction:column; gap:6px; align-items:flex-start;
+  transition:left .12s ease;
+}
+/* Открытая панель занимает левую кромку. Рейка выезжает вместе с ней, иначе
+   она оказывается погребена: вторая вкладка недостижима, а повторный клик по
+   своей же вкладке не закрывает панель. */
+body.drawer-open .rail{ left:var(--drawer-w); }
+@media (prefers-reduced-motion:reduce){ .rail{ transition:none; } }
+.rail-tab{
+  writing-mode:vertical-rl; transform:rotate(180deg);
+  border:none; cursor:pointer; color:#fff;
+  font-family:"Courier New",monospace; font-size:.72rem; letter-spacing:.03em;
+  padding:.8rem .4rem;
+}
+/* Neutral chrome navigates; red is reserved for what wants an answer. */
+.nav-tab{ background:var(--fg); }
+.unc-tab{ background:#e00000; }
+.rail-tab:focus-visible{ outline:2px solid var(--link); outline-offset:2px; }
+
+.drawer{
+  display:none; position:fixed; left:0; top:0; bottom:0; width:var(--drawer-w); z-index:56;
+  background:var(--bg); border-right:1px solid var(--fg); box-shadow:3px 0 0 var(--line-soft);
+  padding:1rem; overflow-y:auto; font-family:"Courier New",monospace; font-size:.78rem;
+}
+.drawer.open{ display:block; }
+.drawer-head{ display:flex; align-items:center; justify-content:space-between; margin:0 0 .8rem; }
+.drawer h4{ margin:0; text-transform:uppercase; font-size:.8rem; letter-spacing:.04em; }
+.drawer-close{
+  background:none; border:1px solid var(--line-soft); color:var(--fg); cursor:pointer;
+  font-family:inherit; font-size:.9rem; line-height:1; padding:.1rem .5rem; border-radius:3px;
+}
+.drawer-close:hover{ border-color:var(--fg); }
+
+/* Оглавление: отступ кодирует реальную вложенность h2 → h3, а не украшает. */
+.toc-link{ display:block; padding:.3rem 0; color:var(--fg); text-decoration:none; border-bottom:1px solid var(--line-soft); }
+.toc-link:visited{ color:var(--fg); }
+.toc-link:hover{ background:var(--mark); }
+.toc-h3{ padding-left:1.1rem; color:var(--muted); font-size:.73rem; border-bottom:0; }
+.toc-h3:visited{ color:var(--muted); }
+.unc-item{
+  display:block; width:100%; text-align:left; background:none; border:none; border-bottom:1px solid var(--line-soft);
+  padding:.55rem 0; cursor:pointer; color:var(--fg); font-family:inherit; font-size:.76rem;
+}
+.unc-item:hover{ background:var(--mark); }
+.unc-item .sec{ display:block; color:var(--faint); font-size:.68rem; text-transform:uppercase; margin-bottom:.15rem; }
+.unc-item .snip{ color:var(--muted); }
+.unc-item.answered .check{ color:#1a7a1a; font-weight:bold; }
+.unc-item .said{ display:block; margin-top:.3rem; padding-left:.5rem; border-left:2px solid #1a7a1a; color:var(--muted); }
+/* Закрытый пункт — история, а не работа: он неактивен, ничего не требует и
+   курсор на нём не меняется. Дата закрытия — в подсказке браузера. */
+.unc-item.closed{ cursor:default; color:var(--faint); }
+.unc-item.closed:hover{ background:none; }
+.unc-item.closed .said{ border-left-color:var(--line-soft); color:var(--faint); }
+.unc-item.closed .check{ color:var(--faint); }
+.unc-divider.iter-head{ color:var(--muted); border-top-style:solid; }
+.unc-divider{
+  margin:.8rem 0 .4rem; padding-top:.6rem; border-top:1px dashed var(--line-soft);
+  color:var(--faint); font-size:.68rem; text-transform:uppercase; letter-spacing:.05em;
+}
+mark.unc.flash{ outline:2px solid #e00000; outline-offset:1px; }
+
+::-webkit-scrollbar{ height:8px; width:8px; }
+::-webkit-scrollbar-thumb{ background:var(--line-soft); border-radius:4px; }
+
+/* ——— OKR: отбор бэклога квартала ——— */
+
+.head{ display:flex; align-items:baseline; gap:.8rem; flex-wrap:wrap; margin:0 0 1.4rem; }
+.head h1{ margin:0; }
+.head .meta{ font-family:"Courier New",monospace; font-size:.75rem; color:var(--muted); margin:0; }
+
+table.pick{ table-layout:fixed; }
+table.pick td{ vertical-align:middle; }
+col.c-kr{ width:3.4rem; }
+col.c-team{ width:5.6rem; }
+col.c-name{ width:15rem; }
+col.c-pbv{ width:4.2rem; }
+col.c-take{ width:5.2rem; }
+
+/* Строка — карточка: клик открывает всё, чего нет в таблице. */
+tr.row{ cursor:pointer; }
+tr.row:hover td{ background:var(--mark); }
+td.kr{ font-family:"Courier New",monospace; font-weight:bold; white-space:nowrap; }
+td.goal{ color:var(--muted); font-size:.82rem; }
+
+/* ASIS — то, что есть сейчас; TOBE — то, к чему идём за квартал. Разный вес
+   намеренно: глаз ищет целевое состояние, текущее читается вторым. */
+td.team{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted); white-space:nowrap; }
+
+/* Часть отчёта — верхний уровень: счётчик в заголовке показывает объём до
+   того, как PO начнёт раскрывать строки. */
+h2 .part-n{
+  font-family:"Courier New",monospace; font-size:.72rem; color:var(--muted);
+  border:1px solid var(--line-soft); padding:.05em .5em; margin-left:.7rem;
+  vertical-align:middle;
+}
+section.part[hidden]{ display:none; }
+
+td.asis{ color:var(--muted); font-size:.82rem; background:var(--mark); }
+td.tobe{ font-size:.84rem; }
+th.h-asis, th.h-tobe{ white-space:nowrap; }
+
+/* Взятое помечено, невзятое просто не помечено: гасить весь список нельзя —
+   до первого отбора документ выглядел выключенным. */
+tr.row[data-take="yes"] td{ background:#f4faf5; }
+tr.row[data-take="yes"] td.kr{ border-left:3px solid #1a7a1a; }
+tr.row[data-take="yes"]:hover td{ background:#eaf5ec; }
+tr.row[data-new] td.kr::after{ content:" +"; color:#1a7a1a; }
+
+td.take{ text-align:center; }
+td.take input{ width:16px; height:16px; cursor:pointer; accent-color:#1a7a1a; }
+/* Цвет по весу PBV: четыре ступени, чтобы приоритеты отделялись взглядом, не
+   читая цифру. Оттенки приглушённые — страница остаётся документом, а не
+   светофором. Красный и зелёный тут не используются: они уже заняты смыслами
+   «не задано» и «взято в квартал». */
+td.pbv select{ font-family:"Courier New",monospace; font-size:.78rem; font-weight:bold;
+  color:var(--fg); background:var(--bg); border:1px solid transparent;
+  padding:.12rem .25rem; width:3.4rem; border-radius:3px; }
+td.pbv select:hover, td.pbv select:focus{ border-color:var(--line-soft); outline:none; }
+
+td.pbv[data-tier="high"] select{ background:#f3e3e0; color:#7c2d18; }
+td.pbv[data-tier="mid"] select{ background:#f7efd9; color:#7a5c12; }
+td.pbv[data-tier="low"] select{ background:#e7eef7; color:#2f4c73; }
+td.pbv[data-tier="zero"] select{ background:var(--mark); color:var(--faint); }
+/* Не задан — пунктирная рамка, а не цвет: цвет здесь означает вес, и пустое
+   значение не должно читаться как «очень важно». */
+td.pbv[data-empty] select{ border:1px dashed #a33; color:#a33; font-weight:normal; }
+
+/* Легенда: одна строка под шапкой, тем же кодом цвета, что и в таблице. */
+.legend{ font-family:"Courier New",monospace; font-size:.72rem; color:var(--muted); margin:0 0 1.4rem; }
+.legend span{ display:inline-block; padding:.1rem .4rem; border-radius:3px; margin-right:.35rem; font-weight:bold; }
+.legend .high{ background:#f3e3e0; color:#7c2d18; }
+.legend .mid{ background:#f7efd9; color:#7a5c12; }
+.legend .low{ background:#e7eef7; color:#2f4c73; }
+.legend .zero{ background:var(--mark); color:var(--faint); }
+
+/* В карточке вес показывается тем же цветом, что и в строке. */
+.takeline .pbvtag{ display:inline-block; padding:.05rem .35rem; border-radius:3px; font-weight:bold; }
+.takeline .pbvtag[data-tier="high"]{ background:#f3e3e0; color:#7c2d18; }
+.takeline .pbvtag[data-tier="mid"]{ background:#f7efd9; color:#7a5c12; }
+.takeline .pbvtag[data-tier="low"]{ background:#e7eef7; color:#2f4c73; }
+.takeline .pbvtag[data-tier="zero"]{ background:var(--mark); color:var(--faint); }
+.takeline .pbvtag[data-tier="none"]{ border:1px dashed #a33; color:#a33; font-weight:normal; }
+
+/* Нижняя полоса — ввод нового KR и отправка отбора агенту. Счётчиков нет:
+   решение принимают по строкам, а не по сумме. */
+.bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:40;
+  background:var(--bg); border-top:1px solid var(--fg);
+  font-family:"Courier New",monospace; font-size:.78rem;
+  padding:.55rem 1rem; display:flex; gap:.5rem; align-items:center;
+}
+.bar input[type=text]{ flex:1; min-width:0; font:inherit; padding:.35rem .5rem;
+  border:1px solid var(--line-soft); background:var(--bg); color:var(--fg); }
+.bar input[type=text]:focus{ outline:none; border-color:var(--fg); }
+.bar select{ font:inherit; padding:.3rem; border:1px solid var(--line-soft); background:var(--bg); color:var(--fg); }
+.bar button{ border:1px solid var(--fg); background:var(--bg); color:var(--fg);
+  font-family:inherit; font-size:.78rem; padding:.35rem .7rem; cursor:pointer; white-space:nowrap; }
+.bar button.primary{ background:var(--fg); color:var(--bg); }
+.bar .barnote{ color:var(--faint); font-size:.7rem; white-space:nowrap; }
+
+/* Карточка KR: заметка целиком, а не набор полей. Разметка живёт в тексте,
+   поэтому «образ результата», «демо» и ссылка на БФТ — это заголовки внутри
+   одной заметки, и PO дописывает что угодно, не спрашивая разрешения у формы. */
+.side{
+  position:fixed; right:0; top:0; bottom:0; width:min(520px,94vw); z-index:45;
+  background:var(--bg); border-left:1px solid var(--fg); box-shadow:-3px 0 0 var(--line-soft);
+  padding:1.1rem 1.3rem 4.5rem; overflow-y:auto; display:none;
+}
+.side.open{ display:block; }
+.side-head{ display:flex; justify-content:space-between; align-items:center; margin:0 0 .3rem; }
+.side-head .kr-id{ font-family:"Courier New",monospace; font-size:.72rem; color:var(--faint);
+  text-transform:uppercase; letter-spacing:.05em; }
+.side-title{ margin:.1rem 0 .5rem; font-size:1.25rem; line-height:1.3; outline:none; }
+.side-title:focus{ background:var(--mark); }
+.takeline{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted); margin:0 0 1rem; }
+.takeline b{ color:#1a7a1a; }
+.takeline b.no{ color:#a33; }
+
+/* Поле заметки. Каждая строка — блок; тип блока виден по виду, а не по значку. */
+.note{ outline:none; min-height:16rem; font-size:.95rem; line-height:1.6; }
+.note:empty::before{ content:"Текст. # заголовок, - список, [] пункт дела"; color:var(--faint); }
+/* Пустая строка сразу под заголовком — приглашение писать, а не пропуск вёрстки. */
+.note .b[data-t="h"] + .b[data-t="p"]:empty::before{ content:"…"; color:var(--faint); }
+.note .b{ margin:0 0 .35rem; }
+.note .b[data-t="h"]{ font-size:1.02rem; font-weight:bold; margin:1.1rem 0 .4rem; }
+.note .b[data-t="li"]{ padding-left:1.1rem; position:relative; }
+.note .b[data-t="li"]::before{ content:"•"; position:absolute; left:.3rem; color:var(--muted); }
+.note .b[data-t="todo"]{ padding-left:1.5rem; position:relative; }
+.note .b[data-t="quote"]{ border-left:2px solid var(--line-soft); padding-left:.7rem; color:var(--muted); }
+.note .b[data-t="hr"]{ border-top:1px solid var(--line-soft); height:0; margin:1rem 0; }
+.note .tick{ position:absolute; left:0; top:.28em; width:13px; height:13px; padding:0;
+  border:1px solid var(--muted); background:var(--bg); cursor:pointer; }
+.note .b[data-done] .tick{ background:#1a7a1a; border-color:#1a7a1a; }
+.note .b[data-done]{ color:var(--faint); text-decoration:line-through; }
+.hintline{ color:var(--faint); font-family:"Courier New",monospace; font-size:.68rem;
+  margin:1.4rem 0 0; line-height:1.5; }
+.hintline code{ font-size:.9em; }
+
+/* Команды живут во второй выезжающей панели рейки, рядом с содержанием: выбор
+   команды — та же навигация, только меняет не позицию, а состав документа. */
+.team-tab{ background:var(--fg); }
+.team-item{
+  display:block; width:100%; text-align:left; background:none; border:none;
+  border-bottom:1px solid var(--line-soft); padding:.5rem .2rem; cursor:pointer;
+  font-family:"Courier New",monospace; font-size:.76rem; color:var(--fg); }
+.team-item:hover{ background:var(--mark); }
+.team-item[data-active]{ font-weight:bold; }
+.team-item[data-active]::before{ content:"▸ "; }
+.team-item .n{ float:right; color:var(--faint); font-weight:normal; }
+
+/* Скрытая команда остаётся в документе: отбор в ней не теряется, а промт
+   собирается сразу по всем. */
+section.team[hidden]{ display:none; }
+
+/* Затемнение под карточкой: документ уходит на второй план, но остаётся виден —
+   по нему и понятно, какую строку открыли. Клик по затемнению закрывает карточку. */
+.scrim{ position:fixed; inset:0; background:rgba(0,0,0,.22); z-index:43; display:none; }
+body[data-side] .scrim{ display:block; }
+.side{ z-index:46; }
+
+/* Кнопка правок перекрывала крестик карточки: пока карточка открыта, она
+   отъезжает левее её края. */
+body[data-side] .promptbox{ right:calc(min(520px,94vw) + 1rem); }
+
+/* Строка с комментарием помечена зелёной точкой — тем же цветом, что закрытый
+   пробел в БФТ. */
+tr.row[data-commented] td.kr::before{ content:"●"; color:#1a7a1a; margin-right:.3rem; font-size:.7em; }
+.popover .pmeta{ font-family:"Courier New",monospace; font-size:.66rem; color:var(--faint);
+  text-transform:uppercase; letter-spacing:.05em; margin-bottom:.35rem; }
+
+/* Рейка с одной вкладкой не висит по центру экрана, а стоит вверху, рядом с
+   заголовком документа. */
+.rail{ top:1rem; transform:none; }
+
+/* Предложения агента: пунктир, пока PO не подтвердил. */
+td.team.proposed{ color:var(--muted); border-bottom:1px dashed var(--faint); font-style:italic; }
+td.kr .ask{ display:inline-block; margin-left:.35em; width:1.15em; height:1.15em; line-height:1.15em; text-align:center; border:1px solid #e00000; color:#e00000; border-radius:50%; font-size:.7rem; cursor:help; vertical-align:middle; }
+tr.row[data-proposed] td.take input{ outline:1px dashed var(--faint); outline-offset:2px; }
+.ask-block{ border:1px solid var(--line); background:var(--mark); padding:.6rem .9rem; margin:0 0 1.4rem; font-size:.9rem; }
+.ask-block h4{ margin:0 0 .4rem; font-size:.85rem; }
+.ask-block ol{ margin:0; padding-left:1.3rem; }
+
+/* — факт квартала: исход, готовность, действие — */
+.st{ display:inline-block; width:1.35em; text-align:center; font-weight:700; }
+.st-done{ color:#0a7a3d; } .st-partial{ color:#b07000; }
+.st-failed{ color:#c00000; } .st-dropped{ color:#777; } .st-unknown{ color:#777; }
+table.fact td.fact{ font-size:.84rem; }
+table.fact td.next{ font-size:.82rem; color:var(--muted); }
+col.c-pct{ width:4.2rem; }
+col.c-prog{ width:11rem; }
+col.c-name{ width:auto; }
+tr.objrow td{ background:#dfe7f5; border-top:2px solid var(--line); font-size:.86rem; padding:.5rem .6rem; }
+/* Вертикальные границы внутри таблицы факта убраны: шкала этапов и так
+   разделена на деления, лишние перегородки спорят с ней за внимание. */
+table.fact th, table.fact td{ border-left:0; border-right:0; }
+td.prog{ white-space:nowrap; }
+col.c-fly{ width:3.4rem; }
+td.fly{ text-align:center; }
+td.fly span{ font-family:"Courier New",monospace; font-size:.62rem; letter-spacing:.04em;
+  background:#ffe0b2; color:#7a4100; padding:.1rem .3rem; }
+td.pct.st-dropped{ font-size:.72rem; letter-spacing:.04em; }
+/* Шкала этапов не растягивает колонку: у KR с длинным планом (18 шагов у 1.2)
+   деления уезжают в горизонтальный скролл, а не наползают на процент. */
+td.prog .segs{ display:inline-flex; gap:2px; vertical-align:middle;
+  max-width:9rem; overflow-x:auto; scrollbar-width:thin; padding-bottom:2px; }
+td.prog .segs::-webkit-scrollbar{ height:4px; }
+td.prog .segs::-webkit-scrollbar-thumb{ background:var(--line-soft); }
+td.prog .seg{ flex:0 0 auto; }
+td.prog .seg{ display:block; width:.72rem; height:12px; border:1px solid var(--line-soft); }
+td.prog .seg.s-done{ background:#57bb8a; border-color:#3f9e70; }
+td.prog .seg.s-progress{ background:#ffd666; border-color:#d9a900; }
+td.prog .seg.s-todo{ background:var(--bg); }
+td.prog .seg.s-none{ background:repeating-linear-gradient(45deg, var(--mark) 0 3px, var(--bg) 3px 6px); }
+td.prog .seg.s-dropped{ background:var(--mark); border-style:dashed; }
+td.prog .segn{ font-family:"Courier New",monospace; font-size:.7rem; color:var(--muted);
+  margin-left:.5rem; vertical-align:middle; }
+td.prog .segn:first-child{ margin-left:0; color:var(--faint); }
+td.pct{ text-align:right; font-family:"Courier New",monospace; font-size:.8rem; font-weight:bold; }
+.fill.st-done{ background:#57bb8a; } .fill.st-partial{ background:#ffd666; }
+.fill.st-failed{ background:#e57373; } .fill.st-dropped, .fill.st-unknown{ background:#c9c9c9; }
+td.pct.st-done{ color:#0a7a3d; } td.pct.st-partial{ color:#8a6100; }
+td.pct.st-failed{ color:#c00000; } td.pct.st-dropped, td.pct.st-unknown{ color:var(--faint); }
+/* — панель: процессный roadmap со статусом шага — */
+.side .step{ display:flex; gap:.5rem; align-items:baseline; margin:0 0 .3rem; font-size:.86rem; }
+.side .role{ font-family:"Courier New",monospace; font-size:.7rem; color:var(--muted);
+  border:1px solid var(--line-soft); padding:.05rem .3rem; min-width:3.6rem; text-align:center; }
+.side .step .txt{ flex:1; }
+.side .step[data-s="dropped"] .txt{ text-decoration:line-through; color:var(--faint); }
+.side .badge{ font-family:"Courier New",monospace; font-size:.62rem; letter-spacing:.04em;
+  padding:.1rem .35rem; white-space:nowrap; }
+.side .badge[data-s="done"]{ background:#d8f0e1; color:#0a7a3d; }
+.side .badge[data-s="progress"]{ background:#fdeec2; color:#8a6100; }
+.side .badge[data-s="todo"]{ background:var(--mark); color:var(--muted); }
+.side .badge[data-s="none"]{ border:1px dashed var(--line-soft); color:var(--faint); }
+.side .badge[data-s="dropped"]{ background:var(--mark); color:var(--faint); }
+.side .segs{ display:inline-flex; flex-wrap:wrap; gap:2px; vertical-align:middle; margin-top:.4rem; max-width:100%; }
+.side .seg{ display:block; width:.8rem; height:12px; border:1px solid var(--line-soft); }
+.side .seg.s-done{ background:#57bb8a; border-color:#3f9e70; }
+.side .seg.s-progress{ background:#ffd666; border-color:#d9a900; }
+.side .seg.s-todo{ background:var(--bg); }
+.side .seg.s-none{ background:repeating-linear-gradient(45deg, var(--mark) 0 3px, var(--bg) 3px 6px); }
+.side .seg.s-dropped{ background:var(--mark); border-style:dashed; }
+.side .segn{ font-family:"Courier New",monospace; font-size:.7rem; color:var(--muted); margin-left:.5rem; }
+.bar{ display:block; height:3px; background:var(--line-soft); margin-top:.35rem; }
+.bar span{ display:block; height:3px; background:var(--fg); }
+.st-item{ display:block; width:100%; text-align:left; font:inherit; font-size:.86rem;
+  background:none; border:0; border-bottom:1px solid var(--line-soft); padding:.5rem .2rem; cursor:pointer; }
+.st-item[data-active]{ font-weight:bold; }
+.st-item .n{ float:right; font-family:"Courier New",monospace; font-size:.72rem; color:var(--muted); }
+table.mini{ width:auto; margin:0 0 .2rem; }
+table.mini td{ border:1px solid var(--line-soft); padding:.35rem .6rem; font-size:.84rem; }
+table.mini.head td{ background:var(--mark); font-size:.72rem; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--muted); }
+tr.row[hidden]{ display:none; }
+.side .factline{ font-family:"Courier New",monospace; font-size:.74rem; color:var(--muted); margin:0 0 1rem; }
+</style>
+</head>
+<body>
+
+<div class="rail"><button class="rail-tab team-tab" id="stTab" type="button">Исход: <span id="stNow">все</span></button></div>
+<div class="drawer" id="stDrawer"><div class="drawer-head"><h4>Исход квартала</h4><button class="drawer-close" data-close="stDrawer" type="button">×</button></div><button class="st-item" type="button" data-state="" data-active>Все исходы<span class="n">50</span></button>
+<button class="st-item" type="button" data-state="done"><span class="st st-done">✔</span> закрыт<span class="n">25</span></button>
+<button class="st-item" type="button" data-state="partial"><span class="st st-partial">◐</span> частично<span class="n">15</span></button>
+<button class="st-item" type="button" data-state="failed"><span class="st st-failed">✖</span> не сделано<span class="n">3</span></button>
+<button class="st-item" type="button" data-state="dropped"><span class="st st-dropped">⊘</span> отменён<span class="n">7</span></button></div>
+
+<div class="layout wide">
+<main>
+<div class="head"><h1>ФАКТ 2026Q3 — GDS, Live</h1></div>
+<blockquote class="quote">Источник факта: трекер OKR (Google Sheets, вкладка <code>26Q3OKR</code>, команда GDS/LIVE) — <code>artefacts/tracker-26Q3OKR.md</code>, выгрузка 22.09.2026. Ступень основания 4: таблица команды.<br>Итог квартала: **92 %** — взвешенное по PBV среднее по 42 оценённым KR (простое среднее 86 %). Цифры уточнены PO 22.09 поверх выгрузки трекера: по 12 KR готовность выше, чем в таблице.<br>Статусы шагов плана: <code>[x]</code> сделано · <code>[~]</code> в работе · <code>[ ]</code> не начато · <code>[-]</code> снято · <code>[?]</code> статус не задан. Для KR на 100 % шаги проставлены сделанными, для KR на 0 % — не начатыми. Размечены со слов PO 22.09: KR 1.1, 1.2, 1.3, 2.3.1, 2.3.2, 2.5.3, 3.5.5, 3.6, 3.9.2 (roadmap — истории из БФТ <code>bft/documentation/vibeapp-stability-q3-2026</code>).</blockquote>
+<a id="obj-1"></a>
+<div class="table-wrap"><table class="pick fact"><colgroup><col class="c-kr"><col class="c-fly"><col class="c-pbv"><col class="c-name"><col class="c-prog"><col class="c-pct"></colgroup><thead><tr><th>KR</th><th></th><th>PBV</th><th>Название</th><th>Прогресс</th><th>%</th></tr></thead><tbody><tr class="objrow"><td colspan="6"><b>OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)</b> · Недоступность БАЗИС не останавливает функционал Ticketland</td></tr><tr class="row" data-kr="1.1" data-state="partial"><td class="kr">1.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Продажа мероприятий Ticketscloud на витрине TL через UMC минуя БАЗИС (виджет TC)</td><td class="prog"><span class="segs"><i class="seg s-done" title="BA · Изучение документации Ticketscloud API · DONE"></i><i class="seg s-done" title="SA · Исследование коннектора данных UMC → web_db напрямую · DONE"></i><i class="seg s-done" title="ADR · Согласование UMC → Ticketland dataflow · DONE"></i><i class="seg s-done" title="DBA · Валидация дизайна, как работаем с БД · DONE"></i><i class="seg s-done" title="BE · Ticketscloud → UMC · DONE"></i><i class="seg s-done" title="BE · UMC → web_db · DONE"></i><i class="seg s-progress" title="BE · web_db → Ticketland.BFF · IN PROGRESS"></i><i class="seg s-progress" title="FE · web_db → Ticketland.Frontend UI · IN PROGRESS"></i><i class="seg s-progress" title="QA · Отладка генерации виджета TC · IN PROGRESS"></i><i class="seg s-todo" title="RELEASE · Пошаговая раскатка · TODO"></i></span><span class="segn">6&thinsp;/&thinsp;10</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="1.1.E1" data-state="done"><td class="kr">1.1.E1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Дизайн дедубликации каталога web_db</td><td class="prog"><span class="segs"><i class="seg s-done" title="SA · Проектирование схемы дедубликации в потоке ВБС + GDS → UMC → web_db · DONE"></i><i class="seg s-done" title="DBA · Валидация дизайна, как работаем с БД · DONE"></i><i class="seg s-done" title="BE · [EXT] Разработка дедубликатора мероприятий · DONE"></i><i class="seg s-done" title="QA · Отладка стабильности дедубликатора · DONE"></i><i class="seg s-done" title="BE · Интеграция схемы дедубликации · DONE"></i></span><span class="segn">5&thinsp;/&thinsp;5</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="1.2" data-state="partial"><td class="kr">1.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Заказы и возвраты в ЛК Ticketland от Ticketscloud</td><td class="prog"><span class="segs"><i class="seg s-done" title="BA · Сбор и описание БФТ · DONE"></i><i class="seg s-done" title="SA · Первичная аналитика · DONE"></i><i class="seg s-done" title="SA · Декомпозиция и разработка · DONE"></i><i class="seg s-done" title="BE · US1 [EXT] Доработки на стороне TC по Kafka · DONE"></i><i class="seg s-done" title="BE · US1 Сохранение заказов · DONE"></i><i class="seg s-done" title="BE · US1 Доработка BFF для вывода заказов · DONE"></i><i class="seg s-done" title="FE · US1 [EXT] Логика отображения заказов · DONE"></i><i class="seg s-done" title="QA · US1 Отладка · DONE"></i><i class="seg s-done" title="RELEASE · US1 Отгрузка в Production · DONE"></i><i class="seg s-done" title="SA · US2 Возвраты: БФТ / СТ / ADR · DONE"></i><i class="seg s-done" title="ADR · US2 Согласование дизайна решения и требований с TC · DONE"></i><i class="seg s-progress" title="BE · US2 Механизм возвратов и BFF · IN PROGRESS"></i><i class="seg s-done" title="FE · US2 [EXT] Отображение в ЛК TL · DONE"></i><i class="seg s-done" title="QA · US2 Отладка · DONE"></i><i class="seg s-done" title="RELEASE · US2 Отгрузка в Production · DONE"></i><i class="seg s-todo" title="SA · US3 Обмен билетов: БФТ / СТ / ADR · TODO"></i><i class="seg s-todo" title="BE · US3 Механизм обмена · TODO"></i><i class="seg s-todo" title="RELEASE · US3 Отгрузка · TODO"></i></span><span class="segn">14&thinsp;/&thinsp;18</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="1.3" data-state="partial"><td class="kr">1.3</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">8</span></td><td class="name">[POC] Переключение BI-шлюзов к Ticketscloud + отделение BI</td><td class="prog"><span class="segs"><i class="seg s-done" title="ADR · BI-шлюзы: стратегия интеграции с TC · DONE"></i><i class="seg s-done" title="ADR · [EXT] Согласование дизайна TC / BI · DONE"></i><i class="seg s-done" title="SA · Системная аналитика · DONE"></i><i class="seg s-done" title="SA · Аналитика BI-модуля · DONE"></i><i class="seg s-done" title="SA · Описание оставшихся вопросов · DONE"></i><i class="seg s-todo" title="BA · Бизнес-контекст: описание бизнес-процесса запуска продаж · TODO"></i></span><span class="segn">5&thinsp;/&thinsp;6</span></td><td class="pct st-partial">95&nbsp;%</td></tr><tr class="row" data-kr="1.5" data-state="failed"><td class="kr">1.5</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">3</span></td><td class="name">[RESEARCH] Как передать extapi_go B2B клиентов на TC</td><td class="prog"><span class="segs"><i class="seg s-todo" title="SA · Что делать с модулем авторизации extapi · TODO"></i><i class="seg s-todo" title="SA · Как мигрировать и адаптировать правила доступности под TC · TODO"></i><i class="seg s-todo" title="SA · Как переедут мероприятия из БАЗИС в TC · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;3</span></td><td class="pct st-failed">0&nbsp;%</td></tr><tr class="row" data-kr="1.6" data-state="done"><td class="kr">1.6</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">3</span></td><td class="name">[RESEARCH] Переезд TL на авторизацию по модели федераций</td><td class="prog"><span class="segs"><i class="seg s-done" title="ADR · Описание целевого dataflow авторизации · DONE"></i><i class="seg s-done" title="SA · План работ по переключению · DONE"></i><i class="seg s-done" title="PO · ADR и план согласованы со стейкхолдерами · DONE"></i></span><span class="segn">3&thinsp;/&thinsp;3</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="1.7" data-state="done"><td class="kr">1.7</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="none">—</span></td><td class="name">[POC] Проверка гипотезы переезда web_db с MSSQL на PostgreSQL (None)</td><td class="prog"><span class="segs"><i class="seg s-done" title="SA · Проверка концепции переезда MSSQL → PostgreSQL · DONE"></i><i class="seg s-done" title="SA · Подсчёт ресурсов: можем ли сделать быстро и дёшево · DONE"></i></span><span class="segn">2&thinsp;/&thinsp;2</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="1.6.2" data-state="done"><td class="kr">1.6.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">2</span></td><td class="name">[RESEARCH] Отказ от Email-авторизации на TLND в пользу провайдеров</td><td class="prog"><span class="segs"><i class="seg s-done" title="ADR · Продолжение KR 1.6: дизайн отказа от email-авторизации · DONE"></i><i class="seg s-done" title="PO · Продуктовые согласования и миграция · DONE"></i></span><span class="segn">2&thinsp;/&thinsp;2</span></td><td class="pct st-done">100&nbsp;%</td></tr></tbody></table></div>
+<a id="obj-2"></a>
+<div class="table-wrap"><table class="pick fact"><colgroup><col class="c-kr"><col class="c-fly"><col class="c-pbv"><col class="c-name"><col class="c-prog"><col class="c-pct"></colgroup><thead><tr><th>KR</th><th></th><th>PBV</th><th>Название</th><th>Прогресс</th><th>%</th></tr></thead><tbody><tr class="objrow"><td colspan="6"><b>OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db</b> · Без изменения существующих механизмов вывести мероприятия на витрину, чтобы заработать</td></tr><tr class="row" data-kr="2.4" data-state="done"><td class="kr">2.4</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">КИНО [RELEASE] — фича с поиском в Production</td><td class="prog"><span class="segs"><i class="seg s-done" title="RELEASE · Поиск → превью → MRS-страница кино · DONE"></i><i class="seg s-done" title="RELEASE · Детальная страница поиска по кино · DONE"></i><i class="seg s-done" title="RELEASE · Афиша кино · DONE"></i><i class="seg s-done" title="RELEASE · Полки с кино · DONE"></i></span><span class="segn">4&thinsp;/&thinsp;4</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.4.1" data-state="done"><td class="kr">2.4.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">1</span></td><td class="name">КИНО [FEAT] Ранжирование кино в афише и поиске</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Подкидывать кино в топ выдачи · DONE"></i></span><span class="segn">1&thinsp;/&thinsp;1</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.4.4" data-state="done"><td class="kr">2.4.4</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">КИНО [FEAT] Смешанная полка кино + театры</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Исправить широкоформатные картинки и ссылки для полок · DONE"></i></span><span class="segn">1&thinsp;/&thinsp;1</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.4.5" data-state="done"><td class="kr">2.4.5</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">КИНО [FEAT] Фидменеджеры и SEO-админки</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Ограничить кино из фид-рассылок · DONE"></i><i class="seg s-done" title="PO · Заполнить БД Директа в админке · DONE"></i><i class="seg s-done" title="QA · Подтвердить правильный рендер с SEO на детальных страницах · DONE"></i></span><span class="segn">3&thinsp;/&thinsp;3</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.5" data-state="done"><td class="kr">2.5</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">РЕСТОРАНЫ [RELEASE] Email-рассылки в Production</td><td class="prog"><span class="segs"><i class="seg s-done" title="RELEASE · Выкатить результат Q2 в Production и дать реальную нагрузку · DONE"></i></span><span class="segn">1&thinsp;/&thinsp;1</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.5.2" data-state="done"><td class="kr">2.5.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">РЕСТОРАНЫ [FEAT] Подборка ресторанов в email с билетом</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Отдельная email-коммуникация за час до мероприятия · DONE"></i></span><span class="segn">1&thinsp;/&thinsp;1</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.5.3" data-state="partial"><td class="kr">2.5.3</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Отладка и доработки по email-рассылкам ресторанов</td><td class="prog"><span class="segs"><i class="seg s-done" title="DOPS · Сетевая доступность MRS · DONE"></i><i class="seg s-progress" title="BE · Отправка email за 24 ч до мероприятия · IN PROGRESS"></i><i class="seg s-progress" title="BE · Письмо об успешном бронировании · IN PROGRESS"></i></span><span class="segn">1&thinsp;/&thinsp;3</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="2.2" data-state="partial"><td class="kr">2.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">8</span></td><td class="name">FAQ — редактирование через DIRECT</td><td class="prog"><span class="segs"><i class="seg s-none" title="SA · Разбор рендера и логики текущего FAQ · нет статуса"></i><i class="seg s-none" title="SA · Разбор логики и процессов DIRECT · нет статуса"></i><i class="seg s-none" title="BE · Доработки в БД для DIRECT / FAQ · нет статуса"></i><i class="seg s-none" title="BE · Сервис получения FAQ из БД · нет статуса"></i><i class="seg s-none" title="BE · Интеграция API-запроса в SSR-рендер страниц · нет статуса"></i><i class="seg s-none" title="FE · Доработки в админке DIRECT · нет статуса"></i><i class="seg s-none" title="QA · Отладка рендеринга и edge-кейсов · нет статуса"></i><i class="seg s-none" title="RELEASE · Отгрузка в Production · нет статуса"></i></span><span class="segn">0&thinsp;/&thinsp;8</span></td><td class="pct st-partial">95&nbsp;%</td></tr><tr class="row" data-kr="2.2.2" data-state="partial"><td class="kr">2.2.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">8</span></td><td class="name">FAQ — генерация с помощью LLM</td><td class="prog"><span class="segn">—</span></td><td class="pct st-partial">70&nbsp;%</td></tr><tr class="row" data-kr="2.3.1" data-state="partial"><td class="kr">2.3.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">Каталог кино на витрину через UMC, минуя MRS.backend и uat_db</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · [BLOCKER] Доделать прямую интеграцию MRS → web_db · DONE"></i><i class="seg s-done" title="BE · Коннектор P24 → UMC для каталога · DONE"></i><i class="seg s-done" title="SA · Исследование коннектора UMC → web_db напрямую · DONE"></i><i class="seg s-done" title="BE · Подключить UMC → web_db · DONE"></i><i class="seg s-todo" title="QA · Отладка · TODO"></i><i class="seg s-todo" title="RELEASE · Пошаговая раскатка · TODO"></i></span><span class="segn">4&thinsp;/&thinsp;6</span></td><td class="pct st-partial">80&nbsp;%</td></tr><tr class="row" data-kr="2.3.2" data-state="partial"><td class="kr">2.3.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">2</span></td><td class="name">Виджет продажи кино через UMC, минуя uat_db</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Коннектор P24 → UMC для виджета · DONE"></i><i class="seg s-done" title="BE · Подключить UMC → web_db · DONE"></i><i class="seg s-done" title="BE · Доработки Ticketland для аллокации виджета · DONE"></i><i class="seg s-todo" title="QA · Отладка · TODO"></i><i class="seg s-todo" title="RELEASE · Пошаговая раскатка · TODO"></i></span><span class="segn">3&thinsp;/&thinsp;5</span></td><td class="pct st-partial">80&nbsp;%</td></tr><tr class="row" data-kr="2.7" data-state="failed"><td class="kr">2.7</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">1</span></td><td class="name">[RESEARCH] VibeApp и Музыка собирают виджет TLND через uat_db</td><td class="prog"><span class="segs"><i class="seg s-todo" title="ADR · Описание dataflow передачи виджета TLND в VibeApp без зависимостей от uat_db · TODO"></i><i class="seg s-todo" title="SA · План работ по переключению виджета на целевой dataflow · TODO"></i><i class="seg s-todo" title="PO · ADR и план согласованы со стейкхолдерами · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;3</span></td><td class="pct st-failed">0&nbsp;%</td></tr><tr class="row" data-kr="2.8" data-state="failed"><td class="kr">2.8</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="low">2</span></td><td class="name">[RESEARCH] Интеграция поиска витрины с Медиаплатформой</td><td class="prog"><span class="segs"><i class="seg s-todo" title="PO · БФТ-требования на интеграцию · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;1</span></td><td class="pct st-failed">0&nbsp;%</td></tr><tr class="row" data-kr="2.9" data-state="done"><td class="kr">2.9</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Доработка СПА для интеграции с процессингом</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="2.4.2" data-state="dropped"><td class="kr">2.4.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="zero">0</span></td><td class="name">КИНО [FEAT] Детальные страницы кино и кинотеатров с MRS на SSR</td><td class="prog"><span class="segs"><i class="seg s-todo" title="FE · Детальная страница площадок кинотеатров на SSR · TODO"></i><i class="seg s-todo" title="FE · Детальная страница кино на SSR · TODO"></i><i class="seg s-todo" title="FE · Кнопка «купить» открывает MRS-виджет · TODO"></i><i class="seg s-todo" title="BE · Миграция старых данных кино из web_db на SSR-рендер · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;4</span></td><td class="pct st-dropped">ОТМ</td></tr><tr class="row" data-kr="2.4.3" data-state="dropped"><td class="kr">2.4.3</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="zero">0</span></td><td class="name">КИНО [ТЕХДОЛГ] Маппинг кино на структуру театров</td><td class="prog"><span class="segn">—</span></td><td class="pct st-dropped">ОТМ</td></tr><tr class="row" data-kr="2.5.1" data-state="dropped"><td class="kr">2.5.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">РЕСТОРАНЫ [FEAT] Фильтр по пушкинской карте</td><td class="prog"><span class="segn">—</span></td><td class="pct st-dropped">ОТМ</td></tr><tr class="row" data-kr="2.1" data-state="dropped"><td class="kr">2.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="zero">0</span></td><td class="name">РЕСТОРАНЫ — добавление в полнотекстовый поиск</td><td class="prog"><span class="segs"><i class="seg s-todo" title="SA · Проверить совместимость маппинга рестораны → TL.витрина · TODO"></i><i class="seg s-todo" title="BE · Загрузчик MRS → Ticketland для ресторанов · TODO"></i><i class="seg s-todo" title="BE · Расширить Sphinx и SearchGenerator · TODO"></i><i class="seg s-todo" title="DBA · Отдельные таблицы для ресторанов · TODO"></i><i class="seg s-todo" title="DOPS · CI/CD для загрузчика и сетевые доступы · TODO"></i><i class="seg s-todo" title="BE · Рестораны в быстрый поиск BFF и страницу поиска · TODO"></i><i class="seg s-todo" title="FE · Рестораны в быстрый поиск и страницу поиска · TODO"></i><i class="seg s-todo" title="DESIGN · [EXT] Дизайн изменений UI с ресторанами в CJM · TODO"></i><i class="seg s-todo" title="BE · Рестораны в афишу и на главную · TODO"></i><i class="seg s-todo" title="FE · Рестораны в афишу и на главную · TODO"></i><i class="seg s-todo" title="SA · Требования по ранжированию ресторанов · TODO"></i><i class="seg s-todo" title="BE · Ранжирование выдачи ресторанов · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;12</span></td><td class="pct st-dropped">ОТМ</td></tr><tr class="row" data-kr="2.6" data-state="dropped"><td class="kr">2.6</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">LIVE — KION TOP (подписка со страницы Ticketland)</td><td class="prog"><span class="segs"><i class="seg s-todo" title="SA · Аналитика по контрактам и формату фискальных чеков · TODO"></i><i class="seg s-todo" title="PO · Согласование чеков с бухгалтерией · TODO"></i><i class="seg s-todo" title="BE · Фискальные чеки на backend Live · TODO"></i><i class="seg s-todo" title="BE · Выгрузки для бухгалтерии по оплате подписок · TODO"></i><i class="seg s-todo" title="QA · Отладка и приёмка на стороне финтеха · TODO"></i><i class="seg s-todo" title="RELEASE · Выгрузка в прод · TODO"></i><i class="seg s-todo" title="VER · A/B на две недели · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;7</span></td><td class="pct st-dropped">ОТМ</td></tr></tbody></table></div>
+<a id="obj-3"></a>
+<div class="table-wrap"><table class="pick fact"><colgroup><col class="c-kr"><col class="c-fly"><col class="c-pbv"><col class="c-name"><col class="c-prog"><col class="c-pct"></colgroup><thead><tr><th>KR</th><th></th><th>PBV</th><th>Название</th><th>Прогресс</th><th>%</th></tr></thead><tbody><tr class="objrow"><td colspan="6"><b>OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)</b></td></tr><tr class="row" data-kr="3.1.1" data-state="done"><td class="kr">3.1.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Поддержка B2C и B2B дистрибуции билетов</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.1.1e" data-state="done"><td class="kr">3.1.1e</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">У Бродвея нет билетов при покупке через GDS</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.1.2e" data-state="done"><td class="kr">3.1.2e</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">Билетная масса из фонда BI попадает в GET /tickets</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.3" data-state="done"><td class="kr">3.3</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">[BUG] ТБанк 404 при гонке бронирования (datarace extapi_go)</td><td class="prog"><span class="segs"><i class="seg s-done" title="SA · Разбор проблемы и причины · DONE"></i><i class="seg s-done" title="BE · Исправление ошибки · DONE"></i><i class="seg s-done" title="RELEASE · Включение ТБанк на GDS · DONE"></i><i class="seg s-done" title="BE · Отладка · DONE"></i></span><span class="segn">4&thinsp;/&thinsp;4</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.4" data-state="done"><td class="kr">3.4</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">[BUG] Seatless при отключённой свободной рассадке (TLND-16755)</td><td class="prog"><span class="segs"><i class="seg s-done" title="SA · Разбор проблемы и причины · DONE"></i><i class="seg s-done" title="BE · Исправление ошибки · DONE"></i><i class="seg s-done" title="RELEASE · Включение · DONE"></i><i class="seg s-done" title="BE · Отладка · DONE"></i></span><span class="segn">4&thinsp;/&thinsp;4</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.5" data-state="done"><td class="kr">3.5</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">[ACTIVITY] Поддержка после перевода процессинга на Live</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.5.2" data-state="done"><td class="kr">3.5.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">[FEAT] BNPL в Live.Процессинг</td><td class="prog"><span class="segs"><i class="seg s-done" title="QA · Отладка и приёмка на стороне финтеха · DONE"></i><i class="seg s-done" title="RELEASE · Выгрузка в прод · DONE"></i></span><span class="segn">2&thinsp;/&thinsp;2</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.5.3" data-state="done"><td class="kr">3.5.3</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">[FEAT] СБП через MTS Pay</td><td class="prog"><span class="segs"><i class="seg s-done" title="QA · Отладка и приёмка на стороне финтеха · DONE"></i><i class="seg s-done" title="BE · Исправление замечаний · DONE"></i><i class="seg s-done" title="RELEASE · Выгрузка в прод · DONE"></i></span><span class="segn">3&thinsp;/&thinsp;3</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.5.4" data-state="done"><td class="kr">3.5.4</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">7</span></td><td class="name">[FEAT] Процессинг ВТБ и ВТБ (пушкинская карта)</td><td class="prog"><span class="segs"><i class="seg s-done" title="SA · Анализ доработок на стороне Live · DONE"></i><i class="seg s-done" title="BE · Оплата через ВТБ обычными платежами и пушкинской картой · DONE"></i><i class="seg s-done" title="QA · Отладка и приёмка на стороне финтеха · DONE"></i><i class="seg s-done" title="RELEASE · Выгрузка в прод · DONE"></i></span><span class="segn">4&thinsp;/&thinsp;4</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.5.5" data-state="partial"><td class="kr">3.5.5</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">8</span></td><td class="name">[FEAT] Автоскейлинг Live.Процессинг, 500 rpm (Вахтангов)</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Доработка мониторинга · DONE"></i><i class="seg s-done" title="BE · Доработка трассировки · DONE"></i><i class="seg s-done" title="QA · Повторное нагрузочное тестирование и анализ · DONE"></i><i class="seg s-done" title="BE · Объединение сервисов payment и callback, ручное масштабирование · DONE"></i><i class="seg s-todo" title="QA · Повторное нагрузочное тестирование после объединения · TODO"></i></span><span class="segn">4&thinsp;/&thinsp;5</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="3.6" data-state="partial"><td class="kr">3.6</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">LIVE.платформа — автотесты платёжного процессинга</td><td class="prog"><span class="segs"><i class="seg s-done" title="DOPS · Развёртывание контура автотестирования · DONE"></i><i class="seg s-done" title="QA · Сценарии тестирования · DONE"></i><i class="seg s-todo" title="BE · Реализация автотестов по сценариям · TODO"></i></span><span class="segn">2&thinsp;/&thinsp;3</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="3.7" data-state="done"><td class="kr">3.7</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">LIVE.платформа — единый observability, сквозной TraceId</td><td class="prog"><span class="segs"><i class="seg s-done" title="BE · Полный цикл трассировки запросов · DONE"></i><i class="seg s-done" title="RELEASE · Выгрузка в прод · DONE"></i></span><span class="segn">2&thinsp;/&thinsp;2</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.8" data-state="partial"><td class="kr">3.8</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">5</span></td><td class="name">LIVE.платформа — синхронизация тестовых сред Live и TL</td><td class="prog"><span class="segs"><i class="seg s-none" title="BE · Описание доступов тестовых сред · нет статуса"></i><i class="seg s-none" title="DOPS · Настройка доступов сред · нет статуса"></i></span><span class="segn">0&thinsp;/&thinsp;2</span></td><td class="pct st-partial">50&nbsp;%</td></tr><tr class="row" data-kr="3.9" data-state="done"><td class="kr">3.9</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">8</span></td><td class="name">LIVE.платформа — рейтинг события в VibeApp</td><td class="prog"><span class="segs"><i class="seg s-done" title="PO · Оформление БФТ-требований · DONE"></i><i class="seg s-done" title="SA · Dataflow: откуда брать рейтинги · DONE"></i><i class="seg s-done" title="BE · [EXT] Доработки content-api для выдачи рейтинга · DONE"></i><i class="seg s-done" title="QA · Подтверждение работы content-api · DONE"></i><i class="seg s-done" title="BE · Доработка Live.Backend для передачи в VibeApp · DONE"></i><i class="seg s-done" title="RELEASE · Выкатка и приёмка со стороны VibeApp · DONE"></i></span><span class="segn">6&thinsp;/&thinsp;6</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.9.2" data-state="done"><td class="kr">3.9.2</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">LIVE.платформа — VibeApp: стабильность и скорость билетов и контента</td><td class="prog"><span class="segs"><i class="seg s-done" title="PO · БФТ vibeapp-stability-q3-2026 отгружен в Confluence · DONE"></i><i class="seg s-done" title="BE · TLND-19377 — форс-мажорное API получения заказов пользователя (PO-16) · DONE"></i><i class="seg s-done" title="BE · TLND-18856 — проброс категорий напрямую из Content API (PO-17) · DONE"></i><i class="seg s-done" title="BE · TLND-18924 — передача длительности мероприятия (PO-19) · DONE"></i><i class="seg s-done" title="BE · TLND-19766 — некорректный формат афиш мероприятий (PO-18) · DONE"></i><i class="seg s-done" title="BE · TLND-19766 — фильтрация заказов с возвратом при загрузке (PO-21) · DONE"></i><i class="seg s-done" title="BE · Признак заказа, оформленного через приложение (PO-140) · DONE"></i></span><span class="segn">7&thinsp;/&thinsp;7</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.10" data-state="partial"><td class="kr">3.10</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="mid">7</span></td><td class="name">AI-Harness в TLND по аналогии с Bartello</td><td class="prog"><span class="segn">—</span></td><td class="pct st-partial">30&nbsp;%</td></tr><tr class="row" data-kr="3.11" data-state="done"><td class="kr">3.11</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="mid">7</span></td><td class="name">AI-Harness — PR-Review в команде GDS</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr><tr class="row" data-kr="3.12" data-state="partial"><td class="kr">3.12</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="mid">7</span></td><td class="name">AI-Harness в команде LIVE</td><td class="prog"><span class="segn">—</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="3.13" data-state="partial"><td class="kr">3.13</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="low">3</span></td><td class="name">AI-Harness — генерация БФТ-требований с помощью LLM</td><td class="prog"><span class="segn">—</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="3.14" data-state="done"><td class="kr">3.14</td><td class="fly"><span>влёт</span></td><td class="pbv"><span class="pbvtag" data-tier="mid">7</span></td><td class="name">Email-рассылки ресторанов: макеты, UTM, сетевая доступность MRS</td><td class="prog"><span class="segn">—</span></td><td class="pct st-done">100&nbsp;%</td></tr></tbody></table></div>
+<a id="obj-4"></a>
+<div class="table-wrap"><table class="pick fact"><colgroup><col class="c-kr"><col class="c-fly"><col class="c-pbv"><col class="c-name"><col class="c-prog"><col class="c-pct"></colgroup><thead><tr><th>KR</th><th></th><th>PBV</th><th>Название</th><th>Прогресс</th><th>%</th></tr></thead><tbody><tr class="objrow"><td colspan="6"><b>OBJ 4 — ACTIVITY: Закрытие LIVE витрины</b> · Планы поменялись: витрина не закрывается, это уронит SEO — уменьшаем затраты на сопровождение</td></tr><tr class="row" data-kr="4.3" data-state="partial"><td class="kr">4.3</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="high">9</span></td><td class="name">[RESEARCH] VK Билеты — замена Live-виджета на TL-виджет</td><td class="prog"><span class="segs"><i class="seg s-done" title="PO · БФТ-требования к границам · DONE"></i><i class="seg s-done" title="ADR · Стратегия замены виджета · DONE"></i><i class="seg s-done" title="SA · Что нужно сделать для закрытия виджета · DONE"></i><i class="seg s-done" title="PO · Декомпозиция по эпику · DONE"></i><i class="seg s-todo" title="SA · Открытый вопрос: как делать возврат · TODO"></i><i class="seg s-todo" title="ADR · Открытый вопрос: где разместить фронтенд новой витрины · TODO"></i><i class="seg s-todo" title="SA · Открытый вопрос: [УТОЧНИТЬ — третий не назван] · TODO"></i></span><span class="segn">4&thinsp;/&thinsp;7</span></td><td class="pct st-partial">90&nbsp;%</td></tr><tr class="row" data-kr="4.1" data-state="dropped"><td class="kr">4.1</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="zero">0</span></td><td class="name">[RESEARCH] Наполнение каталога LIVE из UMC</td><td class="prog"><span class="segs"><i class="seg s-todo" title="PO · БФТ-требования к границам: чего хотим достигнуть · TODO"></i><i class="seg s-todo" title="ADR · Как переключить Live на UMC по каталогу · TODO"></i><i class="seg s-todo" title="SA · Подробный план переключения наполнения Live на UMC · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;3</span></td><td class="pct st-dropped">ОТМ</td></tr><tr class="row" data-kr="4.2" data-state="dropped"><td class="kr">4.2</td><td class="fly"></td><td class="pbv"><span class="pbvtag" data-tier="mid">7</span></td><td class="name">[RESEARCH] На витрине Live заменить виджет на TL</td><td class="prog"><span class="segs"><i class="seg s-todo" title="PO · БФТ-требования к границам · TODO"></i><i class="seg s-todo" title="ADR · Как переезжаем · TODO"></i><i class="seg s-todo" title="SA · Системные требования · TODO"></i></span><span class="segn">0&thinsp;/&thinsp;3</span></td><td class="pct st-dropped">ОТМ</td></tr></tbody></table></div>
+<h3>Сводка</h3>
+<table class="mini head"><tr><td>Исход</td><td>KR</td><td>Доля</td></tr><tr><td>✔ закрыт</td><td>24</td><td>49 %</td></tr><tr><td>◐ частично</td><td>17</td><td>35 %</td></tr><tr><td>✖ 0 %</td><td>4</td><td>8 %</td></tr><tr><td>⊘ снят или не оценён</td><td>8</td><td>16 %</td></tr><tr><td>внеплановых (EKR)</td><td>9</td><td>—</td></tr></table>
+<p>Десять KR пришли в квартал после старта: PoC переезда web_db на PostgreSQL, доработка СПА, баги Бродвея и фонда BI, стабильность VibeApp, четыре AI-Harness, отладка email-рассылок и UTM-метки. Пятая часть объёма — и ни одного не было в плане на 01.07.</p>
+<h3>Что это говорит о правилах (калибровка, Шаг 9)</h3>
+<p>1. <strong>Демо ≠ готово.</strong> KR 1.1 при 80 % готовности сорвался на DBA/DevOps и подключении к Production: шесть шагов плана сделаны, три не начаты, один снят. Дата наружу — после прогона в целевом контуре.</p>
+<p>2. <strong>Слепая зона — чужие команды.</strong> MRS (вебхуки для кино и ресторанов), финтех и MTS.Pay (ВТБ, BNPL, СБП), TicketsCloud (спецификация для BI). В трекере это риски, но без владельца и даты.</p>
+<p>3. <strong>Восьмая часть объёма — без оценки.</strong> Строки с «—» и весом 0: 2.1, 2.5.1, 2.6, 4.1, 4.2, 2.4.2, 2.4.3. Непонятно, отменены они или не дошли руки.</p>
+<p>4. <strong>Внеплановое не учтено в ёмкости.</strong> Девять EKR съели ёмкость, которую никто не резервировал.</p>
+<p>5. <strong>Статус шагов не ведётся.</strong> Цветовая разметка плана есть только у KR 1.1; у остальных частично выполненных по плану не видно, где именно встало.</p>
+<h3>Расхождения с ответами PO 22.09 — проверить</h3>
+<table class="mini"><tr><td>2.4.1 ранжирование кино</td><td>отменён</td><td>100 %</td><td>[УТОЧНИТЬ]</td></tr><tr><td>2.5.2 email за час</td><td>в работе, 95 %</td><td>100 %</td><td>[УТОЧНИТЬ]</td></tr><tr><td>3.5.5 нагрузка 500 rpm</td><td>в работе, 80 %</td><td>60 %</td><td>[УТОЧНИТЬ]</td></tr><tr><td>2.8 Медиаплатформа</td><td>отменён</td><td>0 %, не отмена</td><td>[УТОЧНИТЬ]</td></tr><tr><td>2.1, 2.5.1, 2.6</td><td>отменены</td><td>«—», без оценки</td><td>[УТОЧНИТЬ]</td></tr></table>
+<h3>Базовая линия (П3, день 1)</h3>
+<table class="mini head"><tr><td>Метрика</td><td>Q3</td></tr><tr><td>Обещанных дат сдвинулось</td><td>2 из 2 коммитментов перед ГД (кино через UMC, каталог + виджет 30.09)</td></tr><tr><td>За сколько дней до срока узнали</td><td>каталог + виджет: 09.09 при сроке 30.09 — 21 день</td></tr><tr><td>Часы в неделю на отчётность</td><td>[УТОЧНИТЬ]</td></tr><tr><td>Сюрпризов в конце квартала</td><td>10 внеплановых KR</td></tr><tr><td>Потоков на письменном основании</td><td>[УТОЧНИТЬ] из 4</td></tr></table>
+</main>
+</div>
+
+<div class="side" id="side">
+  <div class="side-head">
+    <span class="kr-id" id="sideKr"></span>
+    <button class="drawer-close" id="sideClose" type="button">×</button>
+  </div>
+  <h3 class="side-title" id="sideTitle"></h3>
+  <p class="factline" id="sideState"></p>
+  <div class="note" id="sideNote"></div>
+</div>
+
+<script>
+(function(){
+  var DATA = {"1.1": {"title": "Продажа мероприятий Ticketscloud на витрине TL через UMC минуя БАЗИС (виджет TC)", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "9", "pct": 90, "fact": "90 % — демо перенесли, DBA/DevOps, подключение к Production; коммитмент 30.09 сорван", "next": "Продолжается в 2026Q4 — KR 1.5", "link": "1.5", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "Для мероприятий от TicketsCloud, которые в Q2 начали продаваться без билетной массы, убираем зависимость от БД БАЗИСа (uat_db). Каталог и виджет продолжают продавать на витрине Ticketland без UX-изменений. БЫЛО: ВБС → BI (TicketsCloud) → uat_db → web_db → Ticketland.Витрина. СТАЛО: TicketsCloud → UMC → web_db → Ticketland.Витрина. Критичность: коммитмент перед ГД на август.", "plan": [["BA", "Изучение документации Ticketscloud API", "done"], ["SA", "Исследование коннектора данных UMC → web_db напрямую", "done"], ["ADR", "Согласование UMC → Ticketland dataflow", "done"], ["DBA", "Валидация дизайна, как работаем с БД", "done"], ["BE", "Ticketscloud → UMC", "done"], ["BE", "UMC → web_db", "done"], ["BE", "web_db → Ticketland.BFF", "progress"], ["FE", "web_db → Ticketland.Frontend UI", "progress"], ["QA", "Отладка генерации виджета TC", "progress"], ["RELEASE", "Пошаговая раскатка", "todo"]], "deps": [["RISK", "Проблема дедубликации каталога (KR 1.1.E1)", "done"], ["BE", "UMC: доработка дедубликатора мероприятий", "done"], ["BE", "UMC: правила доступности для разграничения прав", "done"]], "risks": ["[FE] могут потребоваться доработки (аллоцирование виджета)"], "who": ["BE Участник Б (Java)", "BE Golang-разработчик GDS", "SA Участник В", "ADR Участник Г", "DBA Участник Д", "REL Участник Е"]}, "1.1.E1": {"title": "Дизайн дедубликации каталога web_db", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "Перед подключением TC напрямую в UMC → Ticketland нужно решить задачу дедубликации при первичном вливании, иначе теряется процесс модерации и падает SEO.", "plan": [["SA", "Проектирование схемы дедубликации в потоке ВБС + GDS → UMC → web_db", "done"], ["DBA", "Валидация дизайна, как работаем с БД", "done"], ["BE", "[EXT] Разработка дедубликатора мероприятий", "done"], ["QA", "Отладка стабильности дедубликатора", "done"], ["BE", "Интеграция схемы дедубликации", "done"]], "deps": [], "risks": ["Отсутствие или кривая дедубликация web_db после смены dataflow убьёт SEO и все наработки", "Отсутствие дедубликации — нагрузка на техподдержку", "Отсутствие дедубликации — кратная нагрузка на sphinx + web_db (недопустимое событие)", "Можем заблокировать recsys-команду: они планируют заменять поисковик в TLND"], "who": []}, "1.2": {"title": "Заказы и возвраты в ЛК Ticketland от Ticketscloud", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "9", "pct": 90, "fact": "90 % — US1 заказы закрыт; US2 возвраты — остался механизм возвратов; US3 обмен не начат", "next": "Продолжается в 2026Q4 — KR 1.4", "link": "1.4", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "В ЛК Ticketland отображаются заказы, проданные через виджет Ticketscloud. Пользователь скачивает билет, оформляет возврат, обменивает бесшовно, не переходя в экосистему TicketsCloud. Стратегический коммитмент перед ГД на август 2026.", "plan": [["BA", "Сбор и описание БФТ", "done"], ["SA", "Первичная аналитика", "done"], ["SA", "Декомпозиция и разработка", "done"], ["BE", "US1 [EXT] Доработки на стороне TC по Kafka", "done"], ["BE", "US1 Сохранение заказов", "done"], ["BE", "US1 Доработка BFF для вывода заказов", "done"], ["FE", "US1 [EXT] Логика отображения заказов", "done"], ["QA", "US1 Отладка", "done"], ["RELEASE", "US1 Отгрузка в Production", "done"], ["SA", "US2 Возвраты: БФТ / СТ / ADR", "done"], ["ADR", "US2 Согласование дизайна решения и требований с TC", "done"], ["BE", "US2 Механизм возвратов и BFF", "progress"], ["FE", "US2 [EXT] Отображение в ЛК TL", "done"], ["QA", "US2 Отладка", "done"], ["RELEASE", "US2 Отгрузка в Production", "done"], ["SA", "US3 Обмен билетов: БФТ / СТ / ADR", "todo"], ["BE", "US3 Механизм обмена", "todo"], ["RELEASE", "US3 Отгрузка", "todo"]], "deps": [], "risks": ["US2, US3 не исследованы на старте квартала — объём может измениться", "Задержки на стороне TC по Kafka", "Юридические риски пользовательских соглашений", "Legacy при коннекте TC и TL.DBA", "Сетевая доступность между TC, TL, UMC", "CI/CD процессы из-за переезда", "Может потребоваться замена API для TL.Frontend"], "who": ["BE Golang-разработчик GDS", "SA Участник В", "ADR Участник Г", "DBA Участник Д", "DOPS от Участник Ж", "BE [EXT] разработчики TC", "ADR/CTO [EXT] TC", "Юрист: соглашения между TC и TL"]}, "1.3": {"title": "[POC] Переключение BI-шлюзов к Ticketscloud + отделение BI", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "8", "pct": 95, "fact": "95 % — ADR согласованы, системная аналитика и аналитика BI-модуля готовы, оставшиеся вопросы описаны; не успеваем описание бизнес-процесса запуска продаж (бизнес-контекст)", "next": "Продолжается в 2026Q4 — KR 1.1", "link": "1.1", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "План-минимум: точная декомпозиция и согласованный план бизнеса / продукта / IT по переключению между БАЗИС и Ticketscloud. План-максимум: PoC интеграции — тестовое мероприятие от переключённого BI-шлюза отобразилось в БД Ticketscloud.", "plan": [["ADR", "BI-шлюзы: стратегия интеграции с TC", "done"], ["ADR", "[EXT] Согласование дизайна TC / BI", "done"], ["SA", "Системная аналитика", "done"], ["SA", "Аналитика BI-модуля", "done"], ["SA", "Описание оставшихся вопросов", "done"], ["BA", "Бизнес-контекст: описание бизнес-процесса запуска продаж", "todo"]], "deps": [["SA", "Как сделать BI независимым от БАЗИС", "done"], ["SA", "Как подключить BI на вход к TC", "done"], ["SA", "Нужно ли мигрировать исторические данные из BI в TC", "done"], ["SA", "Что делаем с бронированием заказов в TC и БАЗИС", "done"], ["SA", "Что со шлюзовыми мероприятиями, если BI больше не в БАЗИС", "done"], ["SA", "Откуда получаем конструктив и инвентарь при переключении шлюзов на TC", "done"]], "risks": ["Научно-исследовательская работа без гарантий результата", "Кто проводит исследование со стороны TC", "Кто проводит регресс BI-модуля и приёмочное тестирование со стороны TC", "Legacy BI-сервиса без автотестов", "Не знакомы с культурой и архитектурой TC", "Не понятен объём работ ни на стороне TC, ни на стороне BI"], "who": ["Команды аналитиков GDS и LIVE", "ADR Участник Г", "LEAD Участник З (BI)", "LEAD Участник Д (DBA)", "CTO [EXT] TicketsCloud", "PO [EXT] Участник И", "BE Участник Б (BI)"]}, "1.5": {"title": "[RESEARCH] Как передать extapi_go B2B клиентов на TC", "state": "failed", "mark": "✖", "stateName": "не сделано", "pbv": "3", "pct": 0, "fact": "0 % — «точно не успеваем» (PO-143, 14.09)", "next": "Продолжается в 2026Q4 — KR 1.3", "link": "1.3", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "Понятный и согласованный план, как передаём все партнёрские исходящие шлюзы на TC. Ключевая проблема: если extapi_go переключить на TC, как будут продаваться собственные мероприятия БАЗИСа.", "plan": [["SA", "Что делать с модулем авторизации extapi", "todo"], ["SA", "Как мигрировать и адаптировать правила доступности под TC", "todo"], ["SA", "Как переедут мероприятия из БАЗИС в TC", "todo"]], "deps": [], "risks": ["extapi монолитный — нельзя переносить частями", "extapi сильно связан с Live.Платформой, логикой BI-шлюзов и TicketSale", "Наполнение и дистрибуция extapi_go связаны с CDC и структурой БД", "Нет доменной экспертизы по TicketsCloud"], "who": []}, "1.6": {"title": "[RESEARCH] Переезд TL на авторизацию по модели федераций", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "3", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "Для TL, ВТБ, МТС, ВК авторизацию можно унифицировать через федеративную модель — снижает OPEX: сейчас для каждого провайдера дублируется код и остаётся прямая связанность с БАЗИС и uat_db. Инициатор — Участник Г.", "plan": [["ADR", "Описание целевого dataflow авторизации", "done"], ["SA", "План работ по переключению", "done"], ["PO", "ADR и план согласованы со стейкхолдерами", "done"]], "deps": [], "risks": [], "who": []}, "1.7": {"title": "[POC] Проверка гипотезы переезда web_db с MSSQL на PostgreSQL (None)", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": null, "pct": 100, "fact": "100 % — внеплановый; проверка концепции и подсчёт ресурсов: можем ли сделать быстро и дёшево", "next": "Закрыт — снять с контроля", "link": "1.7", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "Влёт в квартал: PoC, а не сам переезд. Проверяли гипотезу и считали ресурс — реально ли перевезти web_db с MSSQL на PostgreSQL быстро и дёшево. Результат PoC — вход для решения по KR 1.6 в Q4 (БФТ PO-10, Babelfish).", "plan": [["SA", "Проверка концепции переезда MSSQL → PostgreSQL", "done"], ["SA", "Подсчёт ресурсов: можем ли сделать быстро и дёшево", "done"]], "deps": [], "risks": [], "who": []}, "1.6.2": {"title": "[RESEARCH] Отказ от Email-авторизации на TLND в пользу провайдеров", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "2", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 1 — Отделение витрины Ticketland от БАЗИС (виджеты и контент)", "goal": "Продолжает KR 1.6: отказ от email-авторизации на TLND.", "plan": [["ADR", "Продолжение KR 1.6: дизайн отказа от email-авторизации", "done"], ["PO", "Продуктовые согласования и миграция", "done"]], "deps": [], "risks": [], "who": []}, "2.4": {"title": "КИНО [RELEASE] — фича с поиском в Production", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "MRS — планируется отдельно", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "Оставшиеся работы с Q2 по выводу кино. Бесшовный CJM между кино и культурными мероприятиями.", "plan": [["RELEASE", "Поиск → превью → MRS-страница кино", "done"], ["RELEASE", "Детальная страница поиска по кино", "done"], ["RELEASE", "Афиша кино", "done"], ["RELEASE", "Полки с кино", "done"]], "deps": [], "risks": [], "who": []}, "2.4.1": {"title": "КИНО [FEAT] Ранжирование кино в афише и поиске", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "1", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "ASIS: кино может оказаться на 50–100 странице выдачи и не попадать в CJM. TOBE: кино попадает в топ выдачи.", "plan": [["BE", "Подкидывать кино в топ выдачи", "done"]], "deps": [], "risks": ["Не понятно, делать на эвристиках или через recsys", "Ранжирование и recsys — вне команды GDS"], "who": []}, "2.4.4": {"title": "КИНО [FEAT] Смешанная полка кино + театры", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 % — сделано вместе с основным релизом 21.07", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "ASIS: смешанные полки (кино + театры) не отображаются. TOBE: можем делать смешанные полки для главной.", "plan": [["BE", "Исправить широкоформатные картинки и ссылки для полок", "done"]], "deps": [], "risks": [], "who": []}, "2.4.5": {"title": "КИНО [FEAT] Фидменеджеры и SEO-админки", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "ASIS: при отгрузке кино попадает в индексацию по SEO — точки влияния не были в требованиях.", "plan": [["BE", "Ограничить кино из фид-рассылок", "done"], ["PO", "Заполнить БД Директа в админке", "done"], ["QA", "Подтвердить правильный рендер с SEO на детальных страницах", "done"]], "deps": [], "risks": [], "who": []}, "2.5": {"title": "РЕСТОРАНЫ [RELEASE] Email-рассылки в Production", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "В Q2 выкатка не состоялась из-за внешних блокаторов: не было вебхука MRS и email-шаблонов. Технически разработка была завершена.", "plan": [["RELEASE", "Выкатить результат Q2 в Production и дать реальную нагрузку", "done"]], "deps": [], "risks": [], "who": []}, "2.5.2": {"title": "РЕСТОРАНЫ [FEAT] Подборка ресторанов в email с билетом", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "ASIS: email с подборкой приходит по триггеру за час до мероприятия. TOBE: отдельная догоняющая коммуникация о ресторанах со скидкой.", "plan": [["BE", "Отдельная email-коммуникация за час до мероприятия", "done"]], "deps": [], "risks": [], "who": []}, "2.5.3": {"title": "Отладка и доработки по email-рассылкам ресторанов", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "9", "pct": 90, "fact": "90 % — сетевая доступность MRS готова; отправка за 24 ч и письмо о бронировании в работе", "next": "[УТОЧНИТЬ: KR Q4]", "link": "[УТОЧНИТЬ: KR Q4]", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "", "plan": [["DOPS", "Сетевая доступность MRS", "done"], ["BE", "Отправка email за 24 ч до мероприятия", "progress"], ["BE", "Письмо об успешном бронировании", "progress"]], "deps": [], "risks": [], "who": []}, "2.2": {"title": "FAQ — редактирование через DIRECT", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "8", "pct": 95, "fact": "95 %", "next": "Продолжается в 2026Q4 — KR 2.1", "link": "2.1", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "Заказчик — Участник К. FAQ по умолчанию шаблонный; через DIRECT можно персонально для страницы шоу, персоны, помещения прописать свой. Зачем: SEO и продажи.", "plan": [["SA", "Разбор рендера и логики текущего FAQ", "none"], ["SA", "Разбор логики и процессов DIRECT", "none"], ["BE", "Доработки в БД для DIRECT / FAQ", "none"], ["BE", "Сервис получения FAQ из БД", "none"], ["BE", "Интеграция API-запроса в SSR-рендер страниц", "none"], ["FE", "Доработки в админке DIRECT", "none"], ["QA", "Отладка рендеринга и edge-кейсов", "none"], ["RELEASE", "Отгрузка в Production", "none"]], "deps": [], "risks": ["Нет экспертизы по этой зоне и по Direct", "Сложности согласования с БД", "Возможно, данные по FAQ имеет смысл тянуть из Live-платформы, а не из uat_db"], "who": []}, "2.2.2": {"title": "FAQ — генерация с помощью LLM", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "8", "pct": 70, "fact": "70 % — прототип, первая итерация на отладку", "next": "Продолжается в 2026Q4 — KR 2.1", "link": "2.1", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "", "plan": [], "deps": [], "risks": [], "who": []}, "2.3.1": {"title": "Каталог кино на витрину через UMC, минуя MRS.backend и uat_db", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "5", "pct": 80, "fact": "80 % — интеграцию доделали, остались отладка и пошаговая раскатка", "next": "MRS — планируется отдельно", "link": "MRS — планируется отдельно", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "БЫЛО: TL.Витрина → MRS.Витрина → MRS.Виджет → P24.Виджет. СТАЛО: P24 → UMC → TL.Витрина → P24.Виджет.", "plan": [["BE", "[BLOCKER] Доделать прямую интеграцию MRS → web_db", "done"], ["BE", "Коннектор P24 → UMC для каталога", "done"], ["SA", "Исследование коннектора UMC → web_db напрямую", "done"], ["BE", "Подключить UMC → web_db", "done"], ["QA", "Отладка", "todo"], ["RELEASE", "Пошаговая раскатка", "todo"]], "deps": [], "risks": [], "who": []}, "2.3.2": {"title": "Виджет продажи кино через UMC, минуя uat_db", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "2", "pct": 80, "fact": "80 % — интеграцию доделали, остались отладка и пошаговая раскатка", "next": "MRS — планируется отдельно", "link": "MRS — планируется отдельно", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "После реализации каталога на стороне витрины Ticketland нужно провести работы, чтобы продажи работали через вызов стороннего виджета.", "plan": [["BE", "Коннектор P24 → UMC для виджета", "done"], ["BE", "Подключить UMC → web_db", "done"], ["BE", "Доработки Ticketland для аллокации виджета", "done"], ["QA", "Отладка", "todo"], ["RELEASE", "Пошаговая раскатка", "todo"]], "deps": [], "risks": [], "who": []}, "2.7": {"title": "[RESEARCH] VibeApp и Музыка собирают виджет TLND через uat_db", "state": "failed", "mark": "✖", "stateName": "не сделано", "pbv": "1", "pct": 0, "fact": "0 %", "next": "Продолжается в 2026Q4 — KR 3.1", "link": "3.1", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "VibeApp костыльно подключились напрямую в БД БАЗИС (uat_db) — это усложняет отделение витрины TLND.", "plan": [["ADR", "Описание dataflow передачи виджета TLND в VibeApp без зависимостей от uat_db", "todo"], ["SA", "План работ по переключению виджета на целевой dataflow", "todo"], ["PO", "ADR и план согласованы со стейкхолдерами", "todo"]], "deps": [], "risks": [], "who": ["ADR Участник Г", "SA Участник Л", "PO Участник М"]}, "2.8": {"title": "[RESEARCH] Интеграция поиска витрины с Медиаплатформой", "state": "failed", "mark": "✖", "stateName": "не сделано", "pbv": "2", "pct": 0, "fact": "0 %", "next": "Решить: продолжаем, переносим или закрываем", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "ASIS: весь поиск на Ticketland через Sphinx. Гипотеза: интеграция с медиаплатформой и UMC позволит подключить recsys от KION и повысить конверсию.", "plan": [["PO", "БФТ-требования на интеграцию", "todo"]], "deps": [], "risks": ["На старте квартала не понятна граница «поиск медиаплатформы» / «интеграция с recsys»", "Параллельно такая же задача у Участник Н — не разграничены зоны ответственности"], "who": ["PO Участник М / Участник Н", "ADR Участник О под контролем Участник Г"]}, "2.9": {"title": "Доработка СПА для интеграции с процессингом", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 % — внеплановый; сделано в S5–S6 [УТОЧНИТЬ: в трекере #REF!]", "next": "Закрыт — снять с контроля", "link": "2.2", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "От команды продукта: после экватора появились доработки под задачи.", "plan": [], "deps": [], "risks": [], "who": []}, "2.4.2": {"title": "КИНО [FEAT] Детальные страницы кино и кинотеатров с MRS на SSR", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "0", "pct": null, "fact": "отменён — вес 0 в трекере", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "Открытые вопросы: хлебные крошки (одно кино в 1000+ мероприятий), ручные и авто-URL.", "plan": [["FE", "Детальная страница площадок кинотеатров на SSR", "todo"], ["FE", "Детальная страница кино на SSR", "todo"], ["FE", "Кнопка «купить» открывает MRS-виджет", "todo"], ["BE", "Миграция старых данных кино из web_db на SSR-рендер", "todo"]], "deps": [], "risks": [], "who": []}, "2.4.3": {"title": "КИНО [ТЕХДОЛГ] Маппинг кино на структуру театров", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "0", "pct": null, "fact": "отменён — вес 0 в трекере", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "ASIS: данные кино мапятся на структуру БД театров. Не расширяемое решение: атрибуты кино нельзя расширять без ухудшения театров, растут OPEX и T2M доработок.", "plan": [], "deps": [], "risks": [], "who": []}, "2.5.1": {"title": "РЕСТОРАНЫ [FEAT] Фильтр по пушкинской карте", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "9", "pct": null, "fact": "отменён (PO 22.09), в трекере «—»", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "Из рассылки исключить покупателей по пушкинской карте.", "plan": [], "deps": [], "risks": [], "who": []}, "2.1": {"title": "РЕСТОРАНЫ — добавление в полнотекстовый поиск", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "0", "pct": null, "fact": "отменён (PO 22.09), в трекере «—», PBV 0", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "Заказчик — Участник К. Зачем: SEO и проникновение ресторанов на весь CJM. Оценка «пальцем в небо» 2–8 недель: PoC за спринт, от PoC до delivery 2–4 спринта.", "plan": [["SA", "Проверить совместимость маппинга рестораны → TL.витрина", "todo"], ["BE", "Загрузчик MRS → Ticketland для ресторанов", "todo"], ["BE", "Расширить Sphinx и SearchGenerator", "todo"], ["DBA", "Отдельные таблицы для ресторанов", "todo"], ["DOPS", "CI/CD для загрузчика и сетевые доступы", "todo"], ["BE", "Рестораны в быстрый поиск BFF и страницу поиска", "todo"], ["FE", "Рестораны в быстрый поиск и страницу поиска", "todo"], ["DESIGN", "[EXT] Дизайн изменений UI с ресторанами в CJM", "todo"], ["BE", "Рестораны в афишу и на главную", "todo"], ["FE", "Рестораны в афишу и на главную", "todo"], ["SA", "Требования по ранжированию ресторанов", "todo"], ["BE", "Ранжирование выдачи ресторанов", "todo"]], "deps": [], "risks": ["Не управляем UI-частью разработки", "Нет дизайн-макетов при оценке работ", "Нет БФТ на старте работ", "Рестораны по структуре не совпадают с кино и культурными", "Активные изменения в API Bartello и MRS"], "who": ["SA Участник П"]}, "2.6": {"title": "LIVE — KION TOP (подписка со страницы Ticketland)", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "5", "pct": null, "fact": "отменён (PO 22.09), в трекере «—»", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "—", "obj": "OBJ 2 — Развитие витрины Ticketland: продажи в обход uat_db", "goal": "Пользователь со страницы Ticketland покупает подписку KION TOP.", "plan": [["SA", "Аналитика по контрактам и формату фискальных чеков", "todo"], ["PO", "Согласование чеков с бухгалтерией", "todo"], ["BE", "Фискальные чеки на backend Live", "todo"], ["BE", "Выгрузки для бухгалтерии по оплате подписок", "todo"], ["QA", "Отладка и приёмка на стороне финтеха", "todo"], ["RELEASE", "Выгрузка в прод", "todo"], ["VER", "A/B на две недели", "todo"]], "deps": [], "risks": ["На стороне Ticketland нет курирующего бизнес-продакта", "Финтех не начал работы по KION", "Прямые зависимости от финтеха, MTS.Pay и KION.TOP"], "who": ["SA Участник Л", "BE Участник О или Участник Р", "QA Участник С, Участник Т", "PO Участник У (Участник Ф)", "PO [EXT] Участник Х (KION)"]}, "3.1.1": {"title": "Поддержка B2C и B2B дистрибуции билетов", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "4.6", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Регулярная активность: исправление багов в цепочке ВБС → BI → Live → extapi_go.", "plan": [], "deps": [], "risks": [], "who": []}, "3.1.1e": {"title": "У Бродвея нет билетов при покупке через GDS", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 % — внеплановый", "next": "Закрыт — снять с контроля", "link": "4.6", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Исправлена ошибка: у Бродвея отображаются доступные места. На момент старта проблема не понятна.", "plan": [], "deps": [], "risks": [], "who": []}, "3.1.2e": {"title": "Билетная масса из фонда BI попадает в GET /tickets", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 % — внеплановый [УТОЧНИТЬ: в трекере факт 0.0 при 100 %]", "next": "Закрыт — снять с контроля", "link": "4.6", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Добавить фильтрацию внутри BI-фонда: у некоторых потребителей нужны ограничения на выдачу.", "plan": [], "deps": [], "risks": [], "who": []}, "3.3": {"title": "[BUG] ТБанк 404 при гонке бронирования (datarace extapi_go)", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["SA", "Разбор проблемы и причины", "done"], ["BE", "Исправление ошибки", "done"], ["RELEASE", "Включение ТБанк на GDS", "done"], ["BE", "Отладка", "done"]], "deps": [], "risks": [], "who": []}, "3.4": {"title": "[BUG] Seatless при отключённой свободной рассадке (TLND-16755)", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Из-за разницы маркировки секций между BI-шлюзом, БАЗИС и SVG-эдитором конфликт: какие места считать Seatless.", "plan": [["SA", "Разбор проблемы и причины", "done"], ["BE", "Исправление ошибки", "done"], ["RELEASE", "Включение", "done"], ["BE", "Отладка", "done"]], "deps": [], "risks": [], "who": []}, "3.5": {"title": "[ACTIVITY] Поддержка после перевода процессинга на Live", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "2.2", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Доделать переезд процессинга с Paybox на Live.Процессинг. Дата завершения открытая, не позднее конца квартала.", "plan": [], "deps": [], "risks": [], "who": []}, "3.5.2": {"title": "[FEAT] BNPL в Live.Процессинг", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "5", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "2.2", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["QA", "Отладка и приёмка на стороне финтеха", "done"], ["RELEASE", "Выгрузка в прод", "done"]], "deps": [], "risks": [], "who": ["QA Участник Ц (финтех)", "BE Участник Ч"]}, "3.5.3": {"title": "[FEAT] СБП через MTS Pay", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "5", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "2.2", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["QA", "Отладка и приёмка на стороне финтеха", "done"], ["BE", "Исправление замечаний", "done"], ["RELEASE", "Выгрузка в прод", "done"]], "deps": [], "risks": [], "who": ["QA Участник Ц (финтех)", "BE Участник Ч"]}, "3.5.4": {"title": "[FEAT] Процессинг ВТБ и ВТБ (пушкинская карта)", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "7", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "2.2", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["SA", "Анализ доработок на стороне Live", "done"], ["BE", "Оплата через ВТБ обычными платежами и пушкинской картой", "done"], ["QA", "Отладка и приёмка на стороне финтеха", "done"], ["RELEASE", "Выгрузка в прод", "done"]], "deps": [], "risks": [], "who": ["SA Участник Л", "BE Участник Р", "QA Участник Ц (финтех)"]}, "3.5.5": {"title": "[FEAT] Автоскейлинг Live.Процессинг, 500 rpm (Вахтангов)", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "8", "pct": 90, "fact": "90 % — остался повторный нагрузочный тест после объединения сервисов", "next": "Продолжается в 2026Q4 — KR 4.5", "link": "4.5", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["BE", "Доработка мониторинга", "done"], ["BE", "Доработка трассировки", "done"], ["QA", "Повторное нагрузочное тестирование и анализ", "done"], ["BE", "Объединение сервисов payment и callback, ручное масштабирование", "done"], ["QA", "Повторное нагрузочное тестирование после объединения", "todo"]], "deps": [], "risks": [], "who": ["SA Участник О или любой бэкенд платформы", "QA Участник Р"]}, "3.6": {"title": "LIVE.платформа — автотесты платёжного процессинга", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "5", "pct": 90, "fact": "90 % — осталась реализация автотестов по сценариям", "next": "Продолжается в 2026Q4 — KR 4.5", "link": "4.5", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["DOPS", "Развёртывание контура автотестирования", "done"], ["QA", "Сценарии тестирования", "done"], ["BE", "Реализация автотестов по сценариям", "todo"]], "deps": [], "risks": [], "who": ["QA Участник С", "QA Участник Ц (финтех)", "BE любой бэкенд Live"]}, "3.7": {"title": "LIVE.платформа — единый observability, сквозной TraceId", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "5", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["BE", "Полный цикл трассировки запросов", "done"], ["RELEASE", "Выгрузка в прод", "done"]], "deps": [], "risks": [], "who": ["BE Участник О"]}, "3.8": {"title": "LIVE.платформа — синхронизация тестовых сред Live и TL", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "5", "pct": 50, "fact": "50 %", "next": "Продолжается в 2026Q4 — KR 4.5", "link": "4.5", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Live STG ↔ TL DEV, LIVE PSI ↔ TL RC, LIVE Prod ↔ TL Prod.", "plan": [["BE", "Описание доступов тестовых сред", "none"], ["DOPS", "Настройка доступов сред", "none"]], "deps": [], "risks": [], "who": ["BE Участник Ш", "DevOps любой"]}, "3.9": {"title": "LIVE.платформа — рейтинг события в VibeApp", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "8", "pct": 100, "fact": "100 %", "next": "Закрыт — снять с контроля", "link": "3.1", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [["PO", "Оформление БФТ-требований", "done"], ["SA", "Dataflow: откуда брать рейтинги", "done"], ["BE", "[EXT] Доработки content-api для выдачи рейтинга", "done"], ["QA", "Подтверждение работы content-api", "done"], ["BE", "Доработка Live.Backend для передачи в VibeApp", "done"], ["RELEASE", "Выкатка и приёмка со стороны VibeApp", "done"]], "deps": [], "risks": [], "who": ["PO Участник Ш", "SA Участник Л", "BE Участник З, Участник Э"]}, "3.9.2": {"title": "LIVE.платформа — VibeApp: стабильность и скорость билетов и контента", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "9", "pct": 100, "fact": "100 % — внеплановый", "next": "Закрыт — снять с контроля", "link": "3.1", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "Пять строк контура из БФТ vibeapp-stability-q3-2026: три эпика TLND-19377 (заказы), TLND-19378 (категории и длительность), TLND-19766 (афиши и возвраты). Зритель — пользователь VibeApp, купивший билет на витрине Ticketland, и служба поддержки по неполученным билетам.", "plan": [["PO", "БФТ vibeapp-stability-q3-2026 отгружен в Confluence", "done"], ["BE", "TLND-19377 — форс-мажорное API получения заказов пользователя (PO-16)", "done"], ["BE", "TLND-18856 — проброс категорий напрямую из Content API (PO-17)", "done"], ["BE", "TLND-18924 — передача длительности мероприятия (PO-19)", "done"], ["BE", "TLND-19766 — некорректный формат афиш мероприятий (PO-18)", "done"], ["BE", "TLND-19766 — фильтрация заказов с возвратом при загрузке (PO-21)", "done"], ["BE", "Признак заказа, оформленного через приложение (PO-140)", "done"]], "deps": [], "risks": [], "who": []}, "3.10": {"title": "AI-Harness в TLND по аналогии с Bartello", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "7", "pct": 30, "fact": "30 % — внеплановый", "next": "Продолжается в 2026Q4 — KR 4.1", "link": "4.1", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [], "deps": [], "risks": [], "who": []}, "3.11": {"title": "AI-Harness — PR-Review в команде GDS", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "7", "pct": 100, "fact": "100 % — внеплановый", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [], "deps": [], "risks": [], "who": []}, "3.12": {"title": "AI-Harness в команде LIVE", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "7", "pct": 90, "fact": "90 % — внеплановый", "next": "[УТОЧНИТЬ: KR Q4]", "link": "[УТОЧНИТЬ: KR Q4]", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [], "deps": [], "risks": [], "who": []}, "3.13": {"title": "AI-Harness — генерация БФТ-требований с помощью LLM", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "3", "pct": 90, "fact": "90 % — внеплановый", "next": "[УТОЧНИТЬ: KR Q4]", "link": "[УТОЧНИТЬ: KR Q4]", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [], "deps": [], "risks": [], "who": []}, "3.14": {"title": "Email-рассылки ресторанов: макеты, UTM, сетевая доступность MRS", "state": "done", "mark": "✔", "stateName": "закрыт", "pbv": "7", "pct": 100, "fact": "100 % — внеплановый; на стороне GDS всё доработали 14.09, ждали MRS/DevOps", "next": "Закрыт — снять с контроля", "link": "—", "obj": "OBJ 3 — ACTIVITY: поддержка текущих систем (GDS, Live, extapi_go)", "goal": "", "plan": [], "deps": [], "risks": [], "who": []}, "4.3": {"title": "[RESEARCH] VK Билеты — замена Live-виджета на TL-виджет", "state": "partial", "mark": "◐", "stateName": "частично", "pbv": "9", "pct": 90, "fact": "90 % — остались незакрытые вопросы: как делать возврат и где разместить фронтенд новой витрины", "next": "Продолжается в 2026Q4 — KR 3.2", "link": "3.2", "obj": "OBJ 4 — ACTIVITY: Закрытие LIVE витрины", "goal": "Зависимость от решения по авторизации через федерации. Проработать, где должны быть вебхуки для ВК Билетов.", "plan": [["PO", "БФТ-требования к границам", "done"], ["ADR", "Стратегия замены виджета", "done"], ["SA", "Что нужно сделать для закрытия виджета", "done"], ["PO", "Декомпозиция по эпику", "done"], ["SA", "Открытый вопрос: как делать возврат", "todo"], ["ADR", "Открытый вопрос: где разместить фронтенд новой витрины", "todo"], ["SA", "Открытый вопрос: [УТОЧНИТЬ — третий не назван]", "todo"]], "deps": [], "risks": ["Высокая вероятность, что виджет ВК не переключится по базовому механизму Live", "Работоспособность ВК сильно связана с Live-виджетом и инфраструктурой, которая закрывается"], "who": []}, "4.1": {"title": "[RESEARCH] Наполнение каталога LIVE из UMC", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "0", "pct": null, "fact": "отменён (PO 22.09)", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "—", "obj": "OBJ 4 — ACTIVITY: Закрытие LIVE витрины", "goal": "Ответ CTO: Live корнями пророс в БАЗИС; в условиях миграции в TC актуальный контент будет в TC, и нужно иметь одинаковый контент в Live и TLND. Физически закрыть Live нельзя — SEO-трафик уйдёт к конкурентам.", "plan": [["PO", "БФТ-требования к границам: чего хотим достигнуть", "todo"], ["ADR", "Как переключить Live на UMC по каталогу", "todo"], ["SA", "Подробный план переключения наполнения Live на UMC", "todo"]], "deps": [], "risks": ["Не понятна бизнес-ценность", "На старте квартала нет понимания объёмов и ожиданий стейкхолдеров"], "who": []}, "4.2": {"title": "[RESEARCH] На витрине Live заменить виджет на TL", "state": "dropped", "mark": "⊘", "stateName": "отменён", "pbv": "7", "pct": null, "fact": "отменён (PO 22.09)", "next": "Отменён — записать причину и дату решения [УТОЧНИТЬ]", "link": "2.8", "obj": "OBJ 4 — ACTIVITY: Закрытие LIVE витрины", "goal": "Понижение CAPEX/OPEX и T2M изменений по Live. На демо: iframe с виджетом TLND на сайте live.mts.ru.", "plan": [["PO", "БФТ-требования к границам", "todo"], ["ADR", "Как переезжаем", "todo"], ["SA", "Системные требования", "todo"]], "deps": [], "risks": ["Высокая вероятность, что старый виджет TLND для Live не работает и его нужно переписывать", "ВК Билеты работают на виджете Live"], "who": []}};
+  var QNEXT = "2026Q4";
+  var STATUS_NAME = {"done": "DONE", "progress": "IN PROGRESS", "todo": "TODO", "none": "нет статуса", "dropped": "снято"};
+
+  /* — фильтр по исходу: тот же механизм, что фильтр команд на странице отбора — */
+  var tab = document.getElementById("stTab");
+  var drawer = document.getElementById("stDrawer");
+  var rows = Array.prototype.slice.call(document.querySelectorAll("tr.row"));
+  var items = Array.prototype.slice.call(drawer.querySelectorAll(".st-item"));
+
+  function syncBlocks(){
+    document.querySelectorAll("table.fact").forEach(function(tbl){
+      var wrap = tbl.closest(".table-wrap");
+      var visible = tbl.querySelectorAll("tbody tr.row:not([hidden])").length;
+      wrap.hidden = !visible;
+      var band = tbl.querySelector("tr.objrow");
+      if(band) band.hidden = !visible;
+    });
+  }
+  function apply(state){
+    rows.forEach(function(r){ r.hidden = !!state && r.getAttribute("data-state") !== state; });
+    syncBlocks();
+    items.forEach(function(b){
+      if((b.getAttribute("data-state") || "") === (state || "")) b.setAttribute("data-active", "");
+      else b.removeAttribute("data-active");
+    });
+    var active = items.filter(function(b){ return b.hasAttribute("data-active"); })[0];
+    document.getElementById("stNow").textContent =
+      state ? active.textContent.replace(/\d+$/, "").trim().replace(/^[✔◐✖⊘?]\s*/, "") : "все";
+  }
+  function toggle(){
+    drawer.classList.toggle("open");
+    document.body.classList.toggle("drawer-open", drawer.classList.contains("open"));
+  }
+  tab.addEventListener("click", toggle);
+  drawer.querySelector(".drawer-close").addEventListener("click", toggle);
+  items.forEach(function(b){
+    b.addEventListener("click", function(){ apply(b.getAttribute("data-state") || ""); toggle(); });
+  });
+
+  /* — выдвижная панель: детали KR, только чтение — */
+  var side = document.getElementById("side");
+  var note = document.getElementById("sideNote");
+  function block(type, text){
+    var div = document.createElement("div");
+    div.className = "b";
+    div.setAttribute("data-t", type);
+    div.textContent = text;
+    return div;
+  }
+  /* Этапы плана как шкала: столько делений, сколько шагов было запланировано. */
+  function segline(plan){
+    if(!plan || !plan.length) return "";
+    var closed = plan.filter(function(s){ return s[2] === "done"; }).length;
+    var live = plan.filter(function(s){ return s[2] !== "dropped"; }).length;
+    return '<span class="segs">' + plan.map(function(s){
+      return '<i class="seg s-' + s[2] + '" title="' + s[0] + ' · ' + s[2] + '"></i>';
+    }).join("") + '</span><span class="segn">' + closed + " / " + live + " этапов</span>";
+  }
+
+  function open(kr){
+    var d = DATA[kr];
+    if(!d) return;
+    document.getElementById("sideKr").textContent = kr + " · " + d.obj.replace(/^Objective\s*/, "OBJ ");
+    document.getElementById("sideTitle").textContent = d.title;
+    document.getElementById("sideState").innerHTML =
+      d.mark + " " + d.stateName + (d.pct !== null ? " · " + d.pct + " %" : "") +
+      " · PBV " + (d.pbv || "—") + (d.plan && d.plan.length ? "<br>" + segline(d.plan) : "");
+    note.innerHTML = "";
+    if(d.goal){
+      note.appendChild(block("h", "Образ результата"));
+      note.appendChild(block("p", d.goal));
+    }
+    /* Процессный roadmap: шаг = роль + действие + статус. Статус берётся из .md,
+       агент его не выводит: «нет статуса» честнее придуманного TODO. */
+    function steps(title, list){
+      if(!list || !list.length) return;
+      note.appendChild(block("h", title));
+      list.forEach(function(item){
+        var role = item[0], text = item[1], st = item[2];
+        var row = document.createElement("div");
+        row.className = "step";
+        row.setAttribute("data-s", st);
+        row.innerHTML = '<span class="role">' + role + '</span><span class="txt"></span>' +
+          '<span class="badge" data-s="' + st + '">' + (STATUS_NAME[st] || st) + '</span>';
+        row.querySelector(".txt").textContent = text;
+        note.appendChild(row);
+      });
+    }
+    steps("Процессный roadmap", d.plan);
+    steps("Зависимости", d.deps);
+    if(d.risks && d.risks.length){
+      note.appendChild(block("h", "Риски"));
+      d.risks.forEach(function(r){ note.appendChild(block("li", r)); });
+    }
+    note.appendChild(block("h", "Фактическая готовность"));
+    note.appendChild(block("p", d.fact || (d.pct !== null ? d.pct + " %" : "нет оценки")));
+    note.appendChild(block("h", "Следующие действия"));
+    note.appendChild(block("p", d.next));
+    if(d.link && d.link !== "—"){
+      note.appendChild(block("p", /^\d+\.\d+/.test(d.link) ? QNEXT + " — KR " + d.link : d.link));
+    }
+    if(d.who && d.who.length){
+      note.appendChild(block("h", "Исполнители"));
+      d.who.forEach(function(w){ note.appendChild(block("li", w)); });
+    }
+    side.classList.add("open");
+    document.body.setAttribute("data-side", "");
+  }
+  function close(){
+    side.classList.remove("open");
+    document.body.removeAttribute("data-side");
+  }
+  document.getElementById("sideClose").addEventListener("click", close);
+  rows.forEach(function(r){
+    r.addEventListener("click", function(){ open(r.getAttribute("data-kr")); });
+  });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape") close(); });
+})();
+</script>
+</body>
+</html>

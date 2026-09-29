@@ -111,6 +111,7 @@ hermes cron create "45 9 * * 1-5" --no-agent --script sprint-status.sh --name sp
 - Инструкция по `/sprint-status`: `docs/sprint-status-guide.md`
 - Отладка на реальном инстансе: `docs/actual-sprint-debug.md`
 - Видение: `VISION.md`
+- Эталон разбора квартала (куда должны прийти по итогам ретро): `docs/quarter-retro/TARGET.md`, страница — `docs/quarter-retro/ideal_quarter_fact.html`
 - БФТ `sprint-planner`: `docs/bft-sprint-planner-slice1.md`
 - Дизайн `sprint-planner`: `docs/superpowers/specs/2026-07-17-sprint-planner-slice1-design.md`
 - Внутренняя документация навыка, всё в `.claude/skills/actual-sprint/`:
