@@ -31,7 +31,7 @@ class TemplateTest(unittest.TestCase):
         """Как на странице ревью БФТ: кнопка «Комментарии (N)», под ней панель и промт."""
         box = self.html[self.html.index('<div class="promptbox"'):self.html.index('<div class="hero">')]
         for part in ('id="notesToggle"', 'id="cCount"', 'id="nText"', 'id="nRef"', 'id="itemsList"',
-                     'id="promptOut"', 'id="copyBtn"'):
+                     'id="promptOut"', 'id="copyBtn"', 'id="promptShow"'):
             self.assertIn(part, box)
 
     def test_notes_edit_delete_and_bind(self):
@@ -39,11 +39,19 @@ class TemplateTest(unittest.TestCase):
                    'function buildPrompt(', 'data-edit', 'data-del'):
             self.assertIn(fn, self.html)
 
+    def test_actions_are_icons_on_hover(self):
+        """Карандаш и мусорка иконками, как в панели poh-okr-plugin; видны при наведении."""
+        self.assertIn("icoBtn('pencil', 'Редактировать'", self.html)
+        self.assertIn("icoBtn('trash', 'Удалить'", self.html)
+        self.assertIn('.nrow:hover .nacts', self.html)
+        for gone in ('>изменить<', '>удалить<', 'class="where"'):
+            self.assertNotIn(gone, self.html)
+
     def test_right_click_notes(self):
         self.assertIn("addEventListener('contextmenu'", self.html)
         for target in ("ctxAttr(epicTarget(e))", "itemTarget('story'", "itemTarget('subtask'"):
             self.assertIn(target, self.html)
-        self.assertIn('Уже оставлено', self.html)
+        self.assertIn('id="cpopExisting"', self.html)
 
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):

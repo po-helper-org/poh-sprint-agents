@@ -519,66 +519,87 @@
   }
   .pb-toggle[aria-expanded="true"] { background: var(--bg); color: var(--fg); }
   .notes-panel {
-    display: none; width: 400px; max-height: calc(100vh - 90px); overflow-y: auto;
-    background: var(--bg); border: 1px solid var(--fg); border-radius: 6px;
-    box-shadow: 3px 3px 0 var(--line); padding: 14px;
+    display: none; width: 380px; max-height: calc(100vh - 90px); overflow-y: auto;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.12); padding: 12px;
   }
   .notes-panel.open { display: block; }
-  .notes-panel h4 {
-    margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+
+  /* Иконки и строки — как в панели poh-okr-plugin: контур 1.4px, кнопка 28×28,
+     серая до наведения; строка подсвечивается мягким фоном. */
+  :root { --hover-bg: rgba(38,49,72,.06); --ico: #adb2b8; }
+  .ico {
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 28px; height: 28px; border: none; background: transparent; border-radius: 8px;
+    color: var(--ico); cursor: pointer; padding: 0;
   }
-  .notes-panel h4.sp { margin-top: 16px; }
-  .nform textarea, .nedit textarea, .notes-panel .prompt {
-    width: 100%; font: inherit; font-size: 13px; line-height: 1.5; color: var(--fg);
-    border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; resize: vertical;
+  .ico:hover { background: var(--hover-bg); color: var(--fg); }
+  .ico.danger:hover { color: var(--c-blocked); }
+
+  .ncompose textarea {
+    display: block; width: 100%; min-height: 38px; max-height: 160px; resize: none;
+    font: inherit; font-size: 14px; line-height: 1.45; color: var(--fg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
   }
-  .nform textarea, .nedit textarea { min-height: 58px; }
-  .nform textarea:focus, .nedit textarea:focus, .nref:focus { outline: none; border-color: var(--fg); }
+  .ncompose textarea:focus, .nref:focus { outline: none; border-color: var(--fg); }
   .nref {
     width: 100%; margin-top: 6px; font: inherit; font-size: 12px; color: var(--fg);
-    border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px;
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
   }
-  .prow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-  .prow .hint { flex: 1; font-size: 11px; color: var(--muted); }
-  .nbtn {
-    font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 4px; cursor: pointer;
-    border: 1px solid var(--fg); background: var(--fg); color: var(--bg);
-  }
-  .nbtn.ghost { background: var(--bg); color: var(--fg); }
-  .nitems { margin-top: 12px; border-top: 1px solid var(--line); }
-  .nitem { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
-  .nitem .where { font-size: 11px; color: var(--muted); line-height: 1.4; }
-  .nitem .where b { color: var(--fg); font-weight: 600; }
-  .nitem .body { white-space: pre-wrap; word-break: break-word; margin: 2px 0; }
-  .nitem .acts { display: flex; gap: 10px; font-size: 11px; color: var(--muted); }
-  .nitem .acts button {
-    border: none; background: none; padding: 0; font: inherit; color: var(--muted);
-    text-decoration: underline; cursor: pointer;
-  }
-  .nitem .acts button:hover { color: var(--fg); }
-  .nitem .acts .when { margin-left: auto; font-variant-numeric: tabular-nums; }
-  .notes-panel .empty { color: var(--muted); font-style: italic; font-size: 13px; padding: 8px 0; }
-  .notes-panel .prompt { min-height: 130px; font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 11px; color: var(--muted); }
-  .notes-panel .copybtn { width: 100%; margin-top: 6px; padding: 6px; }
+  /* «К чему» появляется, когда заметку начали писать, и не прячется по потере
+     фокуса: иначе список под ним прыгал бы и клик уходил мимо иконки */
+  .ncompose .nref { display: none; }
+  .ncompose.filled .nref { display: block; }
 
-  /* уже оставленное к этой сущности — в поле правого клика */
-  .pexisting { margin-bottom: 8px; }
-  .pexisting-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
-  .pex-item { border-left: 2px solid var(--c-done); padding: 2px 8px; margin-bottom: 4px; font-size: 12px; color: var(--muted); white-space: pre-wrap; }
-  .pex-item button { border: none; background: none; padding: 0; margin-left: 6px; font: inherit; font-size: 11px; color: var(--muted); text-decoration: underline; cursor: pointer; }
+  .ncard { margin-top: 10px; border-radius: 12px; background: var(--hover-bg); overflow: hidden; }
+  .ncard:empty { display: none; }
+  .nrow { display: flex; align-items: flex-start; gap: 6px; padding: 8px 6px 8px 12px; }
+  .nrow + .nrow { box-shadow: inset 0 1px 0 rgba(0,0,0,.08); }
+  .nrow:hover { background: var(--hover-bg); }
+  .nrow .ntext { flex: 1; min-width: 0; padding-top: 3px; font-size: 14px; line-height: 1.45;
+                 white-space: pre-wrap; word-break: break-word; }
+  .nrow .nref-line { display: block; margin-top: 2px; font-size: 12px; color: var(--muted);
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nrow .nacts { display: flex; opacity: 0; transition: opacity 0.12s ease; }
+  .nrow:hover .nacts, .nrow:focus-within .nacts { opacity: 1; }
+  .nrow.editing { display: block; padding: 8px; background: var(--bg); }
+  .nrow.editing textarea {
+    display: block; width: 100%; min-height: 58px; resize: vertical; font: inherit; font-size: 14px;
+    line-height: 1.45; border: 1px solid var(--fg); border-radius: 8px; padding: 6px 10px;
+  }
+  .nempty { margin: 10px 2px 2px; font-size: 13px; color: var(--muted); }
+
+  .nfoot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .nfoot .copybtn {
+    flex: 1; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+  }
+  .nfoot .copybtn:hover { background: var(--hover-bg); border-color: var(--fg); }
+  .nfoot .copybtn:disabled { color: var(--c-zero); border-color: var(--line); background: var(--bg); cursor: default; }
+  .prompt-view {
+    display: none; width: 100%; min-height: 140px; margin-top: 8px; resize: vertical;
+    font: 11px/1.5 "SF Mono", Menlo, Consolas, monospace; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+  }
+  .prompt-view.open { display: block; }
+
+  /* уже оставленное к этой сущности — в поле правого клика, те же строки */
+  .pexisting { margin-bottom: 8px; border-radius: 10px; background: var(--hover-bg); overflow: hidden; }
+  .pexisting .nrow { padding: 4px 4px 4px 10px; }
+  .pexisting .ntext { font-size: 13px; color: var(--muted); }
 
   /* поле комментария по правому клику */
   .cpop {
-    position: fixed; z-index: 20; width: 380px;
-    background: var(--bg); border: 1px solid var(--fg); border-radius: 6px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.18); padding: 10px 12px 12px;
+    position: fixed; z-index: 20; width: 360px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.16); padding: 10px 12px 12px;
   }
   .cpop[hidden] { display: none; }
-  .cpop-target { font-size: 12px; color: var(--muted); margin-bottom: 6px; line-height: 1.4; }
-  .cpop-target b { color: var(--fg); }
+  .cpop-target { margin: 0 2px 8px; }
+  .cpop-target .nref-line { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cpop textarea {
-    width: 100%; min-height: 76px; resize: vertical; font: inherit; font-size: 13px; line-height: 1.5;
-    border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; color: var(--fg);
+    width: 100%; min-height: 64px; resize: vertical; font: inherit; font-size: 14px; line-height: 1.45;
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--fg);
   }
   .cpop textarea:focus { outline: none; border-color: var(--fg); }
   .cpop-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
@@ -615,20 +636,17 @@
       title="Заметки к спринту и промт для ИИ">Комментарии (<span id="cCount">0</span>)</button>
   </div>
   <div class="notes-panel" id="notesPanel">
-    <h4>Заметки к спринту</h4>
-    <div class="nform">
-      <textarea id="nText" placeholder="Короткая заметка: процесс, история вне спринта, замечание к агенту…"></textarea>
-      <input class="nref" id="nRef" list="refList" autocomplete="off"
-        placeholder="К чему (необязательно): ключ эпика или задачи">
-      <div class="prow">
-        <span class="hint">Enter — добавить · правый клик по строке — заметка к ней</span>
-        <button class="nbtn" id="nAdd" type="button">Добавить</button>
-      </div>
+    <div class="ncompose" id="nCompose">
+      <textarea id="nText" rows="1" placeholder="Добавить заметку"
+        title="Enter — добавить, Shift+Enter — перенос строки"></textarea>
+      <input class="nref" id="nRef" list="refList" autocomplete="off" placeholder="К чему — ключ эпика или задачи, необязательно">
     </div>
-    <div class="nitems" id="itemsList"></div>
-    <h4 class="sp">Промт для ИИ</h4>
-    <textarea class="prompt" id="promptOut" readonly></textarea>
-    <button class="nbtn copybtn" id="copyBtn" type="button">Скопировать промт</button>
+    <div class="ncard" id="itemsList"></div>
+    <div class="nfoot">
+      <button class="copybtn" id="copyBtn" type="button">Скопировать промт для ИИ</button>
+      <button class="ico" id="promptShow" type="button" title="Показать промт" aria-label="Показать промт"></button>
+    </div>
+    <textarea class="prompt-view" id="promptOut" readonly></textarea>
   </div>
   <datalist id="refList"></datalist>
 </div>
@@ -676,9 +694,9 @@
 <div class="cpop" id="cpop" hidden role="dialog" aria-label="Заметка">
   <div class="cpop-target" id="cpopTarget"></div>
   <div class="pexisting" id="cpopExisting" hidden></div>
-  <textarea id="cpopText" placeholder="Короткая заметка…"></textarea>
+  <textarea id="cpopText" placeholder="Заметка — Enter сохранить, Esc отмена"></textarea>
   <div class="cpop-actions">
-    <span class="hint">Enter — сохранить · Shift+Enter — перенос · Esc — отмена</span>
+    <span class="hint"></span>
     <button class="action-btn" id="cpopSave">Сохранить</button>
   </div>
 </div>
@@ -1062,45 +1080,64 @@
     return fallback();
   }
 
+  // --- иконки: контур 1.4px в сетке 16×16, как в панели poh-okr-plugin
+  var ICON = {
+    pencil: 'M10.4 3.4l2.2 2.2-6.9 6.9-2.9.7.7-2.9zM9.2 4.6l2.2 2.2',
+    trash: 'M3.4 4.6h9.2M6.4 4.6V3.4h3.2v1.2M5 4.6l.6 8.2h4.8l.6-8.2',
+    eye: 'M1.8 8s2.3-4.2 6.2-4.2S14.2 8 14.2 8s-2.3 4.2-6.2 4.2S1.8 8 1.8 8zM8 6.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4'
+  };
+  function svgIcon(name) {
+    return '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"' +
+      ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + ICON[name] + '"/></svg>';
+  }
+  function icoBtn(name, title, attr, cls) {
+    return '<button class="ico' + (cls ? ' ' + cls : '') + '" type="button" ' + attr +
+      ' title="' + title + '" aria-label="' + title + '">' + svgIcon(name) + '</button>';
+  }
+
   // --- корзина
   var notesPanel = document.getElementById('notesPanel');
   var notesToggle = document.getElementById('notesToggle');
   var editingId = null;
 
-  function whereHtml(t) {
-    if (!t || t.kind === 'general') return '<b>без привязки</b>' + (t && t.title ? ' · ' + esc(t.title) : '');
-    var line = targetLine(t);
-    var head = KIND_NAME[t.kind] + (t.key ? ' ' + t.key : '');
-    return '<b>' + esc(head) + '</b>' + esc(line.slice(head.length));
+  // подпись под заметкой: только если привязана — «INIT-132 · Сервис приёма событий»
+  function refLineHtml(t) {
+    if (!t || t.kind === 'general') return '';
+    var text = (t.key ? t.key : KIND_NAME[t.kind]) + (t.title ? ' · ' + t.title : '');
+    return '<span class="nref-line" title="' + esc(targetLine(t)) + '">' + esc(text) + '</span>';
   }
 
   function noteItemHtml(c) {
     if (c.id === editingId) {
-      return '<div class="nitem nedit" data-id="' + esc(c.id) + '">' +
-        '<textarea class="nedit-text">' + esc(c.text) + '</textarea>' +
+      return '<div class="nrow editing" data-id="' + esc(c.id) + '">' +
+        '<textarea class="nedit-text" title="Enter — сохранить, Esc — отмена">' + esc(c.text) + '</textarea>' +
         '<input class="nref nedit-ref" list="refList" autocomplete="off" value="' + esc(refValue(c.target)) + '"' +
-        ' placeholder="К чему (необязательно): ключ эпика или задачи">' +
-        '<div class="prow"><span class="hint">Enter — сохранить · Esc — отмена</span>' +
-        '<button class="nbtn ghost" data-cancel type="button">Отмена</button>' +
-        '<button class="nbtn" data-save type="button">Сохранить</button></div></div>';
+        ' placeholder="К чему — ключ эпика или задачи, необязательно"></div>';
     }
-    return '<div class="nitem" data-id="' + esc(c.id) + '">' +
-      '<div class="where">' + whereHtml(c.target) + (c.migrated ? ' · из заметки' : '') + '</div>' +
-      '<div class="body">' + esc(c.text) + '</div>' +
-      '<div class="acts"><button data-edit type="button">изменить</button>' +
-      '<button data-del type="button">удалить</button>' +
-      '<span class="when" title="' + esc(c.editedAt ? 'Изменено ' + stamp(c.editedAt, true) : '') + '">' +
-        esc(stamp(c.at)) + (c.editedAt ? ' · изм.' : '') + '</span></div></div>';
+    var tip = 'Добавлено ' + stamp(c.at, true) + (c.editedAt ? ', изменено ' + stamp(c.editedAt, true) : '') +
+      (c.migrated ? ' · перенесено из заметки' : '');
+    return '<div class="nrow" data-id="' + esc(c.id) + '" title="' + esc(tip) + '">' +
+      '<div class="ntext">' + esc(c.text) + refLineHtml(c.target) + '</div>' +
+      '<div class="nacts">' + icoBtn('pencil', 'Редактировать', 'data-edit') +
+        icoBtn('trash', 'Удалить', 'data-del', 'danger') + '</div></div>';
   }
 
   function renderNotes() {
     var list = loadComments();
     document.getElementById('cCount').textContent = list.length;
     var box = document.getElementById('itemsList');
-    box.innerHTML = list.length ? list.map(noteItemHtml).join('') : '<p class="empty">Заметок нет.</p>';
-    document.getElementById('promptOut').value = buildPrompt(list);
+    box.innerHTML = list.map(noteItemHtml).join('');
+    var empty = document.getElementById('nEmpty');
+    if (!list.length && !empty) {
+      box.insertAdjacentHTML('beforebegin', '<p class="nempty" id="nEmpty">Заметок пока нет. Правый клик по строке отчёта — заметка к ней.</p>');
+    } else if (list.length && empty) {
+      empty.remove();
+    }
+    var prompt = buildPrompt(list);
+    document.getElementById('promptOut').value = prompt;
+    document.getElementById('copyBtn').disabled = !prompt;
 
-    box.querySelectorAll('.nitem').forEach(function (item) {
+    box.querySelectorAll('.nrow').forEach(function (item) {
       var id = item.dataset.id;
       var q = function (sel) { return item.querySelector(sel); };
       if (q('[data-del]')) q('[data-del]').addEventListener('click', function () { removeComment(id); });
@@ -1109,7 +1146,7 @@
         var ta = box.querySelector('.nedit-text');
         ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
       });
-      if (q('[data-save]')) {
+      if (item.classList.contains('editing')) {
         var save = function () {
           // ключ не трогали — оставляем снимок сущности как был, а не пересобираем его
           var old = loadComments().find(function (c) { return c.id === id; });
@@ -1119,8 +1156,6 @@
           renderNotes();
         };
         var cancel = function () { editingId = null; renderNotes(); };
-        q('[data-save]').addEventListener('click', save);
-        q('[data-cancel]').addEventListener('click', cancel);
         [q('.nedit-text'), q('.nedit-ref')].forEach(function (el) {
           el.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); }
@@ -1173,11 +1208,10 @@
     var box = document.getElementById('cpopExisting');
     var list = target.key ? loadComments().filter(function (c) { return c.target && c.target.key === target.key; }) : [];
     box.hidden = !list.length;
-    box.innerHTML = list.length
-      ? '<div class="pexisting-title">Уже оставлено</div>' + list.map(function (c) {
-          return '<div class="pex-item">' + esc(c.text) + '<button data-pdel="' + esc(c.id) + '" type="button">удалить</button></div>';
-        }).join('')
-      : '';
+    box.innerHTML = list.map(function (c) {
+      return '<div class="nrow"><div class="ntext">' + esc(c.text) + '</div>' +
+        '<div class="nacts">' + icoBtn('trash', 'Удалить', 'data-pdel="' + esc(c.id) + '"', 'danger') + '</div></div>';
+    }).join('');
     box.querySelectorAll('[data-pdel]').forEach(function (b) {
       b.addEventListener('click', function () { removeComment(b.dataset.pdel); renderPopExisting(target); });
     });
@@ -1185,7 +1219,7 @@
 
   function openCommentPopup(target, x, y) {
     cpopTarget = target;
-    document.getElementById('cpopTarget').innerHTML = whereHtml(target);
+    document.getElementById('cpopTarget').innerHTML = refLineHtml(target) || '<span class="nref-line">Без привязки</span>';
     renderPopExisting(target);
     cpopText.value = '';
     cpop.hidden = false;
@@ -1834,10 +1868,17 @@
     if (notesPanel.classList.contains('open')) { renderNotes(); document.getElementById('nText').focus(); }
   });
   var nText = document.getElementById('nText'), nRef = document.getElementById('nRef');
-  function addFromBasket() {
-    if (addComment(resolveRef(nRef.value), nText.value)) { nText.value = ''; nRef.value = ''; nText.focus(); }
+  var nCompose = document.getElementById('nCompose');
+  function syncCompose() {
+    nCompose.classList.toggle('filled', !!(nText.value || nRef.value));
+    nText.style.height = 'auto';
+    nText.style.height = Math.min(nText.scrollHeight + 2, 160) + 'px';
   }
-  document.getElementById('nAdd').addEventListener('click', addFromBasket);
+  function addFromBasket() {
+    if (addComment(resolveRef(nRef.value), nText.value)) { nText.value = ''; nRef.value = ''; syncCompose(); nText.focus(); }
+  }
+  nText.addEventListener('input', syncCompose);
+  nRef.addEventListener('input', syncCompose);
   [nText, nRef].forEach(function (el) {
     el.addEventListener('keydown', function (e) {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); addFromBasket(); }
@@ -1851,11 +1892,17 @@
     copyText(text).then(function () {
       copyBtn.textContent = 'Скопировано ✓';
     }, function () {
-      document.getElementById('promptOut').select();
+      var view = document.getElementById('promptOut');
+      view.classList.add('open'); view.select();
       copyBtn.textContent = 'Выделено — Ctrl+C';
     }).then(function () {
-      setTimeout(function () { copyBtn.textContent = 'Скопировать промт'; }, 1600);
+      setTimeout(function () { copyBtn.textContent = 'Скопировать промт для ИИ'; }, 1600);
     });
+  });
+  var promptShow = document.getElementById('promptShow');
+  promptShow.innerHTML = svgIcon('eye');
+  promptShow.addEventListener('click', function () {
+    document.getElementById('promptOut').classList.toggle('open');
   });
   document.getElementById('metricsLink').addEventListener('click', function (e) {
     e.preventDefault();

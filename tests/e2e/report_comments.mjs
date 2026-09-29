@@ -46,7 +46,7 @@ check((await p.inputValue('#nText')) === '', 'поле очищается пос
 const epicKey = await p.evaluate(() => TEAMS[0].epics[0].epicKey);
 await p.fill('#nText', 'Проверить объём эпика');
 await p.fill('#nRef', epicKey);
-await p.click('#nAdd');
+await p.press('#nText', 'Enter');
 await p.fill('#nText', 'Этой истории нет в спринте');
 await p.fill('#nRef', 'SEO-77 — перелинковка');
 await p.press('#nRef', 'Enter');
@@ -56,15 +56,22 @@ check(prompt.includes('[Вне отчёта SEO-77 «перелинковка»]
 check(prompt.includes('[без привязки] Истории по SEO нет в спринте'), 'заметка без привязки помечена в промте');
 
 // правка: текст и привязка
-const lastEdit = '.nitem:last-child [data-edit]';
-await p.click(lastEdit);
+await p.hover('.nrow:last-child');
+await p.click('.nrow:last-child [data-edit]');
 await p.fill('.nedit-text', 'Истории SEO-77 нет в спринте — завести');
 await p.fill('.nedit-ref', '');
-await p.click('.nedit [data-save]');
+await p.press('.nedit-text', 'Enter');
 prompt = await p.inputValue('#promptOut');
 check(prompt.includes('[без привязки] Истории SEO-77 нет в спринте — завести') && !prompt.includes('Вне отчёта'),
       'заметку можно отредактировать и отвязать');
-check((await p.textContent('.nitem:last-child .when')).includes('изм.'), 'у изменённой заметки пометка');
+check((await p.getAttribute('.nrow:last-child', 'title')).includes('изменено'), 'у изменённой заметки время правки в подсказке');
+check(await p.$('.nrow:last-child .nref-line') === null, 'у заметки без привязки нет подписи сущности');
+check((await p.textContent('.nrow:first-child .nref-line')).startsWith(epicKey), 'у привязанной заметки подпись с ключом');
+const hidden = await p.$eval('.nrow:first-child .nacts', el => getComputedStyle(el).opacity);
+await p.hover('.nrow:first-child'); await p.waitForTimeout(200);
+const shown = await p.$eval('.nrow:first-child .nacts', el => getComputedStyle(el).opacity);
+check(hidden === '0' && shown === '1', 'карандаш и мусорка проявляются при наведении');
+check(await p.$eval('.nrow:first-child [data-edit] svg', el => !!el) && await p.$eval('.nrow:first-child [data-del] svg', el => !!el), 'действия — иконки');
 
 // правый клик по строке → заметка с привязкой; «Уже оставлено» для той же сущности
 await p.keyboard.press('Escape');
@@ -100,7 +107,8 @@ check(/\[История INIT-\d+ «.+» · эпик .* · приоритет \S+
       'у задачи в промте эпик, приоритет, статус, исполнитель; строки сохраняются');
 
 // удаление и перезагрузка
-await p.click('.nitem:first-child [data-del]');
+await p.hover('.nrow:first-child');
+await p.click('.nrow:first-child [data-del]');
 check(await count() === '6', 'заметка удаляется');
 await p.reload();
 check(await count() === '6', 'корзина переживает перезагрузку, перенос не повторяется');
