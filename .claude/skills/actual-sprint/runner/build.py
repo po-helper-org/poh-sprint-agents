@@ -53,7 +53,7 @@ def render(teams, template_path):
 
 
 def snapshot(teams):
-    """Тот же массив TEAMS, что уходит в страницу, — для текстового отчёта /sprint-status."""
+    """Тот же массив TEAMS, что уходит в страницу, — для PDF-статуса /sprint-status."""
     return json.dumps(teams, ensure_ascii=False, sort_keys=True, indent=1) + '\n'
 
 
