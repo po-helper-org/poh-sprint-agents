@@ -52,6 +52,11 @@ def render(teams, template_path):
     return tpl.replace(PLACEHOLDER, payload)
 
 
+def snapshot(teams):
+    """Тот же массив TEAMS, что уходит в страницу, — для текстового отчёта /sprint-status."""
+    return json.dumps(teams, ensure_ascii=False, sort_keys=True, indent=1) + '\n'
+
+
 def write_atomic(path, text):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -4,6 +4,7 @@
 
 - **`sprint-planner`** — спринт → согласованный vault-ПЛАН, операционный контракт и гейт консенсуса команды.
 - **`actual-sprint`** — текущий спринт → самодостаточная HTML-страница отчёта: эпики со статусами, метрики за три спринта, лента активности.
+- **`sprint-status`** — короткий текстовый статус спринта в чат фиксированной формы: темп, изменения за сутки, блокеры, зона риска, эпики. Годится для рассылки по расписанию.
 
 ## Установка
 
@@ -80,6 +81,24 @@ story_types = ["История", "История Enabler", "Story"]
 python3 -m unittest discover tests
 ```
 
+### Статус спринта в чат
+
+`/sprint-status {команда?}` — те же данные, что на странице, но коротким текстом одной и той же формы: день спринта и темп против идеальной прямой, что закрыли за сутки, статусы, блокеры и задачи без движения, зона риска, эпики. Текст собирает `status.py` из снимка `reports/sprint-report.data.json`, который runner пишет вместе с HTML; модель его только передаёт.
+
+```bash
+python3 .claude/skills/sprint-status/status.py --refresh   # пересобрать и написать текст
+python3 .claude/skills/sprint-status/status.py             # из последнего снимка, без JIRA
+```
+
+По расписанию в Hermes Agent — cron без модели, stdout уходит в чат дословно:
+
+```bash
+cp .claude/skills/sprint-status/hermes/sprint-status.sh "$HERMES_HOME/scripts/"
+hermes cron create "45 9 * * 1-5" --no-agent --script sprint-status.sh --name sprint-status --deliver telegram
+```
+
+📋 **[Инструкция по /sprint-status](docs/sprint-status-guide.md)** — пример вывода, что означает каждая строка, настройка Hermes.
+
 🛠 **[Отладка на реальном инстансе](docs/actual-sprint-debug.md)** — `doctor`, таблица отказов (VPN, токен, корпоративный CA, чужие статусы), record/replay.
 
 📖 **[Полная инструкция](docs/actual-sprint-guide.md)** — как запускать, что означает каждая метрика, как найти доску команды, что делать, если собралось не то.
@@ -87,6 +106,7 @@ python3 -m unittest discover tests
 ## Документы
 
 - Инструкция по `/actual-sprint`: `docs/actual-sprint-guide.md`
+- Инструкция по `/sprint-status`: `docs/sprint-status-guide.md`
 - Отладка на реальном инстансе: `docs/actual-sprint-debug.md`
 - Видение: `VISION.md`
 - БФТ `sprint-planner`: `docs/bft-sprint-planner-slice1.md`

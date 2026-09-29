@@ -4,6 +4,7 @@ version = 1
 
 output = "./reports/sprint-report.html"          # одна страница на все команды
 notes  = "./reports/sprint-report-notes.json"    # выгрузка кнопки «Заметки ⬇»
+data   = "./reports/sprint-report.data.json"     # снимок данных для текстового /sprint-status
 strict = true                                    # непроверенный или изменённый сборщик не запускается
 
 [jira]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# poh-sprint-agents installer — копирует навыки sprint-planner + actual-sprint в target-проект (Claude Code).
+# poh-sprint-agents installer — копирует навыки sprint-planner + actual-sprint + sprint-status в target-проект (Claude Code).
 # Non-destructive: существующие файлы не перезаписываются. domain-profile.md не трогается.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,6 +17,9 @@ copy ".claude/skills/actual-sprint"
 for c in actual-sprint sprint-setup collector-new collector-validate; do
   copy ".claude/commands/$c.md"
 done
+# статус спринта в чат — читает снимок actual-sprint, отдельно не настраивается
+copy ".claude/skills/sprint-status"
+copy ".claude/commands/sprint-status.md"
 # образец конфига отчёта: рабочий конфиг пишет /sprint-setup, здесь только пример
 if [ ! -e "$TARGET/sprint-report.config.toml" ] && [ ! -e "$TARGET/sprint-report.config.toml.example" ]; then
   cp "$SCRIPT_DIR/.claude/skills/actual-sprint/examples/sprint-report.config.toml" \

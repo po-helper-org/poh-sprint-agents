@@ -111,6 +111,9 @@ class Config:
         self.ca_bundle = (self.root / jira['ca_bundle']).resolve() if jira.get('ca_bundle') else None
         self.output = (self.root / data.get('output', './reports/sprint-report.html')).resolve()
         self.notes = (self.root / data.get('notes', './reports/sprint-report-notes.json')).resolve()
+        # снимок проверенных данных рядом со страницей: из него /sprint-status пишет
+        # текстовый отчёт в чат, не ходя в JIRA второй раз
+        self.data = (self.root / data.get('data', './reports/sprint-report.data.json')).resolve()
         self.lock_path = self.root / data.get('lock', './sprint-report.lock.json')
         self.teams = []
 

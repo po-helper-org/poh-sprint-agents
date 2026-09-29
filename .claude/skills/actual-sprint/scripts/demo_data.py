@@ -187,17 +187,26 @@ def build_team(spec, rnd, keys):
         'total': sum(s['total'] for s in sprint_rows),
         'closed': sum(s['closed'] for s in sprint_rows)}}
 
-    # burndown: объём слегка растёт по ходу спринта
-    days, scope = [], sprint_rows[-1]['total']
-    done_by_day = 0
+    # burndown: на сегодня сходится со статусами задач (как у боевого сборщика —
+    # там оба числа из одного списка), объём один раз подрастает посреди спринта.
+    # Число вызовов rnd прежнее, чтобы графики ниже не сдвинулись от правки.
+    scope_now, closed_now = sprint_rows[-1]['total'], velocity[-1]['done']
+    added = rnd.randint(1, 4)
+    rnd.randint(1, 4)
+    steps = [rnd.randint(0, 4) for _ in range(8)]
+    today_idx = min((NOW.date() - start.date()).days, len(steps) - 1)
+    ramp = [sum(steps[:d + 1]) for d in range(today_idx + 1)]
+    days = []
     for d in range(15):
         day = start + timedelta(days=d)
-        if d in (3, 8):
-            scope += rnd.randint(1, 4)
-        if d <= 7:
-            done_by_day += rnd.randint(0, 4)
+        scope = scope_now - added if d < 3 else scope_now
+        if d > today_idx:
+            closed_n = closed_now
+        else:
+            closed_n = round(closed_now * ramp[d] / ramp[-1]) if ramp[-1] else 0
+        closed_n = min(closed_n, scope)
         days.append({'date': day.date().isoformat(), 'scope': scope,
-                     'remaining': scope - min(done_by_day, scope), 'closed': min(done_by_day, scope),
+                     'remaining': scope - closed_n, 'closed': closed_n,
                      'weekend': day.weekday() >= 5, 'future': day.date() > NOW.date()})
     burndown = {'sprintName': spec['sprint'], 'start': start.date().isoformat(),
                 'end': end.date().isoformat(), 'days': days}

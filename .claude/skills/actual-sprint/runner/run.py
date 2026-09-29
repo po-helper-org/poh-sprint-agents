@@ -297,6 +297,8 @@ def cmd_run(args):
     collected.sort(key=lambda d: order.get(d['slug'], 0))
     html = build.render(collected, config_mod.TEMPLATE_PATH)
     out = build.write_atomic(cfg.output, html)
+    # снимок пишется только вместе со страницей: у текста и HTML одни и те же цифры
+    build.write_atomic(cfg.data, build.snapshot(collected))
 
     warnings = sum(len(r.warnings) for r in reports)
     invariants = sum(r.passed for r in reports)

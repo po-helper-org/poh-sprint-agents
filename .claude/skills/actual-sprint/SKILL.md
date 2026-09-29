@@ -58,7 +58,7 @@ resources/     report_template.html · metrics.md · status_mapping.md · data_s
 examples/      example_team.json · sprint-report.config.toml
 ```
 
-Проект пользователя: `sprint-report.config.toml` (правит человек), `sprint-report.lock.json` (пишет только runner), `collectors/<slug>/` (свои сборщики), `reports/`.
+Проект пользователя: `sprint-report.config.toml` (правит человек), `sprint-report.lock.json` (пишет только runner), `collectors/<slug>/` (свои сборщики), `reports/` — страница и снимок данных `sprint-report.data.json`, из которого `/sprint-status` пишет текст в чат.
 
 ## Команды
 - `/sprint-setup` — собрать конфиг по вопросам: JIRA, команды, доски.
