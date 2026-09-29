@@ -69,6 +69,16 @@ def iso(dt):
     return dt.strftime('%Y-%m-%dT%H:%M:%S.') + f'{dt.microsecond // 1000:03d}' + dt.strftime('%z')
 
 
+# приоритет по номеру ключа, а не из генератора случайностей: иначе сдвинулся бы
+# весь синтетический набор и вместе с ним эталон старого сборщика
+PRIORITIES = ['Средний', 'Высокий', 'Средний', 'Низкий', 'Критический', 'Средний', 'Высокий']
+
+
+def priority_obj(key):
+    name = PRIORITIES[int(key.rsplit('-', 1)[-1]) % len(PRIORITIES)]
+    return {'id': str(PRIORITIES.index(name) + 1), 'name': name}
+
+
 def status_obj(name):
     sid, cat = BY_NAME[name]
     return {'id': str(sid), 'name': name, 'statusCategory': {'name': cat}}
@@ -134,6 +144,7 @@ class Dataset:
             'created': iso(created),
             'creator': {'displayName': assignee or PEOPLE[0]},
             'assignee': {'displayName': assignee} if assignee else None,
+            'priority': priority_obj(key),
             'subtasks': [],
             EPIC_FIELD: epic,
             'comment': {'comments': comments or []},
@@ -202,7 +213,8 @@ class Dataset:
                 issues.append(sub)
                 story['fields']['subtasks'].append(
                     {'key': sub_key, 'fields': {'summary': sub['fields']['summary'],
-                                                'status': status_obj(sub_final)}})
+                                                'status': status_obj(sub_final),
+                                                'priority': priority_obj(sub_key)}})
             # задача вне story_types: должна попасть в метрики, но не в таблицу эпиков
             if n % 4 == 0:
                 task_key = self.keys.next()
@@ -269,7 +281,10 @@ def make_api(dataset=None):
             inside = jql[jql.find('(') + 1:jql.rfind(')')] if '(' in jql else ''
             keys = [k.strip() for k in inside.split(',') if k.strip()]
             titles = dict(EPICS)
-            return {'issues': [{'key': k, 'fields': {'summary': titles.get(k, 'Эпик ' + k)}}
+            want = params.get('fields', 'summary').split(',')
+            return {'issues': [{'key': k, 'fields': {f: v for f, v in
+                                                     (('summary', titles.get(k, 'Эпик ' + k)),
+                                                      ('priority', priority_obj(k))) if f in want}}
                                for k in keys if k in titles],
                     'total': len(keys)}
         raise AssertionError(f'синтетическая JIRA не знает ручку {path}')

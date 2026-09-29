@@ -48,6 +48,15 @@ STORIES = [
 SUBTASKS = ['Схема БД', 'Бизнес-логика', 'Покрытие тестами', 'Мониторинг и алерты',
             'Обновление контракта', 'Ревью безопасности', 'Нагрузочный прогон', 'Документация']
 
+# приоритеты как в русскоязычной JIRA; берутся по номеру ключа, а не из генератора
+# случайностей — так добавление поля не сдвинуло остальную демо-картинку
+PRIORITIES = ['Средний', 'Высокий', 'Средний', 'Низкий', 'Критический', 'Средний', 'Высокий']
+
+
+def priority(key):
+    return PRIORITIES[int(key.rsplit('-', 1)[-1]) % len(PRIORITIES)]
+
+
 # статус -> категория трекера
 STATUSES = [
     ('Бэклог', 'К выполнению'), ('Открыто', 'К выполнению'), ('Анализ', 'В работе'),
@@ -115,13 +124,15 @@ def build_team(spec, rnd, keys):
                 'status': status, 'category': cat,
                 'statusChanged': (NOW - timedelta(days=age, hours=rnd.randint(0, 20))).isoformat(),
                 'assignee': rnd.choice(PEOPLE),
+                'priority': priority(skey),
                 'subtasks': [],
             }
             for st in rnd.sample(SUBTASKS, rnd.randint(0, 5)):
                 sstatus, scat = rnd.choice(STATUSES)
                 sage = rnd.choice([0, 1, 2, 4, 7, 12])
+                sub_key = keys.next()
                 story['subtasks'].append({
-                    'key': keys.next(), 'summary': st,
+                    'key': sub_key, 'summary': st, 'priority': priority(sub_key),
                     'status': sstatus, 'category': scat,
                     'statusChanged': (NOW - timedelta(days=sage, hours=rnd.randint(0, 20))).isoformat(),
                     'assignee': rnd.choice(PEOPLE),
@@ -129,20 +140,23 @@ def build_team(spec, rnd, keys):
             stories.append(story)
             all_units.append(story)
             all_units.extend(story['subtasks'])
-        epics.append({'rowId': ekey, 'epicKey': ekey, 'epicTitle': title, 'stories': stories})
+        epics.append({'rowId': ekey, 'epicKey': ekey, 'epicTitle': title,
+                      'epicPriority': priority(ekey), 'stories': stories})
 
     # истории без эпика — псевдо-эпик
     orphans = []
     for _ in range(rnd.randint(2, 4)):
         status, cat = rnd.choice(STATUSES[:6])
+        okey = keys.next()
         orphans.append({
-            'key': keys.next(), 'title': rnd.choice(STORIES),
+            'key': okey, 'title': rnd.choice(STORIES), 'priority': priority(okey),
             'status': status, 'category': cat,
             'statusChanged': (NOW - timedelta(days=rnd.randint(0, 20))).isoformat(),
             'assignee': rnd.choice(PEOPLE), 'subtasks': [],
         })
     all_units.extend(orphans)
-    epics.append({'rowId': 'no-epic', 'epicKey': None, 'epicTitle': 'Без эпика', 'stories': orphans})
+    epics.append({'rowId': 'no-epic', 'epicKey': None, 'epicTitle': 'Без эпика',
+                  'epicPriority': None, 'stories': orphans})
 
     # метрики по трём спринтам
     nums = [int(spec['sprint'].split()[-1]) - 2 + i for i in range(3)]
@@ -296,7 +310,7 @@ def main():
     keys = Keys()
     teams = [build_team(spec, rnd, keys) for spec in TEAMS]
 
-    # демо-заметки: показываем, что комментарии переносятся между запусками
+    # заметки старого формата: страница при открытии переносит их в лог комментариев
     teams[0]['notes'] = {
         teams[0]['epics'][0]['rowId']: 'Ждём смежников по контракту приёма.\n'
                                        'Риск: два стенда не синхронизированы.\nРешение к четвергу.',

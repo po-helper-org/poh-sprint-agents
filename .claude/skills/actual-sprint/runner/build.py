@@ -16,7 +16,11 @@ class BuildError(Exception):
 
 
 def read_notes(path):
-    """Заметки прошлого запуска: {slug: {rowId: текст}}. Файл принадлежит человеку."""
+    """Заметки прошлой версии страницы: {slug: {rowId: текст}}. Файл принадлежит человеку.
+
+    Страница больше не выгружает заметки файлом — комментарии копируются текстом.
+    Файл читается для переноса: страница один раз кладёт эти заметки в лог комментариев.
+    """
     path = Path(path)
     if not path.is_file():
         return {}
@@ -24,7 +28,7 @@ def read_notes(path):
         data = json.loads(path.read_text(encoding='utf-8'))
     except json.JSONDecodeError as exc:
         raise BuildError(f'{path} не разбирается как JSON ({exc}). '
-                         f'Это выгрузка кнопки «Заметки ⬇» — поправьте или уберите файл.') from exc
+                         f'Это выгрузка заметок прошлой версии страницы — поправьте или уберите файл.') from exc
     if not isinstance(data, dict):
         raise BuildError(f'{path}: ожидается объект вида {{slug: {{rowId: текст}}}}')
     return data

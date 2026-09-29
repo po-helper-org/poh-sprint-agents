@@ -292,7 +292,7 @@ def attention_row(r):
             f'<span class="id">{e(r["key"])}</span><span class="t">{e(r["title"])}</span>'
             f'<span class="days num{" hot" if hot else ""}">{when}</span></div>'
             f'<div class="r2"><span class="dot" style="background:{BUCKET_COLORS[r["bucket"]]}"></span>'
-            f'{e(r["status"])} · {e(r["who"])}</div></div>')
+            f'{e(r["status"])}{" · " + e(r["priority"]) if r.get("priority") else ""} · {e(r["who"])}</div></div>')
 
 
 def attention_widget(m):

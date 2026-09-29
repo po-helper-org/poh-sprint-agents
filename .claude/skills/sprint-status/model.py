@@ -132,7 +132,7 @@ class TeamModel:
             b = self.bucket(it['status'], it.get('category', ''))
             age = self.age(it.get('statusChanged'))
             row = {'key': key, 'title': title, 'status': it['status'], 'bucket': b,
-                   'who': person(it.get('assignee')), 'days': age}
+                   'who': person(it.get('assignee')), 'days': age, 'priority': it.get('priority')}
             if b == 'blocked':
                 blocked.append(dict(row, kind='blocked'))
             elif b in ACTIVE and age is not None and age > STALE_DAYS:
@@ -147,7 +147,8 @@ class TeamModel:
         это правильно, а в статусе спринта хвосты прошлых спринтов раздували бы число
         сверх объёма самого спринта.
         """
-        in_sprint = {key for _, key, _, _ in self.items()}
+        prio = {key: it.get('priority') for _, key, _, it in self.items()}
+        in_sprint = set(prio)
         rows = {}
         for group in ('stories', 'subtasks'):
             chart = self.t['control'].get(group) or {}
@@ -157,6 +158,7 @@ class TeamModel:
                         'key': r['key'], 'title': r['title'], 'status': r['status'],
                         'bucket': self.bucket(r['status'], r.get('category', '')),
                         'who': person(r.get('assignee')), 'days': round(r['elapsed']),
+                        'priority': prio.get(r['key']),
                         'median': chart.get('median'), 'kind': 'risk'}
         return sorted(rows.values(), key=lambda r: (-r['days'], r['key']))
 

@@ -15,7 +15,7 @@ import tomllib
 from pathlib import Path
 
 PROTOCOL = 1
-PLUGIN_VERSION = '1.0.0'
+PLUGIN_VERSION = '1.1.0'
 BASE_COLLECTOR = Path(__file__).resolve().parent.parent / 'templates' / 'python' / 'collector.py'
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / 'contract' / 'team.schema.json'
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / 'resources' / 'report_template.html'

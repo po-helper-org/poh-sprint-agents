@@ -1,13 +1,13 @@
 {
- "098bd218e373573a": "/rest/agile/1.0/sprint/5000/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Ccustomfield_10101&maxResults=200&startAt=0",
  "1f5408a884a2e155": "/rest/api/2/status?",
+ "205b9fd3e41c4235": "/rest/agile/1.0/sprint/5001/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101&maxResults=200&startAt=0",
  "2368333650ef484f": "/rest/agile/1.0/board/101?",
+ "5190913124a26e7f": "/rest/agile/1.0/sprint/5002/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101&maxResults=200&startAt=0",
+ "6665218b8a881c2f": "/rest/api/2/search?fields=summary%2Cpriority&jql=key+in+%28INIT-900%2CINIT-901%2CINIT-902%29&maxResults=3",
  "7fc178921b1f42a2": "/rest/agile/1.0/sprint/5001/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",
- "9c86a7ac66b9b520": "/rest/agile/1.0/sprint/5001/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Ccustomfield_10101&maxResults=200&startAt=0",
- "ad0fe6a3794aff49": "/rest/agile/1.0/sprint/5002/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Ccustomfield_10101&maxResults=200&startAt=0",
+ "97b8be108f43ce26": "/rest/agile/1.0/sprint/5000/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101&maxResults=200&startAt=0",
  "af0c4a508c7fa14a": "/rest/agile/1.0/board/101/sprint?maxResults=50&startAt=0&state=closed%2Cactive",
  "b72fb11ef43abbd5": "/rest/agile/1.0/sprint/5002/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",
  "bf23551c8ceb2c97": "/rest/api/2/field?",
- "e20a6186d68e1263": "/rest/api/2/search?fields=summary&jql=key+in+%28INIT-900%2CINIT-901%2CINIT-902%29&maxResults=3",
  "e212feb9c77b327b": "/rest/agile/1.0/sprint/5000/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0"
 }
