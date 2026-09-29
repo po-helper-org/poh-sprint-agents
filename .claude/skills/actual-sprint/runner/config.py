@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Конфиг, lock-файл и хеши сборщиков.
 
-Формат конфига — TOML: читается stdlib `tomllib` (Python 3.11+), допускает
+Формат конфига — TOML: читается собственным мини-парсером подмножества
+(runner/mini_toml.py) на stdlib — работает на Python 3.9+, допускает
 комментарии и не тянет зависимостей (плагин ставится копированием файлов).
 
 Ошибки конфига — исключение ConfigError с текстом, который называет команду и поле:
@@ -11,8 +12,9 @@ import hashlib
 import json
 import os
 import re
-import tomllib
 from pathlib import Path
+
+import mini_toml
 
 PROTOCOL = 1
 PLUGIN_VERSION = '1.0.0'
@@ -142,8 +144,8 @@ def load(path):
     if not path.is_file():
         raise ConfigError(f'конфиг не найден: {path}')
     try:
-        data = tomllib.loads(path.read_text(encoding='utf-8'))
-    except tomllib.TOMLDecodeError as exc:
+        data = mini_toml.loads(path.read_text(encoding='utf-8'))
+    except mini_toml.MiniTomlError as exc:
         raise ConfigError(f'{path.name}: не разбирается как TOML — {exc}') from exc
 
     version = data.get('version')

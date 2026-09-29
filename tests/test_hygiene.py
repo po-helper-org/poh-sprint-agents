@@ -90,9 +90,11 @@ class ContractDocsTest(unittest.TestCase):
         self.assertIn('team.schema.json', text)
 
     def test_example_config_parses(self):
-        import tomllib
-        raw = (SKILL / 'examples' / 'sprint-report.config.toml').read_bytes()
-        data = tomllib.loads(raw.decode('utf-8'))
+        # конфиг обязан разбираться нашим мини-парсером на любом стенде (3.10+),
+        # а не только tomllib на 3.11+
+        mini = support.load_module(SKILL / 'runner' / 'mini_toml.py', 'mini_toml')
+        raw = (SKILL / 'examples' / 'sprint-report.config.toml').read_text(encoding='utf-8')
+        data = mini.loads(raw)
         self.assertEqual(1, data['version'])
         self.assertEqual(['team-a', 'team-b'], [t['slug'] for t in data['teams']])
         # токен в конфиг не попадает: там только имя переменной окружения
