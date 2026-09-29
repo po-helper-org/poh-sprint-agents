@@ -21,13 +21,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 9)
 if sys.version_info < MIN_PYTHON:
-    # tomllib появился в 3.11; без этой проверки первый запуск падает ImportError
-    sys.exit(f'runner требует Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ '
-             f'(конфиг читается stdlib-модулем tomllib), запущен '
-             f'{sys.version_info.major}.{sys.version_info.minor}. '
-             f'Запустите его другим интерпретатором: python3.11 run.py …')
+    sys.exit(f'runner требует Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+, запущен '
+             f'{sys.version_info.major}.{sys.version_info.minor}.')
 
 HERE = Path(__file__).resolve().parent
 for _p in (HERE, HERE.parent / 'contract'):

@@ -12,11 +12,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 CONTRACT = Path(__file__).resolve().parent.parent / 'contract'
-if str(CONTRACT) not in sys.path:
-    sys.path.insert(0, str(CONTRACT))
+RUNNER = Path(__file__).resolve().parent
+for _p in (str(CONTRACT), str(RUNNER)):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 import buckets as buckets_mod
 import config as config_mod
+import mini_toml
 import schema as schema_mod
 
 BUCKET_SET = set(buckets_mod.BUCKETS)
@@ -71,7 +74,7 @@ def _parse_iso(value):
     if not isinstance(value, str) or not value:
         return None
     try:
-        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+        return mini_toml.parse_iso(value)
     except ValueError:
         return None
 
