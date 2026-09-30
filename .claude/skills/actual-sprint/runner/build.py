@@ -44,12 +44,24 @@ def attach_notes(teams, notes):
     return picked
 
 
+# Данные встраиваются прямо в <script>: текст из трекера («</script>», «<!--» в названии
+# эпика) не должен закрыть блок. Вне строк JSON этих символов нет, внутри строк
+# \uXXXX — та же строка для JSON.parse и для JS, поэтому данные не меняются.
+_SCRIPT_UNSAFE = {'<': '\\u003c', '>': '\\u003e', '&': '\\u0026',
+                  '\u2028': '\\u2028', '\u2029': '\\u2029'}
+
+
+def script_json(value):
+    """JSON, безопасный для вставки внутрь <script>…</script>."""
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    return ''.join(_SCRIPT_UNSAFE.get(ch, ch) for ch in text)
+
+
 def render(teams, template_path):
     tpl = Path(template_path).read_text(encoding='utf-8')
     if PLACEHOLDER not in tpl:
         raise BuildError(f'в шаблоне {template_path} нет плейсхолдера {PLACEHOLDER}')
-    payload = json.dumps(teams, ensure_ascii=False, sort_keys=True)
-    return tpl.replace(PLACEHOLDER, payload)
+    return tpl.replace(PLACEHOLDER, script_json(teams))
 
 
 def write_atomic(path, text):
