@@ -43,7 +43,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -217,6 +217,11 @@ def stats(vals):
             'count': len(vals)}
 
 
+def priority_name(fields):
+    """Имя приоритета как в JIRA; поле выключено в схеме проекта → None."""
+    return ((fields or {}).get('priority') or {}).get('name')
+
+
 def last_status_change(issue):
     """Дата последней смены статуса. Нет смен — дата создания.
     fields.updated не годится: двигается от любой правки."""
@@ -356,7 +361,7 @@ class Collector:
                       f'метрики посчитаны по {len(last)}')
         log(f'доска «{board_name}», спринт «{active["name"]}», метрики по {len(last)} спринтам')
 
-        fields = 'key,summary,status,issuetype,created,creator,assignee,subtasks'
+        fields = 'key,summary,status,issuetype,created,creator,assignee,subtasks,priority'
         if epic_field:
             fields += ',' + epic_field  # иначе пришлось бы делать запрос на каждую историю
         per_sprint = {s['id']: self.jira.sprint_issues(s['id'], fields, expand='changelog')
@@ -387,7 +392,7 @@ class Collector:
         if issues and not stories:
             self.warn(f'ни одна задача спринта не попала в story_types {list(self.story_types)} — '
                       f'таблица эпиков будет пустой')
-        groups, order, epic_cache = {}, [], {}
+        groups, order, epic_cache, epic_prio = {}, [], {}, {}
 
         # ключи эпиков уже пришли в полях историй; названия добираем одним запросом на все
         epic_keys = sorted({st['fields'].get(epic_field) for st in stories
@@ -397,9 +402,10 @@ class Collector:
         for start in range(0, len(epic_keys), chunk):
             batch = epic_keys[start:start + chunk]
             jql = 'key in (' + ','.join(batch) + ')'
-            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary',
+            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary,priority',
                                   maxResults=len(batch))['issues']
             epic_cache.update({i['key']: i['fields']['summary'] for i in found})
+            epic_prio.update({i['key']: priority_name(i['fields']) for i in found})
         missing = [k for k in epic_keys if k not in epic_cache]
         if missing:
             self.warn(f'{len(missing)} эпиков не отдались по ключу (нет прав или удалены): '
@@ -414,7 +420,8 @@ class Collector:
                 orphans += 1
             row = groups.setdefault(gkey, {
                 'rowId': gkey, 'epicKey': ek,
-                'epicTitle': epic_cache.get(ek) if ek else 'Без эпика', 'stories': []})
+                'epicTitle': epic_cache.get(ek) if ek else 'Без эпика',
+                'epicPriority': epic_prio.get(ek) if ek else None, 'stories': []})
             if gkey not in order:
                 order.append(gkey)
             row['stories'].append({
@@ -423,11 +430,14 @@ class Collector:
                 'category': self.cats.get(str(f['status']['id'])) or '',
                 'statusChanged': last_status_change(st),
                 'assignee': (f.get('assignee') or {}).get('displayName'),
+                'priority': priority_name(f),
                 'subtasks': [{
                     'key': s['key'], 'summary': s['fields']['summary'],
                     'status': s['fields']['status']['name'],
                     'category': s['fields']['status']['statusCategory']['name'],
                     'statusChanged': None, 'assignee': None,
+                    # приоритет есть и в заглушке подзадачи, но полная задача точнее
+                    'priority': priority_name(s['fields']),
                 } for s in (f.get('subtasks') or [])],
             })
         if orphans:
@@ -445,6 +455,7 @@ class Collector:
                     if src:
                         sub['statusChanged'] = last_status_change(src)
                         sub['assignee'] = (src['fields'].get('assignee') or {}).get('displayName')
+                        sub['priority'] = priority_name(src['fields']) or sub['priority']
         return [groups[k] for k in order]
 
     def build_metrics(self, sprints, per_sprint):

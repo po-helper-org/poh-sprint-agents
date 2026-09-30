@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # Python 3.9–3.10: tomllib ещё нет
     _TomlError = _toml.MiniTomlError
 
 PROTOCOL = 1
-PLUGIN_VERSION = '1.0.0'
+PLUGIN_VERSION = '1.1.0'
 BASE_COLLECTOR = Path(__file__).resolve().parent.parent / 'templates' / 'python' / 'collector.py'
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / 'contract' / 'team.schema.json'
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / 'resources' / 'report_template.html'
@@ -118,6 +118,9 @@ class Config:
         self.ca_bundle = (self.root / jira['ca_bundle']).resolve() if jira.get('ca_bundle') else None
         self.output = (self.root / data.get('output', './reports/sprint-report.html')).resolve()
         self.notes = (self.root / data.get('notes', './reports/sprint-report-notes.json')).resolve()
+        # снимок проверенных данных рядом со страницей: из него /sprint-status пишет
+        # PDF-статус в чат, не ходя в JIRA второй раз
+        self.data = (self.root / data.get('data', './reports/sprint-report.data.json')).resolve()
         self.lock_path = self.root / data.get('lock', './sprint-report.lock.json')
         self.teams = []
 

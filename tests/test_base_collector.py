@@ -80,10 +80,33 @@ class DeterminismTest(unittest.TestCase):
 class LegacyParityTest(unittest.TestCase):
     """Критерий приёмки: base без params даёт то же, что старый collect.py."""
 
+    @staticmethod
+    def without_priorities(epics):
+        """Приоритеты появились в 1.1.0 — у старого сборщика их нет, остальное совпадает."""
+        out = []
+        for e in epics:
+            e = {k: v for k, v in e.items() if k != 'epicPriority'}
+            e['stories'] = [dict({k: v for k, v in st.items() if k != 'priority'},
+                                 subtasks=[{k: v for k, v in sub.items() if k != 'priority'}
+                                           for sub in st['subtasks']])
+                            for st in e['stories']]
+            out.append(e)
+        return out
+
     def test_same_as_legacy_golden(self):
         fresh = support.collect_ok()
         stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap')}
+        stripped['epics'] = self.without_priorities(stripped['epics'])
         self.assertEqual(LEGACY, stripped)
+
+    def test_priorities_on_every_level(self):
+        epics = support.collect_ok()['epics']
+        self.assertTrue(all(e['epicPriority'] for e in epics if e['epicKey']))
+        items = [st for e in epics for st in e['stories']]
+        items += [sub for st in items for sub in st['subtasks']]
+        self.assertTrue(items)
+        self.assertTrue(all(it['priority'] for it in items), 'у задачи нет приоритета')
+        self.assertGreater(len({it['priority'] for it in items}), 2)
 
     def test_new_fields_are_the_only_addition(self):
         fresh = support.collect_ok()

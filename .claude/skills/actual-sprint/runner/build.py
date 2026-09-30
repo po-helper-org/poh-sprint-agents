@@ -16,7 +16,11 @@ class BuildError(Exception):
 
 
 def read_notes(path):
-    """Заметки прошлого запуска: {slug: {rowId: текст}}. Файл принадлежит человеку."""
+    """Заметки прошлой версии страницы: {slug: {rowId: текст}}. Файл принадлежит человеку.
+
+    Страница больше не выгружает заметки файлом — они уходят промтом из корзины.
+    Файл читается для переноса: страница один раз кладёт эти заметки в корзину.
+    """
     path = Path(path)
     if not path.is_file():
         return {}
@@ -24,7 +28,7 @@ def read_notes(path):
         data = json.loads(path.read_text(encoding='utf-8'))
     except json.JSONDecodeError as exc:
         raise BuildError(f'{path} не разбирается как JSON ({exc}). '
-                         f'Это выгрузка кнопки «Заметки ⬇» — поправьте или уберите файл.') from exc
+                         f'Это выгрузка заметок прошлой версии страницы — поправьте или уберите файл.') from exc
     if not isinstance(data, dict):
         raise BuildError(f'{path}: ожидается объект вида {{slug: {{rowId: текст}}}}')
     return data
@@ -62,6 +66,11 @@ def render(teams, template_path):
     if PLACEHOLDER not in tpl:
         raise BuildError(f'в шаблоне {template_path} нет плейсхолдера {PLACEHOLDER}')
     return tpl.replace(PLACEHOLDER, script_json(teams))
+
+
+def snapshot(teams):
+    """Тот же массив TEAMS, что уходит в страницу, — для PDF-статуса /sprint-status."""
+    return json.dumps(teams, ensure_ascii=False, sort_keys=True, indent=1) + '\n'
 
 
 def write_atomic(path, text):

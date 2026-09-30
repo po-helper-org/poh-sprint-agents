@@ -31,7 +31,7 @@
     "logs": { "$ref": "#/definitions/logs" },
     "notes": {
       "type": "object",
-      "description": "Заметки прошлого запуска: rowId эпика → текст, плюс служебные ключи __metrics__ и __logs__. Подставляет runner из файла notes, сборщик это поле не заполняет.",
+      "description": "Наследие заметок прошлой версии страницы: rowId эпика → текст, плюс __metrics__ и __logs__. Подставляет runner из файла notes, страница переносит их в корзину заметок. Сборщик это поле не заполняет.",
       "additionalProperties": { "type": "string" }
     },
     "statusMap": {
@@ -68,6 +68,7 @@
         "rowId": { "type": "string", "minLength": 1, "description": "Уникален на строку. Обычно = epicKey, для псевдо-эпика — no-epic." },
         "epicKey": { "type": ["string", "null"], "description": "null → строка рендерится как псевдо-эпик «Без эпика»." },
         "epicTitle": { "type": ["string", "null"] },
+        "epicPriority": { "type": ["string", "null"], "description": "priority.name эпика как вернул JIRA; null — поле не заполнено. Необязательно: свои сборщики могут не отдавать." },
         "stories": { "type": "array", "items": { "$ref": "#/definitions/story" } }
       }
     },
@@ -81,6 +82,7 @@
         "category": { "type": "string", "description": "statusCategory.name как вернул JIRA." },
         "statusChanged": { "type": ["string", "null"], "description": "ISO-дата последней смены статуса из changelog." },
         "assignee": { "type": ["string", "null"], "description": "displayName исполнителя; null — не назначен." },
+        "priority": { "type": ["string", "null"], "description": "priority.name как вернул JIRA; null — не заполнен. Уровень (высокий/низкий) страница выводит из имени сама." },
         "subtasks": { "type": "array", "items": { "$ref": "#/definitions/subtask" } }
       }
     },
@@ -93,7 +95,8 @@
         "status": { "type": "string", "minLength": 1 },
         "category": { "type": "string" },
         "statusChanged": { "type": ["string", "null"] },
-        "assignee": { "type": ["string", "null"] }
+        "assignee": { "type": ["string", "null"] },
+        "priority": { "type": ["string", "null"] }
       }
     },
     "stats": {
