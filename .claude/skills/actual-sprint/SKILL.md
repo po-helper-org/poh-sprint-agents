@@ -52,7 +52,7 @@ HTML при любой из этих ошибок не пишется, прош�
 ## Что где лежит
 ```
 contract/      team.schema.json · PROTOCOL.md · status_rules.json · buckets.py
-runner/        run.py (run | validate | lock | new) · validate.py · build.py · schema.py
+runner/        run.py (run | merge | validate | lock | new | doctor) · validate.py · build.py · schema.py · mini_toml.py
 templates/     python/collector.py — базовый сборщик, все правила в params
 resources/     report_template.html · metrics.md · status_mapping.md · data_shape.md · data_collection.md
 examples/      example_team.json · sprint-report.config.toml
