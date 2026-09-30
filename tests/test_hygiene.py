@@ -90,9 +90,9 @@ class ContractDocsTest(unittest.TestCase):
         self.assertIn('team.schema.json', text)
 
     def test_example_config_parses(self):
-        import tomllib
+        import config as config_mod  # tomllib на 3.11+, мини-парсер на 3.9–3.10
         raw = (SKILL / 'examples' / 'sprint-report.config.toml').read_bytes()
-        data = tomllib.loads(raw.decode('utf-8'))
+        data = config_mod._toml.loads(raw.decode('utf-8'))
         self.assertEqual(1, data['version'])
         self.assertEqual(['team-a', 'team-b'], [t['slug'] for t in data['teams']])
         # токен в конфиг не попадает: там только имя переменной окружения
