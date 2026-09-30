@@ -32,6 +32,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import ssl
 import statistics
 import sys
@@ -181,8 +182,21 @@ class Jira:
 
 # --------------------------------------------------------------- помощники
 
+_TZ_RE = re.compile(r'([+-]\d{2})(\d{2})$')
+
+
 def parse(ts):
-    return datetime.fromisoformat(ts)
+    """fromisoformat, толерантный к формату JIRA: '+0300' без двоеточия, 'Z'.
+
+    Шаблон сборщика не импортирует код раннера: он копируется в проект команды
+    и работает автономно, поэтому нормализация продублирована здесь (3.10)."""
+    text = ts.strip()
+    if text.endswith('Z'):
+        text = text[:-1] + '+00:00'
+    m = _TZ_RE.search(text)
+    if m and ':' not in text[m.start():]:
+        text = text[:m.start()] + m.group(1) + ':' + m.group(2)
+    return datetime.fromisoformat(text)
 
 
 def plural(n, one, few, many):

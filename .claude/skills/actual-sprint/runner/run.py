@@ -21,13 +21,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-MIN_PYTHON = (3, 11)
+MIN_PYTHON = (3, 9)
 if sys.version_info < MIN_PYTHON:
-    # tomllib появился в 3.11; без этой проверки первый запуск падает ImportError
-    sys.exit(f'runner требует Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ '
-             f'(конфиг читается stdlib-модулем tomllib), запущен '
-             f'{sys.version_info.major}.{sys.version_info.minor}. '
-             f'Запустите его другим интерпретатором: python3.11 run.py …')
+    sys.exit(f'runner требует Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+, запущен '
+             f'{sys.version_info.major}.{sys.version_info.minor}.')
 
 HERE = Path(__file__).resolve().parent
 for _p in (HERE, HERE.parent / 'contract'):
@@ -160,6 +157,28 @@ def team_line(team, data, elapsed):
             f'{data["_meta"]["requests"]} запросов | {elapsed:.1f}s')
 
 
+def sidecar_path(cfg, team):
+    """Сайдкар команды: <workspace>/reports/teams/<slug>.json — последний валидный сбор."""
+    return cfg.root / 'reports' / 'teams' / f'{team.slug}.json'
+
+
+def write_sidecar(cfg, team, data):
+    """Пишет объект команды после валидации (атомарно): merge собирает страницу из этих файлов.
+
+    Пишется сразу после успешной команды, до проверки остальных: упадёт соседняя —
+    у этой на диске уже свежие данные, у упавшей остаётся её прошлый сайдкар."""
+    path = sidecar_path(cfg, team)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(data, ensure_ascii=False, sort_keys=True)
+    tmp = path.with_suffix('.json.tmp')
+    tmp.write_text(text, encoding='utf-8')
+    os.replace(tmp, path)
+    return path
+
+
+DEFAULT_STALE_HOURS = 6
+
+
 # --------------------------------------------------------------- команды CLI
 
 def lock_reason(team, state, entry):
@@ -276,6 +295,8 @@ def cmd_run(args):
             # какой именно код дал эти цифры
             data['_meta']['sha'] = team.digest()
             collected.append(data)
+            sidecar = write_sidecar(cfg, team, data)
+            print(f'[{team.slug}] сайдкар → {os.path.relpath(sidecar, cfg.root)}')
             print(team_line(team, data, elapsed))
         except RunFailure as exc:
             print(f'[{team.slug}] ✗ {exc}')
@@ -309,6 +330,79 @@ def cmd_run(args):
     print(f'схема ✓   инварианты {invariants}/{total_inv} ✓   '
           f'предупреждений {warnings}   заметок подхвачено {picked}')
     print(f'→ {os.path.relpath(out, Path.cwd()) if str(out).startswith(str(Path.cwd())) else out}')
+    return EXIT_OK
+
+
+def cmd_merge(args):
+    """Консолидация: сайдкары команд из N workspace'ов → один HTML.
+
+    Не ходит в JIRA: данные уже собраны прошлыми run'ами. Каждый сайдкар
+    перевалидируется (схема + инварианты) — протухший или битый не попадает
+    на страницу молча.
+    """
+    import time
+
+    cfg = config_mod.load(args.config)
+    slugs = []
+    for part in args.slugs:            # 'a,b' тоже поддерживаем на всякий случай
+        slugs.extend(s.strip() for s in part.split(','))
+    # порядок поиска сайдкара: явный путь → workspace'ы по порядку → корень конфига
+    workspaces = [Path(w).resolve() for w in args.workspace] + [cfg.root]
+
+    collected, failures = [], []
+    for slug in slugs:
+        candidates = ([Path(slug).resolve()] if (':' not in slug and '/' in slug) else []) \
+            + [ws / 'reports' / 'teams' / f'{slug}.json' for ws in workspaces]
+        found = next((c for c in candidates if c.is_file()), None)
+        if found is None:
+            print(f'[{slug}] ✗ сайдкар не найден ни в одном workspace: '
+                  f'{", ".join(str(c) for c in candidates)}')
+            failures.append(slug)
+            continue
+        try:
+            data = json.loads(found.read_text(encoding='utf-8'))
+        except json.JSONDecodeError as exc:
+            print(f'[{slug}] ✗ сайдкар не разбирается как JSON ({exc}): {found}')
+            failures.append(slug)
+            continue
+        age_h = (time.time() - found.stat().st_mtime) / 3600
+        if age_h > args.stale_hours and not args.stale_ok:
+            print(f'[{slug}] ✗ сайдкар протух: {age_h:.1f} ч (порог {args.stale_hours} ч) '
+                  f'— соберите команду заново или --stale-ok. {found}')
+            failures.append(slug)
+            continue
+        report = validate_mod.check(data)
+        if not report.ok:
+            print(f'[{slug}] ✗ сайдкар не прошёл валидацию: {found}')
+            for line in report.lines():
+                print(line)
+            failures.append(slug)
+            continue
+        collected.append(data)
+        stale_note = f' (⚠ данные {age_h:.1f} ч назад)' if age_h > args.stale_hours else ''
+        m = data['metrics']['overall']
+        print(f'[{slug}] ✓ эпиков {len(data["epics"])}, закрыто {m["closed"]}/{m["total"]}'
+              f'{stale_note} ← {found}')
+
+    if failures:
+        print(f'\n✗ не приняты команды: {", ".join(failures)}. HTML не сгенерирован.')
+        return EXIT_CONFIG
+
+    # заметки: из всех workspace'ов — локальные заметки PO остаются при командах
+    notes = {}
+    for ws in dict.fromkeys(workspaces):  # уникальные, порядок сохранён
+        notes_file = ws / 'reports' / 'sprint-report-notes.json'
+        if notes_file.is_file():
+            try:
+                notes.update(build.read_notes(notes_file))
+            except build.BuildError as exc:
+                print(f'заметки: {exc}')
+    picked = build.attach_notes(collected, notes)
+    html = build.render(collected, config_mod.TEMPLATE_PATH)
+    out = Path(args.output).resolve() if args.output else cfg.output
+    written = build.write_atomic(out, html)
+    print(f'схема ✓   заметок подхвачено {picked}   команд {len(collected)}')
+    print(f'→ {written}')
     return EXIT_OK
 
 
@@ -395,6 +489,18 @@ def main(argv=None):
     p_run = sub.add_parser('run', help='собрать отчёт по всем командам конфига')
     p_run.add_argument('--only', default=None, help='список slug через запятую')
 
+    p_merge = sub.add_parser(
+        'merge', help='собрать единый HTML из сайдкаров команд (без похода в JIRA)')
+    p_merge.add_argument('slugs', nargs='+',
+                         help='slug команды или явный путь к сайдкару (список)')
+    p_merge.add_argument('--workspace', action='append', default=[],
+                         help='корень workspace для поиска сайдкаров (repeatable)')
+    p_merge.add_argument('--output', default=None, help='куда писать HTML (по умолчанию output конфига)')
+    p_merge.add_argument('--stale-ok', action='store_true', default=False,
+                         help='принять сайдкар старше порога свежести (с пометкой)')
+    p_merge.add_argument('--stale-hours', type=float, default=DEFAULT_STALE_HOURS,
+                         help=f'порог свежести сайдкара в часах (по умолчанию {DEFAULT_STALE_HOURS})')
+
     p_val = sub.add_parser('validate', help='прогнать одну команду: схема, инварианты, выборка')
     p_val.add_argument('slug')
     p_val.add_argument('--sample', type=int, default=5)
@@ -408,8 +514,8 @@ def main(argv=None):
     p_new.add_argument('--lang', default='python')
 
     args = ap.parse_args(argv)
-    handlers = {'run': cmd_run, 'validate': cmd_validate, 'lock': cmd_lock, 'new': cmd_new,
-                'doctor': cmd_doctor}
+    handlers = {'run': cmd_run, 'merge': cmd_merge, 'validate': cmd_validate,
+                'lock': cmd_lock, 'new': cmd_new, 'doctor': cmd_doctor}
     if not args.cmd:
         args.cmd = 'run'
         args.only = None
