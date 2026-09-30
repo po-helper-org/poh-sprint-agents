@@ -138,6 +138,16 @@ class MergeTest(unittest.TestCase):
         self.assertEqual(0, proc.returncode, proc.stdout)
         self.assertTrue(out.is_file())
         self.assertFalse(self.p.output.exists())
+        self.assertTrue((out.parent / 'page.data.json').is_file(), 'снимок для /sprint-status рядом со страницей')
+
+    def test_merge_writes_snapshot_for_sprint_status(self):
+        """PDF /sprint-status читает снимок: после merge в нём ровно склеенные команды."""
+        snapshot = self.p.dir / 'reports' / 'sprint-report.data.json'
+        snapshot.unlink()
+        proc = self.merge('team-b', 'team-a')
+        self.assertEqual(0, proc.returncode, proc.stdout)
+        teams = json.loads(snapshot.read_text(encoding='utf-8'))
+        self.assertEqual(['team-b', 'team-a'], [t['slug'] for t in teams])
 
     def test_token_never_in_sidecars(self):
         for path in self.teams.glob('*.json'):

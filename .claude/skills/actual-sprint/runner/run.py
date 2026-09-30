@@ -401,6 +401,10 @@ def cmd_merge(args):
     html = build.render(collected, config_mod.TEMPLATE_PATH)
     out = Path(args.output).resolve() if args.output else cfg.output
     written = build.write_atomic(out, html)
+    # снимок для /sprint-status — рядом со страницей, как у run: иначе PDF показывал
+    # бы прошлый сбор, а страница — склейку из сайдкаров
+    data_out = out.with_name(out.stem + '.data.json') if args.output else cfg.data
+    build.write_atomic(data_out, build.snapshot(collected))
     print(f'схема ✓   заметок подхвачено {picked}   команд {len(collected)}')
     print(f'→ {written}')
     return EXIT_OK
