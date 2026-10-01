@@ -143,6 +143,12 @@ check((await p.textContent('.scope-sec[data-sec=done] .sec-head .n')).includes(S
 check((await p.$$('.scope-sec .story-row')).length === scope.total, 'в объёме все задачи эпика, не только спринта');
 check((await p.$$eval('.chip-sprint', els => els.filter(e => !e.classList.contains('now')).length)) === scope.outside,
       'у задач вне текущего спринта метка спринта');
+const grp = '.scope-sec[data-sec=left] .scope-group >> nth=0';
+const grpRows = await p.$$eval('.scope-sec[data-sec=left] .scope-group', gs => gs[0].querySelectorAll('.story-row').length);
+await p.click(grp + ' >> .grp-head');
+check(await p.locator(grp + ' >> .grp-body').isHidden() && grpRows > 0, 'подгруппа «Осталось» сворачивается');
+await p.click(grp + ' >> .grp-head');
+check(await p.locator(grp + ' >> .grp-body').isVisible(), 'и раскрывается обратно');
 await p.click('.scope-sec[data-sec=done] .sec-head');
 check(await p.isHidden('.scope-sec[data-sec=done] .sec-body'), 'раздел сворачивается');
 await p.click('.scope-sec[data-sec=left] .story-row .story-title-wrap >> nth=0', { button: 'right', position: { x: 220, y: 8 } });

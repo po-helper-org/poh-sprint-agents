@@ -366,8 +366,18 @@
   .scope-sec > .sec-head .arr { margin-left: auto; color: var(--muted); font-size: 11px; transition: transform 0.15s ease; }
   .scope-sec.closed > .sec-head .arr { transform: rotate(-90deg); }
   .scope-sec.closed > .sec-body { display: none; }
-  .scope-group { font-size: 11px; color: var(--muted); margin: 12px 0 2px; display: flex; align-items: center; gap: 6px; }
-  .scope-group .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  /* подгруппы «Осталось» по процессу — сворачиваются, как и разделы */
+  .scope-group { margin-top: 6px; }
+  .scope-group > .grp-head {
+    display: flex; align-items: center; gap: 6px; width: 100%; padding: 8px 0 4px;
+    border: none; background: none; cursor: pointer; font: inherit; text-align: left;
+    font-size: 12px; color: var(--muted);
+  }
+  .scope-group > .grp-head:hover { color: var(--fg); }
+  .scope-group .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .scope-group .arr { margin-left: auto; font-size: 10px; transition: transform 0.15s ease; }
+  .scope-group.closed .arr { transform: rotate(-90deg); }
+  .scope-group.closed > .grp-body { display: none; }
   .chip-sprint { font-size: 11px; color: var(--muted); white-space: nowrap; }
   .chip-sprint.now { color: var(--fg); font-weight: 600; }
 
@@ -1459,10 +1469,18 @@
       var b = BUCKETS.find(function (x) { return x.id === id; });
       var g = document.createElement('div');
       g.className = 'scope-group';
-      g.innerHTML = '<span class="dot" style="background:' + BUCKET_COLOR[id] + '"></span>' +
-        esc(b.label) + ' · ' + byBucket[id].length;
+      g.dataset.bucket = id;
+      g.innerHTML = '<button class="grp-head" type="button" aria-expanded="true">' +
+        '<span class="dot" style="background:' + BUCKET_COLOR[id] + '"></span>' +
+        esc(b.label) + ' · ' + byBucket[id].length + '<span class="arr">▼</span></button>' +
+        '<div class="grp-body"></div>';
+      var head = g.querySelector('.grp-head'), body = g.querySelector('.grp-body');
+      head.addEventListener('click', function () {
+        g.classList.toggle('closed');
+        head.setAttribute('aria-expanded', String(!g.classList.contains('closed')));
+      });
+      byBucket[id].forEach(function (it) { body.appendChild(storyNode(it, epic, counts, sprintChip)); });
       leftNodes.push(g);
-      byBucket[id].forEach(function (it) { leftNodes.push(storyNode(it, epic, counts, sprintChip)); });
     });
     storiesBody.appendChild(scopeSection('left', 'Осталось', left, leftNodes, false));
     storiesBody.appendChild(scopeSection('done', 'Сделано', done.length,
