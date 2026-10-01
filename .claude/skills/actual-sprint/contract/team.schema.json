@@ -34,6 +34,10 @@
       "description": "Наследие заметок прошлой версии страницы: rowId эпика → текст, плюс __metrics__ и __logs__. Подставляет runner из файла notes, страница переносит их в корзину заметок. Сборщик это поле не заполняет.",
       "additionalProperties": { "type": "string" }
     },
+    "insights": {
+      "type": "object",
+      "description": "Интерпретация графиков от ИИ-агента (/sprint-insights): {generatedAt, author, charts: {burndown, velocity, controlStories, controlSubtasks}}. Подставляет runner из файла insights, только если dataHash совпал с этими данными; форма записи — contract/insights.schema.json. Сборщик это поле не заполняет."
+    },
     "statusMap": {
       "type": "object",
       "description": "Итоговая раскладка всех встреченных статусов по бакетам. Шаблон берёт бакет отсюда, если статус есть в карте, иначе падает в classifyBucket.",

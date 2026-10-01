@@ -126,23 +126,40 @@
 
   /* сводный отчёт за 3 спринта */
   .metrics-section + .metrics-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
-  /* «i» у заголовка графика: как читать и что это говорит техлиду и PO */
+  /* «i» у заголовка графика: как читать (статично) и инсайды ИИ-агента (/sprint-insights) */
   .info { position: relative; display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--ico, #adb2b8); cursor: help; outline: none; }
   .info:hover, .info:focus { color: var(--fg); }
   .info-tip {
     position: absolute; left: -8px; top: calc(100% + 8px); z-index: 8; width: 420px; max-width: 70vw;
     background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.14); padding: 12px 14px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.14); padding: 12px 14px; max-height: 70vh; overflow-y: auto;
     font-size: 13px; line-height: 1.5; font-weight: 400; letter-spacing: normal; text-transform: none;
     opacity: 0; visibility: hidden; transition: opacity 0.12s ease;
   }
   .info:hover .info-tip, .info:focus .info-tip, .info:focus-within .info-tip { opacity: 1; visibility: visible; }
+  .info.up .info-tip { top: auto; bottom: calc(100% + 8px); }
   .info-tip b { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
   .info-tip b + ul { margin-top: 0; }
   .info-tip ul { margin: 0 0 10px; padding-left: 16px; }
   .info-tip ul:last-child { margin-bottom: 0; }
   .info-tip li { margin: 2px 0; }
   .info-tip .stat { margin: 0 0 10px; color: var(--muted); }
+  /* есть инсайды по этому сбору — у «i» точка */
+  .info.has-ai::after {
+    content: ''; position: absolute; right: -1px; top: -1px; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--c-progress); box-shadow: 0 0 0 2px var(--bg);
+  }
+  .info-tip .ai { list-style: none; padding-left: 0; }
+  .info-tip .ai li { position: relative; padding-left: 14px; margin: 0 0 8px; }
+  .info-tip .ai li::before {
+    content: ''; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted);
+  }
+  .info-tip .ai li.lv-risk::before { background: var(--c-blocked); }
+  .info-tip .ai li.lv-warn::before { background: var(--c-testing); }
+  .info-tip .ai li.lv-good::before { background: var(--c-done); }
+  .info-tip .ai .act { display: block; color: var(--muted); }
+  .info-tip .ai-none, .info-tip .ai-by { margin: 0; color: var(--muted); font-size: 12px; }
   .metrics-section h3 {
     margin: 0 0 12px;
     font-size: 12px;
@@ -1324,6 +1341,21 @@
     return id;
   }
   function ctxAttr(target) { return ' data-ctx="' + ctxId(target) + '"'; }
+  // Подсказка «i» открывается туда, где есть место: у нижних графиков — вверх,
+  // и не выше видимой области, иначе низ подсказки уходит за край панели.
+  function placeInfo(e) {
+    var icon = e.target.closest && e.target.closest('.info');
+    if (!icon) return;
+    var tip = icon.querySelector('.info-tip');
+    var r = icon.getBoundingClientRect(), gap = 16;
+    var below = window.innerHeight - r.bottom - gap, above = r.top - gap;
+    var up = below < Math.min(tip.scrollHeight, 360) && above > below;
+    icon.classList.toggle('up', up);
+    tip.style.maxHeight = Math.max(160, (up ? above : below) - 8) + 'px';
+  }
+  document.addEventListener('mouseover', placeInfo);
+  document.addEventListener('focusin', placeInfo);
+
   document.addEventListener('contextmenu', function (e) {
     var el = e.target.closest && e.target.closest('[data-ctx]');
     if (!el || !ctxTargets[el.dataset.ctx]) return;
@@ -1807,47 +1839,51 @@
       '<div class="chart-legend">' + legend + '</div>';
   }
 
-  // Как читать график и что он говорит техлиду и PO — в подсказке у заголовка,
-  // чтобы под графиком оставались только легенда и списки.
+  // «Как читать» — постоянная расшифровка графика. Интерпретацию конкретных цифр
+  // («что это говорит техлиду и PO») пишет ИИ-агент отдельным конвейером
+  // /sprint-insights: runner кладёт её в team.insights, только если она написана
+  // по этим же данным. Под графиком остаются только легенда и списки.
   var CHART_INFO = {
-    burndown: {
-      read: ['Серая линия — идеальный темп: от объёма на старте до нуля в последний день.',
-             'Красная — сколько задач осталось на каждый день; точка — подсказка с числами.',
-             'Светлые полосы — выходные. Ступенька вверх — в спринт добавили задачи.'],
-      insight: ['Красная выше серой и расходится — спринт не успевает: режьте объём или снимайте блокеры сейчас, а не в последний день.',
-                'Плато несколько дней — задачи не закрываются: ищите, что застряло в ревью и тесте.',
-                'Ступеньки вверх посреди спринта — незапланированная работа съедает ёмкость: обсудите, что из неё можно было отложить.',
-                'Обрыв в конце — закрывают пачкой: задачи слишком крупные, дробите на следующем планировании.']
-    },
-    velocity: {
-      read: ['Левый столбец — всё, что было в спринте, разложенное по текущему статусу.',
-             'Правый — сколько сделано. Пунктир — среднее сделанное за показанные спринты.'],
-      insight: ['План стабильно выше сделанного — команда переобещает: планируйте ближе к пунктиру.',
-                'Толстый синий или оранжевый слой в плане — работа оседает «в работе» или в ревью: узкое место там.',
-                'Красный слой — блокировки, обычно зависимость от смежников: нужен владелец и дата.',
-                'Сделанное растёт от спринта к спринту — команда разгоняется; падает — ищите причину до ретро.']
-    },
-    control: {
-      read: ['Точка — закрытая задача: по горизонтали дата закрытия, по вертикали Cycle Time — дни от взятия в работу до закрытия.',
-             'Синяя линия — скользящее среднее по 5 задачам, светлая полоса — коридор ±σ.',
-             'Красная линия — порог выброса: среднее + σ. Выше — задача шла заметно дольше обычного.',
-             'Жёлтые точки у правого края — ещё в работе и уже дольше медианы; по высоте — сколько идут на сегодня.'],
-      insight: ['Выбросы разберите на ретро: что задержало — зависимость, размытые требования или размер задачи.',
-                'Жёлтые точки ещё можно спасти: спросите на дейлике, что мешает, и снимите блокер.',
-                'Широкий коридор — сроки непредсказуемы: дробите задачи и уточняйте критерии готовности до старта.',
-                'Среднее ползёт вверх — команда замедляется или задачи укрупнились.',
-                'У подзадач коридор должен быть узким; если нет — декомпозиция слишком грубая.']
-    }
+    burndown: ['Серая линия — идеальный темп: от объёма на старте до нуля в последний день.',
+               'Красная — сколько задач осталось на каждый день; точка — подсказка с числами.',
+               'Светлые полосы — выходные. Ступенька вверх — в спринт добавили задачи.'],
+    velocity: ['Левый столбец — всё, что было в спринте, разложенное по текущему статусу.',
+               'Правый — сколько сделано. Пунктир — среднее сделанное за показанные спринты.'],
+    control: ['Точка — закрытая задача: по горизонтали дата закрытия, по вертикали Cycle Time — дни от взятия в работу до закрытия.',
+              'Синяя линия — скользящее среднее по 5 задачам, светлая полоса — коридор ±σ.',
+              'Красная линия — порог выброса: среднее + σ. Выше — задача шла заметно дольше обычного.',
+              'Жёлтые точки у правого края — ещё в работе и уже дольше медианы; по высоте — сколько идут на сегодня.']
   };
+  var AI_LEVELS = { risk: 'нужна реакция', warn: 'присмотреться', good: 'работает', info: 'наблюдение' };
 
-  function infoHtml(kind, stat) {
-    var info = CHART_INFO[kind];
+  function chartInsights(chart) {
+    var ins = team.insights;
+    return ins && ins.charts && ins.charts[chart] && ins.charts[chart].length ? ins.charts[chart] : null;
+  }
+
+  function insightsHtml(chart) {
+    var list = chartInsights(chart);
+    if (!list) {
+      return '<b>Инсайды ИИ</b><p class="ai-none">Для этого сбора не написаны. Попросите агента: /sprint-insights.</p>';
+    }
+    var ins = team.insights;
+    return '<b>Инсайды ИИ</b><ul class="ai">' + list.map(function (it) {
+      var lvl = AI_LEVELS[it.level] ? it.level : 'info';
+      // lv-: класс «info» уже занят иконкой подсказки
+      return '<li class="lv-' + lvl + '" title="' + AI_LEVELS[lvl] + '">' + esc(it.text) +
+        (it.action ? '<span class="act">→ ' + esc(it.action) + '</span>' : '') + '</li>';
+    }).join('') + '</ul>' +
+      '<p class="ai-by">Интерпретация, не данные' + (ins.author ? ' · ' + esc(ins.author) : '') +
+      (ins.generatedAt ? ' · ' + esc(String(ins.generatedAt).slice(0, 16).replace('T', ' ')) : '') + '</p>';
+  }
+
+  function infoHtml(kind, chart, stat) {
     var li = function (list) { return '<ul>' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'; };
-    return '<span class="info" tabindex="0" role="button" aria-label="Как читать график">' +
+    return '<span class="info' + (chartInsights(chart) ? ' has-ai' : '') + '" tabindex="0" role="button" aria-label="Как читать график и инсайды">' +
       '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"' +
       ' stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.3v3.6M8 5.1h.01"/></svg>' +
       '<span class="info-tip" role="tooltip">' + (stat ? '<div class="stat">' + stat + '</div>' : '') +
-      '<b>Как читать</b>' + li(info.read) + '<b>Что это говорит техлиду и PO</b>' + li(info.insight) +
+      '<b>Как читать</b>' + li(CHART_INFO[kind]) + insightsHtml(chart) +
       '</span></span>';
   }
 
@@ -1865,11 +1901,11 @@
 
   function fillMetricsPanel() {
     var html = '';
-    html += chartSection('Burndown текущего спринта', infoHtml('burndown'), burndownChart());
-    html += chartSection('Производительность: запланировано / сделано', infoHtml('velocity'), velocityChart());
-    html += chartSection('Диаграмма управления — истории', infoHtml('control', controlStat(CONTROL.stories)),
+    html += chartSection('Burndown текущего спринта', infoHtml('burndown', 'burndown'), burndownChart());
+    html += chartSection('Производительность: запланировано / сделано', infoHtml('velocity', 'velocity'), velocityChart());
+    html += chartSection('Диаграмма управления — истории', infoHtml('control', 'controlStories', controlStat(CONTROL.stories)),
       controlChart(CONTROL.stories, 'историй', 'story'));
-    html += chartSection('Диаграмма управления — подзадачи', infoHtml('control', controlStat(CONTROL.subtasks)),
+    html += chartSection('Диаграмма управления — подзадачи', infoHtml('control', 'controlSubtasks', controlStat(CONTROL.subtasks)),
       controlChart(CONTROL.subtasks, 'подзадач', 'subtask'));
     return html;
   }

@@ -168,6 +168,41 @@ check((await p.textContent('#scopeBtn')) === 'Смотреть весь эпик
       'кнопка возвращает к задачам спринта');
 await p.keyboard.press('Escape');
 
+// сводный отчёт: под графиками только легенда, расшифровка и инсайды ИИ — в «i»
+await p.click('#metricsLink');
+await p.waitForTimeout(300);
+check(!(await p.textContent('#storiesBody')).includes('Зелёная точка'), 'под диаграммами нет длинной расшифровки');
+check((await p.$$('.metrics-section h3 .info')).length === 4, 'у каждого графика иконка «i»');
+check((await p.$$('.info.has-ai')).length === 4, 'у графиков с инсайдами ИИ на иконке точка');
+const tip = '.metrics-section >> nth=2 >> .info-tip';
+check(await p.locator(tip).isHidden(), 'подсказка скрыта до наведения');
+await p.locator('.metrics-section >> nth=2 >> .info').hover();
+await p.waitForTimeout(250);
+check(await p.locator(tip).isVisible(), 'наведение открывает подсказку');
+const tipText = await p.locator(tip).textContent();
+check(tipText.includes('Как читать') && tipText.includes('Инсайды ИИ') && tipText.includes('Интерпретация, не данные'),
+      'в подсказке расшифровка и инсайды ИИ с пометкой');
+const tipBox = await p.locator(tip).boundingBox();
+check(tipBox.y >= 0 && tipBox.y + tipBox.height <= 900 + 1, 'подсказка целиком в окне');
+await p.mouse.move(5, 5);
+await p.locator('.outlier-row >> nth=0').click({ button: 'right', position: { x: 40, y: 8 } });
+await p.fill('#cpopText', 'Разобрать выброс на ретро');
+await p.press('#cpopText', 'Enter');
+const outPrompt = await p.inputValue('#promptOut');
+check(outPrompt.includes('Разобрать выброс на ретро') && /INIT-\d+/.test(outPrompt.split('\n').pop()),
+      'правый клик по строке «Выбиваются из коридора» — заметка к задаче');
+await p.keyboard.press('Escape');
+await p.keyboard.press('Escape');
+await p.click('[data-team="catalog"]');
+await p.click('#metricsLink');
+await p.waitForTimeout(300);
+await p.locator('.metrics-section >> nth=0 >> .info').hover();
+check((await p.locator('.metrics-section >> nth=0 >> .info-tip').textContent()).includes('/sprint-insights'),
+      'нет инсайдов для сбора — подсказка говорит, как их получить');
+await p.mouse.move(5, 5);
+await p.keyboard.press('Escape');
+await p.click('[data-team="platform"]');
+
 // у каждой команды своя корзина
 await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');

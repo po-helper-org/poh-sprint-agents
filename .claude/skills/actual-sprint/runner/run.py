@@ -6,6 +6,7 @@
 
     run.py doctor    [--config sprint-report.config.toml]
     run.py run       [--config sprint-report.config.toml] [--only team-a,team-b]
+    run.py render    [--data снимок.json] [--output страница.html]
     run.py validate  <slug> [--sample 5] [--seed N]
     run.py lock      <slug>
     run.py new       <slug> [--lang python]
@@ -313,6 +314,8 @@ def cmd_run(args):
 
     notes = build.read_notes(cfg.notes)
     picked = build.attach_notes(collected, notes)
+    # инсайды прошлого сбора к новым данным не подходят: attach_insights их отсеет по хешу
+    ins_line = build.insights_line(*build.attach_insights(collected, build.read_insights(cfg.insights)))
     # порядок команд в файле = порядок в конфиге = порядок вкладок
     order = {t.slug: i for i, t in enumerate(teams)}
     collected.sort(key=lambda d: order.get(d['slug'], 0))
@@ -329,6 +332,8 @@ def cmd_run(args):
             print(f'[{r.slug}] предупреждение: {w}')
     print(f'схема ✓   инварианты {invariants}/{total_inv} ✓   '
           f'предупреждений {warnings}   заметок подхвачено {picked}')
+    if ins_line:
+        print(ins_line)
     print(f'→ {os.path.relpath(out, Path.cwd()) if str(out).startswith(str(Path.cwd())) else out}')
     return EXIT_OK
 
@@ -398,6 +403,7 @@ def cmd_merge(args):
             except build.BuildError as exc:
                 print(f'заметки: {exc}')
     picked = build.attach_notes(collected, notes)
+    ins_line = build.insights_line(*build.attach_insights(collected, build.read_insights(cfg.insights)))
     html = build.render(collected, config_mod.TEMPLATE_PATH)
     out = Path(args.output).resolve() if args.output else cfg.output
     written = build.write_atomic(out, html)
@@ -406,8 +412,44 @@ def cmd_merge(args):
     data_out = out.with_name(out.stem + '.data.json') if args.output else cfg.data
     build.write_atomic(data_out, build.snapshot(collected))
     print(f'схема ✓   заметок подхвачено {picked}   команд {len(collected)}')
+    if ins_line:
+        print(ins_line)
     print(f'→ {written}')
     return EXIT_OK
+
+
+def cmd_render(args):
+    """Пересобрать страницу из снимка данных: без JIRA и без сборщиков.
+
+    Нужен после /sprint-insights: цифры те же, к ним добавляется интерпретация.
+    Снимок перевалидируется — правленый руками файл на страницу не попадёт.
+    """
+    cfg = config_mod.load(args.config)
+    data_path = Path(args.data).resolve() if args.data else cfg.data
+    if not data_path.is_file():
+        raise RunFailure(f'снимка данных нет: {data_path}. Сначала соберите отчёт: run.py run',
+                         code=EXIT_CONFIG)
+    try:
+        teams = json.loads(data_path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as exc:
+        raise RunFailure(f'снимок {data_path} не разбирается как JSON ({exc})') from exc
+    if not isinstance(teams, list) or not teams:
+        raise RunFailure(f'снимок {data_path}: ожидается непустой массив команд')
+    for team in teams:
+        core = {k: v for k, v in team.items() if k not in build.OVERLAY_FIELDS}
+        report = validate_mod.check(core)
+        if not report.ok:
+            print(f'[{team.get("slug", "?")}] ✗ снимок не прошёл валидацию: {data_path}')
+            for line in report.lines():
+                print(line)
+            return EXIT_ERROR
+    attached, stale = build.attach_insights(teams, build.read_insights(cfg.insights))
+    out = Path(args.output).resolve() if args.output else cfg.output
+    written = build.write_atomic(out, build.render(teams, config_mod.TEMPLATE_PATH))
+    print(f'страница из снимка: команд {len(teams)}   ' +
+          (build.insights_line(attached, stale) or f'инсайдов нет ({cfg.insights.name} не найден)'))
+    print(f'→ {written}')
+    return EXIT_ERROR if stale and not attached else EXIT_OK
 
 
 def cmd_validate(args):
@@ -505,6 +547,11 @@ def main(argv=None):
     p_merge.add_argument('--stale-hours', type=float, default=DEFAULT_STALE_HOURS,
                          help=f'порог свежести сайдкара в часах (по умолчанию {DEFAULT_STALE_HOURS})')
 
+    p_render = sub.add_parser(
+        'render', help='пересобрать HTML из снимка данных и инсайдов (без похода в JIRA)')
+    p_render.add_argument('--data', default=None, help='снимок данных (по умолчанию data конфига)')
+    p_render.add_argument('--output', default=None, help='куда писать HTML (по умолчанию output конфига)')
+
     p_val = sub.add_parser('validate', help='прогнать одну команду: схема, инварианты, выборка')
     p_val.add_argument('slug')
     p_val.add_argument('--sample', type=int, default=5)
@@ -518,7 +565,7 @@ def main(argv=None):
     p_new.add_argument('--lang', default='python')
 
     args = ap.parse_args(argv)
-    handlers = {'run': cmd_run, 'merge': cmd_merge, 'validate': cmd_validate,
+    handlers = {'run': cmd_run, 'merge': cmd_merge, 'render': cmd_render, 'validate': cmd_validate,
                 'lock': cmd_lock, 'new': cmd_new, 'doctor': cmd_doctor}
     if not args.cmd:
         args.cmd = 'run'

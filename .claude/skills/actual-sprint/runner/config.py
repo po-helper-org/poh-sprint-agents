@@ -121,6 +121,8 @@ class Config:
         # снимок проверенных данных рядом со страницей: из него /sprint-status пишет
         # PDF-статус в чат, не ходя в JIRA второй раз
         self.data = (self.root / data.get('data', './reports/sprint-report.data.json')).resolve()
+        # интерпретация графиков от ИИ-агента (/sprint-insights): runner только встраивает
+        self.insights = (self.root / data.get('insights', './reports/sprint-insights.json')).resolve()
         self.lock_path = self.root / data.get('lock', './sprint-report.lock.json')
         self.teams = []
 

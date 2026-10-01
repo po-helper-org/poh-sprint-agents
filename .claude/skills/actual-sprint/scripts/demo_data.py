@@ -357,7 +357,19 @@ def main():
         print('данные:', a.out)
 
     if a.html:
-        tpl = (pathlib.Path(__file__).parent.parent / 'resources' / 'report_template.html').read_text(encoding='utf-8')
+        # пример инсайдов /sprint-insights у первой команды: хеш ставим по демо-данным,
+        # дальше — тот же путь, что у runner (attach_insights проверяет совпадение)
+        import sys
+        here = pathlib.Path(__file__).resolve().parent.parent
+        sys.path.insert(0, str(here / 'runner'))
+        import build as build_mod
+        doc = json.loads((here.parent / 'sprint-insights' / 'examples' / 'demo-insights.json')
+                         .read_text(encoding='utf-8'))
+        for t in teams:
+            if t['slug'] in doc['teams']:
+                doc['teams'][t['slug']]['dataHash'] = build_mod.team_digest(t)
+        build_mod.attach_insights(teams, doc)
+        tpl = (here / 'resources' / 'report_template.html').read_text(encoding='utf-8')
         html = tpl.replace('{{TEAMS_JSON}}', json.dumps(teams, ensure_ascii=False))
         pathlib.Path(a.html).write_text(html, encoding='utf-8')
         print('страница:', a.html, f'({len(html) // 1024} КБ)')

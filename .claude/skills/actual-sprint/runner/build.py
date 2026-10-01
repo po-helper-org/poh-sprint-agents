@@ -48,6 +48,74 @@ def attach_notes(teams, notes):
     return picked
 
 
+# Поля, которые runner кладёт поверх данных сборщика: в хеш данных они не входят,
+# иначе инсайды «устаревали» бы от собственного встраивания и от правки заметок.
+OVERLAY_FIELDS = ('notes', 'insights')
+INSIGHT_CHARTS = ('burndown', 'velocity', 'controlStories', 'controlSubtasks')
+
+
+def team_digest(team):
+    """sha256 данных команды без наложений runner'а — по нему инсайды привязаны к сбору."""
+    import hashlib
+    core = {k: v for k, v in team.items() if k not in OVERLAY_FIELDS}
+    return hashlib.sha256(script_json(core).encode('utf-8')).hexdigest()
+
+
+def read_insights(path):
+    """Файл инсайдов навыка sprint-insights. Нет файла — нет инсайдов, это не ошибка.
+
+    Полную проверку (схема, ключи задач, числа против фактов) делает
+    `insights.py check`; здесь — только то, без чего страница сломается.
+    """
+    path = Path(path)
+    if not path.is_file():
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as exc:
+        raise BuildError(f'{path} не разбирается как JSON ({exc}). '
+                         f'Это инсайды /sprint-insights — пересоздайте или уберите файл.') from exc
+    if not isinstance(doc, dict) or not isinstance(doc.get('teams'), dict):
+        raise BuildError(f'{path}: ожидается объект с полем teams — см. contract/insights.schema.json')
+    return doc
+
+
+def attach_insights(teams, doc):
+    """Инсайды в поле insights команды — только если они написаны по этим же данным.
+
+    Возвращает (приложено, устарело): slug'и команд. Устаревшие не показываются:
+    интерпретация прошлого сбора рядом со свежими цифрами вводила бы в заблуждение.
+    """
+    attached, stale = [], []
+    for team in teams:
+        team.pop('insights', None)
+        entry = (doc or {}).get('teams', {}).get(team['slug'])
+        if not isinstance(entry, dict):
+            continue
+        if entry.get('dataHash') != team_digest(team):
+            stale.append(team['slug'])
+            continue
+        charts = entry.get('charts') or {}
+        team['insights'] = {
+            'generatedAt': doc.get('generatedAt'),
+            'author': doc.get('author'),
+            'charts': {c: [i for i in charts.get(c) or [] if isinstance(i, dict) and i.get('text')]
+                       for c in INSIGHT_CHARTS},
+        }
+        attached.append(team['slug'])
+    return attached, stale
+
+
+def insights_line(attached, stale):
+    """Строка сводки runner'а про инсайды; пусто, если файла нет вовсе."""
+    parts = []
+    if attached:
+        parts.append(f'инсайды ИИ: {", ".join(attached)}')
+    if stale:
+        parts.append(f'инсайды устарели (данные пересобраны): {", ".join(stale)} — /sprint-insights')
+    return '   '.join(parts)
+
+
 # Данные встраиваются прямо в <script>: текст из трекера («</script>», «<!--» в названии
 # эпика) не должен закрыть блок. Вне строк JSON этих символов нет, внутри строк
 # \uXXXX — та же строка для JSON.parse и для JS, поэтому данные не меняются.
