@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # Python 3.9–3.10: tomllib ещё нет
     _TomlError = _toml.MiniTomlError
 
 PROTOCOL = 1
-PLUGIN_VERSION = '1.1.0'
+PLUGIN_VERSION = '1.2.0'
 BASE_COLLECTOR = Path(__file__).resolve().parent.parent / 'templates' / 'python' / 'collector.py'
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / 'contract' / 'team.schema.json'
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / 'resources' / 'report_template.html'

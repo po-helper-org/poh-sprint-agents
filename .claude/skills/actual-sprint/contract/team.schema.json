@@ -69,7 +69,41 @@
         "epicKey": { "type": ["string", "null"], "description": "null → строка рендерится как псевдо-эпик «Без эпика»." },
         "epicTitle": { "type": ["string", "null"] },
         "epicPriority": { "type": ["string", "null"], "description": "priority.name эпика как вернул JIRA; null — поле не заполнено. Необязательно: свои сборщики могут не отдавать." },
-        "stories": { "type": "array", "items": { "$ref": "#/definitions/story" } }
+        "stories": { "type": "array", "items": { "$ref": "#/definitions/story" } },
+        "scope": {
+          "type": "array",
+          "description": "Весь объём эпика, не только спринт: задачи прошлых спринтов и вне спринтов. Подзадачи — внутри задач. Необязательно: нет поля — на странице нет кнопки «Весь эпик».",
+          "items": { "$ref": "#/definitions/scopeItem" }
+        }
+      }
+    },
+    "scopeItem": {
+      "type": "object",
+      "required": ["key", "title", "status", "category", "subtasks"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "type": { "type": "string", "description": "issuetype.name: История, Задача, Ошибка…" },
+        "status": { "type": "string", "minLength": 1 },
+        "category": { "type": "string" },
+        "assignee": { "type": ["string", "null"] },
+        "priority": { "type": ["string", "null"] },
+        "sprint": { "type": ["string", "null"], "description": "Имя спринта отчёта, в котором задача была; null — вне спринтов отчёта (бэклог или давнее)." },
+        "inSprint": { "type": "boolean", "description": "Задача в текущем спринте." },
+        "subtasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "summary", "status", "category"],
+            "properties": {
+              "key": { "type": "string", "minLength": 1 },
+              "summary": { "type": "string" },
+              "status": { "type": "string", "minLength": 1 },
+              "category": { "type": "string" },
+              "priority": { "type": ["string", "null"] }
+            }
+          }
+        }
       }
     },
     "story": {

@@ -244,6 +244,37 @@ def project(issue, fields, expand):
     return out
 
 
+def epic_scope(ds):
+    """Задачи эпиков без подзадач: все спринты набора + по две вне спринтов на эпик.
+
+    Внеспринтовые строятся детерминированно, без генератора случайностей, чтобы не
+    сдвинуть остальной набор: одна в бэклоге, одна закрыта давно, с подзадачей.
+    """
+    out, seen = [], set()
+    for sprint in ds.sprints:
+        for i in ds.issues.get(sprint['id'], []):
+            f = i['fields']
+            if f['issuetype'].get('subtask') or not f.get(EPIC_FIELD) or i['key'] in seen:
+                continue
+            seen.add(i['key'])
+            out.append(i)
+    for n, (ekey, _) in enumerate(EPICS):
+        for j, (status, title) in enumerate((('Бэклог', 'Отложенная доработка'),
+                                             ('Закрыт', 'Первая версия контракта'))):
+            key = f'INIT-{3000 + n * 10 + j}'
+            sub_key = f'INIT-{3000 + n * 10 + j + 5}'
+            out.append({'key': key, 'parent': None, 'changelog': {'histories': []}, 'fields': {
+                'summary': title, 'status': status_obj(status),
+                'issuetype': {'name': 'История', 'subtask': False},
+                'assignee': {'displayName': PEOPLE[n % len(PEOPLE)]},
+                'priority': priority_obj(key), EPIC_FIELD: ekey,
+                'subtasks': [{'key': sub_key, 'fields': {'summary': 'Проверка на стенде',
+                                                         'status': status_obj(status),
+                                                         'priority': priority_obj(sub_key)}}],
+            }})
+    return out
+
+
 def make_api(dataset=None):
     """api(path, **params) поверх синтетического набора — подменяет сеть."""
     ds = dataset or Dataset()
@@ -278,8 +309,16 @@ def make_api(dataset=None):
                     'total': len(issues), 'startAt': start}
         if path == '/rest/api/2/search':
             jql = params.get('jql', '')
-            inside = jql[jql.find('(') + 1:jql.rfind(')')] if '(' in jql else ''
+            inside = jql[jql.find('(') + 1:jql.find(')')] if '(' in jql else ''
             keys = [k.strip() for k in inside.split(',') if k.strip()]
+            if jql.startswith('cf['):
+                # весь объём эпиков: задачи всех спринтов набора плюс вне спринтов
+                wanted = set(keys)
+                scope = [i for i in epic_scope(ds) if i['fields'].get(EPIC_FIELD) in wanted]
+                start = int(params.get('startAt', 0))
+                page = scope[start:start + int(params.get('maxResults', 50))]
+                return {'issues': [project(i, params.get('fields', ''), None) for i in page],
+                        'total': len(scope), 'startAt': start}
             titles = dict(EPICS)
             want = params.get('fields', 'summary').split(',')
             return {'issues': [{'key': k, 'fields': {f: v for f, v in

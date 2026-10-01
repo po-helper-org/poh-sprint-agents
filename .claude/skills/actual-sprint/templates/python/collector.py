@@ -25,6 +25,8 @@
     categories       из status_rules.json               допустимые категории JIRA
     done_categories  ["Выполнено", "Done"]      категории «закрыто» для Lead/Cycle Time
     progress_categories ["В работе", "In Progress"]   категории «взято в работу"
+    epic_scope       true               забрать весь объём эпиков, не только задачи спринта
+    epic_scope_max   2000               сколько задач эпиков забирать максимум за запуск
 
 Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
 """
@@ -43,7 +45,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -291,6 +293,8 @@ class Collector:
         self.sprints_back = int(p.get('sprints_back', 3))
         self.activity_days = int(p.get('activity_days', 7))
         self.control_days = int(p.get('control_days', 30))
+        self.epic_scope = bool(p.get('epic_scope', True))
+        self.epic_scope_max = int(p.get('epic_scope_max', 2000))
 
     # ---------------------------------------------------------- инфраструктура
 
@@ -372,6 +376,7 @@ class Collector:
 
         issues = per_sprint[active['id']]
         epics = self.build_epics(issues, epic_field)
+        self.build_scope(epics, epic_field, last, per_sprint, active)
         metrics, velocity = self.build_metrics(last, per_sprint)
         burndown = self.build_burndown(active, issues)
         control = self.build_control(last, per_sprint)
@@ -457,6 +462,75 @@ class Collector:
                         sub['assignee'] = (src['fields'].get('assignee') or {}).get('displayName')
                         sub['priority'] = priority_name(src['fields']) or sub['priority']
         return [groups[k] for k in order]
+
+    def build_scope(self, epics, epic_field, sprints, per_sprint, active):
+        """Весь объём каждого эпика — и то, что в спринте, и сделанное раньше, и бэклог.
+
+        Таблица и панель эпика показывают только задачи спринта; «Весь эпик» на странице
+        отвечает на другой вопрос: что по эпику уже сделано и что осталось. Один пакетный
+        поиск на пачку эпиков, а не запрос на эпик. Подзадачи — из заглушек в полях
+        задачи: отдельный запрос на каждую стоил бы на порядок дороже.
+        """
+        keys = [e['epicKey'] for e in epics if e['epicKey']]
+        if not (self.epic_scope and epic_field and keys):
+            return
+        # в каком спринте отчёта задача была: «в спринте», имя прошлого спринта или ничего
+        where = {}
+        for s in sprints:
+            for i in per_sprint[s['id']]:
+                where[i['key']] = s['name']
+        # TEAM RULE: как в JQL сослаться на поле связи с эпиком
+        m = re.match(r'customfield_(\d+)$', epic_field)
+        field_ref = f'cf[{m.group(1)}]' if m else f'"{epic_field}"'
+        fields = f'summary,status,issuetype,assignee,priority,subtasks,{epic_field}'
+        chunk = int(self.params.get('epic_batch', 50))
+        by_epic, seen = {k: [] for k in keys}, 0
+        for start in range(0, len(keys), chunk):
+            batch = keys[start:start + chunk]
+            jql = f'{field_ref} in ({",".join(batch)}) ORDER BY Rank ASC'
+            at = 0
+            while seen < self.epic_scope_max:
+                page = self.jira.api('/rest/api/2/search', jql=jql, fields=fields,
+                                     startAt=at, maxResults=100)
+                found = page.get('issues', [])
+                for i in found:
+                    f = i['fields']
+                    if f['issuetype'].get('subtask'):
+                        continue
+                    ek = f.get(epic_field)
+                    if ek not in by_epic:
+                        continue
+                    seen += 1
+                    status = f['status']['name']
+                    category = self.cats.get(str(f['status']['id'])) or \
+                        f['status'].get('statusCategory', {}).get('name', '')
+                    self.bucket(status, category)
+                    item = {
+                        'key': i['key'], 'title': f['summary'], 'type': f['issuetype']['name'],
+                        'status': status, 'category': category,
+                        'assignee': (f.get('assignee') or {}).get('displayName'),
+                        'priority': priority_name(f),
+                        'sprint': where.get(i['key']), 'inSprint': where.get(i['key']) == active['name'],
+                        'subtasks': [],
+                    }
+                    for sub in f.get('subtasks') or []:
+                        sf = sub['fields']
+                        sub_cat = sf['status'].get('statusCategory', {}).get('name', '')
+                        self.bucket(sf['status']['name'], sub_cat)
+                        item['subtasks'].append({
+                            'key': sub['key'], 'summary': sf['summary'], 'status': sf['status']['name'],
+                            'category': sub_cat, 'priority': priority_name(sf)})
+                    by_epic[ek].append(item)
+                at += len(found)
+                if not found or at >= page.get('total', 0):
+                    break
+            if seen >= self.epic_scope_max:
+                self.warn(f'объём эпиков обрезан на {self.epic_scope_max} задачах — '
+                          f'поднимите params.epic_scope_max')
+                break
+        for e in epics:
+            if e['epicKey']:
+                e['scope'] = by_epic.get(e['epicKey'], [])
 
     def build_metrics(self, sprints, per_sprint):
         sprint_rows, all_closed, velocity = [], [], []

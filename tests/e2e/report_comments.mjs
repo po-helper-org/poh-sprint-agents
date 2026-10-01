@@ -120,6 +120,40 @@ await p.waitForTimeout(250);
 check((await p.$$('.story-row .prio[title^="Приоритет:"]')).length > 0, 'приоритет у историй');
 check((await p.$$('.sub-item .prio[title^="Приоритет:"]')).length > 0, 'приоритет у подзадач');
 
+// «Смотреть весь эпик»: тот же сайдбар, объём эпика по разделам
+await p.keyboard.press('Escape');
+const noEpicRow = await p.$$eval('#tableBody tr', trs => trs.findIndex(tr => tr.dataset.row === 'no-epic'));
+await p.click(`#tableBody tr:nth-child(${noEpicRow + 1})`);
+await p.waitForTimeout(200);
+check(await p.isHidden('#scopeBtn'), 'у «Без эпика» кнопки «Смотреть весь эпик» нет');
+await p.keyboard.press('Escape');
+await p.click('#tableBody tr:nth-child(1)');
+await p.waitForTimeout(250);
+check(await p.isVisible('#scopeBtn'), 'в шапке панели эпика есть «Смотреть весь эпик»');
+await p.click('#scopeBtn');
+const scope = await p.evaluate(() => {
+  const e = TEAMS[0].epics[0], map = TEAMS[0].statusMap;
+  const done = e.scope.filter(i => map[i.status] === 'done').length;
+  return { total: e.scope.length, done, left: e.scope.length - done,
+           outside: e.scope.filter(i => !i.inSprint).length };
+});
+check((await p.textContent('.scope-sum .big')).startsWith(`Сделано ${scope.done} из ${scope.total}`), 'сводка «сделано из» по данным');
+check((await p.textContent('.scope-sec[data-sec=left] .sec-head .n')).includes(String(scope.left)), 'раздел «Осталось» со счётчиком');
+check((await p.textContent('.scope-sec[data-sec=done] .sec-head .n')).includes(String(scope.done)), 'раздел «Сделано» со счётчиком');
+check((await p.$$('.scope-sec .story-row')).length === scope.total, 'в объёме все задачи эпика, не только спринта');
+check((await p.$$eval('.chip-sprint', els => els.filter(e => !e.classList.contains('now')).length)) === scope.outside,
+      'у задач вне текущего спринта метка спринта');
+await p.click('.scope-sec[data-sec=done] .sec-head');
+check(await p.isHidden('.scope-sec[data-sec=done] .sec-body'), 'раздел сворачивается');
+await p.click('.scope-sec[data-sec=left] .story-row .story-title-wrap >> nth=0', { button: 'right', position: { x: 220, y: 8 } });
+await p.fill('#cpopText', 'Заметка из объёма эпика');
+await p.press('#cpopText', 'Enter');
+check((await p.inputValue('#promptOut')).includes('Заметка из объёма эпика'), 'правый клик по задаче объёма — заметка');
+await p.click('#scopeBtn');
+check((await p.textContent('#scopeBtn')) === 'Смотреть весь эпик' && (await p.$$('.scope-sec')).length === 0,
+      'кнопка возвращает к задачам спринта');
+await p.keyboard.press('Escape');
+
 // у каждой команды своя корзина
 await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');

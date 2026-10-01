@@ -53,6 +53,15 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(target, self.html)
         self.assertIn('id="cpopExisting"', self.html)
 
+    def test_whole_epic_view(self):
+        """Кнопка «Смотреть весь эпик» в шапке панели; объём — «Осталось» по процессу и «Сделано»."""
+        head = self.html[self.html.index('<div class="stack-head">'):self.html.index('<div class="stack-body">')]
+        self.assertIn('id="scopeBtn"', head)
+        self.assertIn('Смотреть весь эпик', head)
+        for part in ('function renderScope(', "scopeSection('left', 'Осталось'", "scopeSection('done', 'Сделано'",
+                     'function sprintChip(', 'function storyNode('):
+            self.assertIn(part, self.html)
+
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
             self.assertIn(where, self.html)
@@ -67,6 +76,9 @@ class DemoPageTest(unittest.TestCase):
             for e in t['epics']:
                 if e['epicKey']:
                     self.assertTrue(e['epicPriority'])
+                if e['epicKey']:
+                    scope = {i['key'] for i in e['scope']}
+                    self.assertTrue({st['key'] for st in e['stories']} <= scope, 'спринт входит в объём эпика')
                 for st in e['stories']:
                     self.assertTrue(st['priority'])
                     self.assertTrue(all(sub['priority'] for sub in st['subtasks']))

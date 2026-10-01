@@ -82,10 +82,10 @@ class LegacyParityTest(unittest.TestCase):
 
     @staticmethod
     def without_priorities(epics):
-        """Приоритеты появились в 1.1.0 — у старого сборщика их нет, остальное совпадает."""
+        """Приоритеты (1.1.0) и объём эпика (1.2.0) — новые поля; остальное как у старого сборщика."""
         out = []
         for e in epics:
-            e = {k: v for k, v in e.items() if k != 'epicPriority'}
+            e = {k: v for k, v in e.items() if k not in ('epicPriority', 'scope')}
             e['stories'] = [dict({k: v for k, v in st.items() if k != 'priority'},
                                  subtasks=[{k: v for k, v in sub.items() if k != 'priority'}
                                            for sub in st['subtasks']])
@@ -98,6 +98,30 @@ class LegacyParityTest(unittest.TestCase):
         stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap')}
         stripped['epics'] = self.without_priorities(stripped['epics'])
         self.assertEqual(LEGACY, stripped)
+
+    def test_epic_scope_beyond_sprint(self):
+        """Весь эпик: задачи прошлых спринтов и вне спринтов, у каждой — где она была."""
+        data = support.collect_ok()
+        epics = [e for e in data['epics'] if e['epicKey']]
+        self.assertTrue(epics and all('scope' in e for e in epics))
+        in_sprint = {st['key'] for e in epics for st in e['stories']}
+        for e in epics:
+            keys = [i['key'] for i in e['scope']]
+            self.assertEqual(len(keys), len(set(keys)), 'задача эпика дважды')
+            self.assertTrue({st['key'] for st in e['stories']} <= set(keys),
+                            'истории спринта входят в объём эпика')
+        scope = [i for e in epics for i in e['scope']]
+        self.assertTrue(any(i['sprint'] is None for i in scope), 'есть задачи вне спринтов отчёта')
+        self.assertTrue(any(i['sprint'] and not i['inSprint'] for i in scope), 'есть задачи прошлых спринтов')
+        for i in scope:
+            self.assertEqual(i['key'] in in_sprint, i['inSprint'])
+        self.assertTrue(any(i['subtasks'] for i in scope))
+        # статусы объёма тоже раскладываются по бакетам — страница берёт их из statusMap
+        self.assertTrue({i['status'] for i in scope} <= set(data['statusMap']))
+
+    def test_epic_scope_can_be_switched_off(self):
+        data = support.collect_ok(req=support.request(params={'epic_scope': False}))
+        self.assertFalse(any('scope' in e for e in data['epics']))
 
     def test_priorities_on_every_level(self):
         epics = support.collect_ok()['epics']

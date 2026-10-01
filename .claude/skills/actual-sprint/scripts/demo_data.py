@@ -106,6 +106,38 @@ class Keys:
         return f'INIT-{self.n}'
 
 
+SCOPE_KEYS = iter(range(7000, 9999))
+
+
+def epic_scope(ekey, stories, sprint_name, sprint_no):
+    """Весь эпик для «Весь эпик»: задачи спринта + сделанное раньше + бэклог.
+
+    Свой генератор на ключ эпика, а не общий rnd: иначе добавление объёма сдвинуло бы
+    всю остальную демо-картинку и скриншоты в документации.
+    """
+    r = random.Random(ekey)
+    scope = [{'key': st['key'], 'title': st['title'], 'type': 'История', 'status': st['status'],
+              'category': st['category'], 'assignee': st['assignee'], 'priority': st['priority'],
+              'sprint': sprint_name, 'inSprint': True,
+              'subtasks': [{k: sub[k] for k in ('key', 'summary', 'status', 'category', 'priority')}
+                           for sub in st['subtasks']]} for st in stories]
+    plan = [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 2}')] * r.randint(3, 6) + \
+           [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 1}')] * r.randint(2, 5) + \
+           [('Бэклог', 'К выполнению', None)] * r.randint(2, 6) + \
+           [('Анализ', 'В работе', None)] * r.randint(0, 2)
+    for status, cat, sprint in plan:
+        key = f'INIT-{next(SCOPE_KEYS)}'
+        subs = []
+        for name in r.sample(SUBTASKS, r.randint(0, 3)):
+            sub_key = f'INIT-{next(SCOPE_KEYS)}'
+            subs.append({'key': sub_key, 'summary': name, 'status': status, 'category': cat,
+                         'priority': priority(sub_key)})
+        scope.append({'key': key, 'title': r.choice(STORIES), 'type': r.choice(['История', 'История', 'Задача']),
+                      'status': status, 'category': cat, 'assignee': r.choice(PEOPLE),
+                      'priority': priority(key), 'sprint': sprint, 'inSprint': False, 'subtasks': subs})
+    return scope
+
+
 def build_team(spec, rnd, keys):
     slug = spec['slug']
     start = NOW - timedelta(days=7)
@@ -140,8 +172,10 @@ def build_team(spec, rnd, keys):
             stories.append(story)
             all_units.append(story)
             all_units.extend(story['subtasks'])
+        sprint_no = int(spec['sprint'].split()[-1])
         epics.append({'rowId': ekey, 'epicKey': ekey, 'epicTitle': title,
-                      'epicPriority': priority(ekey), 'stories': stories})
+                      'epicPriority': priority(ekey), 'stories': stories,
+                      'scope': epic_scope(ekey, stories, spec['sprint'], sprint_no)})
 
     # истории без эпика — псевдо-эпик
     orphans = []

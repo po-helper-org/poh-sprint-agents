@@ -342,6 +342,34 @@
   }
   .stack-head h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.35; padding-right: 32px; }
   .stack-head a { font-size: 13px; color: var(--muted); }
+  .stack-links { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  .scope-btn {
+    font: inherit; font-size: 13px; padding: 3px 12px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--fg); background: var(--bg); color: var(--fg);
+  }
+  .scope-btn:hover, .scope-btn[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+
+  /* «Весь эпик»: сводка, затем «Осталось» по процессу и «Сделано» */
+  .scope-sum { margin: 0 0 14px; }
+  .scope-sum .big { font-size: 15px; font-weight: 600; }
+  .scope-sum .sub { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .scope-bar { display: flex; gap: 2px; height: 8px; margin-top: 8px; }
+  .scope-bar i { display: block; height: 100%; border-radius: 2px; }
+  .scope-sec { margin-top: 6px; }
+  .scope-sec > .sec-head {
+    position: sticky; top: -16px; z-index: 2; background: var(--bg);
+    display: flex; align-items: baseline; gap: 8px; width: 100%; padding: 10px 0 8px;
+    border: none; border-bottom: 1px solid var(--line); cursor: pointer; font: inherit; text-align: left;
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg); font-weight: 600;
+  }
+  .scope-sec > .sec-head .n { color: var(--muted); font-weight: 400; letter-spacing: 0; }
+  .scope-sec > .sec-head .arr { margin-left: auto; color: var(--muted); font-size: 11px; transition: transform 0.15s ease; }
+  .scope-sec.closed > .sec-head .arr { transform: rotate(-90deg); }
+  .scope-sec.closed > .sec-body { display: none; }
+  .scope-group { font-size: 11px; color: var(--muted); margin: 12px 0 2px; display: flex; align-items: center; gap: 6px; }
+  .scope-group .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .chip-sprint { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .chip-sprint.now { color: var(--fg); font-weight: 600; }
 
   .sidebar-close {
     position: absolute;
@@ -679,7 +707,10 @@
     <button class="sidebar-close" data-close aria-label="Закрыть">&times;</button>
     <div class="eyebrow" id="stackKey">—</div>
     <h2 id="stackTitle">—</h2>
-    <a id="stackLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
+    <div class="stack-links">
+      <a id="stackLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
+      <button class="scope-btn" id="scopeBtn" type="button" hidden>Смотреть весь эпик</button>
+    </div>
   </div>
 
   <div class="stack-body">
@@ -1286,6 +1317,59 @@
     else { stackLink.style.display = 'none'; }
   }
 
+  // Строка задачи с разворотом подзадач — одна на панель спринта и на «Весь эпик».
+  // tail — что показать справа от бейджа: возраст статуса или метку спринта.
+  function storyNode(story, epic, counts, tail) {
+    var wrap = document.createElement('div');
+    wrap.className = 'story-item';
+    var hasSubtasks = story.subtasks && story.subtasks.length > 0;
+
+    var row = document.createElement('div');
+    row.className = 'story-row';
+    row.innerHTML =
+      '<div class="story-title-wrap"' + ctxAttr(itemTarget('story', story, epic)) + '>' +
+        '<button class="story-toggle" ' + (hasSubtasks ? '' : 'disabled') + '>▶</button>' +
+        prioHtml(story.priority) +
+        whoHtml(story.assignee) +
+        '<a href="' + jiraUrl(story.key) + '" target="_blank" rel="noopener">' + esc(story.key) + ' — ' + esc(story.title) + '</a>' +
+      '</div>' +
+      '<div class="meta-wrap">' +
+        '<span data-cmark="' + esc(story.key) + '">' + cmarkHtml(counts[story.key] || 0) + '</span>' +
+        '<span class="status ' + bucketClass(story.status, story.category) + '">' + esc(story.status) + '</span>' +
+        tail(story) +
+      '</div>';
+    wrap.appendChild(row);
+
+    var subList = document.createElement('div');
+    subList.className = 'sub-list';
+    (story.subtasks || []).forEach(function (sub) {
+      var subRow = document.createElement('div');
+      subRow.className = 'sub-item';
+      subRow.innerHTML = '<span class="story-title-wrap"' + ctxAttr(itemTarget('subtask', sub, epic)) + '>' +
+        prioHtml(sub.priority) +
+        whoHtml(sub.assignee) +
+        '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
+        '</span>' +
+        '<div class="meta-wrap">' +
+          '<span data-cmark="' + esc(sub.key) + '">' + cmarkHtml(counts[sub.key] || 0) + '</span>' +
+          '<span class="status ' + bucketClass(sub.status, sub.category) + '">' + esc(sub.status) + '</span>' +
+          (sub.statusChanged !== undefined ? ageHtml(sub.statusChanged, sub.status, sub.category) : '') +
+        '</div>';
+      subList.appendChild(subRow);
+    });
+    wrap.appendChild(subList);
+
+    var toggleBtn = row.querySelector('.story-toggle');
+    if (hasSubtasks) {
+      toggleBtn.title = 'Подзадачи: ' + story.subtasks.length;
+      toggleBtn.addEventListener('click', function () {
+        toggleBtn.classList.toggle('open');
+        subList.classList.toggle('open');
+      });
+    }
+    return wrap;
+  }
+
   function fillStoriesPanel(epic) {
     storiesBody.innerHTML = '';
     var counts = commentCounts().byKey;
@@ -1297,61 +1381,104 @@
       storiesBody.appendChild(empty);
       return;
     }
-
     epic.stories.forEach(function (story) {
-      var wrap = document.createElement('div');
-      wrap.className = 'story-item';
-
-      var hasSubtasks = story.subtasks && story.subtasks.length > 0;
-
-      var row = document.createElement('div');
-      row.className = 'story-row';
-      row.innerHTML =
-        '<div class="story-title-wrap"' + ctxAttr(itemTarget('story', story, epic)) + '>' +
-          '<button class="story-toggle" ' + (hasSubtasks ? '' : 'disabled') + '>▶</button>' +
-          prioHtml(story.priority) +
-          whoHtml(story.assignee) +
-          '<a href="' + jiraUrl(story.key) + '" target="_blank" rel="noopener">' + esc(story.key) + ' — ' + esc(story.title) + '</a>' +
-        '</div>' +
-        '<div class="meta-wrap">' +
-          '<span data-cmark="' + esc(story.key) + '">' + cmarkHtml(counts[story.key] || 0) + '</span>' +
-          '<span class="status ' + bucketClass(story.status, story.category) + '">' + esc(story.status) + '</span>' +
-          ageHtml(story.statusChanged, story.status, story.category) +
-        '</div>';
-      wrap.appendChild(row);
-
-      var subList = document.createElement('div');
-      subList.className = 'sub-list';
-      if (hasSubtasks) {
-        story.subtasks.forEach(function (sub) {
-          var subRow = document.createElement('div');
-          subRow.className = 'sub-item';
-          subRow.innerHTML = '<span class="story-title-wrap"' + ctxAttr(itemTarget('subtask', sub, epic)) + '>' +
-            prioHtml(sub.priority) +
-            whoHtml(sub.assignee) +
-            '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
-            '</span>' +
-            '<div class="meta-wrap">' +
-              '<span data-cmark="' + esc(sub.key) + '">' + cmarkHtml(counts[sub.key] || 0) + '</span>' +
-              '<span class="status ' + bucketClass(sub.status, sub.category) + '">' + esc(sub.status) + '</span>' +
-              ageHtml(sub.statusChanged, sub.status, sub.category) +
-            '</div>';
-          subList.appendChild(subRow);
-        });
-      }
-      wrap.appendChild(subList);
-
-      var toggleBtn = row.querySelector('.story-toggle');
-      if (hasSubtasks) {
-        toggleBtn.addEventListener('click', function () {
-          toggleBtn.classList.toggle('open');
-          subList.classList.toggle('open');
-        });
-      }
-
-      storiesBody.appendChild(wrap);
+      storiesBody.appendChild(storyNode(story, epic, counts, function (st) {
+        return ageHtml(st.statusChanged, st.status, st.category);
+      }));
     });
   }
+
+  // ------------------------- весь эпик -------------------------
+  // Полный объём эпика, не только спринт: что сделано и что осталось и в каком процессе.
+  // Тот же сайдбар; кнопка в шапке переключает «задачи спринта» ↔ «весь эпик».
+  var SCOPE_ORDER = ['blocked', 'progress', 'testing', 'review', 'open'];
+  var BUCKET_COLOR = { open: 'var(--c-open)', blocked: 'var(--c-blocked)', progress: 'var(--c-progress)',
+                       testing: 'var(--c-testing)', review: 'var(--c-review)', done: 'var(--c-done)' };
+  var scopeBtn = document.getElementById('scopeBtn');
+  var scopeEpic = null, scopeOn = false;
+
+  function sprintChip(item) {
+    if (item.inSprint) return '<span class="chip-sprint now" title="В текущем спринте">в спринте</span>';
+    if (item.sprint) return '<span class="chip-sprint" title="Была в спринте отчёта">' + esc(item.sprint) + '</span>';
+    return '<span class="chip-sprint" title="Вне спринтов отчёта: бэклог или давнее">вне спринта</span>';
+  }
+
+  function scopeSection(id, title, n, body, closed) {
+    var sec = document.createElement('section');
+    sec.className = 'scope-sec' + (closed ? ' closed' : '');
+    sec.dataset.sec = id;
+    sec.innerHTML = '<button class="sec-head" type="button" aria-expanded="' + !closed + '">' + esc(title) +
+      ' <span class="n">· ' + n + '</span><span class="arr">▼</span></button><div class="sec-body"></div>';
+    var head = sec.querySelector('.sec-head');
+    head.addEventListener('click', function () {
+      sec.classList.toggle('closed');
+      head.setAttribute('aria-expanded', String(!sec.classList.contains('closed')));
+    });
+    body.forEach(function (node) { sec.querySelector('.sec-body').appendChild(node); });
+    return sec;
+  }
+
+  function renderScope(epic) {
+    // у задач текущего спринта берём строку из данных спринта: там у подзадач есть
+    // исполнитель и возраст статуса, которых поиск по эпику не отдаёт
+    var sprintRows = {};
+    (epic.stories || []).forEach(function (st) { sprintRows[st.key] = st; });
+    var items = (epic.scope || []).map(function (it) {
+      var st = it.inSprint && sprintRows[it.key];
+      return st ? Object.assign({}, it, { subtasks: st.subtasks }) : it;
+    });
+    var counts = commentCounts().byKey;
+    var byBucket = {};
+    BUCKETS.forEach(function (b) { byBucket[b.id] = []; });
+    items.forEach(function (it) { byBucket[classifyBucket(it.status, it.category)].push(it); });
+    var done = byBucket.done, left = items.length - done.length;
+    var pct = items.length ? Math.round(100 * done.length / items.length) : 0;
+    var inSprint = items.filter(function (it) { return it.inSprint; }).length;
+
+    storiesBody.innerHTML = '';
+    var sum = document.createElement('div');
+    sum.className = 'scope-sum';
+    sum.innerHTML = '<span class="big">Сделано ' + done.length + ' из ' + items.length + ' · ' + pct + '%</span>' +
+      '<span class="sub">задач эпика · в текущем спринте ' + inSprint + '</span>' +
+      '<div class="scope-bar" title="' + esc(BUCKETS.filter(function (b) { return byBucket[b.id].length; })
+        .map(function (b) { return byBucket[b.id].length + ' — ' + b.phrase; }).join(', ')) + '">' +
+      BUCKETS.filter(function (b) { return byBucket[b.id].length; }).map(function (b) {
+        return '<i style="flex:' + byBucket[b.id].length + ';background:' + BUCKET_COLOR[b.id] + '"></i>';
+      }).join('') + '</div>';
+    storiesBody.appendChild(sum);
+
+    if (!items.length) {
+      storiesBody.insertAdjacentHTML('beforeend', '<div class="sidebar-empty">Задач в эпике нет.</div>');
+      return;
+    }
+
+    // «Осталось» — по процессу: сначала то, что стоит, потом в работе, в конце не начатое
+    var leftNodes = [];
+    SCOPE_ORDER.forEach(function (id) {
+      if (!byBucket[id].length) return;
+      var b = BUCKETS.find(function (x) { return x.id === id; });
+      var g = document.createElement('div');
+      g.className = 'scope-group';
+      g.innerHTML = '<span class="dot" style="background:' + BUCKET_COLOR[id] + '"></span>' +
+        esc(b.label) + ' · ' + byBucket[id].length;
+      leftNodes.push(g);
+      byBucket[id].forEach(function (it) { leftNodes.push(storyNode(it, epic, counts, sprintChip)); });
+    });
+    storiesBody.appendChild(scopeSection('left', 'Осталось', left, leftNodes, false));
+    storiesBody.appendChild(scopeSection('done', 'Сделано', done.length,
+      done.map(function (it) { return storyNode(it, epic, counts, sprintChip); }), false));
+  }
+
+  function setScopeMode(on) {
+    scopeOn = on && !!(scopeEpic && scopeEpic.scope);
+    scopeBtn.setAttribute('aria-pressed', String(scopeOn));
+    scopeBtn.textContent = scopeOn ? '← Задачи спринта' : 'Смотреть весь эпик';
+    storiesLabel.textContent = scopeOn ? 'Весь эпик' : 'Истории';
+    if (scopeOn) renderScope(scopeEpic); else fillStoriesPanel(scopeEpic);
+    storiesBody.parentNode.scrollTop = 0;
+  }
+
+  scopeBtn.addEventListener('click', function () { setScopeMode(!scopeOn); });
 
   // ------------------------- сводный отчёт за 3 спринта -------------------------
 
@@ -1748,6 +1875,8 @@
   }
 
   function openLogs() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
     storiesLabel.textContent = 'Изменения за неделю';
     stackKey.textContent = 'Logs';
@@ -1763,6 +1892,8 @@
   }
 
   function openMetrics() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
     storiesLabel.textContent = 'Метрики';
     stackKey.textContent = 'Сводный отчёт';
@@ -1779,9 +1910,10 @@
     var epic = EPICS.find(function (e) { return e.rowId === rowId; });
     if (!epic) return;
 
-    storiesLabel.textContent = 'Истории';
     setStackHead(epic);
-    fillStoriesPanel(epic);
+    scopeEpic = epic;
+    scopeBtn.hidden = !(epic.epicKey && epic.scope);
+    setScopeMode(false);
 
     overlay.classList.add('open');
     panelStack.classList.add('open');
