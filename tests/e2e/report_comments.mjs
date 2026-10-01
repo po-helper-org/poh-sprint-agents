@@ -229,50 +229,59 @@ await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 check(await count() === '0', 'у другой команды своя корзина');
 
-// презентация для управляющего комитета: те же данные, другая форма
+// презентация «ФАКТ | спринт»: те же данные, форма отчётной колоды PO
 await p.keyboard.press('Escape');
 await p.click('#presBtn');
-await p.waitForTimeout(300);
+await p.waitForTimeout(400);
 const deckInfo = await p.evaluate(() => ({
   open: !document.getElementById('deck').hidden, hash: location.hash,
-  slides: document.querySelectorAll('#deckStage .slide').length,
-  teams: TEAMS.length, asks: TEAMS.some(t => t.insights && t.insights.business && (t.insights.business.asks || []).length),
-  current: document.querySelectorAll('#deckStage .slide.current').length,
+  slides: [...document.querySelectorAll('#deckSlides .fslide')].map(s => ({
+    title: (s.querySelector('.slide-title, h1') || {}).textContent || '', h: Math.round(s.getBoundingClientRect().height) })),
+  toc: document.querySelectorAll('#deckTocList a').length,
+  heroes: [...document.querySelectorAll('#deckSlides .hero-slide h1')].map(h => h.textContent).join('|'),
+  teams: TEAMS.map(t => t.team).join('|'),
+  rows: document.querySelectorAll('#deckSlides tr.row').length,
+  stories: TEAMS.reduce((n, t) => n + t.epics.reduce((m, e) => m + e.stories.length, 0), 0),
 }));
-check(deckInfo.open && deckInfo.hash === '#presentation', 'кнопка «Презентация» открывает слайды, адрес — #presentation');
-check(deckInfo.slides === 2 + deckInfo.teams + (deckInfo.asks ? 1 : 0), 'титул, сводка, по слайду на команду и просьбы к комитету');
-check(deckInfo.current === 1 && (await p.textContent('#deckCount')) === `1 / ${deckInfo.slides}`, 'виден один слайд, счётчик');
-await p.keyboard.press('ArrowRight');
-await p.keyboard.press('ArrowRight');
-check((await p.textContent('#deckCount')) === `3 / ${deckInfo.slides}`, 'стрелки листают слайды');
-const teamSlide = await p.evaluate(() => {
-  const s = document.querySelector('#deckStage .slide.current');
-  const p = TEAMS[0], burndown = p.burndown.days.filter(d => !d.future).pop();
-  return { text: s.textContent, closed: burndown.closed, scope: burndown.scope,
-           goals: Object.values(p.insights.business.goals).filter(g => s.textContent.includes(g)).length };
+check(deckInfo.open && deckInfo.hash === '#presentation', 'кнопка «Презентация» открывает колоду, адрес — #presentation');
+check(deckInfo.slides[0].title.startsWith('ФАКТ | '), 'титул «ФАКТ | спринт»');
+check(deckInfo.heroes === deckInfo.teams, 'у каждой команды — разделитель с её именем, в порядке вкладок');
+check(deckInfo.rows === deckInfo.stories, 'в таблицах стримов — все истории спринта, по строке на историю');
+check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720: стримы упакованы до восьми строк');
+check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
+check(['Изменения в процессе спринта', 'Демо', 'РИСКИ'].every(t => deckInfo.slides.some(s => s.title === t)) &&
+      deckInfo.slides.some(s => s.title.startsWith('Итоги спринта')) && deckInfo.slides.some(s => s.title.startsWith('Метрики ')),
+      'изменения, демо, метрики, итоги и риски — как в эталоне');
+const rowCheck = await p.evaluate(() => {
+  const tr = [...document.querySelectorAll('#deckSlides tr.row')].find(r => r.dataset.key === 'INIT-136');
+  const done = [...document.querySelectorAll('#deckSlides tr.row')].filter(r => r.classList.contains('stat-green'))
+    .every(r => r.querySelector('.result').textContent.trim() === '100%');
+  const p = TEAMS[0], last = p.burndown.days.filter(d => !d.future).pop();
+  return { cls: tr.className, res: tr.querySelector('.result').textContent.trim(), how: tr.querySelector('.result span').title,
+           next: tr.textContent.includes('След. шаг'), done,
+           goal: document.querySelector('#deckSlides').textContent.includes('Sprint Goal: достигнут частично') };
 });
-check(teamSlide.text.includes(`${teamSlide.closed} / ${teamSlide.scope}`), 'на слайде команды «сделано» — из burndown, как в отчёте PO');
-check(teamSlide.goals >= 3, 'эпики связаны с бизнес-целями из бизнес-блока агента');
-check(teamSlide.text.includes('Цели и выводы — интерпретация ИИ'), 'интерпретация ИИ помечена');
-const fits = await p.evaluate(() => [...document.querySelectorAll('#deckStage .slide')].every(s => {
-  s.classList.add('current'); const R = s.getBoundingClientRect();
-  const ok = [...s.querySelectorAll('*')].every(el => { const r = el.getBoundingClientRect(); return r.bottom <= R.bottom + 1 && r.right <= R.right + 1; });
-  s.classList.remove('current'); return ok;
-}));
-await p.keyboard.press('Home');
-check(fits, 'содержимое каждого слайда помещается в слайд');
-await p.keyboard.press('End');
-const lastText = await p.textContent('#deckStage .slide.current');
-check(!deckInfo.asks || lastText.includes('Что нужно от комитета'), 'последний слайд — что нужно от комитета');
-await p.keyboard.press('ArrowLeft');
-const mobileSlide = await p.textContent('#deckStage .slide.current');
-check(mobileSlide.includes('цель не указана'), 'нет связи с целью — слайд честно пишет «цель не указана»');
+check(rowCheck.res === '90%' && rowCheck.cls.includes('stat-yellow'), 'история на ревью — 90%, жёлтая строка');
+check(rowCheck.how.includes('стадия 90%') && rowCheck.how.includes('подзадачи'), 'как посчитан результат — в подсказке');
+check(rowCheck.next, 'следующий шаг из бизнес-блока агента — в комментарии строки');
+check(rowCheck.done, 'зелёные строки — только 100%');
+check(rowCheck.goal, 'Sprint Goal стрима — из бизнес-блока агента');
+await p.click('#deckSlides tr.row[data-key="INIT-136"] td.task');
+check(await p.isVisible('#cpop') && (await p.textContent('#cpopTarget')).includes('INIT-136'), 'клик по строке — правка к истории');
+await p.fill('#cpopText', 'Уточнить дату выкатки');
+await p.press('#cpopText', 'Enter');
+check(await p.evaluate(() => document.querySelector('#deckSlides tr.row[data-key="INIT-136"]').classList.contains('commented')),
+      'строка с правкой помечена, как в эталоне');
+await p.click('#deckTocBtn');
+await p.click('#deckTocList a >> nth=-1');
+await p.waitForTimeout(500);
+check(await p.isHidden('#deckToc'), 'переход по оглавлению закрывает его');
 await p.keyboard.press('Escape');
 check(await p.isHidden('#deck') && (await p.evaluate(() => location.hash)) === '', 'Esc закрывает презентацию и чистит адрес');
 await p.goto(pathToFileURL(page).href + '#presentation');
 await p.reload();
 await p.waitForTimeout(300);
-check(await p.isVisible('#deck'), 'ссылка с #presentation открывает сразу слайды');
+check(await p.isVisible('#deck'), 'ссылка с #presentation открывает сразу колоду');
 
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();

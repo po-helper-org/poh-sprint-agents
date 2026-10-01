@@ -154,29 +154,40 @@ class CheckTest(unittest.TestCase):
     def biz(self, slug='platform'):
         return self.doc['teams'][slug]['business']
 
-    def test_business_goal_only_for_team_epics(self):
-        self.biz()['goals']['INIT-999'] = 'OBJ 9 · KR 9.9 — чужая цель'
+    def test_business_streams_only_for_team_epics(self):
+        self.biz()['streams']['INIT-999'] = {'verdict': 'достигнут'}
         errors, _ = self.check(self.doc)
         self.assertTrue(any('эпика INIT-999 нет в спринте команды' in e for e in errors), errors)
 
-    def test_business_goal_numbers_not_checked_against_facts(self):
-        """Цель — из OKR: «KR 7.4», «+15% конверсии» с фактами спринта не сверить."""
-        self.biz()['goals']['INIT-101'] = 'OBJ 7 · KR 7.4 — +15% конверсии партнёрских заказов'
+    def test_business_rows_only_for_sprint_stories(self):
+        self.biz()['rows']['INIT-101'] = {'next': 'это эпик, а не история'}
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('истории INIT-101 нет в спринте команды' in e for e in errors), errors)
+
+    def test_business_okr_and_risk_numbers_not_checked(self):
+        """Цели OKR, риски и договорённости — из документов PO: их числа с фактами спринта не сверить."""
+        self.biz()['streams']['INIT-101']['okr'] = 'OBJ 7 · KR 7.4 — +15% конверсии партнёрских заказов'
+        self.biz()['risks'][0]['text'] = 'Коммитмент на 30 сентября: 15 партнёров на новом API, сдвиг на Q4.'
         errors, warnings = self.check(self.doc)
         self.assertEqual(([], []), (errors, warnings))
 
     def test_business_texts_fit_the_slide(self):
-        self.biz()['headline'] = 'Очень длинно. ' * 20
+        self.biz()['rows']['INIT-132']['next'] = 'Очень длинно. ' * 20
         errors, _ = self.check(self.doc)
-        self.assertTrue(any('business.headline: длиннее 160' in e for e in errors), errors)
+        self.assertTrue(any('business.rows.INIT-132.next: длиннее 120' in e for e in errors), errors)
 
-    def test_business_numbers_and_keys_checked(self):
-        self.biz()['value'] = ['Готово 913.4% — выдумка про INIT-55555.']
+    def test_business_row_numbers_and_keys_checked(self):
+        self.biz()['rows']['INIT-136']['facts'] = ['Готово 913.4% — выдумка про INIT-55555.']
         errors, warnings = self.check(self.doc)
         self.assertTrue(any('INIT-55555' in e for e in errors), errors)
         self.assertTrue(any('числа 913.4' in w for w in warnings), warnings)
 
-    def test_business_goals_need_source(self):
+    def test_business_verdict_is_fixed(self):
+        self.biz()['streams']['INIT-125']['verdict'] = 'почти'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
+    def test_business_okr_needs_source(self):
         del self.biz()['goalsSource']
         _, warnings = self.check(self.doc)
         self.assertTrue(any('goalsSource' in w for w in warnings), warnings)
@@ -256,7 +267,7 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual('risk', ins['observations'][0]['level'], 'первым — главное')
         self.assertNotIn('insights', teams['mobile'], 'у команды без инсайдов поля нет')
         self.assertEqual('OBJ 1 · KR 1.1 — заказы от партнёров без ручного ввода',
-                         ins['business']['goals']['INIT-101'], 'бизнес-блок едет на страницу')
+                         ins['business']['streams']['INIT-101']['okr'], 'бизнес-блок едет на страницу')
 
     def test_apply_refuses_bad_file_and_keeps_page(self):
         doc = self.ws.example()

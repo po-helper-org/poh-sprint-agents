@@ -85,14 +85,16 @@ class TemplateTest(unittest.TestCase):
                      "addEventListener('touchstart'", 'LONG_PRESS_MS', 'id="cpopCancel"'):
             self.assertIn(part, self.html)
 
-    def test_presentation_for_committee(self):
-        """Кнопка «Презентация»: слайды по командам из тех же данных, стиль колоды экватора."""
+    def test_presentation_fact_deck(self):
+        """Кнопка «Презентация»: колода «ФАКТ | спринт» по эталону PO из тех же данных."""
         bar = self.html[self.html.index('<div class="pb-row">'):self.html.index('<div class="notes-panel"')]
         self.assertIn('id="presBtn"', bar)
         self.assertIn('>Презентация<', bar)
-        for part in ("var START_MODE = '{{START_MODE}}';", 'id="deck"', 'function slideTitle(', 'function slideSummary(',
-                     'function slideTeam(', 'function slideAsks(', "'#presentation'", '@page { size: 1600px 900px',
-                     '--b-dark: #0F0F14', '--b-beige: #E4E0DA', '--b-accent: #4C6FFF', 'цель не указана'):
+        for part in ("var START_MODE = '{{START_MODE}}';", 'id="deck"', 'function titleSlide(', 'function heroSlide(',
+                     'function streamSlide(', 'function changesSlide(', 'function demoSlide(', 'function metricsSlide(',
+                     'function totalsSlide(', 'function risksSlide(', "'#presentation'", '@page { size: 1280px 720px',
+                     '<th>Задачи</th><th>Комментарий</th><th>Результат</th>', 'stat-green', 'stat-yellow', 'stat-red',
+                     '--green-fill: #D9EAD3', '--yellow-fill: #FFF2CC', '--red-fill: #FDE9E9', 'ROWS_PER_SLIDE = 8'):
             self.assertIn(part, self.html)
 
     def test_priority_everywhere(self):

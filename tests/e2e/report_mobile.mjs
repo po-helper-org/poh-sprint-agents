@@ -124,17 +124,21 @@ const fontSize = await p.locator('#nText').evaluate(el => parseFloat(getComputed
 check(fontSize >= 16, 'поле ввода 16px — iOS не увеличивает страницу при фокусе');
 check(await noSideScroll(), 'корзина без горизонтальной прокрутки');
 
-// презентация на телефоне: в портрете слайды лентой, без горизонтальной прокрутки
+// презентация на телефоне: слайды лентой во всю ширину, без горизонтальной прокрутки
 await p.tap('#notesToggle');
 await p.tap('#presBtn');
-await p.waitForTimeout(300);
+await p.waitForTimeout(400);
 const feed = await p.evaluate(() => {
-  const st = document.getElementById('deckStage');
-  return { feed: document.getElementById('deck').classList.contains('feed'), noSide: st.scrollWidth <= st.clientWidth,
-           visible: [...st.querySelectorAll('.slide')].every(s => getComputedStyle(s).display !== 'none') };
+  const f = document.getElementById('deckFeed');
+  const sl = [...document.querySelectorAll('#deckSlides .fslide')];
+  return { noSide: f.scrollWidth <= f.clientWidth, fit: sl.every(s => s.getBoundingClientRect().right <= innerWidth + 1),
+           legend: getComputedStyle(document.querySelector('#deckSlides .legend')).position };
 });
-check(feed.feed && feed.visible, 'презентация в портрете — все слайды лентой');
-check(feed.noSide, 'лента слайдов без горизонтальной прокрутки');
+check(feed.fit && feed.noSide, 'слайды во всю ширину экрана, без горизонтальной прокрутки');
+check(feed.legend === 'static', 'легенда светофора не наезжает на заголовок');
+await p.tap('#deckSlides tr.row >> nth=0');
+check(await p.isVisible('#cpop'), 'тап по строке — правка к истории');
+await p.tap('#cpopCancel');
 await p.tap('#deckClose');
 check(await p.isHidden('#deck'), 'крестик закрывает презентацию');
 
