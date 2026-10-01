@@ -132,12 +132,16 @@ const feed = await p.evaluate(() => {
   const f = document.getElementById('deckFeed');
   const sl = [...document.querySelectorAll('#deckSlides .fslide')];
   return { noSide: f.scrollWidth <= f.clientWidth, fit: sl.every(s => s.getBoundingClientRect().right <= innerWidth + 1),
-           legend: getComputedStyle(document.querySelector('#deckSlides .legend')).position };
+         };
 });
 check(feed.fit && feed.noSide, 'слайды во всю ширину экрана, без горизонтальной прокрутки');
-check(feed.legend === 'static', 'легенда светофора не наезжает на заголовок');
 await p.tap('#deckSlides tr.row >> nth=0');
-check(await p.isVisible('#cpop'), 'тап по строке — правка к истории');
+await p.waitForTimeout(300);
+check(await p.isVisible('#panelStack.open'), 'тап по строке — сайдбар активности истории');
+await p.tap('.sidebar-close');
+await p.waitForTimeout(300);
+await longPress('#deckSlides tr.row >> nth=1');
+check(await p.isVisible('#cpop'), 'долгое нажатие на строку — комментарий');
 await p.tap('#cpopCancel');
 await p.tap('#deckClose');
 check(await p.isHidden('#deck'), 'крестик закрывает презентацию');

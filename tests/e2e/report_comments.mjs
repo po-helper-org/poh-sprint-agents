@@ -26,6 +26,7 @@ const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 await p.goto(pathToFileURL(page).href);
 
+const TEAMS_N = (info) => info.teams.split('|').length;
 const count = async () => (await p.textContent('#cCount')).trim();
 const openBasket = async () => { if (!(await p.isVisible('#notesPanel'))) await p.click('#notesToggle'); };
 
@@ -229,7 +230,7 @@ await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 check(await count() === '0', 'у другой команды своя корзина');
 
-// презентация «ФАКТ | спринт»: те же данные, форма отчётной колоды PO
+// презентация «ФАКТ | спринт»: от целей — OBJ → KR (эпик) → истории спринта
 await p.keyboard.press('Escape');
 await p.click('#presBtn');
 await p.waitForTimeout(400);
@@ -242,40 +243,82 @@ const deckInfo = await p.evaluate(() => ({
   teams: TEAMS.map(t => t.team).join('|'),
   rows: document.querySelectorAll('#deckSlides tr.row').length,
   stories: TEAMS.reduce((n, t) => n + t.epics.reduce((m, e) => m + e.stories.length, 0), 0),
+  legend: !!document.querySelector('#deckSlides .legend'),
 }));
 check(deckInfo.open && deckInfo.hash === '#presentation', 'кнопка «Презентация» открывает колоду, адрес — #presentation');
 check(deckInfo.slides[0].title.startsWith('ФАКТ | '), 'титул «ФАКТ | спринт»');
 check(deckInfo.heroes === deckInfo.teams, 'у каждой команды — разделитель с её именем, в порядке вкладок');
-check(deckInfo.rows === deckInfo.stories, 'в таблицах стримов — все истории спринта, по строке на историю');
-check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720: стримы упакованы до восьми строк');
+check(deckInfo.slides.some(s => s.title.startsWith('OBJ 1: Партнёрские заказы')), 'слайд — цель: «OBJ 1: название»');
+check(deckInfo.slides.some(s => s.title.startsWith('Без привязки к OKR')), 'эпики без цели — «Без привязки к OKR»');
+check(!deckInfo.slides.some(s => s.title.startsWith('Стримы')) && !deckInfo.legend, 'нет «Стримы: команда» и пояснения цветов');
+check(deckInfo.rows === deckInfo.stories, 'в таблицах — все истории спринта, по строке на историю');
+check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
-check(['Изменения в процессе спринта', 'Демо', 'РИСКИ'].every(t => deckInfo.slides.some(s => s.title === t)) &&
-      deckInfo.slides.some(s => s.title.startsWith('Итоги спринта')) && deckInfo.slides.some(s => s.title.startsWith('Метрики ')),
-      'изменения, демо, метрики, итоги и риски — как в эталоне');
+check(deckInfo.slides.filter(s => s.title.startsWith('Операционный отчёт')).length === 3 * TEAMS_N(deckInfo),
+      'операционный отчёт — три слайда на команду');
+const ops = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.ops')].slice(0, 2)
+  .map(s => [...s.querySelectorAll('.metric-card h3')].map(h => h.textContent)));
+check(ops.every(t => t.length === 3 && t[0].startsWith('Общий') && t[1].startsWith('Прошлые 2 недели') && t[2].startsWith('Текущие 2 недели')),
+      'управление по историям и подзадачам: общий, прошлые и текущие 2 недели');
 const rowCheck = await p.evaluate(() => {
-  const tr = [...document.querySelectorAll('#deckSlides tr.row')].find(r => r.dataset.key === 'INIT-136');
-  const done = [...document.querySelectorAll('#deckSlides tr.row')].filter(r => r.classList.contains('stat-green'))
-    .every(r => r.querySelector('.result').textContent.trim() === '100%');
-  const p = TEAMS[0], last = p.burndown.days.filter(d => !d.future).pop();
+  const tr = document.querySelector('#deckSlides tr.row[data-key="INIT-136"]');
+  const auto = document.querySelector('#deckSlides tr.row[data-key="INIT-126"]');
   return { cls: tr.className, res: tr.querySelector('.result').textContent.trim(), how: tr.querySelector('.result span').title,
-           next: tr.textContent.includes('След. шаг'), done,
-           goal: document.querySelector('#deckSlides').textContent.includes('Sprint Goal: достигнут частично') };
+           done: tr.querySelector('[data-edit="done:INIT-136"]').textContent, next: !!tr.querySelector('[data-edit="next:INIT-136"]'),
+           autoDone: auto.querySelector('[data-edit^="done:"]').textContent, autoNext: (auto.querySelector('[data-edit^="next:"]') || {}).textContent,
+           kr: !!document.querySelector('#deckSlides tr.grp.kr b[data-edit^="kr:"]') };
 });
 check(rowCheck.res === '90%' && rowCheck.cls.includes('stat-yellow'), 'история на ревью — 90%, жёлтая строка');
-check(rowCheck.how.includes('стадия 90%') && rowCheck.how.includes('подзадачи'), 'как посчитан результат — в подсказке');
-check(rowCheck.next, 'следующий шаг из бизнес-блока агента — в комментарии строки');
-check(rowCheck.done, 'зелёные строки — только 100%');
-check(rowCheck.goal, 'Sprint Goal стрима — из бизнес-блока агента');
-await p.click('#deckSlides tr.row[data-key="INIT-136"] td.task');
-check(await p.isVisible('#cpop') && (await p.textContent('#cpopTarget')).includes('INIT-136'), 'клик по строке — правка к истории');
+check(rowCheck.how.includes('стадия 90%'), 'как посчитан результат — в подсказке');
+check(rowCheck.done === 'Метрики загрузчика собраны, дашборд на ревью.' && rowCheck.next, 'строка: что сделано одним предложением и след. шаг');
+check(/^Сделано: .+\(\d+ из \d+ подзадач\)\.$/.test(rowCheck.autoDone) && !!rowCheck.autoNext,
+      'без агента текст строки — из данных: закрытые подзадачи и следующая открытая');
+check(rowCheck.kr, 'шапка группы — KR');
+// клик по строке — активность истории
+await p.click('#deckSlides tr.row[data-key="INIT-112"] td.task');
+await p.waitForTimeout(300);
+const tabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent));
+check(await p.isVisible('#panelStack.open') && (await p.textContent('#stackTitle')) === 'Агрегация каталога и доступности' &&
+      tabs[0].startsWith('История') && tabs[1].startsWith('Подзадачи'), 'клик по строке — сайдбар: активность истории и подзадач');
+check((await p.textContent('#storiesBody')).includes('Бэклог'), 'в активности — перемещение статуса из ленты');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+check(await p.isVisible('#deck') && !(await p.isVisible('#panelStack.open')), 'Esc закрывает сайдбар, колода остаётся');
+// клик по KR — объём эпика
+await p.click('#deckSlides tr.grp.kr >> nth=0');
+await p.waitForTimeout(300);
+const krTabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]));
+check(krTabs.join('|') === 'Выполнено|В работе|Осталось', 'клик по KR — сайдбар «Выполнено / В работе / Осталось»');
+const krSum = await p.evaluate(() => {
+  const e = TEAMS[0].epics[0], n = [...document.querySelectorAll('.side-tab')].reduce((a, b) => a + parseInt(b.textContent.split(' · ')[1], 10), 0);
+  return { n, scope: e.scope.length };
+});
+check(krSum.n === krSum.scope, 'в сайдбаре KR — весь объём эпика');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+// ПКМ — комментарий
+await p.click('#deckSlides tr.row[data-key="INIT-136"] td.task', { button: 'right' });
+check(await p.isVisible('#cpop') && (await p.textContent('#cpopTarget')).includes('INIT-136'), 'правый клик по строке — комментарий к истории');
 await p.fill('#cpopText', 'Уточнить дату выкатки');
 await p.press('#cpopText', 'Enter');
 check(await p.evaluate(() => document.querySelector('#deckSlides tr.row[data-key="INIT-136"]').classList.contains('commented')),
-      'строка с правкой помечена, как в эталоне');
-await p.click('#deckTocBtn');
-await p.click('#deckTocList a >> nth=-1');
-await p.waitForTimeout(500);
-check(await p.isHidden('#deckToc'), 'переход по оглавлению закрывает его');
+      'строка с комментарием помечена');
+// редактирование текста
+await p.click('#deckEdit');
+const edEl = p.locator('[data-edit="done:INIT-136"]');
+await edEl.click();
+await p.keyboard.press('End');
+await p.keyboard.type(' Показали PO.');
+await p.keyboard.press('Enter');
+check(!(await p.isVisible('#panelStack.open')), 'в режиме правки клик не открывает сайдбар');
+await p.click('#deckEdit');
+await p.reload();
+await p.waitForTimeout(300);
+check((await p.textContent('[data-edit="done:INIT-136"]')).endsWith('Показали PO.'), 'правка текста сохраняется и переживает перезагрузку');
+p.once('dialog', d => d.accept());
+await p.click('#deckReset');
+await p.waitForTimeout(200);
+check((await p.textContent('[data-edit="done:INIT-136"]')) === 'Метрики загрузчика собраны, дашборд на ревью.', '«Вернуть текст» возвращает исходный');
 await p.keyboard.press('Escape');
 check(await p.isHidden('#deck') && (await p.evaluate(() => location.hash)) === '', 'Esc закрывает презентацию и чистит адрес');
 await p.goto(pathToFileURL(page).href + '#presentation');

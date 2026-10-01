@@ -166,7 +166,8 @@ class CheckTest(unittest.TestCase):
 
     def test_business_okr_and_risk_numbers_not_checked(self):
         """Цели OKR, риски и договорённости — из документов PO: их числа с фактами спринта не сверить."""
-        self.biz()['streams']['INIT-101']['okr'] = 'OBJ 7 · KR 7.4 — +15% конверсии партнёрских заказов'
+        self.biz()['streams']['INIT-101']['kr'] = 'KR 7.4 — +15% конверсии партнёрских заказов'
+        self.biz()['objectives']['OBJ 1'] = 'Удвоить партнёрские продажи к 2027'
         self.biz()['risks'][0]['text'] = 'Коммитмент на 30 сентября: 15 партнёров на новом API, сдвиг на Q4.'
         errors, warnings = self.check(self.doc)
         self.assertEqual(([], []), (errors, warnings))
@@ -174,16 +175,26 @@ class CheckTest(unittest.TestCase):
     def test_business_texts_fit_the_slide(self):
         self.biz()['rows']['INIT-132']['next'] = 'Очень длинно. ' * 20
         errors, _ = self.check(self.doc)
-        self.assertTrue(any('business.rows.INIT-132.next: длиннее 120' in e for e in errors), errors)
+        self.assertTrue(any('business.rows.INIT-132.next: длиннее 100' in e for e in errors), errors)
 
     def test_business_row_numbers_and_keys_checked(self):
-        self.biz()['rows']['INIT-136']['facts'] = ['Готово 913.4% — выдумка про INIT-55555.']
+        self.biz()['rows']['INIT-136']['done'] = 'Готово 913.4% — выдумка про INIT-55555.'
         errors, warnings = self.check(self.doc)
         self.assertTrue(any('INIT-55555' in e for e in errors), errors)
         self.assertTrue(any('числа 913.4' in w for w in warnings), warnings)
 
     def test_business_verdict_is_fixed(self):
         self.biz()['streams']['INIT-125']['verdict'] = 'почти'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
+    def test_business_obj_must_be_named(self):
+        self.biz()['streams']['INIT-101']['obj'] = 'OBJ 9'
+        _, warnings = self.check(self.doc)
+        self.assertTrue(any('цели OBJ 9 нет в objectives' in w for w in warnings), warnings)
+
+    def test_business_old_row_format_rejected(self):
+        self.biz()['rows']['INIT-136'] = {'facts': ['старый формат']}
         errors, _ = self.check(self.doc)
         self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
 
@@ -267,7 +278,8 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual('risk', ins['observations'][0]['level'], 'первым — главное')
         self.assertNotIn('insights', teams['mobile'], 'у команды без инсайдов поля нет')
         self.assertEqual('OBJ 1 · KR 1.1 — заказы от партнёров без ручного ввода',
-                         ins['business']['streams']['INIT-101']['okr'], 'бизнес-блок едет на страницу')
+                         ins['business']['streams']['INIT-101']['obj'] + ' · ' + ins['business']['streams']['INIT-101']['kr'],
+                         'бизнес-блок едет на страницу')
 
     def test_apply_refuses_bad_file_and_keeps_page(self):
         doc = self.ws.example()

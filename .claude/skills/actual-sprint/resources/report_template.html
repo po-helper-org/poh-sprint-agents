@@ -863,10 +863,6 @@
   .fslide h1.slide-title { font-size: 30px; font-weight: 400; margin: 0 0 4px; color: #111; }
   .fslide .slide-sub { font-size: 14px; color: #666; margin: 0 0 18px; }
   .fslide .slide-sub [title] { border-bottom: 1px dotted #aaa; cursor: help; }
-  .fslide .legend { position: absolute; top: 32px; right: 40px; display: flex; gap: 8px; }
-  .fslide .legend .pill { font-size: 10px; text-align: center; line-height: 1.25; padding: 6px 10px;
-                          border-radius: 2px; border: 1px solid var(--gray-dark); min-width: 92px; }
-  .pill.green { background: var(--green-pill); } .pill.yellow { background: var(--yellow-pill); } .pill.red { background: var(--red-pill); }
 
   table.rep { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
   table.rep col.c1 { width: 26%; } table.rep col.c2 { width: 58%; } table.rep col.c3 { width: 16%; }
@@ -884,6 +880,35 @@
   table.rep tr.row:hover td { box-shadow: inset 0 0 0 9999px rgba(0,0,0,.03); }
   table.rep tr.commented td:first-child { box-shadow: inset 3px 0 0 #1a7a1a; }
   table.rep tr.grp td { background: #f3f3f3; font-size: 12.5px; padding: 7px 12px; color: #333; }
+  table.rep tr.grp.kr { cursor: pointer; }
+  table.rep tr.grp.kr:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  table.rep .kr-open { float: right; color: #888; font-size: 16px; line-height: 1; }
+  table.rep .blk { margin-top: 4px; }
+  table.rep .next .ed, table.rep .blk .ed { font-weight: 400; }
+  table.rep td > div.ed { font-weight: 400; }
+  .fslide .outliers { display: none; }
+  .risk-team { font-weight: 400; color: #666; }
+  /* режим «Редактировать текст»: всё, что можно править, — с пунктиром */
+  .deck.editing .ed { outline: 1px dashed #b9b9b9; outline-offset: 2px; cursor: text; border-radius: 2px; }
+  .deck.editing .ed:focus { outline: 2px solid #1a7a1a; background: #fff; }
+  .deck.editing .ed.edited { background: #fffbe6; }
+  .deck.editing tr.row, .deck.editing tr.grp.kr { cursor: text; }
+  .deck-bar button[aria-pressed="true"] { background: #1a7a1a; border-color: #1a7a1a; color: #fff; }
+  /* операционный отчёт */
+  .ops-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 10px; }
+  .ops-grid .chart-legend { font-size: 10px; }
+  .vel-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; margin-top: 14px; align-items: start; }
+  table.vtab { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.vtab th, table.vtab td { border: 1px solid var(--gray-border); padding: 8px 10px; text-align: right; }
+  table.vtab th:first-child, table.vtab td:first-child { text-align: left; }
+  table.vtab th { background: #f3f3f3; font-weight: 700; }
+  /* сайдбары поверх колоды: KR и активность истории */
+  body.deck-open .overlay { z-index: 41; }
+  body.deck-open .panel-stack { z-index: 42; }
+  .side-tabs { display: flex; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
+  .side-tab { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); background: var(--bg);
+              color: var(--muted); border-radius: 999px; cursor: pointer; }
+  .side-tab.active { background: var(--fg); border-color: var(--fg); color: var(--bg); }
   table.rep ul { margin: 0; padding-left: 16px; }
   table.rep li { margin-bottom: 3px; }
   table.rep .next { margin-top: 6px; font-weight: 700; }
@@ -952,14 +977,12 @@
   }
   @media (max-width: 700px) {
     .fslide { padding: 20px 16px 28px; }
-    .fslide .legend { position: static; margin: 0 0 10px; flex-wrap: wrap; }
-    .fslide .legend .pill { min-width: 0; }
     .title-slide, .hero-slide { padding-left: 20px; min-height: 60vh; }
     .title-slide h1 { font-size: 34px; } .hero-slide h1 { font-size: 32px; }
     .fslide h1.slide-title { font-size: 22px; }
     table.rep col.c1 { width: 32%; } table.rep col.c2 { width: 46%; } table.rep col.c3 { width: 22%; }
     table.rep td { padding: 8px; font-size: 12px; }
-    .summary-grid, .metrics-grid, .change .ba { grid-template-columns: 1fr; }
+    .summary-grid, .metrics-grid, .change .ba, .ops-grid, .vel-grid { grid-template-columns: 1fr; }
     .deck-bar .hide-narrow { display: none; }
   }
 
@@ -974,6 +997,8 @@
     body.printing .fslide { width: 1280px; box-shadow: none; break-after: page; page-break-after: always;
       -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body.printing table.rep tr.commented td:first-child { box-shadow: none; }
+    body.printing .ed { outline: none !important; background: none !important; }
+    body.printing .kr-open { display: none; }
   }
 </style>
 </head>
@@ -1048,7 +1073,9 @@
     <button id="deckTocBtn" title="Оглавление">Слайды</button>
     <span class="title" id="deckTitle">ФАКТ</span>
     <span class="grow"></span>
-    <button id="deckNotes" class="hide-narrow" title="Правки к колоде: клик по строке таблицы — правка к задаче">Правки (<span id="deckNotesN">0</span>)</button>
+    <button id="deckReset" class="hide-narrow" hidden title="Вернуть исходный текст на всех слайдах">Вернуть текст</button>
+    <button id="deckEdit" aria-pressed="false" title="Править текст прямо на слайдах; правки сохраняются в браузере">Редактировать текст</button>
+    <button id="deckNotes" class="hide-narrow" title="Комментарии: правый клик по строке или слайду">Комментарии (<span id="deckNotesN">0</span>)</button>
     <button id="deckPrint" class="dark" title="Печать или «Сохранить как PDF»: по слайду на страницу">PDF</button>
     <button id="deckClose" aria-label="Закрыть презентацию">✕</button>
   </div>
@@ -2447,14 +2474,16 @@
   // Второй отчёт из тех же данных — по эталону отчётной колоды спринта PO.
   // Отчёт PO (страница выше) нужен для синхронизации с техлидами; колода — для
   // управляющего комитета, PO смежных департаментов и бизнес-заказчиков.
-  // Стрим = эпик, строка = история спринта. «Результат» и факты в «Комментарии»
-  // считаются из данных; цели стримов, причины, следующие шаги, изменения, демо и
-  // риски — бизнес-блок ИИ-агента (/sprint-insights), нет его — нет и этих строк.
+  // Отчёт строится от целей: слайд = OBJ, группа в таблице = KR (эпик), строка =
+  // история спринта. «Результат» и текст строки «что сделано · след. шаг» считаются
+  // из данных; цели, Sprint Goal и формулировки агента — бизнес-блок /sprint-insights.
+  // PO правит любой текст на слайде сам («Редактировать текст»), ПКМ — комментарий.
   var START_MODE = '{{START_MODE}}';           // 'presentation' — файл для комитета
   var deck = document.getElementById('deck');
   var deckSlides = document.getElementById('deckSlides');
   var deckFeed = document.getElementById('deckFeed');
-  var deckRows = {};                             // id строки → { team, target }
+  var deckRefs = {};                             // id → { team, epic, story }
+  var deckEditing = false;
 
   function withTeam(t, fn) {                     // бакеты и корзина — своей команды
     var prev = team.slug;
@@ -2465,15 +2494,10 @@
   var MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа',
                 'сентября', 'октября', 'ноября', 'декабря'];
   function dayMonth(iso) { return iso ? parseInt(iso.slice(8, 10), 10) + ' ' + MONTHS[parseInt(iso.slice(5, 7), 10) - 1] : '—'; }
-  function ddmmhhmm(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) + ' ' + iso.slice(11, 16) : '—'; }
-
-  // дни без смены статуса на момент сбора: колода — снимок, а не живая страница
-  function ageAt(iso, at) {
-    if (!iso) return null;
-    var d = new Date(iso), ref = at ? new Date(at) : new Date();
-    if (isNaN(d.getTime()) || isNaN(ref.getTime())) return null;
-    return Math.max(0, Math.floor((ref.getTime() - d.getTime()) / 86400000));
-  }
+  function ddmm(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : '—'; }
+  function ddmmhhmm(iso) { return iso ? ddmm(iso) + ' ' + iso.slice(11, 16) : '—'; }
+  function isoDay(d) { return d.toISOString().slice(0, 10); }
+  function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
   // Темп — та же идеальная прямая, что в burndown и в PDF /sprint-status.
   function teamPace(t) {
@@ -2515,42 +2539,88 @@
              cls: pct >= 100 ? 'stat-green' : pct >= 50 ? 'stat-yellow' : 'stat-red' };
   }
 
+  // Текст строки — одним предложением «что сделано» и «след. шаг». Из данных:
+  // закрытые подзадачи — это и есть сделанное, первая незакрытая — следующий шаг.
+  var STAGE_SINCE = { progress: 'В работе с ', testing: 'В тестировании с ', review: 'На ревью с ' };
+  var STAGE_NEXT = { progress: 'довести до ревью', testing: 'завершить тестирование', review: 'закрыть ревью',
+                     open: 'взять в работу' };
+  function listTitles(items) {
+    var t = items.map(function (s) { return s.summary || s.title; });
+    return t.slice(0, 2).join(', ') + (t.length > 2 ? ' и ещё ' + (t.length - 2) : '');
+  }
+  function autoText(st, r) {
+    var subs = st.subtasks || [];
+    var bucketOf = function (s) { return classifyBucket(s.status, s.category); };
+    var closed = subs.filter(function (s) { return bucketOf(s) === 'done'; });
+    var open = subs.filter(function (s) { return bucketOf(s) !== 'done'; });
+    var done;
+    if (r.bucket === 'done') done = closed.length ? 'Сделано: ' + listTitles(closed) + '.' : 'История закрыта.';
+    else if (closed.length) done = 'Сделано: ' + listTitles(closed) + ' (' + closed.length + ' из ' + subs.length + ' подзадач).';
+    else if (r.bucket === 'blocked') done = 'Стоит с ' + ddmm(st.statusChanged) + ': статус «' + st.status + '».';
+    else if (r.bucket === 'open') done = 'Не начата.';
+    else done = (STAGE_SINCE[r.bucket] || 'В работе с ') + ddmm(st.statusChanged) + '.';
+    var next = '';
+    if (r.bucket === 'blocked') next = 'снять блокер';
+    else if (r.bucket !== 'done') {
+      var active = open.filter(function (s) { return ['progress', 'testing', 'review', 'blocked'].indexOf(bucketOf(s)) !== -1; });
+      var pick = active[0] || open[0];
+      next = pick ? pick.summary : STAGE_NEXT[r.bucket] || '';
+    }
+    return { done: done, next: next };
+  }
+
   function biz(t) { return (t.insights && t.insights.business) || {}; }
 
-  // все строки колоды команды: стрим (эпик) → истории спринта
+  // все строки команды: KR (эпик) → истории спринта
   function teamStreams(t) {
-    var at = t._meta && t._meta.collectedAt;
     return withTeam(t, function () {
       return (t.epics || []).filter(function (e) { return (e.stories || []).length; }).map(function (e) {
         var rows = e.stories.map(function (st) {
-          var r = storyResult(st);
-          var subs = st.subtasks || [];
-          var subsDone = subs.filter(function (s) { return classifyBucket(s.status, s.category) === 'done'; }).length;
-          return { st: st, r: r, age: ageAt(st.statusChanged, at), subs: subs.length, subsDone: subsDone,
-                   target: itemTarget('story', st, e), ai: (biz(t).rows || {})[st.key] };
+          var r = storyResult(st), auto = autoText(st, r), ai = (biz(t).rows || {})[st.key] || {};
+          return { st: st, r: r, target: itemTarget('story', st, e),
+                   done: ai.done || auto.done, next: ai.next || auto.next, blocker: ai.blocker || '', ai: !!(ai.done || ai.next) };
         }).sort(function (a, b) { return b.r.pct - a.r.pct; });
-        return { epic: e, rows: rows, ai: e.epicKey ? (biz(t).streams || {})[e.epicKey] : null };
+        return { epic: e, rows: rows, ai: e.epicKey ? (biz(t).streams || {})[e.epicKey] || {} : {} };
       });
     });
   }
 
-  function commentHtml(row) {
-    var ai = row.ai || {}, st = row.st, li = [];
-    (ai.facts || []).forEach(function (f) { li.push(esc(f)); });
-    if (!li.length) {                                 // факты из данных, если агент не писал
-      if (row.r.bucket === 'done') li.push('Закрыта · статус «' + esc(st.status) + '»');
-      else li.push('Статус «' + esc(st.status) + '»' + (row.age !== null ? ', без движения ' + row.age + ' дн.' : ''));
-      if (row.subs) li.push('Подзадачи: закрыто ' + row.subsDone + ' из ' + row.subs);
-    }
-    if (ai.reason) li.push('<b>Причина:</b> ' + esc(ai.reason));
-    if (ai.blocker) li.push('<b>Блокер:</b> ' + esc(ai.blocker));
-    else if (row.r.bucket === 'blocked' && !ai.facts) li.push('<b>Блокер:</b> ждёт решения' + (row.age !== null ? ' ' + row.age + ' дн.' : ''));
-    return '<ul>' + li.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>' +
-      (ai.next ? '<div class="next">След. шаг: <span class="next-item">' + esc(ai.next) + '</span></div>' : '');
+  // слайд = цель (OBJ). Эпики без цели — «Без привязки к OKR».
+  function objGroups(t, streams) {
+    var by = {}, order = [];
+    streams.forEach(function (s) {
+      var k = s.ai.obj || '';
+      if (!by[k]) { by[k] = []; order.push(k); }
+      by[k].push(s);
+    });
+    order.sort(function (a, b) { return !a ? 1 : !b ? -1 : a.localeCompare(b, 'ru', { numeric: true }); });
+    var names = biz(t).objectives || {};
+    return order.map(function (k) {
+      return { obj: k, title: k ? (names[k] ? k + ': ' + names[k] : k) : 'Без привязки к OKR', streams: by[k] };
+    });
   }
 
-  var LEGEND = '<div class="legend"><div class="pill green">выполнено-<br>100%</div>' +
-    '<div class="pill yellow">в работе<br>сделано от<br>50% до 99%</div><div class="pill red">в работе<br>сделано до<br>50%</div></div>';
+  // До восьми строк на слайд; шапка KR — тоже строка: слайд остаётся 1280×720.
+  var ROWS_PER_SLIDE = 8;
+  function packStreams(streams) {
+    var pages = [], cur = [], n = 0;
+    streams.forEach(function (s) {
+      var need = s.rows.length + 1;
+      if (cur.length && n + need > ROWS_PER_SLIDE) { pages.push(cur); cur = []; n = 0; }
+      cur.push(s); n += need;
+    });
+    if (cur.length) pages.push(cur);
+    return pages;
+  }
+
+  // Правки текста PO: хранятся в браузере, по месту на слайде.
+  function editsKey() { return 'actual-sprint:deck-text:' + TEAMS.map(function (t) { return t.slug + '@' + t.sprintName; }).join(','); }
+  function loadEdits() { try { return JSON.parse(localStorage.getItem(editsKey()) || '{}') || {}; } catch (e) { return {}; } }
+  function saveEdits(map) { try { localStorage.setItem(editsKey(), JSON.stringify(map)); } catch (e) { /* без хранилища правки живут до перезагрузки */ } }
+  function ed(id, text, tag) {
+    tag = tag || 'span';
+    return '<' + tag + ' class="ed" data-edit="' + esc(id) + '">' + esc(text) + '</' + tag + '>';
+  }
 
   var slideNo = 0;
   function slide(cls, inner, attrs) {
@@ -2576,82 +2646,131 @@
     var start = paces.map(function (p) { return p.start; }).sort()[0];
     var end = paces.map(function (p) { return p.end; }).sort().pop();
     var at = TEAMS.map(function (t) { return t._meta && t._meta.collectedAt; }).filter(Boolean).sort().pop();
-    var running = sprintRunning();
     var p0 = paces[0];
     return slide('title-slide',
-      '<div class="kicker">Команды: ' + TEAMS.map(function (t) { return esc(t.team); }).join(' · ') + '</div>' +
-      '<h1>ФАКТ | ' + esc(sprintLabel()) + '</h1><div class="author">PO</div>' +
+      '<div class="kicker">' + ed('title:kicker', 'Команды: ' + TEAMS.map(function (t) { return t.team; }).join(' · ')) + '</div>' +
+      '<h1>' + ed('title:h1', 'ФАКТ | ' + sprintLabel()) + '</h1><div class="author">' + ed('title:author', 'PO') + '</div>' +
       '<div class="meta">Период: ' + dayMonth(start) + ' — ' + dayMonth(end) + ' ' + (end || '').slice(0, 4) + '<br>' +
       'Спринты: ' + TEAMS.map(function (t) { return esc(t.team + ' — ' + t.sprintName); }).join('; ') + '<br>' +
-      'Статус: ' + (running ? 'идёт' + (p0 ? ', рабочий день ' + p0.workday + ' из ' + p0.workdays : '') : 'закрыт') + '<br>' +
-      'Данные JIRA на ' + ddmmhhmm(at) + ' · цифры собраны скриптом</div>');
+      'Статус: ' + (sprintRunning() ? 'идёт' + (p0 ? ', рабочий день ' + p0.workday + ' из ' + p0.workdays : '') : 'закрыт') + '<br>' +
+      'Данные JIRA на ' + ddmmhhmm(at) + '</div>');
   }
 
-  function heroSlide(t, streams) {
-    var titles = streams.filter(function (s) { return s.epic.epicKey; }).map(function (s) { return s.epic.epicTitle; });
+  function heroSlide(t, groups) {
+    var objs = groups.filter(function (g) { return g.obj; }).map(function (g) { return g.title; });
+    var sub = objs.length ? objs.join(' · ') : groups.reduce(function (a, g) {
+      return a.concat(g.streams.filter(function (s) { return s.epic.epicKey; }).map(function (s) { return s.epic.epicTitle; }));
+    }, []).slice(0, 4).join(', ');
     return slide('hero-slide', '<div class="hero-line"></div><h1>' + esc(t.team) + '</h1>' +
-      '<div class="hero-sub">' + esc(titles.slice(0, 4).join(', ') + (titles.length > 4 ? ' и ещё ' + (titles.length - 4) : '')) + '</div>',
-      ' data-kind="команда"');
+      '<div class="hero-sub">' + ed('hero:' + t.slug, sub) + '</div>', ' data-kind="команда" data-team="' + esc(t.slug) + '"');
   }
 
-  // Стрим на восемь строк живёт на одном слайде; мелкие стримы команды делят
-  // слайд — каждый своей шапкой в таблице, чтобы колода оставалась краткой.
-  var ROWS_PER_SLIDE = 8;
-  function packStreams(streams) {
-    var pages = [], cur = [], n = 0;
-    streams.forEach(function (s) {
-      // шапка стрима на общем слайде — тоже строка: слайд должен остаться 1280×720
-      var need = s.rows.length + 1;
-      if (cur.length && n + need > ROWS_PER_SLIDE) { pages.push(cur); cur = []; n = 0; }
-      cur.push(s); n += need;
-    });
-    if (cur.length) pages.push(cur);
-    return pages;
-  }
-
-  function streamMeta(s) {
-    var ai = s.ai || {}, parts = [];
-    var done = s.rows.filter(function (r) { return r.r.pct >= 100; }).length;
-    if (ai.okr) parts.push(esc(ai.okr));
+  function krHeader(t, s) {
+    var e = s.epic, ai = s.ai, done = s.rows.filter(function (r) { return r.r.pct >= 100; }).length;
+    var id = 'k' + Object.keys(deckRefs).length;
+    deckRefs[id] = { team: t, epic: e };
+    var head = ai.kr ? ed('kr:' + (e.epicKey || e.rowId), ai.kr, 'b') + ' · эпик «' + esc(e.epicTitle) + '»'
+                     : '<b>' + esc(e.epicKey ? 'Эпик «' + e.epicTitle + '»' : 'Без эпика') + '</b>';
+    var tail;
     if (ai.verdict) {
       var tip = [ai.promise && 'Обещали: ' + ai.promise, ai.shown && 'Показываем: ' + ai.shown].filter(Boolean).join(' ');
-      parts.push('<span' + (tip ? ' title="' + esc(tip) + '"' : '') + '>Sprint Goal: ' + esc(ai.verdict) + '</span>');
-    } else {
-      parts.push('закрыто ' + done + ' из ' + s.rows.length);
-    }
-    return parts.join(' · ');
+      tail = '<span' + (tip ? ' title="' + esc(tip) + '"' : '') + '>Sprint Goal: ' + esc(ai.verdict) + '</span>';
+    } else tail = 'закрыто ' + done + ' из ' + s.rows.length;
+    return '<tr class="grp' + (e.epicKey ? ' kr' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
+      ctxAttr(e.epicKey ? epicTarget(e) : { kind: 'general', title: 'Без эпика' }) +
+      (e.epicKey ? ' title="Открыть KR: выполнено / в работе / осталось"' : '') + '><td colspan="3">' +
+      head + ' · ' + tail + (e.epicKey ? '<span class="kr-open">›</span>' : '') + '</td></tr>';
   }
 
-  function streamSlide(t, page) {
-    var single = page.length === 1, s0 = page[0];
-    var name = function (s) { return s.epic.epicTitle || 'Без эпика'; };
-    var title = single ? name(s0) : 'Стримы: ' + t.team;
-    var sub = esc(t.sprintName) + (single ? ' · стрим «' + esc(name(s0)) + '» · ' + streamMeta(s0)
-                                          : ' · ' + page.map(function (s) { return '«' + esc(name(s)) + '»'; }).join(', '));
+  function storyRow(t, s, r) {
+    var id = 'r' + Object.keys(deckRefs).length;
+    deckRefs[id] = { team: t, epic: s.epic, story: r.st };
+    var k = r.st.key;
+    return '<tr class="row ' + r.r.cls + '" data-ref="' + id + '" data-key="' + esc(k) + '" data-team="' + esc(t.slug) + '"' +
+      ctxAttr(r.target) + ' title="Открыть активность по истории">' +
+      '<td class="task">' + esc(r.st.title) + '<span class="role">' + esc(k) + '</span></td>' +
+      '<td>' + ed('done:' + k, r.done, 'div') +
+        (r.blocker ? '<div class="blk"><b>Блокер:</b> ' + ed('blocker:' + k, r.blocker) + '</div>' : '') +
+        (r.next ? '<div class="next">След. шаг: ' + ed('next:' + k, r.next, 'span') + '</div>' : '') + '</td>' +
+      '<td class="result"><span title="' + esc(r.r.how) + '">' + r.r.flag + r.r.pct + '%</span></td></tr>';
+  }
+
+  function objSlide(t, g, page, part, parts) {
     var rows = '';
     page.forEach(function (s) {
-      if (!single) rows += '<tr class="grp"><td colspan="3"><b>' + esc(name(s)) + '</b> · ' + streamMeta(s) + '</td></tr>';
-      rows += streamRows(t, s);
+      rows += krHeader(t, s);
+      rows += s.rows.map(function (r) { return storyRow(t, s, r); }).join('');
     });
-    var usedAi = page.some(function (s) { return s.ai || s.rows.some(function (r) { return r.ai; }); });
-    return slide('', '<h1 class="slide-title">' + esc(title) + '</h1>' +
-      '<div class="slide-sub">' + sub + '</div>' + LEGEND +
+    var usedAi = page.some(function (s) { return s.ai.kr || s.ai.verdict || s.rows.some(function (r) { return r.ai; }); });
+    return slide('', '<h1 class="slide-title">' + ed('obj:' + t.slug + ':' + (g.obj || '-') + ':' + part, g.title + (parts > 1 ? ' · ' + (part + 1) + '/' + parts : '')) + '</h1>' +
       '<table class="rep"><colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>' +
       '<thead><tr><th>Задачи</th><th>Комментарий</th><th>Результат</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-      '<p class="sort-note">Сортировка: по убыванию результата' + (single ? '' : ' внутри стрима') + '</p>' +
-      (usedAi ? '<p class="ai-note">Sprint Goal, причины и следующие шаги — интерпретация ИИ-агента PO по данным спринта</p>' : ''),
-      ' data-team="' + esc(t.slug) + '"');
+      (usedAi ? '<p class="ai-note">Цели, Sprint Goal и формулировки строк — ИИ-агент PO по данным спринта; правьте прямо на слайде</p>' : ''),
+      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: t.team + ' · ' + g.title }));
   }
 
-  function streamRows(t, s) {
-    return s.rows.map(function (r) {
-      var id = 'r' + (Object.keys(deckRows).length + 1);
-      deckRows[id] = { team: t, target: r.target };
-      return '<tr class="row ' + r.r.cls + '" data-row="' + id + '" data-key="' + esc(r.st.key) + '" data-team="' + esc(t.slug) + '">' +
-        '<td class="task">' + esc(r.st.title) + '<span class="role">' + esc(r.st.key) + '</span></td>' +
-        '<td>' + commentHtml(r) + '</td>' +
-        '<td class="result"><span title="' + esc(r.r.how) + '">' + r.r.flag + r.r.pct + '%</span></td></tr>';
-    }).join('');
+  // ---------- операционный отчёт команды: управление по трём окнам и производительность ----------
+  function windowStats(c, pts, risks) {
+    pts = pts.slice().sort(function (a, b) { return a.doneAt < b.doneAt ? -1 : 1; });
+    if (!pts.length) return { points: [], risks: risks || [], days: c.days, today: c.today };
+    var xs = pts.map(function (p) { return p.cycle; });
+    var mean = xs.reduce(function (a, v) { return a + v; }, 0) / xs.length;
+    var sd = Math.sqrt(xs.reduce(function (a, v) { return a + (v - mean) * (v - mean); }, 0) / xs.length);
+    var sorted = xs.slice().sort(function (a, b) { return a - b; });
+    var mid = Math.floor(sorted.length / 2);
+    var median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    var r1 = function (v) { return Math.round(v * 10) / 10; };
+    var limit = Math.round((mean + sd) * 100) / 100;
+    return { points: pts.map(function (p) { return Object.assign({}, p, { outlier: p.cycle > limit }); }),
+             risks: risks || [], days: c.days, today: c.today, mean: r1(mean), median: r1(median), sd: r1(sd), limit: limit,
+             outliers: pts.filter(function (p) { return p.cycle > limit; }).length };
+  }
+
+  function controlCards(t, kind) {
+    var c = (t.control || {})[kind] || {};
+    var at = (t._meta && t._meta.collectedAt) || new Date().toISOString();
+    var today = new Date(at.slice(0, 10) + 'T12:00:00');
+    var back = function (n) { return isoDay(new Date(today.getTime() - n * 86400000)); };
+    var cur0 = back(13), prev0 = back(27), prev1 = back(14);
+    var pts = c.points || [];
+    var wins = [
+      { title: 'Общий · ' + (c.days || '—') + ' дн.', c: windowStats(c, pts, c.risks) },
+      { title: 'Прошлые 2 недели · ' + ddmm(prev0) + '–' + ddmm(prev1),
+        c: windowStats(c, pts.filter(function (p) { return p.doneAt >= prev0 && p.doneAt <= prev1; }), []) },
+      { title: 'Текущие 2 недели · ' + ddmm(cur0) + '–' + ddmm(isoDay(today)),
+        c: windowStats(c, pts.filter(function (p) { return p.doneAt >= cur0; }), c.risks) }
+    ];
+    return withTeam(t, function () {
+      return wins.map(function (w) {
+        var stat = w.c.points.length ? 'закрыто ' + w.c.points.length + ' · медиана ' + fmt(w.c.median) + ' дн. · среднее ' +
+          fmt(w.c.mean) + ' дн. · выбросов ' + w.c.outliers : 'закрытых задач нет';
+        return '<div class="metric-card"><h3>' + esc(w.title) + '</h3>' +
+          (w.c.points.length ? controlChart(w.c, kind === 'stories' ? 'историй' : 'подзадач', kind === 'stories' ? 'story' : 'subtask')
+                             : '<div class="m-muted">Нет закрытых задач в окне.</div>') +
+          '<p>' + esc(stat) + '</p></div>';
+      }).join('');
+    });
+  }
+
+  function opsSlides(t) {
+    var attrs = ' data-team="' + esc(t.slug) + '"';
+    var vel = (t.velocity && t.velocity.sprints) || [];
+    var table = '<table class="vtab"><thead><tr><th>Спринт</th><th>Запланировано</th><th>Сделано</th><th>%</th></tr></thead><tbody>' +
+      vel.map(function (s) {
+        return '<tr><td>' + esc(s.name) + '</td><td>' + s.planned + '</td><td>' + s.done + '</td><td>' +
+          (s.planned ? Math.round(100 * s.done / s.planned) : 0) + '%</td></tr>';
+      }).join('') + '</tbody></table>';
+    var unit = (t.velocity && t.velocity.unit) || 'задач';
+    return slide('ops', '<h1 class="slide-title">Операционный отчёт · ' + esc(t.team) + '</h1>' +
+        '<div class="slide-sub">Диаграмма управления — истории: Cycle Time закрытых, точки выше красной линии — выбросы</div>' +
+        '<div class="ops-grid">' + controlCards(t, 'stories') + '</div>', attrs) +
+      slide('ops', '<h1 class="slide-title">Операционный отчёт · ' + esc(t.team) + '</h1>' +
+        '<div class="slide-sub">Диаграмма управления — подзадачи</div>' +
+        '<div class="ops-grid">' + controlCards(t, 'subtasks') + '</div>', attrs) +
+      slide('ops', '<h1 class="slide-title">Операционный отчёт · ' + esc(t.team) + '</h1>' +
+        '<div class="slide-sub">Производительность: запланировано и сделано, ' + esc(unit) + '; среднее сделанное — ' +
+          fmt(t.velocity && t.velocity.avgDone) + '</div>' +
+        '<div class="vel-grid"><div class="metric-card">' + withTeam(t, velocityChart) + '</div>' + table + '</div>', attrs);
   }
 
   function changesSlide() {
@@ -2660,47 +2779,35 @@
       var p = teamPace(t);
       if (p && p.scope !== p.scopeStart) moved.push({ t: t, p: p });
     });
-    // объём из данных — одной карточкой на все команды: было → стало по burndown
     if (moved.length) {
-      cards.push({ who: 'объём спринта · ' + moved.map(function (m) { return m.t.team; }).join(', '),
+      cards.push({ id: 'scope', who: 'объём спринта · ' + moved.map(function (m) { return m.t.team; }).join(', '),
         before: moved.map(function (m) { return m.t.team + ' — ' + m.p.scopeStart; }).join(' · ') + ' задач на старте',
         after: moved.map(function (m) { return m.t.team + ' — ' + m.p.scope; }).join(' · ') + ' задач сейчас',
         out: moved.map(function (m) { var d = m.p.scope - m.p.scopeStart; return m.t.team + ' ' + (d > 0 ? '+' : '−') + Math.abs(d); }).join(', ') +
              ' после старта. Ёмкость под это не резервировалась.' });
     }
     TEAMS.forEach(function (t) {
-      (biz(t).changes || []).forEach(function (c) { cards.push({ who: t.team + ' · ' + c.affected, before: c.before, after: c.after, out: c.outcome }); });
+      (biz(t).changes || []).forEach(function (c, i) {
+        cards.push({ id: t.slug + i, who: t.team + ' · ' + c.affected, before: c.before, after: c.after, out: c.outcome });
+      });
     });
     if (!cards.length) return '';
-    return slide('', '<h1 class="slide-title">Изменения в процессе спринта</h1><div class="slide-sub">' + esc(sprintLabel()) + ' · договорённости и объём</div>' +
+    return slide('', '<h1 class="slide-title">Изменения в процессе спринта</h1>' +
       cards.map(function (c) {
-        return '<div class="change"><div class="who">Затронуто: ' + esc(c.who) + '</div><div class="ba"><div><b>Было</b>' + esc(c.before || '—') +
-          '</div><div><b>Стало</b>' + esc(c.after || '—') + '</div></div>' + (c.out ? '<p class="out">' + esc(c.out) + '</p>' : '') + '</div>';
-      }).join(''));
+        return '<div class="change"><div class="who">Затронуто: ' + esc(c.who) + '</div><div class="ba"><div><b>Было</b>' +
+          ed('chg:' + c.id + ':b', c.before || '—') + '</div><div><b>Стало</b>' + ed('chg:' + c.id + ':a', c.after || '—') + '</div></div>' +
+          (c.out ? '<p class="out">' + ed('chg:' + c.id + ':o', c.out) + '</p>' : '') + '</div>';
+      }).join(''), ctxAttr({ kind: 'slide', title: 'Изменения в процессе спринта' }));
   }
 
   function demoSlide() {
     var items = [];
-    TEAMS.forEach(function (t) { (biz(t).demo || []).forEach(function (d) { items.push({ team: t.team, d: d }); }); });
+    TEAMS.forEach(function (t) { (biz(t).demo || []).forEach(function (d, i) { items.push({ id: t.slug + i, team: t.team, d: d }); }); });
     if (!items.length) return '';
-    return slide('', '<h1 class="slide-title">Демо</h1><div class="slide-sub">' + esc(sprintLabel()) + ' · показываем руками</div><ul class="demo">' +
+    return slide('', '<h1 class="slide-title">Демо</h1><ul class="demo">' +
       items.map(function (x) {
-        return '<li>' + esc(x.d.what) + '<span class="cap"> — ' + esc(x.team) + (x.d.minutes ? ', ' + x.d.minutes + ' мин' : '') + '</span></li>';
-      }).join('') + '</ul>');
-  }
-
-  function aiCaption(t, abouts) {
-    var obs = (t.insights && t.insights.observations) || [];
-    var hit = obs.filter(function (o) { return abouts.indexOf(o.about) !== -1; })[0];
-    return hit ? '<p>' + esc(hit.text) + '</p>' : '';
-  }
-
-  function metricsSlide(t) {
-    var bd = withTeam(t, burndownChart), vel = withTeam(t, velocityChart);
-    return slide('', '<h1 class="slide-title">Метрики ' + esc(t.team) + '</h1><div class="slide-sub">' + esc(t.sprintName) + ' · процессные метрики</div>' +
-      '<div class="metrics-grid"><div class="metric-card"><h3>Burndown спринта</h3>' + bd + aiCaption(t, ['burndown', 'sprint']) + '</div>' +
-      '<div class="metric-card"><h3>Производительность, 3 спринта</h3>' + vel + aiCaption(t, ['velocity', 'team']) + '</div></div>',
-      ' data-team="' + esc(t.slug) + '"');
+        return '<li>' + ed('demo:' + x.id, x.d.what) + '<span class="cap"> — ' + esc(x.team) + (x.d.minutes ? ', ' + x.d.minutes + ' мин' : '') + '</span></li>';
+      }).join('') + '</ul>', ctxAttr({ kind: 'slide', title: 'Демо' }));
   }
 
   function totalsSlide(all) {
@@ -2708,7 +2815,6 @@
     all.forEach(function (x) { x.streams.forEach(function (s) { s.rows.forEach(function (r) { rows.push({ t: x.t, r: r }); }); }); });
     var g = rows.filter(function (x) { return x.r.r.pct >= 100; }).length;
     var y = rows.filter(function (x) { return x.r.r.pct >= 50 && x.r.r.pct < 100; }).length;
-    var streams = all.reduce(function (n, x) { return n + x.streams.length; }, 0);
     var blocked = [];
     all.forEach(function (x) {
       var at = x.t._meta && x.t._meta.collectedAt;
@@ -2717,53 +2823,58 @@
           (e.stories || []).forEach(function (st) {
             [st].concat(st.subtasks || []).forEach(function (it) {
               if (classifyBucket(it.status, it.category) === 'blocked') {
-                blocked.push({ title: it.title || it.summary, key: it.key, status: it.status, age: ageAt(it.statusChanged, at), team: x.t.team });
+                blocked.push({ title: it.title || it.summary, key: it.key, since: it.statusChanged, at: at, team: x.t.team });
               }
             });
           });
         });
       });
     });
-    blocked.sort(function (a, b) { return (b.age || 0) - (a.age || 0); });
+    blocked.sort(function (a, b) { return (a.since || '') < (b.since || '') ? -1 : 1; });
     var carry = rows.filter(function (x) { return x.r.r.pct < 100; }).sort(function (a, b) { return b.r.r.pct - a.r.r.pct; });
     var more = function (n, max) { return n > max ? '<li class="more">и ещё ' + (n - max) + '</li>' : ''; };
     return slide('', '<h1 class="slide-title">Итоги спринта ' + esc(sprintLabel()) + '</h1>' +
-      '<div class="slide-sub">' + rows.length + ' историй по ' + streams + ' стримам · ' + TEAMS.map(function (t) { return esc(t.team); }).join(' + ') + '</div>' +
+      '<div class="slide-sub">' + rows.length + ' историй · ' + TEAMS.map(function (t) { return esc(t.team); }).join(' + ') + '</div>' +
       '<div class="summary-grid"><div class="fkpi green"><div class="n">' + g + '</div><div class="label">завершено на 100%</div></div>' +
       '<div class="fkpi yellow"><div class="n">' + y + '</div><div class="label">в работе, 50–99%</div></div>' +
       '<div class="fkpi red"><div class="n">' + (rows.length - g - y) + '</div><div class="label">до 50% / заблокировано</div></div></div>' +
-      '<div class="frisks"><h2>Ключевые риски и блокеры</h2><ul>' + (blocked.length ? blocked.slice(0, 5).map(function (b) {
-        return '<li><b>' + esc(b.title) + ' 🛑</b> — «' + esc(b.status) + '»' + (b.age !== null ? ' ' + b.age + ' дн.' : '') + ' · ' + esc(b.key) + ' · ' + esc(b.team) + '</li>';
+      '<div class="frisks"><h2>Ключевые блокеры</h2><ul>' + (blocked.length ? blocked.slice(0, 5).map(function (b) {
+        return '<li><b>' + esc(b.title) + ' 🛑</b> — стоит с ' + ddmm(b.since) + ' · ' + esc(b.key) + ' · ' + esc(b.team) + '</li>';
       }).join('') + more(blocked.length, 5) : '<li>Блокеров нет</li>') + '</ul></div>' +
       '<div class="frisks"><h2>' + (sprintRunning() ? 'Не закрыто на сегодня — кандидаты на перенос' : 'Переносим в следующий спринт') + '</h2><ul>' + (carry.length ? carry.slice(0, 6).map(function (x) {
-        var why = x.r.ai && (x.r.ai.reason || x.r.ai.next) || ('статус «' + x.r.st.status + '»');
-        return '<li><b>' + esc(x.r.st.title) + '</b> — ' + x.r.r.flag + x.r.r.pct + '%, ' + esc(why) + '</li>';
-      }).join('') + more(carry.length, 6) : '<li>Всё закрыто</li>') + '</ul></div>');
+        return '<li><b>' + esc(x.r.st.title) + '</b> — ' + x.r.r.flag + x.r.r.pct + '%' + (x.r.next ? ', след. шаг: ' + esc(x.r.next) : '') + '</li>';
+      }).join('') + more(carry.length, 6) : '<li>Всё закрыто</li>') + '</ul></div>', ctxAttr({ kind: 'slide', title: 'Итоги спринта' }));
   }
 
   function risksSlide() {
     var risks = [];
-    TEAMS.forEach(function (t) { (biz(t).risks || []).forEach(function (r) { risks.push({ team: t.team, r: r }); }); });
+    TEAMS.forEach(function (t) { (biz(t).risks || []).forEach(function (r, i) { risks.push({ id: t.slug + i, team: t.team, r: r }); }); });
     if (!risks.length) return '';
     return slide('', '<h1 class="slide-title">РИСКИ</h1><div class="slide-sub">Срыв коммитментов и внешние зависимости</div><div class="risk-list">' +
       risks.map(function (x) {
-        return '<div class="risk-block"><h3>' + esc(x.r.title) + ' <span style="font-weight:400;color:#666">· ' + esc(x.team) + '</span></h3><p>' + esc(x.r.text) + '</p></div>';
-      }).join('') + '</div><p class="ai-note">Риски сформулированы ИИ-агентом PO по OKR и данным спринта — подтверждаются PO</p>');
+        return '<div class="risk-block"><h3>' + ed('risk:' + x.id + ':t', x.r.title) + ' <span class="risk-team">· ' + esc(x.team) + '</span></h3>' +
+          ed('risk:' + x.id + ':x', x.r.text, 'p') + '</div>';
+      }).join('') + '</div>', ctxAttr({ kind: 'slide', title: 'РИСКИ' }));
   }
 
   function buildDeck() {
     slideNo = 0;
-    deckRows = {};
+    deckRefs = {};
     var all = TEAMS.map(function (t) { return { t: t, streams: teamStreams(t) }; });
     var html = titleSlide();
     all.forEach(function (x) {
-      html += heroSlide(x.t, x.streams);
-      packStreams(x.streams).forEach(function (page) { html += streamSlide(x.t, page); });
+      var groups = objGroups(x.t, x.streams);
+      html += heroSlide(x.t, groups);
+      groups.forEach(function (g) {
+        var pages = packStreams(g.streams);
+        pages.forEach(function (page, i) { html += objSlide(x.t, g, page, i, pages.length); });
+      });
+      html += opsSlides(x.t);
     });
-    html += changesSlide() + demoSlide();
-    all.forEach(function (x) { html += metricsSlide(x.t); });
-    html += totalsSlide(all) + risksSlide();
+    html += changesSlide() + demoSlide() + totalsSlide(all) + risksSlide();
     deckSlides.innerHTML = html;
+    applyEdits();
+    setEditing(deckEditing);
     document.getElementById('deckTitle').textContent = 'ФАКТ | ' + sprintLabel();
     // оглавление — из фактической колоды, не хардкод
     document.getElementById('deckTocList').innerHTML = Array.prototype.map.call(deckSlides.querySelectorAll('.fslide'), function (s, i) {
@@ -2774,7 +2885,44 @@
     refreshDeckMarks();
   }
 
-  // строка с правкой — зелёная риска слева, как в эталоне
+  function applyEdits() {
+    var map = loadEdits();
+    deckSlides.querySelectorAll('[data-edit]').forEach(function (el) {
+      el.dataset.orig = el.textContent;
+      if (Object.prototype.hasOwnProperty.call(map, el.dataset.edit)) {
+        el.textContent = map[el.dataset.edit];
+        el.classList.add('edited');
+      }
+    });
+    document.getElementById('deckReset').hidden = !Object.keys(map).length;
+  }
+
+  function setEditing(on) {
+    deckEditing = on;
+    deck.classList.toggle('editing', on);
+    var btn = document.getElementById('deckEdit');
+    btn.textContent = on ? 'Готово' : 'Редактировать текст';
+    btn.setAttribute('aria-pressed', String(on));
+    deckSlides.querySelectorAll('[data-edit]').forEach(function (el) {
+      if (on) el.setAttribute('contenteditable', 'plaintext-only'); else el.removeAttribute('contenteditable');
+      if (on && el.contentEditable !== 'plaintext-only') el.setAttribute('contenteditable', 'true');  // Firefox
+    });
+  }
+
+  deckSlides.addEventListener('input', function (e) {
+    var el = e.target.closest && e.target.closest('[data-edit]');
+    if (!el) return;
+    var map = loadEdits(), text = el.textContent;
+    if (text === el.dataset.orig) delete map[el.dataset.edit]; else map[el.dataset.edit] = text;
+    saveEdits(map);
+    el.classList.toggle('edited', text !== el.dataset.orig);
+    document.getElementById('deckReset').hidden = !Object.keys(map).length;
+  });
+  deckSlides.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.closest && e.target.closest('[data-edit]')) { e.preventDefault(); e.target.blur(); }
+  });
+
+  // строка с комментарием — зелёная риска слева, как в эталоне
   function refreshDeckMarks() {
     if (!deck || deck.hidden) return;
     var keysByTeam = {};
@@ -2788,25 +2936,108 @@
     document.getElementById('deckNotesN').textContent = document.getElementById('cCount').textContent;
   }
 
-  function deckComment(t, target, x, y) {
-    if (team.slug !== t.slug) switchTeam(t.slug);   // правка уходит в корзину своей команды
-    openCommentPopup(target, x, y);
+  // ПКМ на слайде: комментарий уходит в корзину своей команды
+  deckSlides.addEventListener('contextmenu', function (e) {
+    var el = e.target.closest('[data-team]');
+    if (el && el.dataset.team !== team.slug) switchTeam(el.dataset.team);
+  }, true);
+
+  // ---------- сайдбары поверх колоды ----------
+  function sideTabs(tabs, active, render) {
+    var bar = '<div class="side-tabs">' + tabs.map(function (t) {
+      return '<button type="button" class="side-tab' + (t.id === active ? ' active' : '') + '" data-tab="' + t.id + '">' +
+        esc(t.label) + ' · ' + t.n + '</button>';
+    }).join('') + '</div>';
+    storiesBody.innerHTML = bar + '<div class="side-body"></div>';
+    var body = storiesBody.querySelector('.side-body');
+    var show = function (id) {
+      storiesBody.querySelectorAll('.side-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === id); });
+      body.innerHTML = '';
+      render(id, body);
+    };
+    storiesBody.querySelectorAll('.side-tab').forEach(function (b) {
+      b.addEventListener('click', function () { show(b.dataset.tab); });
+    });
+    show(active);
+  }
+
+  function openPanel() { overlay.classList.add('open'); panelStack.classList.add('open'); }
+
+  // KR: весь объём эпика — «Выполнено / В работе / Осталось»
+  function openKr(ref) {
+    if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
+    var epic = ref.epic;
+    setStackHead(epic);
+    scopeEpic = epic;
+    scopeBtn.hidden = true;
+    var kr = (biz(ref.team).streams || {})[epic.epicKey] || {};
+    storiesLabel.textContent = kr.kr ? kr.kr : 'Весь эпик';
+    var sprintRows = {};
+    (epic.stories || []).forEach(function (st) { sprintRows[st.key] = st; });
+    var items = (epic.scope && epic.scope.length ? epic.scope : (epic.stories || []).map(function (st) {
+      return Object.assign({ inSprint: true }, st);
+    })).map(function (it) {
+      var st = it.inSprint && sprintRows[it.key];
+      return st ? Object.assign({}, it, { subtasks: st.subtasks }) : it;
+    });
+    var groups = { done: [], work: [], left: [] };
+    items.forEach(function (it) {
+      var b = classifyBucket(it.status, it.category);
+      (b === 'done' ? groups.done : b === 'open' ? groups.left : groups.work).push(it);
+    });
+    var counts = commentCounts().byKey;
+    sideTabs([{ id: 'done', label: 'Выполнено', n: groups.done.length }, { id: 'work', label: 'В работе', n: groups.work.length },
+              { id: 'left', label: 'Осталось', n: groups.left.length }], 'work', function (id, body) {
+      var list = groups[id];
+      if (!list.length) { body.innerHTML = '<div class="sidebar-empty">Задач нет.</div>'; return; }
+      list.forEach(function (it) { body.appendChild(storyNode(it, epic, counts, sprintChip)); });
+    });
+    openPanel();
+  }
+
+  // история: активность по ней и по её подзадачам за окно ленты
+  function openStory(ref) {
+    if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
+    var st = ref.story, subs = st.subtasks || [];
+    var subKeys = subs.map(function (s) { return s.key; });
+    var events = (LOGS && LOGS.events) || [];
+    var mine = events.filter(function (e) { return e.key === st.key; });
+    var ofSubs = events.filter(function (e) { return subKeys.indexOf(e.key) !== -1; });
+    stackTitle.parentNode.setAttribute('data-ctx', ctxId(itemTarget('story', st, ref.epic)));
+    stackKey.innerHTML = '<a class="key-link" href="' + jiraUrl(st.key) + '" target="_blank" rel="noopener" title="Открыть в JIRA">' +
+      esc(st.key) + '</a>';
+    stackTitle.textContent = st.title;
+    scopeBtn.hidden = true;
+    scopeEpic = null;
+    var days = (LOGS && LOGS.days) || 7;
+    storiesLabel.textContent = 'Активность за ' + days + ' дн. · статус «' + st.status + '» с ' + ddmm(st.statusChanged);
+    var feed = function (list, body, empty) {
+      if (!list.length) { body.innerHTML = '<div class="sidebar-empty">' + empty + '</div>'; return; }
+      var html = '', last = null;
+      list.forEach(function (e) {
+        var day = dayLabel(e.at);
+        if (day !== last) { html += '<div class="log-day">' + esc(day) + '</div>'; last = day; }
+        html += '<div class="log-item"><div class="log-who" title="' + esc(e.author) + '">' + esc(initials(e.author)) + '</div>' +
+          '<div class="log-main"><div class="log-head"><span class="log-author">' + esc(e.author) + '</span>' +
+          '<span class="log-time">' + esc(relTime(e.at)) + '</span></div>' + logEventBody(e) +
+          (e.key !== st.key ? '<div class="log-issue">' + esc(e.key) + ' — ' + esc(e.title) + '</div>' : '') + '</div></div>';
+      });
+      body.innerHTML = html;
+    };
+    sideTabs([{ id: 'story', label: 'История', n: mine.length }, { id: 'subs', label: 'Подзадачи', n: ofSubs.length }],
+      'story', function (id, body) {
+        if (id === 'story') feed(mine, body, 'За ' + days + ' дн. по истории событий нет.');
+        else feed(ofSubs, body, subs.length ? 'За ' + days + ' дн. по подзадачам событий нет.' : 'Подзадач нет.');
+      });
+    openPanel();
   }
 
   deckSlides.addEventListener('click', function (e) {
-    var tr = e.target.closest('tr.row');
-    if (!tr || !deckRows[tr.dataset.row]) return;
-    var row = deckRows[tr.dataset.row];
-    deckComment(row.team, row.target, e.clientX, e.clientY);
-  });
-  // выделили текст на слайде — правка к слайду с цитатой
-  deckSlides.addEventListener('mouseup', function (e) {
-    if (e.target.closest('tr.row')) return;
-    var sel = window.getSelection(), q = sel && !sel.isCollapsed ? sel.toString().trim() : '';
-    if (q.length < 3) return;
-    var sl = e.target.closest('.fslide'), h = sl && sl.querySelector('.slide-title, h1');
-    var t = TEAMS.find(function (x) { return sl && x.slug === sl.dataset.team; }) || team;
-    deckComment(t, { kind: 'slide', title: (h ? h.textContent.trim() : 'Слайд') + ' — «' + q.slice(0, 160) + '»' }, e.clientX, e.clientY);
+    if (deckEditing || e.target.closest('a')) return;
+    var el = e.target.closest('[data-ref]');
+    var ref = el && deckRefs[el.dataset.ref];
+    if (!ref) return;
+    if (ref.story) openStory(ref); else if (ref.epic && ref.epic.epicKey) openKr(ref);
   });
 
   function openDeck() {
@@ -2822,6 +3053,7 @@
 
   function closeDeck() {
     if (START_MODE === 'presentation') return;      // у файла для комитета отчёта PO под слайдами нет
+    setEditing(false);
     deck.hidden = true;
     setNotesOpen(false);
     document.body.classList.remove('deck-open');
@@ -2843,6 +3075,12 @@
 
   document.getElementById('presBtn').addEventListener('click', openDeck);
   document.getElementById('deckClose').addEventListener('click', closeDeck);
+  document.getElementById('deckEdit').addEventListener('click', function () { setEditing(!deckEditing); });
+  document.getElementById('deckReset').addEventListener('click', function () {
+    if (!window.confirm('Вернуть исходный текст на всех слайдах? Ваши правки текста пропадут.')) return;
+    saveEdits({});
+    buildDeck();
+  });
   document.getElementById('deckTocBtn').addEventListener('click', function () {
     document.getElementById('deckToc').classList.toggle('open');
   });
@@ -2859,15 +3097,25 @@
     if (notesPanel.classList.contains('open')) renderNotes();
   });
   document.getElementById('deckPrint').addEventListener('click', function () {
+    setEditing(false);
     document.body.classList.add('printing');
     window.print();
   });
   window.addEventListener('afterprint', function () { document.body.classList.remove('printing'); });
   document.addEventListener('keydown', function (e) {
-    if (deck.hidden || !cpop.hidden || /TEXTAREA|INPUT/.test((e.target || {}).tagName || '')) return;
+    if (deck.hidden || !cpop.hidden) return;
+    var typing = /TEXTAREA|INPUT/.test((e.target || {}).tagName || '') || (e.target && e.target.isContentEditable);
+    if (e.key === 'Escape') {
+      if (panelStack.classList.contains('open')) { e.stopImmediatePropagation(); closePanels(); return; }
+      if (notesPanel.classList.contains('open')) return;
+      if (deckEditing) { e.stopImmediatePropagation(); if (e.target.blur) e.target.blur(); setEditing(false); return; }
+      e.stopImmediatePropagation();
+      closeDeck();
+      return;
+    }
+    if (typing || panelStack.classList.contains('open')) return;
     if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); goSlide(currentSlide() + 1); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); goSlide(currentSlide() - 1); }
-    else if (e.key === 'Escape' && !notesPanel.classList.contains('open')) { e.stopImmediatePropagation(); closeDeck(); }
   }, true);
 
   function renderHero() {

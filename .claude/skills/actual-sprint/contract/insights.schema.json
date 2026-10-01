@@ -112,21 +112,30 @@
     "business": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Бизнес-блок для презентации «ФАКТ | спринт» (управляющий комитет, PO смежных департаментов, бизнес-заказчики). «Результат», статусы и факты строк страница считает из данных сама; здесь — то, чего в трекере нет: цели стримов, причины, следующие шаги, изменения, демо, риски.",
+      "description": "Бизнес-блок для презентации «ФАКТ | спринт» (управляющий комитет, PO смежных департаментов, бизнес-заказчики). Колода строится от целей: слайд = OBJ, группа = KR (эпик), строка = история. «Результат» и текст строк страница считает из данных сама; здесь — цели, Sprint Goal и короткие формулировки «что сделано · след. шаг» вместо автоматических.",
       "properties": {
+        "objectives": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 3,
+            "description": "Название цели, до 100 знаков."
+          },
+          "description": "Код цели → её название: «OBJ 1» → «Партнёрские продажи без ручного ввода». Заголовок слайда."
+        },
         "streams": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/stream"
           },
-          "description": "Ключ эпика (стрима) → Sprint Goal и связь с OKR."
+          "description": "Ключ эпика → к какой цели и KR он относится, Sprint Goal."
         },
         "rows": {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/row"
           },
-          "description": "Ключ истории спринта → «Комментарий» в строке таблицы."
+          "description": "Ключ истории спринта → текст строки: что сделано и следующий шаг."
         },
         "changes": {
           "type": "array",
@@ -163,10 +172,15 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "okr": {
+        "obj": {
+          "type": "string",
+          "pattern": "^OBJ \\S+$",
+          "description": "Код цели: «OBJ 1». Эпики одной цели — на одном слайде."
+        },
+        "kr": {
           "type": "string",
           "minLength": 3,
-          "description": "Цель или KR, которой служит стрим, до 120 знаков. Только из OKR/roadmap PO."
+          "description": "KR, которым служит эпик: «KR 1.1 — заказы от партнёров без ручного ввода», до 120 знаков. Только из OKR/roadmap PO."
         },
         "promise": {
           "type": "string",
@@ -184,7 +198,7 @@
             "достигнут частично",
             "не достигнут"
           ],
-          "description": "Sprint Goal стрима."
+          "description": "Sprint Goal по KR."
         }
       }
     },
@@ -192,30 +206,20 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "facts": {
-          "type": "array",
-          "maxItems": 3,
-          "items": {
-            "type": "string",
-            "minLength": 5,
-            "description": "Факт, до 140 знаков."
-          },
-          "description": "Что сделано — вместо фактов из статуса."
-        },
-        "reason": {
+        "done": {
           "type": "string",
           "minLength": 5,
-          "description": "Почему не 100%, до 160 знаков."
-        },
-        "blocker": {
-          "type": "string",
-          "minLength": 5,
-          "description": "Что блокирует и кто, до 160 знаков."
+          "description": "Что сделано — одно предложение для бизнеса, до 140 знаков."
         },
         "next": {
           "type": "string",
           "minLength": 5,
-          "description": "След. шаг: дата и действие, до 120 знаков."
+          "description": "Следующий шаг: действие и срок, до 100 знаков."
+        },
+        "blocker": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что блокирует и кто, до 120 знаков."
         }
       }
     },

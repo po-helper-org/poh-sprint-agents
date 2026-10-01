@@ -86,16 +86,28 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(part, self.html)
 
     def test_presentation_fact_deck(self):
-        """Кнопка «Презентация»: колода «ФАКТ | спринт» по эталону PO из тех же данных."""
+        """Кнопка «Презентация»: колода «ФАКТ | спринт» от целей — OBJ → KR (эпик) → истории."""
         bar = self.html[self.html.index('<div class="pb-row">'):self.html.index('<div class="notes-panel"')]
         self.assertIn('id="presBtn"', bar)
         self.assertIn('>Презентация<', bar)
         for part in ("var START_MODE = '{{START_MODE}}';", 'id="deck"', 'function titleSlide(', 'function heroSlide(',
-                     'function streamSlide(', 'function changesSlide(', 'function demoSlide(', 'function metricsSlide(',
-                     'function totalsSlide(', 'function risksSlide(', "'#presentation'", '@page { size: 1280px 720px',
+                     'function objGroups(', 'function objSlide(', 'function krHeader(', 'function storyRow(',
+                     'function autoText(', 'function opsSlides(', 'function controlCards(', 'function changesSlide(',
+                     'function demoSlide(', 'function totalsSlide(', 'function risksSlide(', 'function openKr(',
+                     'function openStory(', "'Без привязки к OKR'", "'#presentation'", '@page { size: 1280px 720px',
                      '<th>Задачи</th><th>Комментарий</th><th>Результат</th>', 'stat-green', 'stat-yellow', 'stat-red',
-                     '--green-fill: #D9EAD3', '--yellow-fill: #FFF2CC', '--red-fill: #FDE9E9', 'ROWS_PER_SLIDE = 8'):
+                     'ROWS_PER_SLIDE = 8', 'Прошлые 2 недели', 'Текущие 2 недели'):
             self.assertIn(part, self.html)
+        self.assertNotIn('class="legend"', self.html, 'пояснения цветов на слайдах нет')
+        self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
+
+    def test_deck_text_editing_and_rmb_comments(self):
+        """PO правит текст на слайде сам; комментарий — правым кликом (на телефоне — долгим нажатием)."""
+        for part in ('id="deckEdit"', 'Редактировать текст', "contenteditable', 'plaintext-only'", 'function loadEdits(',
+                     "'actual-sprint:deck-text:'", 'id="deckReset"', 'data-edit="'):
+            self.assertIn(part, self.html)
+        deck = self.html[self.html.index('function storyRow('):self.html.index('function objSlide(')]
+        self.assertIn('ctxAttr(r.target)', deck, 'у строки истории — правый клик для комментария')
 
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
