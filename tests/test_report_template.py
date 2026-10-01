@@ -58,6 +58,8 @@ class TemplateTest(unittest.TestCase):
         head = self.html[self.html.index('<div class="stack-head">'):self.html.index('<div class="stack-body">')]
         self.assertIn('id="scopeBtn"', head)
         self.assertIn('Смотреть весь эпик', head)
+        self.assertNotIn('Открыть в JIRA →', head, 'ссылка в JIRA — сам ключ эпика')
+        self.assertIn('class="key-link"', self.html)
         for part in ('function renderScope(', "scopeSection('left', 'Осталось'", "scopeSection('done', 'Сделано'",
                      'function sprintChip(', 'function storyNode('):
             self.assertIn(part, self.html)

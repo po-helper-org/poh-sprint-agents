@@ -388,6 +388,13 @@
   }
   .stack-head h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.35; padding-right: 32px; }
   .stack-head a { font-size: 13px; color: var(--muted); }
+  /* ключ эпика — сам ссылка в JIRA: отдельной кнопки «Открыть в JIRA» нет */
+  .stack-head .eyebrow a.key-link {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: inherit; color: inherit; text-decoration: none;
+  }
+  .stack-head .eyebrow a.key-link:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 3px; }
+  .stack-head .eyebrow a.key-link svg { flex-shrink: 0; }
   .stack-links { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
   .scope-btn {
     font: inherit; font-size: 13px; padding: 3px 12px; border-radius: 4px; cursor: pointer;
@@ -764,7 +771,6 @@
     <div class="eyebrow" id="stackKey">—</div>
     <h2 id="stackTitle">—</h2>
     <div class="stack-links">
-      <a id="stackLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
       <button class="scope-btn" id="scopeBtn" type="button" hidden>Смотреть весь эпик</button>
     </div>
   </div>
@@ -987,7 +993,6 @@
   var panelStack = document.getElementById('panelStack');
   var stackKey = document.getElementById('stackKey');
   var stackTitle = document.getElementById('stackTitle');
-  var stackLink = document.getElementById('stackLink');
   var storiesLabel = document.getElementById('storiesLabel');
   var storiesBody = document.getElementById('storiesBody');
 
@@ -1382,10 +1387,13 @@
   // общая шапка панели — заполняется один раз на открытие, не дублируется по колонкам
   function setStackHead(epic) {
     stackTitle.parentNode.setAttribute('data-ctx', ctxId(epicTarget(epic)));
-    stackKey.textContent = epic.epicKey || 'Без эпика';
     stackTitle.textContent = epic.epicTitle || 'Без эпика';
-    if (epic.epicKey) { stackLink.href = jiraUrl(epic.epicKey); stackLink.style.display = ''; }
-    else { stackLink.style.display = 'none'; }
+    if (!epic.epicKey) { stackKey.textContent = 'Без эпика'; return; }
+    stackKey.innerHTML = '<a class="key-link" id="stackKeyLink" href="' + jiraUrl(epic.epicKey) +
+      '" target="_blank" rel="noopener" title="Открыть в JIRA">' + esc(epic.epicKey) +
+      '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"' +
+      ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3"/></svg></a>';
   }
 
   // Строка задачи с разворотом подзадач — одна на панель спринта и на «Весь эпик».
@@ -2025,7 +2033,6 @@
     storiesLabel.textContent = 'Изменения за неделю';
     stackKey.textContent = 'Logs';
     stackTitle.textContent = 'Кто что менял за последние ' + ((LOGS && LOGS.days) || 7) + ' дней';
-    stackLink.style.display = 'none';
 
     logsFilter = null;
     logsKind = null;
@@ -2042,7 +2049,6 @@
     storiesLabel.textContent = 'Метрики';
     stackKey.textContent = 'Сводный отчёт';
     stackTitle.textContent = 'Команда за последние 3 спринта';
-    stackLink.style.display = 'none';
 
     storiesBody.innerHTML = fillMetricsPanel();
 

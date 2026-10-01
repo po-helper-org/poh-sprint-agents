@@ -130,6 +130,11 @@ await p.keyboard.press('Escape');
 await p.click('#tableBody tr:nth-child(1)');
 await p.waitForTimeout(250);
 check(await p.isVisible('#scopeBtn'), 'в шапке панели эпика есть «Смотреть весь эпик»');
+const keyLink = await p.$eval('#stackKeyLink', a => ({ text: a.textContent, href: a.href, target: a.target, svg: !!a.querySelector('svg') }));
+const headKey = await p.evaluate(() => TEAMS[0].epics[0].epicKey);
+check(keyLink.text === headKey && keyLink.href.endsWith('/browse/' + headKey) && keyLink.target === '_blank' && keyLink.svg,
+      'ключ эпика в шапке — ссылка в JIRA с иконкой внешней ссылки');
+check(!(await p.textContent('.stack-head')).includes('Открыть в JIRA'), 'отдельной кнопки «Открыть в JIRA» нет');
 await p.click('#scopeBtn');
 const scope = await p.evaluate(() => {
   const e = TEAMS[0].epics[0], map = TEAMS[0].statusMap;
