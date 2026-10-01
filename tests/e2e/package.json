@@ -2,6 +2,6 @@
   "private": true,
   "type": "module",
   "description": "E2E страницы отчёта actual-sprint в настоящем Chromium",
-  "scripts": { "test": "node report_comments.mjs" },
+  "scripts": { "test": "node report_comments.mjs && node report_mobile.mjs" },
   "devDependencies": { "playwright": "^1.56.0" }
 }

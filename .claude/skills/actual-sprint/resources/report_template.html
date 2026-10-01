@@ -2,6 +2,15 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- PWA: «На экран Домой» в Safari — отчёт открывается как приложение, без панелей браузера -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Спринт">
+<meta name="theme-color" content="#ffffff">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
 <title>Отчёт по спринтам команд</title>
 <style>
   :root {
@@ -372,6 +381,8 @@
     pointer-events: none;
   }
   .panel-stack.open { transform: translateX(0); pointer-events: auto; }
+  /* закрытая панель стоит за правым краем: её тень иначе ложится полосой на страницу */
+  .panel-stack:not(.open) { box-shadow: none; }
 
   .stack-head {
     padding: 20px 24px 16px;
@@ -706,6 +717,102 @@
     .promptbox { position: static; padding: 12px 16px 0; }
     .notes-panel { width: 100%; }
   }
+
+  /* ---------- телефон (iPhone 15 Pro — 393 px) и PWA с экрана «Домой» ----------
+     viewport-fit=cover: страница под чёлкой и полоской «Домой», поэтому поля
+     считаются от env(safe-area-inset-*). */
+  html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+  /* телефон боком: «остров» сбоку — поля не меньше безопасной зоны */
+  .hero, main { padding-left: max(32px, env(safe-area-inset-left)); padding-right: max(32px, env(safe-area-inset-right)); }
+  .promptbox { top: max(20px, env(safe-area-inset-top)); right: max(24px, env(safe-area-inset-right)); }
+  @media (max-width: 640px) {
+    .promptbox {
+      padding: calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+    }
+    .pb-row { width: 100%; justify-content: flex-end; }
+    .logs-btn, .pb-toggle { padding: 8px 14px; }
+    .notes-panel { max-height: 70vh; }
+
+    .hero { padding: 14px max(16px, env(safe-area-inset-right)) 18px max(16px, env(safe-area-inset-left)); }
+    .hero .team { font-size: 11px; margin-bottom: 4px; }
+    .hero h1 { font-size: 26px; margin-bottom: 10px; }
+    /* вкладки команд — в одну строку с прокруткой, а не столбиком */
+    .team-switch {
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+      margin: 0 calc(-1 * max(16px, env(safe-area-inset-left))) 12px; padding: 0 max(16px, env(safe-area-inset-left));
+    }
+    .team-switch::-webkit-scrollbar { display: none; }
+    .team-tab { flex-shrink: 0; padding: 7px 14px; }
+    .hero .meta { gap: 2px 16px; font-size: 13px; }
+
+    main { padding: 4px max(16px, env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+    /* строка эпика — карточка: название во всю ширину, под ним счётчики и шеврон */
+    #tableBody tr {
+      display: grid; grid-template-columns: 1fr auto; align-items: center;
+      padding: 12px 0; border-bottom: 1px solid var(--line);
+    }
+    #tableBody tr:active { background: var(--hover-bg); }
+    #tableBody td { display: block; padding: 0; border: none; }
+    #tableBody td.epic { grid-column: 1 / -1; font-size: 15px; line-height: 1.35; margin-bottom: 6px; }
+    #tableBody td.tally { text-align: left; padding: 0 0 0 22px; }
+    #tableBody td.tally .tip { display: none; }
+    #tableBody .action-btn { border: none; padding: 0 2px 0 8px; font-size: 0; background: none; color: var(--muted); }
+    #tableBody .action-btn::after { content: "›"; font-size: 22px; line-height: 1; }
+    #tableBody .action-btn.has-note::before { content: "●"; font-size: 9px; color: var(--fg); vertical-align: 4px; margin-right: 6px; }
+
+    /* панель — на весь экран, крестик ниже чёлки */
+    .panel-stack { width: 100vw; border-left: none; }
+    .stack-head { padding: calc(14px + env(safe-area-inset-top)) 16px 12px; }
+    .stack-head h2 { font-size: 18px; padding-right: 40px; }
+    .sidebar-close { top: calc(8px + env(safe-area-inset-top)); right: 6px; width: 44px; height: 44px; font-size: 26px; }
+    .scope-btn { padding: 7px 14px; }
+    .pane { padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); }
+    .scope-sum .sub { display: block; margin: 2px 0 0; }
+
+    /* задача: название во всю ширину, статус и возраст — второй строкой под ним */
+    .story-row { flex-wrap: wrap; row-gap: 4px; padding: 11px 0; }
+    .story-row .story-title-wrap { flex-basis: 100%; }
+    .story-row .meta-wrap { padding-left: 78px; }
+    .sub-item { flex-wrap: wrap; row-gap: 2px; }
+    .sub-item .story-title-wrap { flex-basis: 100%; }
+    .sub-item .meta-wrap { padding-left: 52px; }
+    .story-toggle { width: 22px; height: 22px; padding: 0; }
+
+    /* метрики: графики на ширину экрана, статус в строках выбросов — по содержимому */
+    .outlier-row { grid-template-columns: minmax(0, 1fr) auto 52px; column-gap: 8px; }
+    .outlier-row .status { max-width: 104px; }
+    /* подсказка «i» — шторкой снизу, а не облаком у иконки */
+    .info-tip, .info.up .info-tip {
+      position: fixed; left: 8px; right: 8px; top: auto; bottom: calc(8px + env(safe-area-inset-bottom));
+      width: auto; max-width: none; max-height: 72vh !important; border-radius: 14px;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.22);
+    }
+
+    /* поле заметки — сверху: снизу его закрыла бы клавиатура */
+    .cpop {
+      left: 8px !important; right: 8px; top: calc(8px + env(safe-area-inset-top)) !important;
+      width: auto; max-height: 60vh; overflow-y: auto;
+    }
+  }
+
+  /* сенсорный экран: наведения нет — действия видны всегда, подсказки по тапу */
+  @media (hover: none) {
+    .nrow .nacts { opacity: 1; }
+    .ico { width: 36px; height: 36px; }
+    .info:hover .info-tip, .info:focus .info-tip, .info:focus-within .info-tip { opacity: 0; visibility: hidden; }
+    .info.open .info-tip { opacity: 1; visibility: visible; }
+    .info { padding: 6px; margin: -6px -6px -6px 0; }
+    .info.has-ai::after { right: 5px; top: 5px; }
+    /* долгое нажатие — заметка: без системного меню и выделения текста */
+    [data-ctx], [data-ctx] a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    [data-ctx].pressing { background: var(--hover-bg); transition: background 0.3s ease; }
+    /* iOS увеличивает страницу при фокусе на поле с шрифтом меньше 16px */
+    textarea, input { font-size: 16px !important; }
+  }
+  .cpop .cpop-cancel {
+    font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 4px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--muted); cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -779,6 +886,7 @@
   <textarea id="cpopText" placeholder="Заметка — Enter сохранить, Esc отмена"></textarea>
   <div class="cpop-actions">
     <span class="hint"></span>
+    <button class="cpop-cancel" id="cpopCancel" type="button">Отмена</button>
     <button class="action-btn" id="cpopSave">Сохранить</button>
   </div>
 </div>
@@ -1307,7 +1415,7 @@
     var w = cpop.offsetWidth, h = cpop.offsetHeight;
     cpop.style.left = Math.max(8, Math.min(x, window.innerWidth - w - 8)) + 'px';
     cpop.style.top = Math.max(8, Math.min(y, window.innerHeight - h - 8)) + 'px';
-    cpopText.focus();
+    cpopText.focus({ preventScroll: true });
   }
 
   function closeCommentPopup() { cpop.hidden = true; cpopTarget = null; }
@@ -1317,6 +1425,9 @@
   }
 
   document.getElementById('cpopSave').addEventListener('click', saveCommentPopup);
+  document.getElementById('cpopCancel').addEventListener('click', closeCommentPopup);
+  // на сенсорном экране нет Enter/Esc в привычном смысле — подсказка про кнопки
+  if (window.matchMedia && window.matchMedia('(hover: none)').matches) cpopText.placeholder = 'Заметка';
   cpopText.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); saveCommentPopup(); }
     if (e.key === 'Escape') { e.stopPropagation(); closeCommentPopup(); }
@@ -1341,6 +1452,7 @@
     var icon = e.target.closest && e.target.closest('.info');
     if (!icon) return;
     var tip = icon.querySelector('.info-tip');
+    if (window.matchMedia('(max-width: 640px)').matches) { icon.classList.remove('up'); tip.style.maxHeight = ''; return; }
     var r = icon.getBoundingClientRect(), gap = 16;
     var below = window.innerHeight - r.bottom - gap, above = r.top - gap;
     var up = below < Math.min(tip.scrollHeight, 360) && above > below;
@@ -1355,6 +1467,69 @@
     if (!el || !ctxTargets[el.dataset.ctx]) return;
     e.preventDefault();
     openCommentPopup(ctxTargets[el.dataset.ctx], e.clientX, e.clientY);
+  });
+
+  // Телефон: правой кнопки нет, а Safari на iOS не шлёт contextmenu по долгому
+  // нажатию. Держим палец 0,5 с на строке — то же поле заметки. Сдвиг пальца
+  // (прокрутка) отменяет; клик, который iOS пришлёт после отпускания, гасим —
+  // иначе вслед за заметкой открылась бы панель эпика или ссылка в JIRA.
+  var LONG_PRESS_MS = 500;
+  var press = null, swallowNextRelease = false, swallowClickUntil = 0;
+  function cancelPress() {
+    if (!press) return;
+    clearTimeout(press.timer);
+    press.el.classList.remove('pressing');
+    press = null;
+  }
+  document.addEventListener('touchstart', function (e) {
+    cancelPress();
+    swallowClickUntil = 0;   // новое касание — новый жест: хвост прошлого уже пришёл
+    if (e.touches.length !== 1) return;
+    var el = e.target.closest && e.target.closest('[data-ctx]');
+    if (!el || !ctxTargets[el.dataset.ctx]) return;
+    var t = e.touches[0];
+    press = { el: el, x: t.clientX, y: t.clientY };
+    el.classList.add('pressing');
+    press.timer = setTimeout(function () {
+      var target = ctxTargets[el.dataset.ctx];
+      var at = press;
+      cancelPress();
+      swallowNextRelease = true;
+      openCommentPopup(target, at.x, at.y);
+    }, LONG_PRESS_MS);
+  }, { passive: true });
+  document.addEventListener('touchmove', function (e) {
+    if (!press) return;
+    var t = e.touches[0];
+    if (Math.abs(t.clientX - press.x) > 10 || Math.abs(t.clientY - press.y) > 10) cancelPress();
+  }, { passive: true });
+  // после долгого нажатия отпускание пальца не должно стать тапом: без этого
+  // синтетические mousedown и click закрыли бы поле и открыли строку под ним
+  document.addEventListener('touchend', function (e) {
+    cancelPress();
+    if (!swallowNextRelease) return;
+    swallowNextRelease = false;
+    e.preventDefault();
+    swallowClickUntil = Date.now() + 400;   // если браузер всё же пришлёт мышиные события
+  }, { passive: false });
+  document.addEventListener('touchcancel', cancelPress);
+  ['mousedown', 'click'].forEach(function (type) {
+    document.addEventListener(type, function (e) {
+      if (Date.now() < swallowClickUntil && !cpop.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (type === 'click') swallowClickUntil = 0;
+      }
+    }, true);
+  });
+
+  // «i» по тапу: наведения на сенсорном экране нет. Повторный тап или тап мимо закрывает.
+  document.addEventListener('click', function (e) {
+    var icon = e.target.closest && e.target.closest('.info');
+    document.querySelectorAll('.info.open').forEach(function (other) {
+      if (other !== icon) other.classList.remove('open');
+    });
+    if (icon && !e.target.closest('.info-tip')) icon.classList.toggle('open');
   });
 
   // --- приоритет: уровень выводим из имени, как бакет из статуса

@@ -74,6 +74,17 @@ class TemplateTest(unittest.TestCase):
         row = self.html[self.html.index('  .outlier-row {'):]
         self.assertIn('grid-template-columns', row[:row.index('}')], 'колонки фиксированы — строки не плавают')
 
+    def test_phone_and_pwa(self):
+        """Телефон: viewport, режим приложения, иконка внутри файла, долгое нажатие вместо правого клика."""
+        head = self.html[:self.html.index('<style>')]
+        self.assertIn('width=device-width', head)
+        self.assertIn('viewport-fit=cover', head)
+        self.assertIn('name="apple-mobile-web-app-capable" content="yes"', head)
+        self.assertIn('rel="apple-touch-icon" href="data:image/png;base64,', head)
+        for part in ('@media (max-width: 640px)', '@media (hover: none)', 'env(safe-area-inset-top)',
+                     "addEventListener('touchstart'", 'LONG_PRESS_MS', 'id="cpopCancel"'):
+            self.assertIn(part, self.html)
+
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
             self.assertIn(where, self.html)
