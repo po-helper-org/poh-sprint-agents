@@ -141,13 +141,17 @@ class RunnerTest(unittest.TestCase):
         self.assertNotIn('[team-a] доска', proc.stdout)
 
     def test_provenance_data_in_page(self):
-        """ФТ-25: по странице видно, чем и когда собраны данные (sha дописывает runner)."""
+        """ФТ-25: паспорт сбора едет в данных страницы (sha дописывает runner).
+
+        Подвалом он не выводится — на странице он ценности не нёс; его читают
+        PDF /sprint-status, сводка runner'а и агент.
+        """
         self.p.lock_all()
         self.p.run('run')
         html = self.p.output.read_text(encoding='utf-8')
         self.assertIn('"sha"', html)
         self.assertIn('"collectedAt"', html)
-        self.assertIn('renderProvenance', html)
+        self.assertNotIn('id="provenance"', html)
 
     # ------------------------------------------------------------- strict и lock
 
