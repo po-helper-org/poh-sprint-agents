@@ -1,13 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://po-helper-org/poh-sprint-agents/actual-sprint/insights.schema.json",
-  "title": "Инсайды по графикам сводного отчёта",
-  "description": "Файл reports/sprint-insights.json. Пишет ИИ-агент навыком sprint-insights по фактам из снимка данных; runner встраивает его в страницу, только если dataHash команды совпадает с её данными. Цифры отчёта здесь не хранятся — только интерпретация.",
+  "title": "Инсайды ИИ для сводного отчёта",
+  "description": "Файл reports/sprint-insights.json. Пишет ИИ-агент навыком sprint-insights по фактам из снимка данных: на что обратить внимание PO и что можно сказать о состоянии команды в этом спринте и о тенденции. Runner встраивает его в страницу — раздел «Инсайды ИИ» внизу сводного отчёта, — только если dataHash команды совпадает с её данными. Цифры отчёта здесь не хранятся — только интерпретация.",
   "type": "object",
-  "required": ["version", "generatedAt", "teams"],
+  "required": [
+    "version",
+    "generatedAt",
+    "teams"
+  ],
   "additionalProperties": false,
   "properties": {
-    "version": { "const": 1 },
+    "version": {
+      "const": 1
+    },
     "generatedAt": {
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}",
@@ -16,18 +22,23 @@
     "author": {
       "type": "string",
       "minLength": 1,
-      "description": "Кто писал: имя агента или роли. Показывается в подсказке мелким шрифтом."
+      "description": "Кто писал: имя агента или роли. Показывается мелким шрифтом под разделом."
     },
     "teams": {
       "type": "object",
-      "description": "slug команды → инсайды по её графикам.",
-      "additionalProperties": { "$ref": "#/definitions/team" }
+      "description": "slug команды → наблюдения о ней.",
+      "additionalProperties": {
+        "$ref": "#/definitions/team"
+      }
     }
   },
   "definitions": {
     "team": {
       "type": "object",
-      "required": ["dataHash", "charts"],
+      "required": [
+        "dataHash",
+        "observations"
+      ],
       "additionalProperties": false,
       "properties": {
         "dataHash": {
@@ -35,36 +46,38 @@
           "pattern": "^[0-9a-f]{64}$",
           "description": "Хеш данных команды из `insights.py facts`. Данные пересобрали — хеш другой, и runner не покажет устаревшие инсайды."
         },
-        "charts": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "burndown": { "$ref": "#/definitions/list" },
-            "velocity": { "$ref": "#/definitions/list" },
-            "controlStories": { "$ref": "#/definitions/list" },
-            "controlSubtasks": { "$ref": "#/definitions/list" }
-          }
+        "observations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/definitions/observation"
+          },
+          "description": "Наблюдения по важности: первое — главное, что PO стоит знать о спринте сейчас."
         }
       }
     },
-    "list": {
-      "type": "array",
-      "maxItems": 4,
-      "items": { "$ref": "#/definitions/insight" }
-    },
-    "insight": {
+    "observation": {
       "type": "object",
-      "required": ["level", "text"],
+      "required": [
+        "level",
+        "text"
+      ],
       "additionalProperties": false,
       "properties": {
         "level": {
-          "enum": ["risk", "warn", "good", "info"],
+          "enum": [
+            "risk",
+            "warn",
+            "good",
+            "info"
+          ],
           "description": "risk — нужна реакция до конца спринта; warn — присмотреться; good — что работает; info — нейтральное наблюдение."
         },
         "text": {
           "type": "string",
           "minLength": 10,
-          "description": "Наблюдение по графику: что видно и почему это важно. До 280 знаков."
+          "description": "Наблюдение: что видно в данных и почему это важно PO. До 280 знаков."
         },
         "action": {
           "type": "string",
@@ -74,8 +87,22 @@
         "keys": {
           "type": "array",
           "maxItems": 8,
-          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*-[0-9]+$" },
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*-[0-9]+$"
+          },
           "description": "Ключи задач, о которых идёт речь. Каждый должен быть в данных команды."
+        },
+        "about": {
+          "enum": [
+            "sprint",
+            "burndown",
+            "velocity",
+            "controlStories",
+            "controlSubtasks",
+            "team"
+          ],
+          "description": "О чём наблюдение: sprint — ход текущего спринта; team — состояние и тенденция команды за 3 спринта; остальное — конкретный график. Показывается меткой у наблюдения."
         }
       }
     }

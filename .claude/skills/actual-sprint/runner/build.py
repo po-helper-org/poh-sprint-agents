@@ -51,7 +51,6 @@ def attach_notes(teams, notes):
 # Поля, которые runner кладёт поверх данных сборщика: в хеш данных они не входят,
 # иначе инсайды «устаревали» бы от собственного встраивания и от правки заметок.
 OVERLAY_FIELDS = ('notes', 'insights')
-INSIGHT_CHARTS = ('burndown', 'velocity', 'controlStories', 'controlSubtasks')
 
 
 def team_digest(team):
@@ -95,12 +94,11 @@ def attach_insights(teams, doc):
         if entry.get('dataHash') != team_digest(team):
             stale.append(team['slug'])
             continue
-        charts = entry.get('charts') or {}
         team['insights'] = {
             'generatedAt': doc.get('generatedAt'),
             'author': doc.get('author'),
-            'charts': {c: [i for i in charts.get(c) or [] if isinstance(i, dict) and i.get('text')]
-                       for c in INSIGHT_CHARTS},
+            'observations': [o for o in entry.get('observations') or []
+                             if isinstance(o, dict) and o.get('text')],
         }
         attached.append(team['slug'])
     return attached, stale

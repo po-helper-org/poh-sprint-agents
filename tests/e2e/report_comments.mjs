@@ -173,23 +173,38 @@ check((await p.textContent('#scopeBtn')) === 'Смотреть весь эпик
       'кнопка возвращает к задачам спринта');
 await p.keyboard.press('Escape');
 
-// сводный отчёт: под графиками только легенда, расшифровка и инсайды ИИ — в «i»
+// сводный отчёт: под графиками только легенда, расшифровка — в «i», инсайды ИИ — разделом внизу
 await p.click('#metricsLink');
 await p.waitForTimeout(300);
 check(!(await p.textContent('#storiesBody')).includes('Зелёная точка'), 'под диаграммами нет длинной расшифровки');
 check((await p.$$('.metrics-section h3 .info')).length === 4, 'у каждого графика иконка «i»');
-check((await p.$$('.info.has-ai')).length === 4, 'у графиков с инсайдами ИИ на иконке точка');
 const tip = '.metrics-section >> nth=2 >> .info-tip';
 check(await p.locator(tip).isHidden(), 'подсказка скрыта до наведения');
 await p.locator('.metrics-section >> nth=2 >> .info').hover();
 await p.waitForTimeout(250);
 check(await p.locator(tip).isVisible(), 'наведение открывает подсказку');
 const tipText = await p.locator(tip).textContent();
-check(tipText.includes('Как читать') && tipText.includes('Инсайды ИИ') && tipText.includes('Интерпретация, не данные'),
-      'в подсказке расшифровка и инсайды ИИ с пометкой');
+check(tipText.includes('Как читать') && !tipText.includes('Инсайды ИИ'), 'в подсказке только как читать график');
 const tipBox = await p.locator(tip).boundingBox();
 check(tipBox.y >= 0 && tipBox.y + tipBox.height <= 900 + 1, 'подсказка целиком в окне');
 await p.mouse.move(5, 5);
+const ai = await p.evaluate(() => {
+  const sec = document.getElementById('aiInsights');
+  const all = [...document.querySelectorAll('#storiesBody .metrics-section')];
+  return { last: all[all.length - 1] === sec, items: sec.querySelectorAll('.ai-item').length,
+           first: sec.querySelector('.ai-item')?.className || '', text: sec.textContent,
+           expected: TEAMS[0].insights.observations.length,
+           keys: [...sec.querySelectorAll('.ai-keys a')].every(a => a.href.includes('/browse/') && a.target === '_blank') };
+});
+check(ai.last, 'раздел «Инсайды ИИ» — последним в сводном отчёте');
+check(ai.items === ai.expected && ai.items >= 3, 'в разделе все наблюдения агента');
+check(ai.first.includes('lv-risk') && ai.text.includes('нужна реакция'), 'первым — главное, с уровнем');
+check(ai.text.includes('На что обратить внимание PO') && ai.text.includes('Интерпретация ИИ, не данные'),
+      'подзаголовок для PO и пометка «интерпретация, не данные»');
+check(ai.keys, 'ключи задач у наблюдения — ссылки в JIRA');
+await p.locator('#aiInsights .ai-item >> nth=0').click({ button: 'right', position: { x: 200, y: 30 } });
+check((await p.textContent('#cpopTarget')).includes('Инсайд ИИ'), 'правый клик по наблюдению — заметка к нему');
+await p.keyboard.press('Escape');
 await p.locator('.outlier-row >> nth=0').click({ button: 'right', position: { x: 40, y: 8 } });
 await p.fill('#cpopText', 'Разобрать выброс на ретро');
 await p.press('#cpopText', 'Enter');
@@ -201,10 +216,8 @@ await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 await p.click('#metricsLink');
 await p.waitForTimeout(300);
-await p.locator('.metrics-section >> nth=0 >> .info').hover();
-check((await p.locator('.metrics-section >> nth=0 >> .info-tip').textContent()).includes('/sprint-insights'),
-      'нет инсайдов для сбора — подсказка говорит, как их получить');
-await p.mouse.move(5, 5);
+check((await p.textContent('#aiInsights')).includes('/sprint-insights') && !(await p.$('#aiInsights .ai-item')),
+      'нет инсайдов для сбора — раздел на месте и говорит, как их получить');
 await p.keyboard.press('Escape');
 await p.click('[data-team="platform"]');
 

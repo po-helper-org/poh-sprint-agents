@@ -135,7 +135,7 @@
 
   /* сводный отчёт за 3 спринта */
   .metrics-section + .metrics-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
-  /* «i» у заголовка графика: как читать (статично) и инсайды ИИ-агента (/sprint-insights) */
+  /* «i» у заголовка графика: как читать (статично) */
   .info { position: relative; display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--ico, #adb2b8); cursor: help; outline: none; }
   .info:hover, .info:focus { color: var(--fg); }
   .info-tip {
@@ -153,22 +153,29 @@
   .info-tip ul:last-child { margin-bottom: 0; }
   .info-tip li { margin: 2px 0; }
   .info-tip .stat { margin: 0 0 10px; color: var(--muted); }
-  /* есть инсайды по этому сбору — у «i» точка */
-  .info.has-ai::after {
-    content: ''; position: absolute; right: -1px; top: -1px; width: 6px; height: 6px;
-    border-radius: 50%; background: var(--c-progress); box-shadow: 0 0 0 2px var(--bg);
-  }
-  .info-tip .ai { list-style: none; padding-left: 0; }
-  .info-tip .ai li { position: relative; padding-left: 14px; margin: 0 0 8px; }
-  .info-tip .ai li::before {
-    content: ''; position: absolute; left: 0; top: 7px; width: 7px; height: 7px; border-radius: 50%;
-    background: var(--muted);
-  }
-  .info-tip .ai li.lv-risk::before { background: var(--c-blocked); }
-  .info-tip .ai li.lv-warn::before { background: var(--c-testing); }
-  .info-tip .ai li.lv-good::before { background: var(--c-done); }
-  .info-tip .ai .act { display: block; color: var(--muted); }
-  .info-tip .ai-none, .info-tip .ai-by { margin: 0; color: var(--muted); font-size: 12px; }
+  /* «Инсайды ИИ» — последний раздел сводного отчёта: наблюдения агента для PO */
+  .ai-lead { margin: -6px 0 12px; font-size: 13px; color: var(--muted); }
+  .ai-list { list-style: none; margin: 0; padding: 0; }
+  .ai-item { padding: 12px 0; border-top: 1px solid #f0f0f0; }
+  .ai-item:first-child { border-top: none; padding-top: 4px; }
+  .ai-meta { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 0.04em;
+             text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .ai-meta .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .ai-item.lv-risk .dot { background: var(--c-blocked); }
+  .ai-item.lv-risk .lvl { color: var(--c-blocked); }
+  .ai-item.lv-warn .dot { background: var(--c-testing); }
+  .ai-item.lv-warn .lvl { color: var(--c-testing); }
+  .ai-item.lv-good .dot { background: var(--c-done); }
+  .ai-item.lv-good .lvl { color: var(--c-done); }
+  .ai-meta .about::before { content: "· "; }
+  .ai-text { margin: 0; font-size: 14px; line-height: 1.5; }
+  .ai-act { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .ai-keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .ai-keys a { font-size: 12px; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+  .ai-keys a:hover { color: var(--fg); border-bottom-color: var(--fg); }
+  .ai-by { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+  .ai-none { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .ai-none code { font: 12px "SF Mono", Menlo, Consolas, monospace; color: var(--fg); }
   .metrics-section h3 {
     margin: 0 0 12px;
     font-size: 12px;
@@ -802,7 +809,6 @@
     .info:hover .info-tip, .info:focus .info-tip, .info:focus-within .info-tip { opacity: 0; visibility: hidden; }
     .info.open .info-tip { opacity: 1; visibility: visible; }
     .info { padding: 6px; margin: -6px -6px -6px 0; }
-    .info.has-ai::after { right: 5px; top: 5px; }
     /* долгое нажатие — заметка: без системного меню и выделения текста */
     [data-ctx], [data-ctx] a { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     [data-ctx].pressing { background: var(--hover-bg); transition: background 0.3s ease; }
@@ -1178,7 +1184,7 @@
 
   var GENERAL = { kind: 'general' };
   var KIND_NAME = { epic: 'Эпик', story: 'История', subtask: 'Подзадача', event: 'Задача',
-                    ref: 'Вне отчёта', chart: 'График' };
+                    ref: 'Вне отчёта', chart: 'График', insight: 'Инсайд ИИ' };
 
   // все сущности текущей команды по ключу: для привязки из корзины и подсказок
   function entityIndex() {
@@ -2011,10 +2017,9 @@
       '<div class="chart-legend">' + legend + '</div>';
   }
 
-  // «Как читать» — постоянная расшифровка графика. Интерпретацию конкретных цифр
-  // («что это говорит техлиду и PO») пишет ИИ-агент отдельным конвейером
-  // /sprint-insights: runner кладёт её в team.insights, только если она написана
-  // по этим же данным. Под графиком остаются только легенда и списки.
+  // «Как читать» — постоянная расшифровка графика в подсказке «i». Интерпретация
+  // конкретных цифр — отдельный раздел «Инсайды ИИ» внизу отчёта. Под графиком
+  // остаются только легенда и списки.
   var CHART_INFO = {
     burndown: ['Серая линия — идеальный темп: от объёма на старте до нуля в последний день.',
                'Красная — сколько задач осталось на каждый день; точка — подсказка с числами.',
@@ -2027,35 +2032,49 @@
               'Жёлтые точки у правого края — ещё в работе и уже дольше медианы; по высоте — сколько идут на сегодня.']
   };
   var AI_LEVELS = { risk: 'нужна реакция', warn: 'присмотреться', good: 'работает', info: 'наблюдение' };
+  var AI_ABOUT = { sprint: 'спринт', team: 'команда', burndown: 'burndown', velocity: 'производительность',
+                   controlStories: 'cycle time историй', controlSubtasks: 'cycle time подзадач' };
 
-  function chartInsights(chart) {
+  // Раздел «Инсайды ИИ»: на что обратить внимание PO, что можно сказать о состоянии
+  // команды в этом спринте и о тенденции. Пишет агент (/sprint-insights) по фактам из
+  // снимка; runner кладёт в team.insights, только если они написаны по этим же данным.
+  // Нет наблюдений — раздел всё равно на месте и говорит, как их получить.
+  function insightsSection() {
     var ins = team.insights;
-    return ins && ins.charts && ins.charts[chart] && ins.charts[chart].length ? ins.charts[chart] : null;
-  }
-
-  function insightsHtml(chart) {
-    var list = chartInsights(chart);
+    var list = ins && ins.observations && ins.observations.length ? ins.observations : null;
+    var title = 'Инсайды ИИ';
+    var body;
     if (!list) {
-      return '<b>Инсайды ИИ</b><p class="ai-none">Для этого сбора не написаны. Попросите агента: /sprint-insights.</p>';
+      body = '<p class="ai-none">ИИ-агент ещё не смотрел этот сбор. Попросите его: <code>/sprint-insights</code> — ' +
+        'здесь появятся наблюдения о спринте и команде.</p>';
+    } else {
+      body = '<p class="ai-lead">На что обратить внимание PO: состояние команды в этом спринте и тенденция</p>' +
+        '<ol class="ai-list">' + list.map(function (it) {
+          var lvl = AI_LEVELS[it.level] ? it.level : 'info';
+          var keys = (it.keys || []).map(function (k) {
+            return '<a href="' + jiraUrl(k) + '" target="_blank" rel="noopener">' + esc(k) + '</a>';
+          }).join('');
+          return '<li class="ai-item lv-' + lvl + '"' + ctxAttr({ kind: 'insight', title: it.text }) + '>' +
+            '<div class="ai-meta"><span class="dot"></span><span class="lvl">' + AI_LEVELS[lvl] + '</span>' +
+              (AI_ABOUT[it.about] ? '<span class="about">' + AI_ABOUT[it.about] + '</span>' : '') + '</div>' +
+            '<p class="ai-text">' + esc(it.text) + '</p>' +
+            (it.action ? '<p class="ai-act">→ ' + esc(it.action) + '</p>' : '') +
+            (keys ? '<div class="ai-keys">' + keys + '</div>' : '') +
+          '</li>';
+        }).join('') + '</ol>' +
+        '<p class="ai-by">Интерпретация ИИ, не данные' + (ins.author ? ' · ' + esc(ins.author) : '') +
+        (ins.generatedAt ? ' · ' + esc(String(ins.generatedAt).slice(0, 16).replace('T', ' ')) : '') + '</p>';
     }
-    var ins = team.insights;
-    return '<b>Инсайды ИИ</b><ul class="ai">' + list.map(function (it) {
-      var lvl = AI_LEVELS[it.level] ? it.level : 'info';
-      // lv-: класс «info» уже занят иконкой подсказки
-      return '<li class="lv-' + lvl + '" title="' + AI_LEVELS[lvl] + '">' + esc(it.text) +
-        (it.action ? '<span class="act">→ ' + esc(it.action) + '</span>' : '') + '</li>';
-    }).join('') + '</ul>' +
-      '<p class="ai-by">Интерпретация, не данные' + (ins.author ? ' · ' + esc(ins.author) : '') +
-      (ins.generatedAt ? ' · ' + esc(String(ins.generatedAt).slice(0, 16).replace('T', ' ')) : '') + '</p>';
+    return '<div class="metrics-section ai-section" id="aiInsights"><h3>' + title + '</h3>' + body + '</div>';
   }
 
-  function infoHtml(kind, chart, stat) {
+  function infoHtml(kind, stat) {
     var li = function (list) { return '<ul>' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'; };
-    return '<span class="info' + (chartInsights(chart) ? ' has-ai' : '') + '" tabindex="0" role="button" aria-label="Как читать график и инсайды">' +
+    return '<span class="info" tabindex="0" role="button" aria-label="Как читать график">' +
       '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"' +
       ' stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.3v3.6M8 5.1h.01"/></svg>' +
       '<span class="info-tip" role="tooltip">' + (stat ? '<div class="stat">' + stat + '</div>' : '') +
-      '<b>Как читать</b>' + li(CHART_INFO[kind]) + insightsHtml(chart) +
+      '<b>Как читать</b>' + li(CHART_INFO[kind]) +
       '</span></span>';
   }
 
@@ -2073,12 +2092,13 @@
 
   function fillMetricsPanel() {
     var html = '';
-    html += chartSection('Burndown текущего спринта', infoHtml('burndown', 'burndown'), burndownChart());
-    html += chartSection('Производительность: запланировано / сделано', infoHtml('velocity', 'velocity'), velocityChart());
-    html += chartSection('Диаграмма управления — истории', infoHtml('control', 'controlStories', controlStat(CONTROL.stories)),
+    html += chartSection('Burndown текущего спринта', infoHtml('burndown'), burndownChart());
+    html += chartSection('Производительность: запланировано / сделано', infoHtml('velocity'), velocityChart());
+    html += chartSection('Диаграмма управления — истории', infoHtml('control', controlStat(CONTROL.stories)),
       controlChart(CONTROL.stories, 'историй', 'story'));
-    html += chartSection('Диаграмма управления — подзадачи', infoHtml('control', 'controlSubtasks', controlStat(CONTROL.subtasks)),
+    html += chartSection('Диаграмма управления — подзадачи', infoHtml('control', controlStat(CONTROL.subtasks)),
       controlChart(CONTROL.subtasks, 'подзадач', 'subtask'));
+    html += insightsSection();
     return html;
   }
 

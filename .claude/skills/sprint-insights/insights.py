@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Инсайды по графикам сводного отчёта: детерминированная обвязка вокруг ИИ-агента.
+"""Инсайды ИИ для сводного отчёта: детерминированная обвязка вокруг ИИ-агента.
 
 Данные отчёта собирает runner actual-sprint скриптом, без модели. Здесь — второй,
 отдельный конвейер: агент интерпретирует графики, а скрипт держит его в рамках.
 
-    insights.py facts [--team slug]   факты по графикам из снимка → stdout (JSON)
+    insights.py facts [--team slug]   факты из снимка: графики, спринт сейчас, тенденция → stdout
     insights.py check [--file путь]   схема, хеш данных, ключи задач, числа против фактов
     insights.py apply [--file путь]   check, затем страница пересобирается из снимка
 
@@ -187,7 +187,22 @@ def team_facts(team, rules):
         },
         'sprintNow': {'split': tm.split(), 'blocked': brief(blocked),
                       'staleOver3Days': brief(stale)},
+        'trend': trend_facts(core),
     }
+
+
+def trend_facts(team):
+    """Тенденция команды по спринтам отчёта: пропускная способность и сроки."""
+    med = lambda m: (m or {}).get('median')  # noqa: E731
+    out = []
+    for s in team['metrics'].get('sprints', []):
+        out.append({'sprint': s['name'], 'total': s['total'], 'closed': s['closed'],
+                    'throughputPct': s['throughputPct'],
+                    'leadMedian': med(s.get('lead')), 'cycleMedian': med(s.get('cycle')),
+                    'leadStoryMedian': med(s.get('leadStory')), 'leadTaskMedian': med(s.get('leadTask'))})
+    overall = team['metrics'].get('overall', {})
+    return {'sprints': out, 'leadMedianAll': med(overall.get('lead')),
+            'cycleMedianAll': med(overall.get('cycle'))}
 
 
 def facts(teams, only=None):
@@ -247,23 +262,20 @@ def check(doc, teams):
             continue
         keys = team_keys(team)
         allowed = _numbers(team_facts(team, rules), set())
-        for chart, items in entry['charts'].items():
-            for n, item in enumerate(items, 1):
-                where = f'[{slug}] {chart} #{n}'
-                if len(item['text']) > TEXT_MAX:
-                    errors.append(f'{where}: text длиннее {TEXT_MAX} знаков ({len(item["text"])})')
-                if len(item.get('action', '')) > ACTION_MAX:
-                    errors.append(f'{where}: action длиннее {ACTION_MAX} знаков')
-                body = item['text'] + ' ' + item.get('action', '')
-                for key in sorted(set(item.get('keys', [])) | set(KEY_RE.findall(body))):
-                    if key not in keys:
-                        errors.append(f'{where}: задачи {key} нет в данных команды')
-                for raw, num in text_numbers(body):
-                    small = num.isdigit() and int(num) <= FREE_INTS
-                    if not small and num not in allowed:
-                        warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
-        if not any(entry['charts'].values()):
-            warnings.append(f'[{slug}] ни одного инсайда')
+        for n, item in enumerate(entry['observations'], 1):
+            where = f'[{slug}] наблюдение #{n}'
+            if len(item['text']) > TEXT_MAX:
+                errors.append(f'{where}: text длиннее {TEXT_MAX} знаков ({len(item["text"])})')
+            if len(item.get('action', '')) > ACTION_MAX:
+                errors.append(f'{where}: action длиннее {ACTION_MAX} знаков')
+            body = item['text'] + ' ' + item.get('action', '')
+            for key in sorted(set(item.get('keys', [])) | set(KEY_RE.findall(body))):
+                if key not in keys:
+                    errors.append(f'{where}: задачи {key} нет в данных команды')
+            for raw, num in text_numbers(body):
+                small = num.isdigit() and int(num) <= FREE_INTS
+                if not small and num not in allowed:
+                    warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
     return errors, warnings
 
 
@@ -318,11 +330,11 @@ def cmd_apply(args, cfg):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Инсайды ИИ по графикам отчёта actual-sprint')
+    ap = argparse.ArgumentParser(description='Инсайды ИИ для сводного отчёта actual-sprint')
     ap.add_argument('--config', default=DEFAULT_CONFIG, help=f'по умолчанию {DEFAULT_CONFIG}')
     ap.add_argument('--data', default=None, help='снимок данных (по умолчанию data конфига)')
     sub = ap.add_subparsers(dest='cmd', required=True)
-    p_facts = sub.add_parser('facts', help='факты по графикам из снимка — вход для агента')
+    p_facts = sub.add_parser('facts', help='факты из снимка — вход для агента')
     p_facts.add_argument('--team', default=None, help='slug одной команды')
     p_facts.add_argument('--out', default=None, help='записать в файл вместо stdout')
     for name, text in (('check', 'проверить файл инсайдов'), ('apply', 'проверить и пересобрать страницу')):

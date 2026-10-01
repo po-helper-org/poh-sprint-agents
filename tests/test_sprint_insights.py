@@ -1,4 +1,4 @@
-"""/sprint-insights: интерпретация графиков от ИИ — отдельный конвейер поверх снимка данных.
+"""/sprint-insights: наблюдения ИИ для PO — отдельный конвейер поверх снимка данных.
 
 Проверяется детерминированная обвязка вокруг агента: facts считает те же числа, что
 лежат в данных; check не пускает на страницу чужие ключи задач, устаревший хеш и
@@ -93,6 +93,8 @@ class FactsTest(unittest.TestCase):
         for team, f in zip(self.ws.teams, self.facts['teams']):
             self.assertEqual(build_mod.team_digest(team), f['dataHash'])
             self.assertEqual({'burndown', 'velocity', 'controlStories', 'controlSubtasks'}, set(f['charts']))
+            self.assertEqual([s['name'] for s in team['metrics']['sprints']],
+                             [s['sprint'] for s in f['trend']['sprints']], 'тенденция — по спринтам отчёта')
 
     def test_numbers_come_from_data(self):
         for team, f in zip(self.ws.teams, self.facts['teams']):
@@ -115,7 +117,7 @@ class FactsTest(unittest.TestCase):
         team = dict(self.ws.teams[0])
         base = build_mod.team_digest(team)
         team['notes'] = {'x': 'заметка'}
-        team['insights'] = {'charts': {}}
+        team['insights'] = {'observations': []}
         self.assertEqual(base, build_mod.team_digest(team))
         team['sprintName'] = 'Другой спринт'
         self.assertNotEqual(base, build_mod.team_digest(team))
@@ -134,6 +136,21 @@ class CheckTest(unittest.TestCase):
         self.addCleanup(self.ws.cleanup)
         self.doc = self.ws.example()
 
+    def obs(self, n):
+        return self.doc['teams']['platform']['observations'][n]
+
+    def test_about_must_be_known(self):
+        self.obs(0)['about'] = 'weather'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
+    def test_old_per_chart_format_rejected(self):
+        """Прежняя форма (charts по графикам) больше не принимается: схема требует observations."""
+        entry = self.doc['teams']['platform']
+        entry['charts'] = {'burndown': entry.pop('observations')}
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('observations' in e or 'charts' in e for e in errors), errors)
+
     def check(self, doc):
         return insights_mod.check(doc, self.ws.teams)
 
@@ -143,12 +160,12 @@ class CheckTest(unittest.TestCase):
         self.assertEqual([], warnings, 'в примере каждое число — из фактов')
 
     def test_unknown_task_key_rejected(self):
-        self.doc['teams']['platform']['charts']['burndown'][0]['keys'] = ['INIT-99999']
+        self.obs(0)['keys'] = ['INIT-99999']
         errors, _ = self.check(self.doc)
         self.assertTrue(any('INIT-99999 нет в данных' in e for e in errors), errors)
 
     def test_key_in_text_checked_too(self):
-        self.doc['teams']['platform']['charts']['velocity'][0]['text'] += ' Пример: ZZZ-1.'
+        self.obs(1)['text'] += ' Пример: ZZZ-1.'
         errors, _ = self.check(self.doc)
         self.assertTrue(any('ZZZ-1' in e for e in errors), errors)
 
@@ -158,7 +175,7 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(any('dataHash не совпадает' in e for e in errors), errors)
 
     def test_schema_and_limits(self):
-        item = self.doc['teams']['platform']['charts']['burndown'][0]
+        item = self.obs(0)
         item['level'] = 'panic'
         errors, _ = self.check(self.doc)
         self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
@@ -173,13 +190,13 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(any('[ghost] такой команды нет' in e for e in errors), errors)
 
     def test_invented_number_flagged(self):
-        self.doc['teams']['platform']['charts']['burndown'][0]['text'] = 'Команда закроет 813.7 задачи к пятнице.'
+        self.obs(0)['text'] = 'Команда закроет 813.7 задачи к пятнице.'
         errors, warnings = self.check(self.doc)
         self.assertEqual([], errors)
         self.assertTrue(any('числа 813.7 нет в фактах' in w for w in warnings), warnings)
 
     def test_small_counts_and_dates_not_flagged(self):
-        self.doc['teams']['platform']['charts']['burndown'][0]['text'] = \
+        self.obs(0)['text'] = \
             'За 2 дня до 2026-09-22 закрыто 5 из 48: держим INIT-132 под контролем.'
         _, warnings = self.check(self.doc)
         self.assertEqual([], warnings)
@@ -198,12 +215,13 @@ class ApplyTest(unittest.TestCase):
         teams = {t['slug']: t for t in self.ws.page_teams()}
         ins = teams['platform']['insights']
         self.assertEqual('PO-агент (пример)', ins['author'])
-        self.assertTrue(ins['charts']['burndown'])
+        self.assertGreaterEqual(len(ins['observations']), 3)
+        self.assertEqual('risk', ins['observations'][0]['level'], 'первым — главное')
         self.assertNotIn('insights', teams['catalog'], 'у команды без инсайдов поля нет')
 
     def test_apply_refuses_bad_file_and_keeps_page(self):
         doc = self.ws.example()
-        doc['teams']['platform']['charts']['burndown'][0]['keys'] = ['INIT-99999']
+        doc['teams']['platform']['observations'][0]['keys'] = ['INIT-99999']
         self.ws.write(doc)
         proc = self.ws.cli('apply')
         self.assertEqual(1, proc.returncode)
@@ -245,11 +263,18 @@ class PageTest(unittest.TestCase):
     def setUpClass(cls):
         cls.html = (support.SKILL / 'resources' / 'report_template.html').read_text(encoding='utf-8')
 
-    def test_tooltip_reads_ai_insights_not_static_advice(self):
-        for part in ('function insightsHtml(', 'team.insights', "'controlStories'", "'controlSubtasks'",
-                     '/sprint-insights', 'Интерпретация, не данные'):
+    def test_insights_are_own_section_at_the_bottom(self):
+        """Инсайды — отдельный раздел внизу сводного отчёта, не в подсказках графиков."""
+        for part in ('function insightsSection(', 'team.insights', 'ins.observations',
+                     '/sprint-insights', 'Интерпретация ИИ, не данные', 'id="aiInsights"'):
             self.assertIn(part, self.html)
-        self.assertNotIn('insight: [', self.html, 'советов «на все случаи» в шаблоне больше нет')
+        panel = self.html[self.html.index('function fillMetricsPanel()'):]
+        panel = panel[:panel.index('return html;')]
+        self.assertTrue(panel.rstrip().endswith('html += insightsSection();'), 'раздел — последним')
+        tip = self.html[self.html.index('function infoHtml('):]
+        tip = tip[:tip.index('\n  }\n')]
+        self.assertNotIn('insight', tip.lower(), 'в подсказке «i» — только как читать график')
+        self.assertNotIn('insight: [', self.html, 'советов «на все случаи» в шаблоне нет')
 
     def test_skill_and_command_present(self):
         skill = (INSIGHTS_DIR / 'SKILL.md').read_text(encoding='utf-8')
