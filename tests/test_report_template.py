@@ -62,6 +62,16 @@ class TemplateTest(unittest.TestCase):
                      'function sprintChip(', 'function storyNode('):
             self.assertIn(part, self.html)
 
+    def test_metrics_panel_clean(self):
+        """Под графиками только легенда и списки; расшифровка — в подсказке «i»; строки — в сетке."""
+        self.assertNotIn('Зелёная точка', self.html)
+        self.assertNotIn('Серая ступенька', self.html)
+        for part in ('function infoHtml(', 'function chartSection(', 'chartItemTarget(p, kind)',
+                     'chartItemTarget(r, kind)', "kind: 'chart'"):
+            self.assertIn(part, self.html)
+        row = self.html[self.html.index('  .outlier-row {'):]
+        self.assertIn('grid-template-columns', row[:row.index('}')], 'колонки фиксированы — строки не плавают')
+
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
             self.assertIn(where, self.html)

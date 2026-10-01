@@ -126,6 +126,23 @@
 
   /* сводный отчёт за 3 спринта */
   .metrics-section + .metrics-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+  /* «i» у заголовка графика: как читать и что это говорит техлиду и PO */
+  .info { position: relative; display: inline-flex; vertical-align: -3px; margin-left: 6px; color: var(--ico, #adb2b8); cursor: help; outline: none; }
+  .info:hover, .info:focus { color: var(--fg); }
+  .info-tip {
+    position: absolute; left: -8px; top: calc(100% + 8px); z-index: 8; width: 420px; max-width: 70vw;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.14); padding: 12px 14px;
+    font-size: 13px; line-height: 1.5; font-weight: 400; letter-spacing: normal; text-transform: none;
+    opacity: 0; visibility: hidden; transition: opacity 0.12s ease;
+  }
+  .info:hover .info-tip, .info:focus .info-tip, .info:focus-within .info-tip { opacity: 1; visibility: visible; }
+  .info-tip b { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  .info-tip b + ul { margin-top: 0; }
+  .info-tip ul { margin: 0 0 10px; padding-left: 16px; }
+  .info-tip ul:last-child { margin-bottom: 0; }
+  .info-tip li { margin: 2px 0; }
+  .info-tip .stat { margin: 0 0 10px; color: var(--muted); }
   .metrics-section h3 {
     margin: 0 0 12px;
     font-size: 12px;
@@ -190,14 +207,26 @@
     font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--c-blocked); font-weight: 600; margin-bottom: 8px;
   }
+  /* три колонки фиксированной ширины: название | статус | дни — строки не плавают */
   .outlier-row {
-    display: flex; justify-content: space-between; gap: 10px;
-    align-items: baseline; padding: 6px 0; font-size: 12px;
+    display: grid; grid-template-columns: minmax(0, 1fr) 92px 56px;
+    column-gap: 12px; align-items: center;
+    padding: 7px 0; font-size: 12px; line-height: 18px;
     border-bottom: 1px solid #f0f0f0;
   }
   .outlier-row:last-child { border-bottom: none; }
-  .outlier-row a { color: var(--fg); text-decoration: none; }
+  .outlier-row a {
+    color: var(--fg); text-decoration: none;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .outlier-row a:hover { text-decoration: underline; }
+  .outlier-row .key { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+  .outlier-row .status {
+    justify-self: start; max-width: 100%; box-sizing: border-box;
+    font-size: 11px; line-height: 16px; padding: 0 7px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .outlier-row .age { justify-self: end; font-size: 12px; }
 
   main { padding: 32px; }
 
@@ -375,7 +404,7 @@
   }
   .scope-group > .grp-head:hover { color: var(--fg); }
   .scope-group .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-  .scope-group .arr { margin-left: auto; font-size: 10px; transition: transform 0.15s ease; }
+  .scope-group .arr { margin-left: 2px; font-size: 9px; color: var(--muted); transition: transform 0.15s ease; }
   .scope-group.closed .arr { transform: rotate(-90deg); }
   .scope-group.closed > .grp-body { display: none; }
   .chip-sprint { font-size: 11px; color: var(--muted); white-space: nowrap; }
@@ -1030,7 +1059,7 @@
 
   var GENERAL = { kind: 'general' };
   var KIND_NAME = { epic: 'Эпик', story: 'История', subtask: 'Подзадача', event: 'Задача',
-                    ref: 'Вне отчёта' };
+                    ref: 'Вне отчёта', chart: 'График' };
 
   // все сущности текущей команды по ключу: для привязки из корзины и подсказок
   function entityIndex() {
@@ -1468,9 +1497,10 @@
       if (!byBucket[id].length) return;
       var b = BUCKETS.find(function (x) { return x.id === id; });
       var g = document.createElement('div');
-      g.className = 'scope-group';
+      // по умолчанию свёрнуто: сначала картина по статусам, задачи — по клику
+      g.className = 'scope-group closed';
       g.dataset.bucket = id;
-      g.innerHTML = '<button class="grp-head" type="button" aria-expanded="true">' +
+      g.innerHTML = '<button class="grp-head" type="button" aria-expanded="false">' +
         '<span class="dot" style="background:' + BUCKET_COLOR[id] + '"></span>' +
         esc(b.label) + ' · ' + byBucket[id].length + '<span class="arr">▼</span></button>' +
         '<div class="grp-body"></div>';
@@ -1482,9 +1512,10 @@
       byBucket[id].forEach(function (it) { body.appendChild(storyNode(it, epic, counts, sprintChip)); });
       leftNodes.push(g);
     });
-    storiesBody.appendChild(scopeSection('left', 'Осталось', left, leftNodes, false));
+    // эпик может быть длинным: при открытии видны только итог и заголовки разделов
+    storiesBody.appendChild(scopeSection('left', 'Осталось', left, leftNodes, true));
     storiesBody.appendChild(scopeSection('done', 'Сделано', done.length,
-      done.map(function (it) { return storyNode(it, epic, counts, sprintChip); }), false));
+      done.map(function (it) { return storyNode(it, epic, counts, sprintChip); }), true));
   }
 
   function setScopeMode(on) {
@@ -1579,7 +1610,7 @@
         '<span class="swatch ideal"></span>идеальный темп &nbsp; ' +
         '<span class="swatch actual"></span>фактический остаток<br>' +
         'Сейчас закрыто <b>' + last.closed + '</b> из <b>' + last.scope + '</b>, осталось <b>' +
-        last.remaining + '</b>. Серая ступенька — изменение объёма спринта.' +
+        last.remaining + '</b>.' +
       '</div>';
   }
 
@@ -1587,7 +1618,15 @@
   // X — дата закрытия, Y — Cycle Time задачи. Синяя линия — скользящее среднее,
   // светлая полоса — коридор ±σ, красная черта — порог выброса (среднее + σ).
   // Точки выше порога подсвечены и вынесены списком под графиком.
-  function controlChart(c, label) {
+  // Цель заметки для задачи из диаграммы: из отчёта, если она там есть (с эпиком),
+  // иначе — снимок того, что известно по строке диаграммы.
+  function chartItemTarget(row, kind) {
+    return entityIndex()[String(row.key).toUpperCase()] ||
+      { kind: kind, key: row.key, title: row.title, status: row.status,
+        assignee: row.assignee || null, rowId: null };
+  }
+
+  function controlChart(c, label, kind) {
     if (!c || !c.points || !c.points.length) {
       return '<div class="m-muted">Нет закрытых ' + esc(label) + ' за период.</div>';
     }
@@ -1666,24 +1705,24 @@
       listHtml += '<div class="outliers"><div class="outliers-head">Выбиваются из коридора (' +
         outliers.length + ' из ' + pts.length + ')</div>' +
         outliers.map(function (p) {
-          return '<div class="outlier-row">' +
-            '<a href="' + jiraUrl(p.key) + '" target="_blank" rel="noopener">' + esc(p.key) + ' — ' + esc(p.title) + '</a>' +
-            '<div class="meta-wrap">' +
-              '<span class="status ' + bucketClass(p.status, p.category) + '">' + esc(p.status) + '</span>' +
-              '<span class="age stale">' + fmt(p.cycle) + 'д</span>' +
-            '</div></div>';
+          return '<div class="outlier-row"' + ctxAttr(chartItemTarget(p, kind)) + '>' +
+            '<a href="' + jiraUrl(p.key) + '" target="_blank" rel="noopener" title="' + esc(p.key + ' — ' + p.title) + '">' +
+              '<span class="key">' + esc(p.key) + '</span>' + esc(p.title) + '</a>' +
+            '<span class="status ' + bucketClass(p.status, p.category) + '" title="' + esc(p.status) + '">' + esc(p.status) + '</span>' +
+            '<span class="age stale">' + fmt(p.cycle) + ' д</span>' +
+            '</div>';
         }).join('') + '</div>';
     }
     if (c.risks && c.risks.length) {
       listHtml += '<div class="outliers"><div class="outliers-head risk">В зоне риска (' + c.risks.length +
         ') — в работе дольше медианы ' + fmt(c.median) + ' дн.</div>' +
         c.risks.map(function (r) {
-          return '<div class="outlier-row">' +
-            '<a href="' + jiraUrl(r.key) + '" target="_blank" rel="noopener">' + esc(r.key) + ' — ' + esc(r.title) + '</a>' +
-            '<div class="meta-wrap">' +
-              '<span class="status ' + bucketClass(r.status, r.category) + '">' + esc(r.status) + '</span>' +
-              '<span class="age risk">' + fmt(r.elapsed) + 'д</span>' +
-            '</div></div>';
+          return '<div class="outlier-row"' + ctxAttr(chartItemTarget(r, kind)) + '>' +
+            '<a href="' + jiraUrl(r.key) + '" target="_blank" rel="noopener" title="' + esc(r.key + ' — ' + r.title) + '">' +
+              '<span class="key">' + esc(r.key) + '</span>' + esc(r.title) + '</a>' +
+            '<span class="status ' + bucketClass(r.status, r.category) + '" title="' + esc(r.status) + '">' + esc(r.status) + '</span>' +
+            '<span class="age risk">' + fmt(r.elapsed) + ' д</span>' +
+            '</div>';
         }).join('') + '</div>';
     }
 
@@ -1693,10 +1732,7 @@
         '<span class="swatch"></span>скользящее среднее &nbsp; ' +
         '<span class="swatch limit"></span>порог выброса ' + fmt(c.limit) + ' дн. &nbsp; ' +
         '<span class="dot" style="background:var(--c-testing)"></span>в зоне риска' +
-        (overflow > 0 ? ' (' + overflow + ' выше шкалы)' : '') + '<br>' +
-        'Зелёная точка — закрытая задача: по горизонтали дата закрытия, по вертикали Cycle Time. ' +
-        'Жёлтая — ещё в работе, стоит у правого края на сегодня. ' +
-        'За ' + c.days + ' дн.: медиана <b>' + fmt(c.median) + '</b> дн., среднее <b>' + fmt(c.mean) + '</b> дн., σ ' + fmt(c.sd) + '.' +
+        (overflow > 0 ? ' (' + overflow + ' выше шкалы)' : '') +
       '</div>' + listHtml;
   }
 
@@ -1771,16 +1807,70 @@
       '<div class="chart-legend">' + legend + '</div>';
   }
 
+  // Как читать график и что он говорит техлиду и PO — в подсказке у заголовка,
+  // чтобы под графиком оставались только легенда и списки.
+  var CHART_INFO = {
+    burndown: {
+      read: ['Серая линия — идеальный темп: от объёма на старте до нуля в последний день.',
+             'Красная — сколько задач осталось на каждый день; точка — подсказка с числами.',
+             'Светлые полосы — выходные. Ступенька вверх — в спринт добавили задачи.'],
+      insight: ['Красная выше серой и расходится — спринт не успевает: режьте объём или снимайте блокеры сейчас, а не в последний день.',
+                'Плато несколько дней — задачи не закрываются: ищите, что застряло в ревью и тесте.',
+                'Ступеньки вверх посреди спринта — незапланированная работа съедает ёмкость: обсудите, что из неё можно было отложить.',
+                'Обрыв в конце — закрывают пачкой: задачи слишком крупные, дробите на следующем планировании.']
+    },
+    velocity: {
+      read: ['Левый столбец — всё, что было в спринте, разложенное по текущему статусу.',
+             'Правый — сколько сделано. Пунктир — среднее сделанное за показанные спринты.'],
+      insight: ['План стабильно выше сделанного — команда переобещает: планируйте ближе к пунктиру.',
+                'Толстый синий или оранжевый слой в плане — работа оседает «в работе» или в ревью: узкое место там.',
+                'Красный слой — блокировки, обычно зависимость от смежников: нужен владелец и дата.',
+                'Сделанное растёт от спринта к спринту — команда разгоняется; падает — ищите причину до ретро.']
+    },
+    control: {
+      read: ['Точка — закрытая задача: по горизонтали дата закрытия, по вертикали Cycle Time — дни от взятия в работу до закрытия.',
+             'Синяя линия — скользящее среднее по 5 задачам, светлая полоса — коридор ±σ.',
+             'Красная линия — порог выброса: среднее + σ. Выше — задача шла заметно дольше обычного.',
+             'Жёлтые точки у правого края — ещё в работе и уже дольше медианы; по высоте — сколько идут на сегодня.'],
+      insight: ['Выбросы разберите на ретро: что задержало — зависимость, размытые требования или размер задачи.',
+                'Жёлтые точки ещё можно спасти: спросите на дейлике, что мешает, и снимите блокер.',
+                'Широкий коридор — сроки непредсказуемы: дробите задачи и уточняйте критерии готовности до старта.',
+                'Среднее ползёт вверх — команда замедляется или задачи укрупнились.',
+                'У подзадач коридор должен быть узким; если нет — декомпозиция слишком грубая.']
+    }
+  };
+
+  function infoHtml(kind, stat) {
+    var info = CHART_INFO[kind];
+    var li = function (list) { return '<ul>' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'; };
+    return '<span class="info" tabindex="0" role="button" aria-label="Как читать график">' +
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"' +
+      ' stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.3v3.6M8 5.1h.01"/></svg>' +
+      '<span class="info-tip" role="tooltip">' + (stat ? '<div class="stat">' + stat + '</div>' : '') +
+      '<b>Как читать</b>' + li(info.read) + '<b>Что это говорит техлиду и PO</b>' + li(info.insight) +
+      '</span></span>';
+  }
+
+  function controlStat(c) {
+    if (!c || !c.points || !c.points.length) return '';
+    return 'За ' + c.days + ' дн.: медиана <strong>' + fmt(c.median) + '</strong> дн., среднее <strong>' +
+      fmt(c.mean) + '</strong> дн., σ ' + fmt(c.sd) + '.';
+  }
+
+  // раздел графика: правый клик по нему — заметка к графику целиком
+  function chartSection(title, info, body) {
+    return '<div class="metrics-section"' + ctxAttr({ kind: 'chart', title: title }) + '><h3>' + esc(title) + info + '</h3>' +
+      body + '</div>';
+  }
+
   function fillMetricsPanel() {
     var html = '';
-
-    html += '<div class="metrics-section"><h3>Burndown текущего спринта</h3>' + burndownChart() + '</div>';
-    html += '<div class="metrics-section"><h3>Производительность: запланировано / сделано</h3>' + velocityChart() + '</div>';
-    html += '<div class="metrics-section"><h3>Диаграмма управления — истории</h3>' +
-      controlChart(CONTROL.stories, 'историй') + '</div>';
-    html += '<div class="metrics-section"><h3>Диаграмма управления — подзадачи</h3>' +
-      controlChart(CONTROL.subtasks, 'подзадач') + '</div>';
-
+    html += chartSection('Burndown текущего спринта', infoHtml('burndown'), burndownChart());
+    html += chartSection('Производительность: запланировано / сделано', infoHtml('velocity'), velocityChart());
+    html += chartSection('Диаграмма управления — истории', infoHtml('control', controlStat(CONTROL.stories)),
+      controlChart(CONTROL.stories, 'историй', 'story'));
+    html += chartSection('Диаграмма управления — подзадачи', infoHtml('control', controlStat(CONTROL.subtasks)),
+      controlChart(CONTROL.subtasks, 'подзадач', 'subtask'));
     return html;
   }
 

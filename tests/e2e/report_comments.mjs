@@ -143,15 +143,23 @@ check((await p.textContent('.scope-sec[data-sec=done] .sec-head .n')).includes(S
 check((await p.$$('.scope-sec .story-row')).length === scope.total, 'в объёме все задачи эпика, не только спринта');
 check((await p.$$eval('.chip-sprint', els => els.filter(e => !e.classList.contains('now')).length)) === scope.outside,
       'у задач вне текущего спринта метка спринта');
+check(await p.isHidden('.scope-sec[data-sec=left] .sec-body') && await p.isHidden('.scope-sec[data-sec=done] .sec-body'),
+      'при открытии разделы свёрнуты: видны итог и заголовки');
+await p.click('.scope-sec[data-sec=left] .sec-head');
 const grp = '.scope-sec[data-sec=left] .scope-group >> nth=0';
 const grpRows = await p.$$eval('.scope-sec[data-sec=left] .scope-group', gs => gs[0].querySelectorAll('.story-row').length);
+check(await p.locator(grp + ' >> .grp-head').isVisible() && await p.locator(grp + ' >> .grp-body').isHidden() && grpRows > 0,
+      'в «Осталось» статусы свёрнуты: заголовок со счётчиком, задачи скрыты');
 await p.click(grp + ' >> .grp-head');
-check(await p.locator(grp + ' >> .grp-body').isHidden() && grpRows > 0, 'подгруппа «Осталось» сворачивается');
+check(await p.locator(grp + ' >> .grp-body').isVisible(), 'статус раскрывается по клику');
 await p.click(grp + ' >> .grp-head');
-check(await p.locator(grp + ' >> .grp-body').isVisible(), 'и раскрывается обратно');
+check(await p.locator(grp + ' >> .grp-body').isHidden(), 'и сворачивается обратно');
+await p.click(grp + ' >> .grp-head');
 await p.click('.scope-sec[data-sec=done] .sec-head');
-check(await p.isHidden('.scope-sec[data-sec=done] .sec-body'), 'раздел сворачивается');
-await p.click('.scope-sec[data-sec=left] .story-row .story-title-wrap >> nth=0', { button: 'right', position: { x: 220, y: 8 } });
+check(await p.isVisible('.scope-sec[data-sec=done] .sec-body'), 'раздел «Сделано» раскрывается');
+await p.click('.scope-sec[data-sec=done] .sec-head');
+check(await p.isHidden('.scope-sec[data-sec=done] .sec-body'), 'и сворачивается');
+await p.click(grp + ' >> .story-row .story-title-wrap >> nth=0', { button: 'right', position: { x: 220, y: 8 } });
 await p.fill('#cpopText', 'Заметка из объёма эпика');
 await p.press('#cpopText', 'Enter');
 check((await p.inputValue('#promptOut')).includes('Заметка из объёма эпика'), 'правый клик по задаче объёма — заметка');
