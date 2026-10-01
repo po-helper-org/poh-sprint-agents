@@ -124,6 +124,20 @@ const fontSize = await p.locator('#nText').evaluate(el => parseFloat(getComputed
 check(fontSize >= 16, 'поле ввода 16px — iOS не увеличивает страницу при фокусе');
 check(await noSideScroll(), 'корзина без горизонтальной прокрутки');
 
+// презентация на телефоне: в портрете слайды лентой, без горизонтальной прокрутки
+await p.tap('#notesToggle');
+await p.tap('#presBtn');
+await p.waitForTimeout(300);
+const feed = await p.evaluate(() => {
+  const st = document.getElementById('deckStage');
+  return { feed: document.getElementById('deck').classList.contains('feed'), noSide: st.scrollWidth <= st.clientWidth,
+           visible: [...st.querySelectorAll('.slide')].every(s => getComputedStyle(s).display !== 'none') };
+});
+check(feed.feed && feed.visible, 'презентация в портрете — все слайды лентой');
+check(feed.noSide, 'лента слайдов без горизонтальной прокрутки');
+await p.tap('#deckClose');
+check(await p.isHidden('#deck'), 'крестик закрывает презентацию');
+
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();
 if (failures.length) { console.log(`\nупало: ${failures.length}`); process.exit(1); }

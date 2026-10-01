@@ -85,6 +85,16 @@ class TemplateTest(unittest.TestCase):
                      "addEventListener('touchstart'", 'LONG_PRESS_MS', 'id="cpopCancel"'):
             self.assertIn(part, self.html)
 
+    def test_presentation_for_committee(self):
+        """Кнопка «Презентация»: слайды по командам из тех же данных, стиль колоды экватора."""
+        bar = self.html[self.html.index('<div class="pb-row">'):self.html.index('<div class="notes-panel"')]
+        self.assertIn('id="presBtn"', bar)
+        self.assertIn('>Презентация<', bar)
+        for part in ("var START_MODE = '{{START_MODE}}';", 'id="deck"', 'function slideTitle(', 'function slideSummary(',
+                     'function slideTeam(', 'function slideAsks(', "'#presentation'", '@page { size: 1600px 900px',
+                     '--b-dark: #0F0F14', '--b-beige: #E4E0DA', '--b-accent: #4C6FFF', 'цель не указана'):
+            self.assertIn(part, self.html)
+
     def test_priority_everywhere(self):
         for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
             self.assertIn(where, self.html)

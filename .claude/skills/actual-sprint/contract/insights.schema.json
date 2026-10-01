@@ -54,6 +54,9 @@
             "$ref": "#/definitions/observation"
           },
           "description": "Наблюдения по важности: первое — главное, что PO стоит знать о спринте сейчас."
+        },
+        "business": {
+          "$ref": "#/definitions/business"
         }
       }
     },
@@ -103,6 +106,73 @@
             "team"
           ],
           "description": "О чём наблюдение: sprint — ход текущего спринта; team — состояние и тенденция команды за 3 спринта; остальное — конкретный график. Показывается меткой у наблюдения."
+        }
+      }
+    },
+    "business": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Бизнес-блок для презентации управляющему комитету: что команда дала бизнесу за спринт и каким целям служит работа. Цифры прогресса страница берёт из данных сама; здесь — только интерпретация.",
+      "properties": {
+        "headline": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Одна фраза: главный результат команды за спринт для бизнеса. До 160 знаков."
+        },
+        "value": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string",
+            "minLength": 10
+          },
+          "description": "Что это даёт бизнесу: 1–3 пункта на языке заказчика, до 200 знаков каждый."
+        },
+        "goals": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 3
+          },
+          "description": "Ключ эпика → какой бизнес-цели или KR он служит, до 120 знаков. Только из OKR/roadmap PO; неизвестно — эпик не упоминается."
+        },
+        "goalsSource": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Откуда взяты цели: файл OKR/roadmap или «со слов PO, дата»."
+        },
+        "asks": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/definitions/ask"
+          },
+          "description": "Что нужно от комитета: решение, ресурс, снятие блокера. Пусто — слайда просьб нет."
+        }
+      }
+    },
+    "ask": {
+      "type": "object",
+      "required": [
+        "title",
+        "ask"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Суть, до 80 знаков."
+        },
+        "why": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Почему: факт из данных, до 200 знаков."
+        },
+        "ask": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что именно решить или дать, до 160 знаков."
         }
       }
     }

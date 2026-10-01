@@ -8,6 +8,7 @@
 
     python3 demo_data.py --out demo-teams.json
     python3 demo_data.py --html demo-report.html    # сразу собрать страницу
+    python3 demo_data.py --business demo-business.html   # она же, открытая презентацией
 
 Сид фиксирован: одинаковый запуск даёт одинаковую картинку, скриншоты
 не «плывут» между пересборками.
@@ -338,6 +339,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=None, help='куда положить JSON команд')
     ap.add_argument('--html', default=None, help='сразу собрать HTML-страницу')
+    ap.add_argument('--business', default=None, help='та же страница, открытая сразу презентацией')
     a = ap.parse_args()
 
     rnd = random.Random(SEED)
@@ -356,7 +358,7 @@ def main():
         pathlib.Path(a.out).write_text(json.dumps(teams, ensure_ascii=False), encoding='utf-8')
         print('данные:', a.out)
 
-    if a.html:
+    if a.html or a.business:
         # пример инсайдов /sprint-insights у первой команды: хеш ставим по демо-данным,
         # дальше — тот же путь, что у runner (attach_insights проверяет совпадение)
         import sys
@@ -370,9 +372,12 @@ def main():
                 doc['teams'][t['slug']]['dataHash'] = build_mod.team_digest(t)
         build_mod.attach_insights(teams, doc)
         tpl = (here / 'resources' / 'report_template.html').read_text(encoding='utf-8')
-        html = tpl.replace('{{TEAMS_JSON}}', json.dumps(teams, ensure_ascii=False))
-        pathlib.Path(a.html).write_text(html, encoding='utf-8')
-        print('страница:', a.html, f'({len(html) // 1024} КБ)')
+        for path, mode in ((a.html, 'report'), (a.business, 'presentation')):
+            if not path:
+                continue
+            html = tpl.replace('{{TEAMS_JSON}}', json.dumps(teams, ensure_ascii=False)).replace('{{START_MODE}}', mode)
+            pathlib.Path(path).write_text(html, encoding='utf-8')
+            print('страница:' if mode == 'report' else 'презентация:', path, f'({len(html) // 1024} КБ)')
 
     for t in teams:
         units = sum(1 + len(s['subtasks']) for e in t['epics'] for s in e['stories'])

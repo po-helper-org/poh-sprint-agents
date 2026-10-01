@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 
 PLACEHOLDER = '{{TEAMS_JSON}}'
+MODE_PLACEHOLDER = '{{START_MODE}}'
 
 
 class BuildError(Exception):
@@ -100,6 +101,8 @@ def attach_insights(teams, doc):
             'observations': [o for o in entry.get('observations') or []
                              if isinstance(o, dict) and o.get('text')],
         }
+        if isinstance(entry.get('business'), dict):
+            team['insights']['business'] = entry['business']
         attached.append(team['slug'])
     return attached, stale
 
@@ -127,11 +130,20 @@ def script_json(value):
     return ''.join(_SCRIPT_UNSAFE.get(ch, ch) for ch in text)
 
 
-def render(teams, template_path):
+def render(teams, template_path, mode='report'):
+    """HTML страницы. mode='presentation' — та же страница, открытая сразу слайдами:
+    файл для управляющего комитета (sprint-business.html)."""
     tpl = Path(template_path).read_text(encoding='utf-8')
     if PLACEHOLDER not in tpl:
         raise BuildError(f'в шаблоне {template_path} нет плейсхолдера {PLACEHOLDER}')
-    return tpl.replace(PLACEHOLDER, script_json(teams))
+    return tpl.replace(PLACEHOLDER, script_json(teams)).replace(MODE_PLACEHOLDER, mode)
+
+
+def write_pages(teams, template_path, report_path, business_path):
+    """Отчёт PO и презентация для комитета — из одних данных, одним шаблоном."""
+    report = write_atomic(report_path, render(teams, template_path))
+    business = write_atomic(business_path, render(teams, template_path, mode='presentation'))
+    return report, business
 
 
 def snapshot(teams):

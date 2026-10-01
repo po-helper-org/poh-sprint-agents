@@ -123,6 +123,8 @@ class Config:
         self.data = (self.root / data.get('data', './reports/sprint-report.data.json')).resolve()
         # интерпретация графиков от ИИ-агента (/sprint-insights): runner только встраивает
         self.insights = (self.root / data.get('insights', './reports/sprint-insights.json')).resolve()
+        # тот же отчёт, открытый сразу презентацией — для управляющего комитета
+        self.business = (self.root / data.get('business', './reports/sprint-business.html')).resolve()
         self.lock_path = self.root / data.get('lock', './sprint-report.lock.json')
         self.teams = []
 

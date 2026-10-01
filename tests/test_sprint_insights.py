@@ -151,6 +151,43 @@ class CheckTest(unittest.TestCase):
         errors, _ = self.check(self.doc)
         self.assertTrue(any('observations' in e or 'charts' in e for e in errors), errors)
 
+    def biz(self, slug='platform'):
+        return self.doc['teams'][slug]['business']
+
+    def test_business_goal_only_for_team_epics(self):
+        self.biz()['goals']['INIT-999'] = 'OBJ 9 · KR 9.9 — чужая цель'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('эпика INIT-999 нет в спринте команды' in e for e in errors), errors)
+
+    def test_business_goal_numbers_not_checked_against_facts(self):
+        """Цель — из OKR: «KR 7.4», «+15% конверсии» с фактами спринта не сверить."""
+        self.biz()['goals']['INIT-101'] = 'OBJ 7 · KR 7.4 — +15% конверсии партнёрских заказов'
+        errors, warnings = self.check(self.doc)
+        self.assertEqual(([], []), (errors, warnings))
+
+    def test_business_texts_fit_the_slide(self):
+        self.biz()['headline'] = 'Очень длинно. ' * 20
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('business.headline: длиннее 160' in e for e in errors), errors)
+
+    def test_business_numbers_and_keys_checked(self):
+        self.biz()['value'] = ['Готово 913.4% — выдумка про INIT-55555.']
+        errors, warnings = self.check(self.doc)
+        self.assertTrue(any('INIT-55555' in e for e in errors), errors)
+        self.assertTrue(any('числа 913.4' in w for w in warnings), warnings)
+
+    def test_business_goals_need_source(self):
+        del self.biz()['goalsSource']
+        _, warnings = self.check(self.doc)
+        self.assertTrue(any('goalsSource' in w for w in warnings), warnings)
+
+    def test_epic_facts_for_business(self):
+        f = insights_mod.facts(self.ws.teams, 'platform')['teams'][0]
+        team = self.ws.teams[0]
+        self.assertEqual([e['epicKey'] for e in team['epics'] if e.get('epicKey')], [e['key'] for e in f['epics']])
+        for e, raw in zip(f['epics'], [e for e in team['epics'] if e.get('epicKey')]):
+            self.assertEqual(len(raw.get('scope') or []), e['scopeTotal'])
+
     def check(self, doc):
         return insights_mod.check(doc, self.ws.teams)
 
@@ -217,7 +254,9 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual('PO-агент (пример)', ins['author'])
         self.assertGreaterEqual(len(ins['observations']), 3)
         self.assertEqual('risk', ins['observations'][0]['level'], 'первым — главное')
-        self.assertNotIn('insights', teams['catalog'], 'у команды без инсайдов поля нет')
+        self.assertNotIn('insights', teams['mobile'], 'у команды без инсайдов поля нет')
+        self.assertEqual('OBJ 1 · KR 1.1 — заказы от партнёров без ручного ввода',
+                         ins['business']['goals']['INIT-101'], 'бизнес-блок едет на страницу')
 
     def test_apply_refuses_bad_file_and_keeps_page(self):
         doc = self.ws.example()
@@ -236,9 +275,18 @@ class ApplyTest(unittest.TestCase):
         self.ws.data.write_text(json.dumps(teams, ensure_ascii=False), encoding='utf-8')
         proc = subprocess.run([sys.executable, str(RUN), '--config', str(self.ws.config), 'render'],
                               capture_output=True, text=True, cwd=str(self.ws.dir), timeout=120)
-        self.assertEqual(1, proc.returncode, proc.stdout)
+        self.assertEqual(0, proc.returncode, proc.stdout)
         self.assertIn('инсайды устарели (данные пересобраны): platform — /sprint-insights', proc.stdout)
-        self.assertNotIn('insights', self.ws.page_teams()[0])
+        teams = {t['slug']: t for t in self.ws.page_teams()}
+        self.assertNotIn('insights', teams['platform'], 'устаревшие не показываются')
+        self.assertIn('insights', teams['catalog'], 'у соседней команды — свои, свежие')
+        # все инсайды устарели — render сигналит кодом 1
+        teams = json.loads(self.ws.data.read_text(encoding='utf-8'))
+        teams[1]['boardName'] = 'Другая доска'
+        self.ws.data.write_text(json.dumps(teams, ensure_ascii=False), encoding='utf-8')
+        proc = subprocess.run([sys.executable, str(RUN), '--config', str(self.ws.config), 'render'],
+                              capture_output=True, text=True, cwd=str(self.ws.dir), timeout=120)
+        self.assertEqual(1, proc.returncode, proc.stdout)
 
     def test_render_without_insights_file(self):
         proc = subprocess.run([sys.executable, str(RUN), '--config', str(self.ws.config), 'render'],

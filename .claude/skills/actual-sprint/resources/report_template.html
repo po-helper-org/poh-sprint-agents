@@ -819,12 +819,163 @@
     font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 4px;
     border: 1px solid var(--line); background: var(--bg); color: var(--muted); cursor: pointer;
   }
+
+  /* ===================== Презентация для управляющего комитета =====================
+     Тот же брендбук, что у колоды экватора квартала (poh-okr-agent / okr-equator):
+     тёмный титул, бежевые контентные слайды, Arial + Courier New для чисел,
+     пастельные чипы статусов, акцент #4C6FFF — не больше раза на слайд.
+     Слайд свёрстан на холсте 1600×900 и масштабируется под экран; на телефоне
+     в портрете слайды идут лентой. */
+  .pres-btn {
+    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 4px; cursor: pointer;
+    border: 1px solid var(--fg); background: var(--bg); color: var(--fg);
+  }
+  .pres-btn:hover { background: var(--fg); color: var(--bg); }
+  .deck {
+    --b-dark: #0F0F14; --b-beige: #E4E0DA; --b-white: #FFFFFF; --b-gray: #8A8A8A; --b-graydark: #42424A;
+    --b-done: #CDE8D2; --b-progress: #C9DDF5; --b-wait: #F7DCC4; --b-pause: #FFEDB0; --b-cancel: #FFD9E2;
+    --b-accent: #4C6FFF; --k: 1;
+    position: fixed; inset: 0; z-index: 40; background: #1b1b21; display: flex; flex-direction: column;
+    font-family: Arial, Helvetica, sans-serif; color: var(--b-dark);
+  }
+  .deck[hidden] { display: none; }
+  .deck-bar {
+    display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+    color: #c9c9cf; font-size: 13px; flex-shrink: 0;
+  }
+  .deck-bar .grow { flex: 1; }
+  .deck-bar .count { font-family: "Courier New", monospace; font-size: 14px; color: #fff; min-width: 64px; text-align: center; }
+  .deck-bar button {
+    font: inherit; font-size: 13px; color: #fff; background: transparent; border: 1px solid #4a4a52;
+    border-radius: 6px; padding: 6px 12px; cursor: pointer;
+  }
+  .deck-bar button:hover { border-color: #fff; }
+  .deck-bar button:disabled { opacity: .35; cursor: default; }
+  .deck-stage { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+  .deck-stage .slide { position: absolute; left: 50%; top: 50%; transform-origin: center center; display: none; }
+  .deck-stage .slide.current { display: flex; }
+
+  .slide {
+    width: 1600px; height: 900px; padding: 72px 88px; flex-direction: column; overflow: hidden;
+    background: var(--b-beige); color: var(--b-dark); box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  .slide.dark { background: var(--b-dark); color: var(--b-white); }
+  .slide .mono, .slide .num { font-family: "Courier New", monospace; }
+  .slide .kicker { font-family: "Courier New", monospace; font-size: calc(18px * var(--k)); letter-spacing: .08em;
+                   text-transform: uppercase; color: var(--b-gray); margin-bottom: calc(18px * var(--k)); }
+  .slide h1 { font-size: calc(64px * var(--k)); line-height: 1.1; margin: 0 0 calc(20px * var(--k)); font-weight: 700; }
+  .slide h2 { font-size: calc(40px * var(--k)); line-height: 1.15; margin: 0; font-weight: 700; }
+  .slide .lead { font-size: calc(26px * var(--k)); line-height: 1.35; color: var(--b-gray); margin: 0; }
+  .slide.dark .lead { color: #b9b9c0; }
+  .slide .spacer { flex: 1; }
+  .slide .foot { font-size: calc(16px * var(--k)); color: var(--b-gray); }
+  .slide .foot .mono { font-size: calc(16px * var(--k)); }
+  .slide .t-teams { margin-top: calc(36px * var(--k)); display: flex; flex-direction: column; gap: calc(10px * var(--k)); }
+  .slide .t-teams div { font-family: "Courier New", monospace; font-size: calc(22px * var(--k)); color: var(--b-white); }
+  .slide .t-teams span { color: var(--b-gray); }
+
+  .slide .chip { display: inline-block; font-family: "Courier New", monospace; font-size: calc(17px * var(--k));
+                 padding: calc(6px * var(--k)) calc(14px * var(--k)); border-radius: 999px; color: var(--b-dark);
+                 white-space: nowrap; font-weight: 700; }
+  .chip.st-ok { background: var(--b-done); }
+  .chip.st-lag { background: var(--b-pause); }
+  .chip.st-risk { background: var(--b-cancel); }
+  .chip.st-none { background: #d5d1cb; }
+
+  /* сводка по командам */
+  .sum-rows { margin-top: calc(32px * var(--k)); display: flex; flex-direction: column; gap: calc(14px * var(--k)); }
+  .sum-row { display: grid; grid-template-columns: 300px 1fr 170px 210px; gap: 28px; align-items: center;
+             background: var(--b-white); border-radius: 14px; padding: calc(18px * var(--k)) calc(28px * var(--k)); }
+  .sum-row .sum-who { font-size: calc(26px * var(--k)); font-weight: 700; line-height: 1.2; }
+  .sum-row .sum-who .mono { display: block; font-size: calc(16px * var(--k)); font-weight: 400; color: var(--b-gray); margin-top: 4px; }
+  .sum-row .hl { font-size: calc(19px * var(--k)); line-height: 1.35; color: var(--b-graydark); margin-top: calc(10px * var(--k)); }
+  .sum-row .num { font-size: calc(30px * var(--k)); font-weight: 700; text-align: right; white-space: nowrap; }
+  .sum-row .num small { display: block; font-size: calc(15px * var(--k)); font-weight: 400; color: var(--b-gray); }
+  .sum-row .st { text-align: right; }
+  .pbar { display: flex; height: calc(14px * var(--k)); border-radius: 999px; overflow: hidden; background: #ece9e4; }
+  .pbar i { display: block; height: 100%; }
+  .pbar .s-done { background: #7cc69a; } .pbar .s-work { background: #8fb3e8; }
+  .pbar .s-block { background: #eda27e; } .pbar .s-open { background: #c9c5bf; }
+  .pbar-legend { display: flex; gap: 22px; margin-top: calc(26px * var(--k)); font-size: calc(16px * var(--k)); color: var(--b-graydark); }
+  .pbar-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+
+  /* слайд команды */
+  .tm-head { display: flex; align-items: flex-start; gap: 24px; }
+  .tm-head .grow { flex: 1; }
+  .tm-head .mono { font-size: calc(18px * var(--k)); color: var(--b-gray); margin-top: calc(10px * var(--k)); }
+  .tm-hl { font-size: calc(25px * var(--k)); line-height: 1.3; margin: calc(18px * var(--k)) 0 0; max-width: 1340px; }
+  .tm-hl.auto { color: var(--b-graydark); }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: calc(22px * var(--k)); }
+  .kpi { background: var(--b-white); border-radius: 14px; padding: calc(14px * var(--k)) calc(22px * var(--k)); }
+  .kpi .lbl { font-size: calc(16px * var(--k)); color: var(--b-gray); }
+  .kpi .val { font-family: "Courier New", monospace; font-size: calc(34px * var(--k)); font-weight: 700; margin-top: 2px; }
+  .kpi .val.accent { color: var(--b-accent); }
+  .kpi .sub { font-size: calc(15px * var(--k)); color: var(--b-graydark); margin-top: 2px; }
+  .tm-cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 48px; margin-top: calc(24px * var(--k)); flex: 1; min-height: 0; overflow: hidden; }
+  .tm-cols h3 { font-family: "Courier New", monospace; font-size: calc(16px * var(--k)); letter-spacing: .08em; text-transform: uppercase;
+                color: var(--b-gray); margin: 0 0 calc(14px * var(--k)); font-weight: 700; }
+  .ep { padding: calc(8px * var(--k)) 0; border-top: 1px solid #d3cec6; }
+  .ep:first-of-type { border-top: none; padding-top: 0; }
+  .ep-top { display: flex; align-items: baseline; gap: 16px; }
+  .ep-title { flex: 1; font-size: calc(20px * var(--k)); font-weight: 700; line-height: 1.25; }
+  .ep-pct { font-family: "Courier New", monospace; font-size: calc(20px * var(--k)); font-weight: 700; white-space: nowrap; }
+  .ep-pct small { font-weight: 400; color: var(--b-gray); font-size: calc(16px * var(--k)); }
+  .ep-goal { font-size: calc(16px * var(--k)); color: var(--b-graydark); margin: 2px 0 6px; }
+  .ep-goal.none { color: var(--b-gray); font-style: italic; }
+  .ep .pbar { height: calc(10px * var(--k)); }
+  .tm-list { margin: 0; padding: 0; list-style: none; }
+  .tm-list li { font-size: calc(18px * var(--k)); line-height: 1.35; padding: calc(5px * var(--k)) 0 calc(5px * var(--k)) 22px; position: relative; }
+  .tm-list li::before { content: ""; position: absolute; left: 2px; top: calc(14px * var(--k)); width: 8px; height: 8px; border-radius: 50%; background: #7cc69a; }
+  .tm-list.value li::before { background: var(--b-dark); }
+  .tm-list.block li::before { background: #eda27e; }
+  .tm-list .mono { color: var(--b-gray); font-size: calc(15px * var(--k)); }
+  .tm-more { font-size: calc(15px * var(--k)); color: var(--b-gray); margin-top: 4px; }
+  .tm-side > div + div { margin-top: calc(22px * var(--k)); }
+
+  /* что нужно от комитета */
+  .asks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: calc(56px * var(--k)); }
+  .ask .n { font-family: "Courier New", monospace; font-size: calc(54px * var(--k)); font-weight: 700; color: var(--b-accent); }
+  .ask .team { font-family: "Courier New", monospace; font-size: calc(15px * var(--k)); color: var(--b-gray); text-transform: uppercase; letter-spacing: .06em; margin-top: 6px; }
+  .ask .t { font-size: calc(26px * var(--k)); font-weight: 700; line-height: 1.25; margin-top: 10px; }
+  .ask .why { font-size: calc(18px * var(--k)); line-height: 1.4; color: #b9b9c0; margin-top: 12px; }
+  .ask .a { font-size: calc(19px * var(--k)); line-height: 1.4; font-weight: 700; margin-top: 14px; }
+  .slide .ai-mark { font-family: "Courier New", monospace; font-size: calc(14px * var(--k)); color: var(--b-gray); }
+
+  /* телефон в портрете: слайды лентой, колонки друг под другом */
+  .deck.feed .deck-stage { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 12px calc(16px + env(safe-area-inset-bottom)); }
+  .deck.feed .deck-stage .slide { position: static; display: flex; transform: none !important; width: 100%; height: auto;
+                                   padding: 26px 20px; margin: 0 0 12px; border-radius: 12px; box-shadow: none; }
+  .deck.feed { --k: .62; }
+  .deck.feed .nav { display: none; }
+  .deck.feed .sum-row { grid-template-columns: 1fr auto; gap: 10px 14px; padding: 14px; }
+  .deck.feed .sum-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .deck.feed .sum-row .st { grid-column: 1 / -1; text-align: left; }
+  .deck.feed .kpis { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .deck.feed .kpi { padding: 10px; }
+  .deck.feed .tm-cols { grid-template-columns: 1fr; gap: 18px; }
+  .deck.feed .tm-head { flex-wrap: wrap; gap: 10px; }
+  .deck.feed .asks { grid-template-columns: 1fr; gap: 22px; margin-top: 20px; }
+  .deck.feed .slide h1 { font-size: 32px; }
+  .deck.feed .slide .foot { margin-top: 18px; }
+
+  /* печать / «Сохранить в PDF»: только слайды, по одному на страницу 16:9 */
+  @media print {
+    @page { size: 1600px 900px; margin: 0; }
+    body.printing > *:not(#deck) { display: none !important; }
+    body.printing .deck { position: static; background: none; display: block; }
+    body.printing .deck-bar { display: none; }
+    body.printing .deck-stage { overflow: visible; }
+    body.printing .deck-stage .slide { position: static; display: flex !important; transform: none !important;
+      box-shadow: none; break-after: page; page-break-after: always; margin: 0; border-radius: 0;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
 </style>
 </head>
 <body>
 
 <div class="promptbox" id="promptbox">
   <div class="pb-row">
+    <button class="pres-btn" id="presBtn" title="Краткая презентация для управляющего комитета: продвижение команд за спринт">Презентация</button>
     <button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
     <button class="pb-toggle" id="notesToggle" aria-expanded="false" aria-controls="notesPanel"
       title="Заметки к спринту и промт для ИИ">Комментарии (<span id="cCount">0</span>)</button>
@@ -885,6 +1036,19 @@
     </section>
   </div>
 </aside>
+
+<div class="deck" id="deck" hidden role="dialog" aria-label="Презентация: продвижение за спринт">
+  <div class="deck-bar">
+    <span>Продвижение за спринт</span>
+    <span class="grow"></span>
+    <button class="nav" id="deckPrev" aria-label="Предыдущий слайд">‹</button>
+    <span class="count nav" id="deckCount">1 / 1</span>
+    <button class="nav" id="deckNext" aria-label="Следующий слайд">›</button>
+    <button id="deckPrint" title="Печать или «Сохранить как PDF»: по слайду на страницу">PDF</button>
+    <button id="deckClose" aria-label="Закрыть презентацию">✕</button>
+  </div>
+  <div class="deck-stage" id="deckStage"></div>
+</div>
 
 <div class="cpop" id="cpop" hidden role="dialog" aria-label="Заметка">
   <div class="cpop-target" id="cpopTarget"></div>
@@ -2270,6 +2434,315 @@
     closePanels();
   });
 
+  // ===================== Презентация: продвижение за спринт =====================
+  // Второй отчёт из тех же данных, для управляющего комитета, PO других департаментов
+  // и бизнес-заказчиков: что каждая команда сделала за спринт и как это двигает
+  // бизнес-цели. Отчёт PO (страница выше) — для синхронизации с техлидами; здесь —
+  // коротко, по слайду на команду. Цифры — из данных сбора, как на странице.
+  // Связь «эпик → цель», «что это даёт бизнесу» и просьбы к комитету пишет ИИ-агент
+  // (/sprint-insights, блок business); нет их — слайд честно говорит «цель не указана».
+  var START_MODE = '{{START_MODE}}';           // 'presentation' — файл для комитета
+  var deck = document.getElementById('deck');
+  var deckStage = document.getElementById('deckStage');
+  var deckIndex = 0, deckSlides = [];
+
+  function withTeam(t, fn) {                     // счётчики бакетов — по карте статусов своей команды
+    var prev = team.slug;
+    useTeam(t.slug);
+    try { return fn(); } finally { useTeam(prev); }
+  }
+
+  function ddmm(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : '—'; }
+
+  // Темп — та же идеальная прямая, что в burndown и в PDF /sprint-status: от первого
+  // дня с ненулевым объёмом до нуля в конце, целые задачи с округлением от половины вверх.
+  function teamPace(t) {
+    var b = t.burndown || {}, days = b.days || [];
+    if (!days.length) return null;
+    var past = days.filter(function (d) { return !d.future; });
+    var today = past.length ? past[past.length - 1] : days[0];
+    var idx = days.indexOf(today);
+    var first = 0;
+    for (var i = 0; i < days.length; i++) { if (days[i].scope) { first = i; break; } }
+    var span = days.length - 1 - first;
+    var ideal = idx < first ? null : (span > 0 ? Math.floor(days[first].scope * (1 - (idx - first) / span) + 0.5) : 0);
+    var work = days.filter(function (d) { return !d.weekend; });
+    return {
+      start: b.start, end: b.end, scope: today.scope, closed: today.closed, remaining: today.remaining,
+      gap: past.length && ideal !== null ? today.remaining - ideal : 0,
+      workday: work.filter(function (d) { return !d.future; }).length, workdays: work.length
+    };
+  }
+
+  function paceStatus(p) {
+    if (!p || !p.scope) return { cls: 'st-none', text: 'нет данных' };
+    if (p.gap <= 0) return { cls: 'st-ok', text: 'в графике' };
+    if (p.gap / p.scope <= 0.15) return { cls: 'st-lag', text: 'отставание ' + p.gap };
+    return { cls: 'st-risk', text: 'риск срыва' };
+  }
+
+  function sprintSplit(t) {                       // статусы всех задач спринта — последний столбец velocity
+    var s = (t.velocity && t.velocity.sprints) || [];
+    var last = s.length ? s[s.length - 1].split : {};
+    var get = function (k) { return last[k] || 0; };
+    return { done: get('done'), work: get('progress') + get('testing') + get('review'),
+             block: get('blocked'), open: get('open') };
+  }
+
+  function pbarHtml(parts, total) {
+    total = total || 1;
+    return '<div class="pbar">' + parts.filter(function (p) { return p[1] > 0; }).map(function (p) {
+      return '<i class="' + p[0] + '" style="width:' + (100 * p[1] / total).toFixed(2) + '%"></i>';
+    }).join('') + '</div>';
+  }
+
+  function teamBusiness(t) { return (t.insights && t.insights.business) || {}; }
+
+  function autoHeadline(t, p) {
+    if (!p) return 'Нет данных burndown по спринту.';
+    return 'Закрыто ' + p.closed + ' из ' + p.scope + ' задач спринта, рабочий день ' + p.workday + ' из ' + p.workdays + '.';
+  }
+
+  // эпики спринта: прогресс всего эпика (объём из JIRA) и вклад этого спринта
+  function epicRows(t) {
+    var rank = { 'p-highest': 0, 'p-high': 1, 'p-medium': 2, 'p-low': 3, 'p-lowest': 4, 'p-none': 5 };
+    return withTeam(t, function () {
+      return (t.epics || []).filter(function (e) { return e.epicKey; }).map(function (e) {
+        var sprint = tallyEpic(e);
+        var scope = e.scope || [];
+        var done = 0, inSprintDone = 0;
+        scope.forEach(function (it) {
+          var d = classifyBucket(it.status, it.category) === 'done';
+          if (d) done++;
+          if (d && it.inSprint) inSprintDone++;
+        });
+        var lvl = (prioHtml(e.epicPriority).match(/prio (p-[a-z]+)/) || [])[1] || 'p-none';
+        return { key: e.epicKey, title: e.epicTitle, rank: rank[lvl], total: scope.length || sprint.total,
+                 done: scope.length ? done : sprint.done, sprintDone: scope.length ? inSprintDone : sprint.done,
+                 whole: !!scope.length };
+      }).sort(function (a, b) { return a.rank - b.rank; });
+    });
+  }
+
+  function closedStories(t) {
+    return withTeam(t, function () {
+      var out = [];
+      (t.epics || []).forEach(function (e) {
+        (e.stories || []).forEach(function (st) {
+          if (classifyBucket(st.status, st.category) === 'done') out.push({ key: st.key, title: st.title, epic: e.epicTitle });
+        });
+      });
+      return out;
+    });
+  }
+
+  function blockedItems(t) {
+    var at = t._meta && t._meta.collectedAt;
+    return withTeam(t, function () {
+      var out = [];
+      (t.epics || []).forEach(function (e) {
+        (e.stories || []).forEach(function (st) {
+          if (classifyBucket(st.status, st.category) === 'blocked') out.push({ key: st.key, title: st.title, age: statusAgeDays(st.statusChanged, at) });
+          (st.subtasks || []).forEach(function (sub) {
+            if (classifyBucket(sub.status, sub.category) === 'blocked') out.push({ key: sub.key, title: sub.summary, age: statusAgeDays(sub.statusChanged, at) });
+          });
+        });
+      });
+      return out.sort(function (a, b) { return (b.age || 0) - (a.age || 0); });
+    });
+  }
+
+  // дни без смены статуса на момент сбора: слайды — снимок, а не живая страница
+  function statusAgeDays(iso, at) {
+    if (!iso) return null;
+    var d = new Date(iso), ref = at ? new Date(at) : new Date();
+    if (isNaN(d.getTime()) || isNaN(ref.getTime())) return null;
+    return Math.max(0, Math.floor((ref.getTime() - d.getTime()) / 86400000));
+  }
+
+  function aiMark(t) {
+    var ins = t.insights;
+    if (!ins || !ins.business) return '';
+    return '<span class="ai-mark">Цели и выводы — интерпретация ИИ' + (ins.author ? ' · ' + esc(ins.author) : '') + '</span>';
+  }
+
+  function slideTitle() {
+    var stamp = TEAMS.map(function (t) { return t._meta && t._meta.collectedAt; }).filter(Boolean).sort().pop();
+    return '<section class="slide dark">' +
+      '<div class="kicker">Продвижение за спринт</div>' +
+      '<h1>Что команды сделали за спринт<br>и как это двигает бизнес-цели</h1>' +
+      '<p class="lead">Краткий отчёт для управляющего комитета, PO смежных департаментов и бизнес-заказчиков.</p>' +
+      '<div class="t-teams">' + TEAMS.map(function (t) {
+        var p = teamPace(t);
+        return '<div>' + esc(t.team) + ' <span>· ' + esc(t.sprintName) + (p ? ' · ' + ddmm(p.start) + '–' + ddmm(p.end) : '') + '</span></div>';
+      }).join('') + '</div>' +
+      '<div class="spacer"></div>' +
+      '<div class="foot">Данные JIRA на <span class="mono">' + esc(stamp ? stamp.slice(8, 10) + '.' + stamp.slice(5, 7) + ' ' + stamp.slice(11, 16) : '—') +
+      '</span> · цифры собраны скриптом, без ручной правки</div>' +
+    '</section>';
+  }
+
+  function slideSummary() {
+    var pages = [];
+    for (var i = 0; i < TEAMS.length; i += 5) pages.push(TEAMS.slice(i, i + 5));
+    return pages.map(function (teams, n) {
+      return summaryPage(teams, pages.length > 1 ? ' · ' + (n + 1) + ' из ' + pages.length : '');
+    }).join('');
+  }
+
+  function summaryPage(teams, part) {
+    return '<section class="slide">' +
+      '<div class="kicker">Сводка' + part + '</div><h2>Как идут команды</h2>' +
+      '<div class="sum-rows">' + teams.map(function (t) {
+        var p = teamPace(t), st = paceStatus(p), sp = sprintSplit(t), biz = teamBusiness(t);
+        var total = sp.done + sp.work + sp.block + sp.open;
+        return '<div class="sum-row">' +
+          '<div class="sum-who">' + esc(t.team) + '<span class="mono">' + esc(t.sprintName) +
+            (p ? ' · день ' + p.workday + ' из ' + p.workdays : '') + '</span></div>' +
+          '<div>' + pbarHtml([['s-done', sp.done], ['s-work', sp.work], ['s-block', sp.block], ['s-open', sp.open]], total) +
+            '<div class="hl">' + esc(biz.headline || autoHeadline(t, p)) + '</div></div>' +
+          '<div class="num">' + (p ? p.closed + ' / ' + p.scope : '—') + '<small>сделано / в спринте</small></div>' +
+          '<div class="st"><span class="chip ' + st.cls + '">' + esc(st.text) + '</span></div>' +
+        '</div>';
+      }).join('') + '</div>' +
+      '<div class="pbar-legend"><span><i style="background:#7cc69a"></i>сделано</span><span><i style="background:#8fb3e8"></i>в работе, тесте, ревью</span>' +
+        '<span><i style="background:#eda27e"></i>заблокировано</span><span><i style="background:#c9c5bf"></i>не начато</span></div>' +
+    '</section>';
+  }
+
+  function slideTeam(t) {
+    var p = teamPace(t), st = paceStatus(p), biz = teamBusiness(t), goals = biz.goals || {};
+    var allEps = epicRows(t), eps = allEps.slice(0, 4), done = closedStories(t), blocked = blockedItems(t);
+    var paceVal = !p ? '—' : p.gap > 0 ? '−' + p.gap : 'в графике';
+    var list = function (items, cls, max, render) {
+      if (!items.length) return '';
+      return '<ul class="tm-list ' + cls + '">' + items.slice(0, max).map(render).join('') + '</ul>' +
+        (items.length > max ? '<div class="tm-more">и ещё ' + (items.length - max) + '</div>' : '');
+    };
+    var value = (biz.value || []).slice(0, 3);
+    return '<section class="slide">' +
+      '<div class="tm-head"><div class="grow"><h2>' + esc(t.team) + '</h2>' +
+        '<div class="mono">' + esc(t.sprintName) + (p ? ' · ' + ddmm(p.start) + '–' + ddmm(p.end) + ' · рабочий день ' + p.workday + ' из ' + p.workdays : '') + '</div></div>' +
+        '<span class="chip ' + st.cls + '">' + esc(st.text) + '</span></div>' +
+      '<p class="tm-hl' + (biz.headline ? '' : ' auto') + '">' + esc(biz.headline || autoHeadline(t, p)) + '</p>' +
+      '<div class="kpis">' +
+        '<div class="kpi"><div class="lbl">Сделано в спринте</div><div class="val accent">' + (p ? p.closed + ' / ' + p.scope : '—') + '</div>' +
+          '<div class="sub">' + (p && p.scope ? Math.round(100 * p.closed / p.scope) + '% задач спринта' : '') + '</div></div>' +
+        '<div class="kpi"><div class="lbl">Темп к плану</div><div class="val">' + esc(paceVal) + '</div>' +
+          '<div class="sub">' + (p && p.gap > 0 ? 'задач позади идеального темпа' : 'остаток не выше идеальной прямой') + '</div></div>' +
+        '<div class="kpi"><div class="lbl">Блокеры</div><div class="val">' + blocked.length + '</div>' +
+          '<div class="sub">' + (blocked.length ? 'задач ждут внешнего решения' : 'ничего не блокирует') + '</div></div>' +
+      '</div>' +
+      '<div class="tm-cols"><div>' +
+        '<h3>Эпики → бизнес-цели</h3>' + (eps.length ? eps.map(function (e) {
+          var pct = e.total ? Math.round(100 * e.done / e.total) : 0;
+          var goal = goals[e.key];
+          return '<div class="ep"><div class="ep-top"><span class="ep-title">' + esc(e.title) + '</span>' +
+            '<span class="ep-pct">' + pct + '%<small> · ' + e.done + '/' + e.total + (e.sprintDone ? ' · +' + e.sprintDone + ' за спринт' : '') + '</small></span></div>' +
+            '<div class="ep-goal' + (goal ? '' : ' none') + '">' + (goal ? '→ ' + esc(goal) : 'цель не указана') + '</div>' +
+            pbarHtml([['s-done', e.done], ['s-open', e.total - e.done]], e.total) + '</div>';
+        }).join('') + (allEps.length > eps.length ? '<div class="tm-more">и ещё эпиков: ' + (allEps.length - eps.length) + ' — в отчёте PO</div>' : '')
+          : '<div class="ep-goal none">Эпиков в спринте нет.</div>') +
+      '</div><div class="tm-side">' +
+        (value.length ? '<div><h3>Что это даёт бизнесу</h3>' + list(value, 'value', 3, function (v) { return '<li>' + esc(v) + '</li>'; }) + '</div>' : '') +
+        '<div><h3>Сделано за спринт</h3>' + (done.length ? list(done, 'done', value.length ? 3 : 5, function (s) {
+          return '<li>' + esc(s.title) + ' <span class="mono">' + esc(s.key) + '</span></li>'; }) : '<div class="ep-goal none">Закрытых историй пока нет.</div>') + '</div>' +
+        (blocked.length ? '<div><h3>Риски</h3>' + list(blocked, 'block', 2, function (b) {
+          return '<li>' + esc(b.title) + ' <span class="mono">' + esc(b.key) + (b.age !== null ? ' · ' + b.age + ' дн.' : '') + '</span></li>'; }) + '</div>' : '') +
+      '</div></div>' +
+      '<div class="foot">' + aiMark(t) + '</div>' +
+    '</section>';
+  }
+
+  function slideAsks() {
+    var asks = [];
+    TEAMS.forEach(function (t) {
+      (teamBusiness(t).asks || []).forEach(function (a) { asks.push({ team: t.team, a: a }); });
+    });
+    if (!asks.length) return '';
+    return '<section class="slide dark"><div class="kicker">Решения</div><h2>Что нужно от комитета</h2>' +
+      '<div class="asks">' + asks.slice(0, 6).map(function (x, i) {
+        return '<div class="ask"><div class="n">' + (i + 1) + '</div><div class="team">' + esc(x.team) + '</div>' +
+          '<div class="t">' + esc(x.a.title) + '</div>' +
+          (x.a.why ? '<div class="why">' + esc(x.a.why) + '</div>' : '') +
+          (x.a.ask ? '<div class="a">' + esc(x.a.ask) + '</div>' : '') + '</div>';
+      }).join('') + '</div><div class="spacer"></div>' +
+      '<div class="foot">Просьбы сформулированы ИИ-агентом PO по данным спринта — подтверждаются PO на комитете</div></section>';
+  }
+
+  function buildDeck() {
+    deckStage.innerHTML = slideTitle() + slideSummary() + TEAMS.map(slideTeam).join('') + slideAsks();
+    deckSlides = Array.prototype.slice.call(deckStage.querySelectorAll('.slide'));
+  }
+
+  function isFeed() {
+    return window.matchMedia && window.matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
+  }
+
+  function fitDeck() {
+    deck.classList.toggle('feed', isFeed());
+    if (deck.classList.contains('feed')) return;
+    var w = deckStage.clientWidth, h = deckStage.clientHeight;
+    var k = Math.min((w - 32) / 1600, (h - 24) / 900);
+    deckSlides.forEach(function (sl) {
+      sl.style.transform = 'translate(-50%, -50%) scale(' + k.toFixed(4) + ')';
+    });
+  }
+
+  function showSlide(i) {
+    deckIndex = Math.max(0, Math.min(deckSlides.length - 1, i));
+    deckSlides.forEach(function (sl, n) { sl.classList.toggle('current', n === deckIndex); });
+    document.getElementById('deckCount').textContent = (deckIndex + 1) + ' / ' + deckSlides.length;
+    document.getElementById('deckPrev').disabled = deckIndex === 0;
+    document.getElementById('deckNext').disabled = deckIndex === deckSlides.length - 1;
+  }
+
+  function openDeck() {
+    closePanels();
+    if (typeof setNotesOpen === 'function') setNotesOpen(false);
+    buildDeck();
+    deck.hidden = false;
+    document.body.style.overflow = 'hidden';
+    fitDeck();
+    showSlide(0);
+    if (location.hash !== '#presentation') history.replaceState(null, '', '#presentation');
+  }
+
+  function closeDeck() {
+    if (START_MODE === 'presentation') return;      // у файла для комитета отчёта PO под слайдами нет
+    deck.hidden = true;
+    document.body.style.overflow = '';
+    if (location.hash === '#presentation') history.replaceState(null, '', location.pathname + location.search);
+  }
+
+  document.getElementById('presBtn').addEventListener('click', openDeck);
+  document.getElementById('deckClose').addEventListener('click', closeDeck);
+  document.getElementById('deckPrev').addEventListener('click', function () { showSlide(deckIndex - 1); });
+  document.getElementById('deckNext').addEventListener('click', function () { showSlide(deckIndex + 1); });
+  document.getElementById('deckPrint').addEventListener('click', function () {
+    document.body.classList.add('printing');
+    window.print();
+  });
+  window.addEventListener('afterprint', function () { document.body.classList.remove('printing'); });
+  window.addEventListener('resize', function () { if (!deck.hidden) fitDeck(); });
+  document.addEventListener('keydown', function (e) {
+    if (deck.hidden) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); showSlide(deckIndex + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); showSlide(deckIndex - 1); }
+    else if (e.key === 'Home') showSlide(0);
+    else if (e.key === 'End') showSlide(deckSlides.length - 1);
+    else if (e.key === 'Escape') { e.stopImmediatePropagation(); closeDeck(); }
+  }, true);
+  // свайп по слайдам (телефон боком, планшет)
+  var swipeX = null;
+  deckStage.addEventListener('touchstart', function (e) { swipeX = e.touches.length === 1 ? e.touches[0].clientX : null; }, { passive: true });
+  deckStage.addEventListener('touchend', function (e) {
+    if (swipeX === null || deck.classList.contains('feed')) return;
+    var dx = e.changedTouches[0].clientX - swipeX;
+    if (Math.abs(dx) > 50) showSlide(deckIndex + (dx < 0 ? 1 : -1));
+    swipeX = null;
+  });
+
   function renderHero() {
     document.getElementById('teamName').textContent = team.team;
     document.getElementById('sprintName').textContent = team.sprintName;
@@ -2302,6 +2775,13 @@
   renderTable();
   renderMetricsLink();
   document.getElementById('logsBtn').addEventListener('click', openLogs);
+  if (START_MODE === 'presentation') {
+    document.getElementById('deckClose').hidden = true;
+    document.title = 'Продвижение за спринт';
+    openDeck();
+  } else if (location.hash === '#presentation') {
+    openDeck();
+  }
   // корзина: открыть/закрыть, новая заметка, промт
   notesToggle.addEventListener('click', function () {
     setNotesOpen(!notesPanel.classList.contains('open'));

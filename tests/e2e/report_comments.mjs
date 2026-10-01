@@ -211,9 +211,12 @@ await p.press('#cpopText', 'Enter');
 const outPrompt = await p.inputValue('#promptOut');
 check(outPrompt.includes('Разобрать выброс на ретро') && /INIT-\d+/.test(outPrompt.split('\n').pop()),
       'правый клик по строке «Выбиваются из коридора» — заметка к задаче');
-await p.keyboard.press('Escape');
-await p.keyboard.press('Escape');
-await p.click('[data-team="catalog"]');
+// Esc снимает слои по одному: поле заметки → корзина → панель
+for (let i = 0; i < 4 && await p.evaluate(() => document.getElementById('overlay').classList.contains('open')); i++) {
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(100);
+}
+await p.click('[data-team="mobile"]');
 await p.click('#metricsLink');
 await p.waitForTimeout(300);
 check((await p.textContent('#aiInsights')).includes('/sprint-insights') && !(await p.$('#aiInsights .ai-item')),
@@ -225,6 +228,51 @@ await p.click('[data-team="platform"]');
 await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 check(await count() === '0', 'у другой команды своя корзина');
+
+// презентация для управляющего комитета: те же данные, другая форма
+await p.keyboard.press('Escape');
+await p.click('#presBtn');
+await p.waitForTimeout(300);
+const deckInfo = await p.evaluate(() => ({
+  open: !document.getElementById('deck').hidden, hash: location.hash,
+  slides: document.querySelectorAll('#deckStage .slide').length,
+  teams: TEAMS.length, asks: TEAMS.some(t => t.insights && t.insights.business && (t.insights.business.asks || []).length),
+  current: document.querySelectorAll('#deckStage .slide.current').length,
+}));
+check(deckInfo.open && deckInfo.hash === '#presentation', 'кнопка «Презентация» открывает слайды, адрес — #presentation');
+check(deckInfo.slides === 2 + deckInfo.teams + (deckInfo.asks ? 1 : 0), 'титул, сводка, по слайду на команду и просьбы к комитету');
+check(deckInfo.current === 1 && (await p.textContent('#deckCount')) === `1 / ${deckInfo.slides}`, 'виден один слайд, счётчик');
+await p.keyboard.press('ArrowRight');
+await p.keyboard.press('ArrowRight');
+check((await p.textContent('#deckCount')) === `3 / ${deckInfo.slides}`, 'стрелки листают слайды');
+const teamSlide = await p.evaluate(() => {
+  const s = document.querySelector('#deckStage .slide.current');
+  const p = TEAMS[0], burndown = p.burndown.days.filter(d => !d.future).pop();
+  return { text: s.textContent, closed: burndown.closed, scope: burndown.scope,
+           goals: Object.values(p.insights.business.goals).filter(g => s.textContent.includes(g)).length };
+});
+check(teamSlide.text.includes(`${teamSlide.closed} / ${teamSlide.scope}`), 'на слайде команды «сделано» — из burndown, как в отчёте PO');
+check(teamSlide.goals >= 3, 'эпики связаны с бизнес-целями из бизнес-блока агента');
+check(teamSlide.text.includes('Цели и выводы — интерпретация ИИ'), 'интерпретация ИИ помечена');
+const fits = await p.evaluate(() => [...document.querySelectorAll('#deckStage .slide')].every(s => {
+  s.classList.add('current'); const R = s.getBoundingClientRect();
+  const ok = [...s.querySelectorAll('*')].every(el => { const r = el.getBoundingClientRect(); return r.bottom <= R.bottom + 1 && r.right <= R.right + 1; });
+  s.classList.remove('current'); return ok;
+}));
+await p.keyboard.press('Home');
+check(fits, 'содержимое каждого слайда помещается в слайд');
+await p.keyboard.press('End');
+const lastText = await p.textContent('#deckStage .slide.current');
+check(!deckInfo.asks || lastText.includes('Что нужно от комитета'), 'последний слайд — что нужно от комитета');
+await p.keyboard.press('ArrowLeft');
+const mobileSlide = await p.textContent('#deckStage .slide.current');
+check(mobileSlide.includes('цель не указана'), 'нет связи с целью — слайд честно пишет «цель не указана»');
+await p.keyboard.press('Escape');
+check(await p.isHidden('#deck') && (await p.evaluate(() => location.hash)) === '', 'Esc закрывает презентацию и чистит адрес');
+await p.goto(pathToFileURL(page).href + '#presentation');
+await p.reload();
+await p.waitForTimeout(300);
+check(await p.isVisible('#deck'), 'ссылка с #presentation открывает сразу слайды');
 
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();

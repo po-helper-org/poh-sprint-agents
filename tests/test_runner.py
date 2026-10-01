@@ -140,6 +140,22 @@ class RunnerTest(unittest.TestCase):
         self.assertIn('[team-b]', proc.stdout)
         self.assertNotIn('[team-a] доска', proc.stdout)
 
+    def test_business_presentation_written_next_to_page(self):
+        """Вместе с отчётом PO — тот же отчёт, открытый сразу презентацией для комитета."""
+        self.p.lock_all()
+        proc = self.p.run('run')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        biz = self.p.dir / 'reports' / 'sprint-business.html'
+        self.assertTrue(biz.is_file())
+        self.assertIn('sprint-business.html   (презентация для комитета)', proc.stdout)
+        page = self.p.output.read_text(encoding='utf-8')
+        deck = biz.read_text(encoding='utf-8')
+        self.assertIn("var START_MODE = 'report';", page)
+        self.assertIn("var START_MODE = 'presentation';", deck)
+        self.assertNotIn('{{START_MODE}}', page + deck)
+        data = lambda html: html[html.index('var TEAMS = '):html.index(';\n', html.index('var TEAMS = '))]  # noqa: E731
+        self.assertEqual(data(page), data(deck), 'данные одни и те же')
+
     def test_provenance_data_in_page(self):
         """ФТ-25: паспорт сбора едет в данных страницы (sha дописывает runner).
 

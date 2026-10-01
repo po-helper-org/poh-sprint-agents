@@ -36,6 +36,8 @@ SCHEMA_PATH = ACTUAL / 'contract' / 'insights.schema.json'
 DEFAULT_CONFIG = 'sprint-report.config.toml'
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG = 0, 1, 2
 TEXT_MAX, ACTION_MAX = 280, 200
+# бизнес-блок презентации: поле → предел длины (слайд не резиновый)
+BUSINESS_MAX = {'headline': 160, 'value': 200, 'goal': 120, 'title': 80, 'why': 200, 'ask': 160}
 KEY_RE = re.compile(r'\b[A-Z][A-Z0-9_]*-\d+\b')
 # числа в тексте: не хвосты ключей задач и не части дат
 NUM_RE = re.compile(r'(?<![\w.,-])\d+(?:[.,]\d+)?(?![\w-])')
@@ -188,7 +190,30 @@ def team_facts(team, rules):
         'sprintNow': {'split': tm.split(), 'blocked': brief(blocked),
                       'staleOver3Days': brief(stale)},
         'trend': trend_facts(core),
+        'epics': epic_facts(core, tm),
     }
+
+
+def epic_facts(team, tm):
+    """Эпики спринта для бизнес-блока: прогресс всего эпика и вклад этого спринта."""
+    out = []
+    for epic in team['epics']:
+        if not epic.get('epicKey'):
+            continue
+        units = [(st['status'], st.get('category', '')) for st in epic['stories']]
+        units += [(sub['status'], sub.get('category', '')) for st in epic['stories'] for sub in st['subtasks']]
+        scope = epic.get('scope') or []
+        done_scope = [it for it in scope if tm.bucket(it['status'], it.get('category', '')) == 'done']
+        out.append({
+            'key': epic['epicKey'], 'title': epic.get('epicTitle'), 'priority': epic.get('epicPriority'),
+            'sprintTotal': len(units),
+            'sprintDone': sum(1 for s, c in units if tm.bucket(s, c) == 'done'),
+            'scopeTotal': len(scope), 'scopeDone': len(done_scope),
+            'scopeDonePct': round(100 * len(done_scope) / len(scope)) if scope else None,
+            'closedStories': [{'key': st['key'], 'title': st['title']} for st in epic['stories']
+                              if tm.bucket(st['status'], st.get('category', '')) == 'done'],
+        })
+    return out
 
 
 def trend_facts(team):
@@ -276,7 +301,38 @@ def check(doc, teams):
                 small = num.isdigit() and int(num) <= FREE_INTS
                 if not small and num not in allowed:
                     warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
+        if 'business' in entry:
+            check_business(slug, entry['business'], team, keys, allowed, errors, warnings)
     return errors, warnings
+
+
+def check_business(slug, biz, team, keys, allowed, errors, warnings):
+    """Бизнес-блок: длины под слайд, цели — только к эпикам этой команды, ключи и числа — из данных."""
+    epics = {e['epicKey'] for e in team['epics'] if e.get('epicKey')}
+    texts = []
+    if 'headline' in biz:
+        texts.append(('headline', biz['headline'], BUSINESS_MAX['headline'], True))
+    texts += [(f'value #{i}', v, BUSINESS_MAX['value'], True) for i, v in enumerate(biz.get('value', []), 1)]
+    for key, goal in biz.get('goals', {}).items():
+        if key not in epics:
+            errors.append(f'[{slug}] business.goals: эпика {key} нет в спринте команды; есть: {", ".join(sorted(epics))}')
+        # цель — из OKR/roadmap PO: её числа («KR 1.2», «+5% конверсии») с фактами спринта не сверить
+        texts.append((f'goals.{key}', goal, BUSINESS_MAX['goal'], False))
+    for i, a in enumerate(biz.get('asks', []), 1):
+        texts += [(f'asks #{i}.{f}', a[f], BUSINESS_MAX[f], True) for f in ('title', 'why', 'ask') if f in a]
+    for where, text, limit, numbers in texts:
+        where = f'[{slug}] business.{where}'
+        if len(text) > limit:
+            errors.append(f'{where}: длиннее {limit} знаков ({len(text)}) — на слайд не влезет')
+        for key in sorted(set(KEY_RE.findall(text))):
+            if key not in keys:
+                errors.append(f'{where}: задачи {key} нет в данных команды')
+        for raw, num in (text_numbers(text) if numbers else ()):
+            small = num.isdigit() and int(num) <= FREE_INTS
+            if not small and num not in allowed:
+                warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
+    if biz.get('goals') and not biz.get('goalsSource'):
+        warnings.append(f'[{slug}] business.goals без goalsSource — укажите, откуда цели (OKR, roadmap, со слов PO)')
 
 
 def read_doc(path):

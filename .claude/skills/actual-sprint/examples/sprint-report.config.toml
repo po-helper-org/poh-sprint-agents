@@ -5,7 +5,8 @@ version = 1
 output = "./reports/sprint-report.html"          # одна страница на все команды
 notes  = "./reports/sprint-report-notes.json"    # заметки прошлой версии страницы, если остались: переедут в корзину
 data   = "./reports/sprint-report.data.json"     # снимок данных для PDF /sprint-status
-insights = "./reports/sprint-insights.json"     # интерпретация графиков от ИИ (/sprint-insights)
+insights = "./reports/sprint-insights.json"     # наблюдения ИИ для PO и бизнес-блок презентации (/sprint-insights)
+business = "./reports/sprint-business.html"     # тот же отчёт, открытый сразу презентацией для комитета
 strict = true                                    # непроверенный или изменённый сборщик не запускается
 
 [jira]
