@@ -865,8 +865,8 @@
   .ea-label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ea-cell b { font-size: 18px; font-variant-numeric: tabular-nums; }
   .ea-cell b small { font-size: 12px; font-weight: 400; color: var(--muted); }
-  .ea-cell .ea-sub { font-size: 11.5px; color: var(--muted); }
-  .ea-cell.bad b, .ea-cell .bad { color: var(--c-blocked); } .ea-cell .ok { color: var(--c-done); }
+  .ea-cell { cursor: help; }
+  .ea-cell.bad b { color: var(--c-blocked); } .ea-cell.warn b { color: var(--c-testing); } .ea-cell.ok b { color: var(--c-done); }
   .eb-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
   .eb-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
   .eb-legend .l-done { background: #cfe8c4; } .eb-legend .l-left { background: #6c9fd8; } .eb-legend .l-add { background: #3f6290; }

@@ -107,7 +107,7 @@ class LegacyParityTest(unittest.TestCase):
         out = []
         for e in epics:
             e = {k: v for k, v in e.items() if k not in ('epicPriority', 'scope', 'epicDue')}
-            e['stories'] = [dict({k: v for k, v in st.items() if k != 'priority'},
+            e['stories'] = [dict({k: v for k, v in st.items() if k not in ('priority', 'events')},
                                  subtasks=[{k: v for k, v in sub.items() if k != 'priority'}
                                            for sub in st['subtasks']])
                             for st in e['stories']]
@@ -252,6 +252,24 @@ class ParamsTest(unittest.TestCase):
         two = support.collect_ok(req=support.request(params={'sprints_back': 2}))
         self.assertEqual(2, len(two['metrics']['sprints']))
         self.assertEqual(3, len(support.collect_ok()['metrics']['sprints']))
+
+    def test_story_events_all_time(self):
+        """1.7.0: у истории — хронология за всё время: она и её подзадачи, по времени."""
+        data = support.collect_ok()
+        stories = [st for e in data['epics'] for st in e['stories']]
+        self.assertTrue(all(st['events'] and st['events'][0]['kind'] == 'created' for st in stories))
+        for st in stories:
+            at = [ev['at'] for ev in st['events']]
+            self.assertEqual(sorted(at), at)
+            keys = {st['key']} | {sub['key'] for sub in st['subtasks']}
+            self.assertTrue({ev['key'] for ev in st['events']} <= keys)
+        evs = [ev for st in stories for ev in st['events']]
+        self.assertTrue(any(ev['kind'] == 'comment' for ev in evs))
+        self.assertTrue(any(ev['kind'] == 'status' and ev['done'] and ev['key'] != st['key'] for st in stories for ev in st['events']),
+                        'есть закрытые подзадачи')
+        # окно ленты — спринт, а хронология истории — с её создания
+        start = data['logs']['since']
+        self.assertTrue(any(ev['at'][:10] < start for ev in evs))
 
     def test_activity_window_is_sprint_by_default(self):
         """1.5.0: без activity_days лента — с начала текущего спринта."""

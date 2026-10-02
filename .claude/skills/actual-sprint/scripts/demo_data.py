@@ -159,6 +159,38 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
     return scope
 
 
+def story_events(st):
+    """Хронология истории за всё время (как у сборщика 1.7.0): создание, путь по статусам,
+    комментарии; то же по подзадачам. Свой генератор от ключа — остальное демо не сдвигается."""
+    r = random.Random('events:' + st['key'])
+    path = {'open': [], 'blocked': ['В работе', 'В ожидании'], 'progress': ['Анализ', 'В работе'],
+            'testing': ['В работе', 'Тестирование'], 'review': ['В работе', 'Ревью'], 'done': ['В работе', 'Ревью', 'Закрыт']}
+    def walk(key, status, category, last, created):
+        steps = path[bucket(status, category)][:]
+        if steps and steps[-1] != status:
+            steps[-1] = status
+        out = [{'at': created.strftime('%Y-%m-%dT%H:%M'), 'kind': 'created', 'key': key, 'by': r.choice(PEOPLE)}]
+        prev, n = 'Бэклог', len(steps)
+        for i, to in enumerate(steps):
+            at = created + (last - created) * (i + 1) / n
+            out.append({'at': at.strftime('%Y-%m-%dT%H:%M'), 'kind': 'status', 'key': key, 'by': r.choice(PEOPLE),
+                        'from': prev, 'to': to, 'done': to == 'Закрыт'})
+            prev = to
+        for _ in range(r.choice([0, 0, 1, 1, 2, 3])):
+            at = created + (NOW - created) * r.uniform(.15, .98)
+            out.append({'at': at.strftime('%Y-%m-%dT%H:%M'), 'kind': 'comment', 'key': key, 'by': r.choice(PEOPLE),
+                        'body': r.choice(COMMENTS)})
+        return out
+    last = datetime.fromisoformat(st['statusChanged'])
+    created = last - timedelta(days=r.randint(6, 40), hours=r.randint(0, 20))
+    events = walk(st['key'], st['status'], st['category'], last, created)
+    for sub in st['subtasks']:
+        s_last = datetime.fromisoformat(sub['statusChanged']) if sub.get('statusChanged') else NOW
+        s_created = max(created + timedelta(hours=r.randint(2, 60)), s_last - timedelta(days=r.randint(2, 20)))
+        events += walk(sub['key'], sub['status'], sub['category'], max(s_last, s_created), s_created)
+    return sorted(events, key=lambda e: e['at'])
+
+
 def demo_output(slug, epics, sprint_names):
     """Выработка участников: задачи и SP по статусу на конец спринта, с движением статусов
     и комментариями (как у сборщика 1.4.0). Свой генератор от slug — остальные демо-числа
@@ -403,6 +435,9 @@ def build_team(spec, rnd, keys):
     logs = {'events': events, 'days': 8, 'since': start.date().isoformat(), 'kinds': kinds,
             'authors': sorted(authors.items(), key=lambda x: -x[1])}
 
+    for e in epics:
+        for st in e['stories']:
+            st['events'] = story_events(st)
     output = demo_output(slug, epics, [r['name'] for r in sprint_rows])
 
     return {'slug': slug, 'team': spec['team'], 'boardId': 1000 + len(slug),

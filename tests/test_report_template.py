@@ -93,6 +93,8 @@ class TemplateTest(unittest.TestCase):
         """«Весь эпик» в общем движке: сгорание по неделям с прогнозом — один вид в обоих отчётах."""
         scope = self.html[self.html.index('function renderScope('):self.html.index('function setScopeMode(')]
         self.assertIn('epicBurnHtml(team, epic)', scope)
+        self.assertIn("'Итог', verdictTip", self.html)
+        self.assertNotIn('ea-sub', self.html, 'пояснения — в подсказках, не текстом')
         for part in ('BURN_WEEKS', 'BURN_MODES', "label: 'Закрытие историй'", "label: 'Закрытие подзадач'", "id: 'sp'",
                      "'Плановая дата'", "'Расчётная дата'", "'Темп сгорания'", 'eb-analysis', "'Что осталось'", "'Что выполнено'"):
             self.assertIn(part, self.html)
@@ -179,6 +181,18 @@ class BusinessTemplateTest(unittest.TestCase):
             self.assertIn(part, self.html)
         for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '"):
             self.assertNotIn(gone, self.html)
+
+    def test_story_calendar_and_feed(self):
+        """Сайдбар истории: календарь активности за всё время и одна хронология с фильтром."""
+        for part in ('function storyCalendar(', 'function storyFeedHtml(', "label: 'Все'", 'st.events'):
+            self.assertIn(part, self.html)
+        self.assertNotIn("'Активность за '", self.html)
+
+    def test_ops_three_charts(self):
+        """Операционный слайд: производительность и сгорание спринта сверху, диаграмма управления снизу во всю ширину."""
+        ops = self.html[self.html.index('function opsSlide('):self.html.index('function plansSlide(')]
+        self.assertLess(ops.index('teamOutputChart(m)'), ops.index('burndownChart'))
+        self.assertIn("'<div class=\"ops-wide\">", ops)
 
     def test_kr_epic_burndown(self):
         """Клик по KR: сгорание эпика — объём, осталось, план (duedate) и прогноз по темпу спринта."""

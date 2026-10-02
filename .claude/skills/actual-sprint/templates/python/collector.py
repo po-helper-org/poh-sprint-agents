@@ -48,7 +48,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.6.0'
+VERSION = '1.7.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -426,6 +426,7 @@ class Collector:
 
         issues = per_sprint[active['id']]
         epics = self.build_epics(issues, epic_field)
+        self.attach_story_events(epics, issues, with_comments[active['id']])
         self.build_scope(epics, epic_field, last, per_sprint, active)
         metrics, velocity = self.build_metrics(last, per_sprint)
         burndown = self.build_burndown(active, issues)
@@ -442,6 +443,38 @@ class Collector:
             'velocity': velocity, 'output': output, 'logs': logs,
             'statusMap': dict(sorted(self.status_map.items())),
         }
+
+    def attach_story_events(self, epics, issues, commented):
+        """Хронология истории за всё время: создание, смены статуса и комментарии самой
+        истории и её подзадач. Для календаря активности в сайдбаре истории."""
+        by_key = {i['key']: i for i in issues}
+        notes = {i['key']: (i['fields'].get('comment') or {}).get('comments') or [] for i in commented}
+        def events(key):
+            i = by_key.get(key)
+            if not i:
+                return []
+            f, out = i['fields'], []
+            out.append({'at': f['created'][:16], 'kind': 'created', 'key': key,
+                        'by': (f.get('creator') or {}).get('displayName')})
+            for h in i.get('changelog', {}).get('histories', []):
+                for it in h['items']:
+                    if it['field'] != 'status':
+                        continue
+                    cat = self.cats.get(str(it.get('to'))) or ''
+                    out.append({'at': h['created'][:16], 'kind': 'status', 'key': key,
+                                'by': (h.get('author') or {}).get('displayName'),
+                                'from': it.get('fromString'), 'to': it.get('toString'),
+                                'done': self.rules.is_done(cat)})
+            for c in notes.get(key, []):
+                out.append({'at': c['created'][:16], 'kind': 'comment', 'key': key,
+                            'by': (c.get('author') or {}).get('displayName'), 'body': (c.get('body') or '')[:400]})
+            return out
+        for e in epics:
+            for st in e['stories']:
+                ev = events(st['key'])
+                for sub in st['subtasks']:
+                    ev += events(sub['key'])
+                st['events'] = sorted(ev, key=lambda x: x['at'])
 
     def build_epics(self, issues, epic_field):
         stories = [i for i in issues if i['fields']['issuetype']['name'] in self.story_types]

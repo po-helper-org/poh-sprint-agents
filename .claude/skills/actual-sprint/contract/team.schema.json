@@ -128,7 +128,13 @@
         "statusChanged": { "type": ["string", "null"], "description": "ISO-дата последней смены статуса из changelog." },
         "assignee": { "type": ["string", "null"], "description": "displayName исполнителя; null — не назначен." },
         "priority": { "type": ["string", "null"], "description": "priority.name как вернул JIRA; null — не заполнен. Уровень (высокий/низкий) страница выводит из имени сама." },
-        "subtasks": { "type": "array", "items": { "$ref": "#/definitions/subtask" } }
+        "subtasks": { "type": "array", "items": { "$ref": "#/definitions/subtask" } },
+        "events": {
+          "type": "array",
+          "description": "Хронология истории за всё время (сборщик 1.7.0+): создание, смены статуса и комментарии истории и её подзадач, по времени. kind: created | status | comment; у status — from, to и done (переход в закрытый статус), у comment — body.",
+          "items": { "type": "object", "required": ["at", "kind", "key"], "properties": {
+            "at": { "type": "string" }, "kind": { "enum": ["created", "status", "comment"] }, "key": { "type": "string" } } }
+        }
       }
     },
     "subtask": {

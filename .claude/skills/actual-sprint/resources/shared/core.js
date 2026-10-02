@@ -882,23 +882,27 @@
       return '<div class="eb" data-burn="' + ref + '">' + head + '<div class="sidebar-empty">' + why + '</div></div>';
     }
     var u = b.unit;
-    var late = b.due && b.forecast && b.remaining && b.forecast > b.due;
     var diff = b.due && b.forecast ? Math.round((dayMs(b.forecast) - dayMs(b.due)) / 86400000) : null;
-    var status = !b.remaining ? '<span class="ok">выполнено</span>'
-      : b.weeksLeft === null ? '<span class="bad">нет темпа</span>'
-      : !b.due ? '—'
-      : late ? '<span class="bad">опоздание ' + diff + ' дн.</span>' : '<span class="ok">в срок' + (diff < 0 ? ', запас ' + (-diff) + ' дн.' : '') + '</span>';
-    var cell = function (big, label, sub, cls) {
-      return '<div class="ea-cell' + (cls ? ' ' + cls : '') + '"><span class="ea-label">' + label + '</span><b>' + big + '</b>' + (sub ? '<span class="ea-sub">' + sub + '</span>' : '') + '</div>';
+    // итог — число дней цветом: зелёный в срок, жёлтый опоздание до 7 дней, красный больше
+    var tone = !b.remaining ? 'ok' : diff === null ? '' : diff <= 0 ? 'ok' : diff <= 7 ? 'warn' : 'bad';
+    var verdictTip = !b.remaining ? 'Эпик выполнен'
+      : b.weeksLeft === null ? 'Нет темпа: задачи не закрываются — прогноз не построить'
+      : diff === null ? 'Срок эпика в JIRA не задан — сравнить не с чем'
+      : diff <= 0 ? 'В темпе: запас ' + (-diff) + ' дн. до плановой даты'
+      : diff <= 7 ? 'В риске: опоздание ' + diff + ' дн.' : 'Опоздание ' + diff + ' дн.';
+    var verdict = !b.remaining ? 'готов' : diff === null ? '—' : Math.abs(diff) + ' дн.';
+    var cell = function (big, label, tip, cls) {
+      return '<div class="ea-cell' + (cls ? ' ' + cls : '') + '" title="' + esc(tip || '') + '"><span class="ea-label">' + label + '</span><b>' + big + '</b></div>';
     };
+    var weeksTxt = b.weeksLeft ? '≈ ' + b.weeksLeft + ' ' + plural(b.weeksLeft, 'неделя', 'недели', 'недель') + ' до закрытия' : '';
     var analysis = '<div class="eb-analysis">' +
-      cell(b.due ? ddmmyy(b.due) : '—', 'Плановая дата', b.due ? 'срок эпика в JIRA' : 'срок не задан') +
+      cell(b.due ? ddmmyy(b.due) : '—', 'Плановая дата', b.due ? 'Срок эпика в JIRA' : 'Срок эпика в JIRA не задан') +
       cell(b.remaining ? (b.forecast ? ddmmyy(b.forecast) : '—') : 'готов', 'Расчётная дата',
-           b.remaining && b.weeksLeft !== null ? '≈ ' + b.weeksLeft + ' ' + plural(b.weeksLeft, 'неделя', 'недели', 'недель') : '', late ? 'bad' : '') +
-      cell(fmtNum(b.pace) + ' <small>' + u + '/нед.</small>', 'Темп сгорания', b.paceBasis) +
+           b.remaining ? (b.forecast ? weeksTxt + ' при темпе ' + fmtNum(b.pace) + ' ' + u + '/нед.' : 'Нет темпа') : 'Эпик выполнен', tone === 'ok' ? '' : tone) +
+      cell(fmtNum(b.pace) + ' <small>' + u + '/нед.</small>', 'Темп сгорания', 'Среднее выполненное, ' + b.paceBasis) +
       cell(fmtNum(b.remaining) + ' <small>из ' + fmtNum(b.total) + ' ' + u + '</small>', 'Осталось',
-           b.unestimated ? b.unestimated + ' ' + plural(b.unestimated, 'задача', 'задачи', 'задач') + ' без оценки' : '') +
-      cell(status, 'Итог', b.remaining && !b.due ? 'не с чем сравнить' : '') + '</div>';
+           b.unestimated ? b.unestimated + ' ' + plural(b.unestimated, 'задача', 'задачи', 'задач') + ' без оценки — в SP не учтены' : '') +
+      cell(verdict, 'Итог', verdictTip, 'verdict ' + tone) + '</div>';
     return '<div class="eb" data-burn="' + ref + '">' + head + epicBurnChart(b) +
       '<div class="eb-legend"><span><i class="l-done"></i>выполнено</span><span><i class="l-left"></i>осталось</span>' +
       '<span><i class="l-add"></i>добавлено</span><span><i class="l-fc"></i>прогноз</span>' + (b.due ? '<span><i class="l-due"></i>план</span>' : '') + '</div>' +
@@ -988,6 +992,75 @@
   }
 
   scopeBtn.addEventListener('click', function () { setScopeMode(!scopeOn); });
+
+  // ------------------ Burndown текущего спринта ------------------
+  // Показывает, сколько задач ещё не закрыто по дням спринта.
+  // scope пересчитывается по changelog поля Sprint, поэтому внесённые и
+  // вынесенные из спринта задачи видны как ступеньки серой линии объёма.
+  function burndownChart() {
+    var b = BURNDOWN;
+    if (!b || !b.days || !b.days.length) return '<div class="m-muted">Нет данных по спринту.</div>';
+
+    var days = b.days;
+    var W = (CHART_BOX && CHART_BOX.W) || 560, H = (CHART_BOX && CHART_BOX.H) || 210, padL = 34, padR = 14, padT = 12, padB = 30;
+    var maxY = Math.max.apply(null, days.map(function (d) { return d.scope; })) || 1;
+    var innerW = W - padL - padR, innerH = H - padT - padB;
+    var xOf = function (i) { return padL + innerW * (days.length > 1 ? i / (days.length - 1) : 0); };
+    var yOf = function (v) { return padT + innerH * (1 - v / maxY); };
+
+    var parts = [];
+
+    // выходные — светлые полосы
+    days.forEach(function (d, i) {
+      if (!d.weekend) return;
+      var x1 = xOf(i) - innerW / (days.length - 1) / 2;
+      var x2 = xOf(i) + innerW / (days.length - 1) / 2;
+      parts.push('<rect x="' + Math.max(padL, x1).toFixed(1) + '" y="' + padT +
+        '" width="' + Math.max(0, Math.min(W - padR, x2) - Math.max(padL, x1)).toFixed(1) +
+        '" height="' + innerH + '" fill="#f4f4f5"/>');
+    });
+
+    // сетка и ось Y
+    [0, Math.round(maxY / 2), maxY].forEach(function (v) {
+      parts.push('<line x1="' + padL + '" y1="' + yOf(v).toFixed(1) + '" x2="' + (W - padR) +
+        '" y2="' + yOf(v).toFixed(1) + '" stroke="#eee"/>');
+      parts.push('<text x="4" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="10" fill="#666">' + v + '</text>');
+    });
+
+    // идеальная линия: от объёма на старте до нуля в конце
+    parts.push('<line x1="' + xOf(0) + '" y1="' + yOf(days[0].scope).toFixed(1) +
+      '" x2="' + xOf(days.length - 1) + '" y2="' + yOf(0).toFixed(1) +
+      '" stroke="#9ca3af" stroke-width="2"/>');
+
+    // фактический остаток — только по сегодняшний день
+    var actual = days.filter(function (d) { return !d.future; });
+    if (actual.length) {
+      var path = actual.map(function (d, i) {
+        return (i ? 'L' : 'M') + xOf(i).toFixed(1) + ' ' + yOf(d.remaining).toFixed(1);
+      }).join(' ');
+      parts.push('<path d="' + path + '" fill="none" stroke="#dc2626" stroke-width="2"/>');
+      actual.forEach(function (d, i) {
+        parts.push('<circle cx="' + xOf(i).toFixed(1) + '" cy="' + yOf(d.remaining).toFixed(1) +
+          '" r="2.5" fill="#dc2626"><title>' + esc(d.date + ': осталось ' + d.remaining +
+          ' из ' + d.scope + ', закрыто ' + d.closed) + '</title></circle>');
+      });
+    }
+
+    // подписи крайних дат
+    parts.push('<text x="' + padL + '" y="' + (H - 8) + '" font-size="10" fill="#666">' + esc(b.start) + '</text>');
+    parts.push('<text x="' + (W - padR) + '" y="' + (H - 8) +
+      '" font-size="10" fill="#666" text-anchor="end">' + esc(b.end) + '</text>');
+
+    var last = actual.length ? actual[actual.length - 1] : days[0];
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      parts.join('') + '</svg>' +
+      '<div class="chart-legend">' +
+        '<span class="swatch ideal"></span>идеальный темп &nbsp; ' +
+        '<span class="swatch actual"></span>фактический остаток<br>' +
+        'Сейчас закрыто <b>' + last.closed + '</b> из <b>' + last.scope + '</b>, осталось <b>' +
+        last.remaining + '</b>.' +
+      '</div>';
+  }
 
   // ------------------ Диаграмма управления ------------------
   function fmt(v) { return v === null || v === undefined ? '—' : String(v).replace('.', ','); }
