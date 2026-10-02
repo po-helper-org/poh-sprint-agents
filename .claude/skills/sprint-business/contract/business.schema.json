@@ -98,11 +98,11 @@
         "plans": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Слайд «Планы на следующий спринт»: до четырёх карточек в колонке. Нет колонки — страница возьмёт её из данных (открытый объём KR, незакрытое в спринте, заблокированное).",
+          "description": "Слайд «Планы на следующий спринт»: до 30 строк в колонке (на слайде — до 10 с пояснением или до 19 одной строкой, остальное «ещё N»). Нет колонки — страница возьмёт её из данных (открытый объём KR, незакрытое в спринте, заблокированное).",
           "properties": {
             "take": {
               "type": "array",
-              "maxItems": 4,
+              "maxItems": 30,
               "items": {
                 "$ref": "#/definitions/planCard"
               },
@@ -110,7 +110,7 @@
             },
             "finish": {
               "type": "array",
-              "maxItems": 4,
+              "maxItems": 30,
               "items": {
                 "$ref": "#/definitions/planCard"
               },
@@ -118,7 +118,7 @@
             },
             "escalate": {
               "type": "array",
-              "maxItems": 4,
+              "maxItems": 30,
               "items": {
                 "$ref": "#/definitions/planCard"
               },

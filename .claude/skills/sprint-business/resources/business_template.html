@@ -161,14 +161,12 @@
   .cyc .chart { width: 100%; height: auto; display: block; }
   .ops-legend .l-pt { width: 8px; height: 8px; border-radius: 50%; opacity: .6; }
   .ops-legend .l-line { width: 18px; height: 0; border-radius: 0; }
-  .tis-title { margin-top: 16px; }
-  .tis-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 6px; }
+  .ops-legend .l-band { width: 18px; height: 9px; background: rgba(37, 99, 235, .12); border: 1px solid rgba(37, 99, 235, .3); }
+  .tis-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 18px; }
   .tis { border-top: 1px solid #e5e5e5; padding-top: 8px; }
   .tis-h { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #777; }
   .tis-big { font-size: 34px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .tis-big small { font-size: 15px; font-weight: 400; color: #888; }
-  .tis-d { font-size: 12px; display: block; margin: 2px 0 4px; }
-  .tis-d.worse { color: var(--c-blocked); } .tis-d.better { color: var(--c-done); } .tis-d.same { color: #888; }
   .tis .chart { width: 100%; height: auto; display: block; }
   .tis-none { font-size: 13px; color: #999; margin-top: 8px; }
   .ckpis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 4px; }
@@ -213,17 +211,22 @@
   .sf-done { font-size: 11.5px; font-weight: 700; color: var(--c-done); }
   .sf-by { color: var(--muted); font-size: 11px; text-align: right; padding-top: 2px; }
   /* «Планы на следующий спринт» */
-  .plans-team { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: #888; margin: 2px 0 18px; }
-  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  .pcol { background: #f7f7f7; border-radius: 8px; padding: 14px 14px 16px; border-top: 4px solid #999; }
+  .plans-team { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: #888; margin: 2px 0 14px; }
+  .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .pcol { border-top: 4px solid #999; padding-top: 8px; min-width: 0; }
   .pc-take { border-top-color: var(--c-progress); } .pc-finish { border-top-color: var(--c-testing); } .pc-escalate { border-top-color: var(--c-blocked); }
-  .pc-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 17px; }
-  .pc-head span { font-size: 13px; color: #888; }
-  .pc-hint { font-size: 12px; color: #888; margin: 2px 0 12px; }
-  .pcard { background: #fff; border: 1px solid #e3e3e3; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
-  .pc-title { font-size: 14px; font-weight: 600; line-height: 1.35; }
-  .pc-text { font-size: 12.5px; color: #555; margin-top: 4px; line-height: 1.45; }
-  .pc-keys { font-size: 11px; color: #999; margin-top: 6px; }
+  .pc-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; }
+  .pc-head span { font-size: 13px; color: #888; font-variant-numeric: tabular-nums; }
+  .pc-hint { font-size: 11.5px; color: #999; margin: 0 0 6px; }
+  /* плотный список: строка на задачу — ключ, суть, пояснение одной строкой */
+  .prow { display: grid; grid-template-columns: 74px minmax(0, 1fr); column-gap: 8px; padding: 5px 0; border-bottom: 1px solid #eee; line-height: 1.3; }
+  .pr-key { font-size: 11px; color: #888; font-variant-numeric: tabular-nums; padding-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-text { grid-column: 2; font-size: 11.5px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fslide.plans.dense .pr-text { display: none; }
+  .fslide.plans.dense .prow { padding: 4px 0; }
+  .pr-more { font-size: 12px; color: #888; padding: 6px 0 0; cursor: help; }
+  .deck.editing .pr-title, .deck.editing .pr-text { white-space: normal; }
   .pc-empty { font-size: 13px; color: #aaa; padding: 8px 2px; }
 
 
@@ -688,12 +691,13 @@
   }
 
   // сглаженная линия через точки, монотонная по x (как curveMonotoneX): не петляет
-  // назад и не выходит за соседние значения; точки одного x сливаются в последнюю
-  function smoothPath(pts) {
+  // назад и не выходит за соседние значения; точки одного x сливаются в последнюю;
+  // cont — продолжить контур (L вместо M), чтобы собрать заливку из двух кривых
+  function smoothPath(pts, cont) {
     var p = [];
     pts.forEach(function (q) { if (p.length && Math.abs(p[p.length - 1][0] - q[0]) < .5) p[p.length - 1] = q; else p.push(q); });
     if (!p.length) return '';
-    var n = p.length, d = 'M' + p[0][0].toFixed(1) + ' ' + p[0][1].toFixed(1);
+    var n = p.length, d = (cont ? ' L' : 'M') + p[0][0].toFixed(1) + ' ' + p[0][1].toFixed(1);
     if (n === 1) return d;
     var sl = [], m = [];
     for (var i = 0; i < n - 1; i++) sl.push((p[i + 1][1] - p[i][1]) / (p[i + 1][0] - p[i][0]));
@@ -715,18 +719,21 @@
   ];
   var CYCLE_ROLL = 5;
 
-  // Cycle time закрытых задач за 3 спринта: полосы спринтов, точки двух потоков и
+  // Cycle time закрытых за 3 спринта задач: полосы спринтов, точки двух потоков и
   // скользящее среднее по последним пяти задачам потока, значение — подписью в конце линии.
   function cycleChart(t, m, box) {
     var from = opsFrom(t, m);
     var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
     var streams = CYCLE_STREAMS.map(function (st) {
       var pts = controlWindow((t.control || {})[st.id], from, today).points;
-      var roll = pts.map(function (p, i) {
-        var w = pts.slice(Math.max(0, i - CYCLE_ROLL + 1), i + 1);
-        return w.reduce(function (a, q) { return a + q.cycle; }, 0) / w.length;
+      var roll = [], sd = [];
+      pts.forEach(function (p, i) {
+        var w = pts.slice(Math.max(0, i - CYCLE_ROLL + 1), i + 1).map(function (q) { return q.cycle; });
+        var mean = w.reduce(function (a, v) { return a + v; }, 0) / w.length;
+        roll.push(mean);
+        sd.push(Math.sqrt(w.reduce(function (a, v) { return a + (v - mean) * (v - mean); }, 0) / w.length));
       });
-      return Object.assign({ pts: pts, roll: roll }, st);
+      return Object.assign({ pts: pts, roll: roll, sd: sd }, st);
     });
     var all = streams[0].pts.concat(streams[1].pts);
     if (!all.length) return '<div class="ops-empty">За три спринта закрытых задач нет.</div>';
@@ -754,6 +761,14 @@
       parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(v).toFixed(1) + '" y2="' + yOf(v).toFixed(1) + '" stroke="#e5e7eb"/>');
       parts.push('<text x="' + (padL - 6) + '" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="11" fill="#888" text-anchor="end">' + v + '</text>');
     }
+    // коридор, как в JIRA: скользящее среднее ± σ того же окна, заливкой цвета потока
+    streams.forEach(function (st) {
+      if (st.pts.length < 2) return;
+      var hi = st.pts.map(function (p, i) { return [xOf(p.doneAt), yOf(Math.min(maxY, st.roll[i] + st.sd[i]))]; });
+      var lo = st.pts.map(function (p, i) { return [xOf(p.doneAt), yOf(Math.max(0, st.roll[i] - st.sd[i]))]; }).reverse();
+      parts.push('<path class="cyc-band" d="' + smoothPath(hi) + smoothPath(lo, true) + ' Z" fill="' + st.color + '" fill-opacity=".09" stroke="' +
+        st.color + '" stroke-opacity=".25" stroke-width="1"' + (st.dash ? ' stroke-dasharray="3 3"' : '') + '/>');
+    });
     streams.forEach(function (st) {
       st.pts.forEach(function (p) {
         parts.push('<circle cx="' + xOf(p.doneAt).toFixed(1) + '" cy="' + yOf(p.cycle).toFixed(1) + '" r="' + (st.id === 'stories' ? 4 : 3.2) +
@@ -765,7 +780,7 @@
     streams.forEach(function (st) {
       if (!st.pts.length) return;
       var line = st.pts.map(function (p, i) { return [xOf(p.doneAt), yOf(st.roll[i])]; });
-      parts.push('<path d="' + smoothPath(line) + '" fill="none" stroke="' + st.color + '" stroke-width="2.6"' +
+      parts.push('<path class="cyc-avg" d="' + smoothPath(line) + '" fill="none" stroke="' + st.color + '" stroke-width="2.6"' +
         (st.dash ? ' stroke-dasharray="' + st.dash + '"' : '') + ' stroke-linecap="round"/>');
       var last = line[line.length - 1];
       ends.push({ st: st, x: last[0], y: last[1], val: st.roll[st.roll.length - 1] });
@@ -787,12 +802,12 @@
     }).join('') + streams.map(function (st) {
       return '<span><i class="l-line" style="border-top:2.5px ' + (st.dash ? 'dashed' : 'solid') + ' ' + st.color + '"></i>' +
         st.label.toLowerCase() + ': среднее по ' + CYCLE_ROLL + ' последним</span>';
-    }).join('') + '</div>';
+    }).join('') + '<span><i class="l-band"></i>коридор ± σ</span></div>';
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' + legend;
   }
 
-  // «Среднее время в статусе по спринтам»: крупно текущее значение, изменение к первому
-  // спринту окна (больше времени — хуже), столбики по спринтам — текущий насыщенный.
+  // среднее время в статусе по спринтам: крупно текущее значение, столбики по спринтам —
+  // текущий насыщенный, прошлые бледные.
   var TIS = [
     { id: 'blocked', label: 'Заблокировано', color: 'var(--c-blocked)' },
     { id: 'review', label: 'Ревью', color: 'var(--c-review)' },
@@ -803,16 +818,8 @@
     var vals = m.sprints.map(function (s) { var v = (s.timeInStatus || {})[st.id]; return typeof v === 'number' ? v : null; });
     var have = vals.map(function (v, i) { return v === null ? -1 : i; }).filter(function (i) { return i >= 0; });
     if (!have.length) return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-none">нет данных</div></div>';
-    var cur = vals[have[have.length - 1]], first = vals[have[0]];
-    var delta = '';
-    if (have.length > 1) {
-      var base = sprintShort(m.sprints[have[0]].name);
-      var pct = first ? Math.round(100 * (cur - first) / first) : (cur ? 100 : 0);
-      delta = Math.abs(pct) < 5 ? '<span class="tis-d same">без изменений к ' + esc(base) + '</span>'
-        : '<span class="tis-d ' + (pct > 0 ? 'worse' : 'better') + '">' + (pct > 0 ? '+' : '−') + Math.abs(pct) + '% к ' + esc(base) +
-          ', ' + (pct > 0 ? 'хуже' : 'лучше') + '</span>';
-    }
-    var W = 340, H = 104, padB = 18, padT = 16, max = Math.max.apply(null, have.map(function (i) { return vals[i]; })) || 1;
+    var cur = vals[have[have.length - 1]];
+    var W = 340, H = 120, padB = 18, padT = 16, max = Math.max.apply(null, have.map(function (i) { return vals[i]; })) || 1;
     var n = m.sprints.length, bw = Math.min(64, (W - 20) / n - 14);
     var bars = m.sprints.map(function (s, i) {
       var x = 10 + (W - 20) * (i + .5) / n - bw / 2, v = vals[i];
@@ -824,20 +831,18 @@
         '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" font-size="11" text-anchor="middle" fill="' + (isCur ? '#111' : '#999') + '"' +
         (isCur ? ' font-weight="700"' : '') + '>' + esc(sprintShort(s.name)) + '</text>';
     }).join('');
-    return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-big" style="color:' + st.color + '">' + fmtNum(cur) +
-      ' <small>дн.</small></div>' + delta + '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + bars + '</svg></div>';
+    return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-big" style="color:' + st.color + '">' + d1(cur) +
+      ' <small>дн.</small></div><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + bars + '</svg></div>';
   }
 
   function cycleSlide(t) {
     var m = outputModel(t);
     var chart = '<div class="cyc" data-ctl="' + esc(t.slug) + '" title="Подробный разбор: диаграмма управления">' +
-      '<div class="ops-h">Cycle time закрытых задач, дни <small>· за 3 спринта, клик — разбор</small></div>' +
-      cycleChart(t, m, { W: 1184, H: 330 }) + '</div>';
+      cycleChart(t, m, { W: 1184, H: 360 }) + '</div>';
     var tis = m && m.sprints.some(function (s) { return s.timeInStatus; })
       ? '<div class="tis-row">' + TIS.map(function (st) { return statusTimePanel(m, st); }).join('') + '</div>'
       : '<div class="ops-empty">Сборщик не отдал время в статусах (нужна версия 1.8.0).</div>';
-    return slide('ops cycle', '<div class="ops-tag">' + esc(t.team) + ' · сроки</div>' + chart +
-      '<div class="ops-h tis-title">Среднее время в статусе по спринтам, дни</div>' + tis,
+    return slide('ops cycle', '<div class="ops-tag">' + esc(t.team) + ' · сроки</div>' + chart + tis,
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Сроки · ' + t.team }));
   }
 
@@ -904,7 +909,10 @@
 
   // «Планы на следующий спринт»: взять в работу / доделать / эскалировать. Агент
   // (plans в бизнес-блоке) задаёт суть; без него — из данных: открытый объём KR,
-  // незакрытое в спринте, заблокированное.
+  // незакрытое в спринте, заблокированное. Список плотный: у команды из 10 человек это
+  // десятки задач. До 10 в колонке — строка с пояснением; больше — слайд уплотняется до
+  // строки на задачу (пояснение в подсказке), до 19 строк; остальное — «ещё N».
+  var PLAN_ROWS = { full: 10, dense: 19 };
   var PLAN_COLS = [
     { id: 'take', label: 'Взять в работу', hint: 'следующее по KR' },
     { id: 'finish', label: 'Доделать', hint: 'перенос из спринта' },
@@ -922,26 +930,30 @@
         .map(function (x) { return { title: x.r.st.title, text: x.r.blocker || ('«' + x.r.st.status + '» с ' + ddmm(x.r.st.statusChanged)), keys: [x.r.st.key] }; }),
       take: streams.filter(function (s) { return s.epic.epicKey && s.epic.scope; }).reduce(function (a, s) {
         return a.concat(s.epic.scope.filter(function (it) { return !it.inSprint && classifyBucket(it.status, it.category) === 'open'; })
-          .slice(0, 2).map(function (it) { return { title: it.title, text: (s.ai.kr || 'Эпик «' + s.epic.epicTitle + '»'), keys: [it.key] }; }));
+          .map(function (it) { return { title: it.title, text: (s.ai.kr || 'Эпик «' + s.epic.epicTitle + '»'), keys: [it.key] }; }));
       }, [])
     };
     var out = {};
-    PLAN_COLS.forEach(function (c) { out[c.id] = (ai[c.id] && ai[c.id].length ? ai[c.id] : auto[c.id]).slice(0, 4); });
+    PLAN_COLS.forEach(function (c) { out[c.id] = (ai[c.id] && ai[c.id].length ? ai[c.id] : auto[c.id]); });
     return out;
   }
 
   function plansSlide(t, streams) {
     var cards = planCards(t, streams);
-    return slide('plans', '<h1 class="slide-title">' + ed('plans:' + t.slug, 'Планы на следующий спринт') + '</h1>' +
+    var dense = PLAN_COLS.some(function (c) { return cards[c.id].length > PLAN_ROWS.full; });
+    var cap = dense ? PLAN_ROWS.dense : PLAN_ROWS.full;
+    return slide('plans' + (dense ? ' dense' : ''), '<h1 class="slide-title">' + ed('plans:' + t.slug, 'Планы на следующий спринт') + '</h1>' +
       '<div class="plans-team">' + esc(t.team) + '</div><div class="plans">' + PLAN_COLS.map(function (c) {
-        var list = cards[c.id];
+        var list = cards[c.id], shown = list.length > cap ? list.slice(0, cap - 1) : list, rest = list.slice(shown.length);
         return '<div class="pcol pc-' + c.id + '"><div class="pc-head"><b>' + c.label + '</b><span>' + list.length + '</span></div>' +
-          '<div class="pc-hint">' + c.hint + '</div>' + (list.length ? list.map(function (x, i) {
-            var id = 'plan:' + t.slug + ':' + c.id + ':' + i;
-            return '<div class="pcard"' + ctxAttr({ kind: 'general', title: c.label + ': ' + x.title }) + '><div class="pc-title">' + ed(id + ':t', x.title) + '</div>' +
-              (x.text ? '<div class="pc-text">' + ed(id + ':x', x.text) + '</div>' : '') +
-              ((x.keys || []).length ? '<div class="pc-keys">' + x.keys.map(esc).join(' · ') + '</div>' : '') + '</div>';
-          }).join('') : '<div class="pc-empty">Нет</div>') + '</div>';
+          '<div class="pc-hint">' + c.hint + '</div>' + (list.length ? shown.map(function (x, i) {
+            var id = 'plan:' + t.slug + ':' + c.id + ':' + i, keys = x.keys || [];
+            return '<div class="prow"' + ctxAttr({ kind: 'general', title: c.label + ': ' + x.title }) + ' title="' + esc(x.title + (x.text ? '\n' + x.text : '')) + '">' +
+              '<span class="pr-key"' + (keys.length > 1 ? ' title="' + esc(keys.join(', ')) + '"' : '') + '>' + esc(keys[0] || '') + (keys.length > 1 ? ' +' + (keys.length - 1) : '') + '</span>' +
+              '<span class="pr-title">' + ed(id + ':t', x.title) + '</span>' +
+              (x.text ? '<span class="pr-text">' + ed(id + ':x', x.text) + '</span>' : '') + '</div>';
+          }).join('') + (rest.length ? '<div class="pr-more" title="' + esc(rest.map(function (x) { return ((x.keys || [])[0] || '') + ' ' + x.title; }).join('\n')) +
+            '">ещё ' + rest.length + '</div>' : '') : '<div class="pc-empty">Нет</div>') + '</div>';
       }).join('') + '</div>',
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Планы на следующий спринт · ' + t.team }));
   }

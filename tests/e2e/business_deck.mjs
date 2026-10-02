@@ -137,20 +137,20 @@ await goTo('#deckSlides .fslide.cycle');
 const cyc = await p.evaluate(() => {
   const s = document.querySelector('#deckSlides .fslide.cycle');
   const svg = s.querySelector('.cyc svg');
-  return { heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
-           points: svg.querySelectorAll('circle').length, lines: svg.querySelectorAll('path').length,
+  return { heads: s.querySelectorAll('.ops-h').length, delta: s.querySelectorAll('.tis-d').length,
+           points: svg.querySelectorAll('circle').length, lines: svg.querySelectorAll('path.cyc-avg').length,
+           bandsSigma: svg.querySelectorAll('path.cyc-band').length,
            bands: [...svg.querySelectorAll('text')].map(t => t.textContent).filter(t => /^С\d+/.test(t)).length,
            ends: [...svg.querySelectorAll('text')].map(t => t.textContent).filter(t => t === 'Истории' || t === 'Подзадачи').length,
            tis: [...s.querySelectorAll('.tis-h')].map(h => h.textContent).join('|'),
            big: [...s.querySelectorAll('.tis-big')].every(b => /\d,\d/.test(b.textContent)),
-           delta: [...s.querySelectorAll('.tis-d')].every(d => /(хуже|лучше)$|^без изменений к С\d+/.test(d.textContent)),
            bars: s.querySelectorAll('.tis svg rect').length };
 });
-check(cyc.heads[0].startsWith('Cycle time закрытых задач, дни') && cyc.heads[1] === 'Среднее время в статусе по спринтам, дни', '«Сроки»: два блока по эталону');
-check(cyc.points > 10 && cyc.lines === 2 && cyc.bands === 3 && cyc.ends === 2,
-      'точки историй и подзадач, два скользящих средних с подписью в конце, полосы трёх спринтов');
-check(cyc.tis === 'Заблокировано|Ревью|Отладка' && cyc.big && cyc.delta && cyc.bars === 9,
-      'время в статусах: текущее крупно, изменение к первому спринту, столбики по спринтам');
+check(cyc.heads === 0 && cyc.delta === 0, '«Сроки»: без заголовков блоков и без оценок «хуже / лучше»');
+check(cyc.points > 10 && cyc.lines === 2 && cyc.bandsSigma === 2 && cyc.bands === 3 && cyc.ends === 2,
+      'точки историй и подзадач, два скользящих средних с коридором ±σ и подписью в конце, полосы трёх спринтов');
+check(cyc.tis === 'Заблокировано|Ревью|Отладка' && cyc.big && cyc.bars === 9,
+      'время в статусах: текущее крупно, столбики по спринтам');
 await p.click('#deckSlides .fslide.cycle .cyc');
 await p.waitForTimeout(300);
 const ctl = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent,
@@ -166,9 +166,12 @@ await p.waitForTimeout(200);
 // планы на следующий спринт
 await goTo('#deckSlides .fslide.plans');
 const plans = await p.evaluate(() => [...document.querySelector('#deckSlides .fslide.plans').querySelectorAll('.pcol')]
-  .map(c => [c.querySelector('.pc-head b').textContent, c.querySelectorAll('.pcard').length]));
-check(plans.map(x => x[0]).join('|') === 'Взять в работу|Доделать|Эскалировать' && plans.every(x => x[1] <= 4) && plans.some(x => x[1]),
-      '«Планы на следующий спринт»: три колонки карточек');
+  .map(c => [c.querySelector('.pc-head b').textContent, c.querySelectorAll('.prow').length,
+              Math.max(0, ...[...c.querySelectorAll('.prow')].map(r => r.getBoundingClientRect().height)), +c.querySelector('.pc-head span').textContent,
+              c.querySelector('.pr-more') ? +c.querySelector('.pr-more').textContent.replace(/\D/g, '') : 0]));
+check(plans.map(x => x[0]).join('|') === 'Взять в работу|Доделать|Эскалировать' && plans.every(x => x[1] <= 19) && plans.some(x => x[1]),
+      '«Планы на следующий спринт»: три колонки плотного списка');
+check(plans.every(x => x[2] < 60 && x[1] + x[4] === x[3]), 'строка на задачу; что не влезло — «ещё N», счётчик колонки — всё');
 await goTo('#deckSlides tr.row[data-key="INIT-136"]');
 const rowCheck = await p.evaluate(() => {
   const tr = document.querySelector('#deckSlides tr.row[data-key="INIT-136"]');

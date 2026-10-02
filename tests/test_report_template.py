@@ -176,7 +176,8 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_title_team_and_plans_slides(self):
         """Титул и слайд команды — со сводкой; после операционного — «Планы на следующий спринт»."""
         for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function plansSlide(', "'Взять в работу'",
-                     "'Доделать'", "'Эскалировать'", 'html += plansSlide(x.t, x.streams);'):
+                     "'Доделать'", "'Эскалировать'", 'html += plansSlide(x.t, x.streams);',
+                     'PLAN_ROWS = { full: 10, dense: 19 }', 'class="prow"', 'pr-more'):
             self.assertIn(part, self.html)
         for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '"):
             self.assertNotIn(gone, self.html)
@@ -200,11 +201,12 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_cycle_slide(self):
         """«Сроки»: cycle time с полосами спринтов и скользящими средними, время в статусах по спринтам;
         клик по графику — разбор в классической диаграмме управления."""
-        for part in ('function cycleSlide(', 'function cycleChart(', 'function smoothPath(', 'CYCLE_ROLL = 5',
-                     'Cycle time закрытых задач, дни', 'Среднее время в статусе по спринтам, дни', "label: 'Заблокировано'",
-                     "label: 'Ревью'", "label: 'Отладка'", 'timeInStatus', "'хуже'", "'лучше'", 'без изменений к ',
+        for part in ('function cycleSlide(', 'function cycleChart(', 'function smoothPath(', 'CYCLE_ROLL = 5', 'cyc-band', 'коридор ± σ',
+                     "label: 'Заблокировано'", "label: 'Ревью'", "label: 'Отладка'", 'timeInStatus',
                      'data-ctl=', 'function openControl(', 'controlWindow(', 'По спринтам'):
             self.assertIn(part, self.html)
+        for gone in ('Cycle time закрытых задач', 'Среднее время в статусе по спринтам', 'без изменений к ', "'хуже'", 'tis-d'):
+            self.assertNotIn(gone, self.html, 'без заголовков блоков и без оценок «хуже / лучше»')
 
     def test_kr_epic_burndown(self):
         """Клик по KR: сгорание эпика — объём, осталось, план (duedate) и прогноз по темпу спринта."""
