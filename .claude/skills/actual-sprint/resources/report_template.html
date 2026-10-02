@@ -22,15 +22,14 @@
 </div>
 
 <div class="hero">
-  <div class="team">Команда</div>
-  <div class="name-row">
-    <h1 id="teamName">—</h1>
+  <!-- команда видна по переключателю: ни метки «Команда», ни названия заголовком -->
+  <div class="switch-row">
+    <div class="team-switch" id="teamSwitch"></div>
     <button class="interp-btn" id="interpBtn" type="button" aria-label="Интерпретация ИИ"
             title="Интерпретация ИИ: динамика команды, на что обратить внимание, рекомендации">!</button>
   </div>
-  <div class="team-switch" id="teamSwitch"></div>
   <div class="meta">
-    <div>Спринт: <strong id="sprintName">—</strong></div>
+    <div>Команда: <strong><a class="metrics-link" href="#" id="teamLink" title="Участники: выработка за 3 спринта, задачи каждого">—</a></strong></div>
     <div>Доска: <strong><a class="board-link" id="boardLink" href="#" target="_blank" rel="noopener">—</a></strong></div>
     <div>Lead Time за 3 спринта:
       <strong><a class="metrics-link" href="#" id="metricsLink" title="Среднее / медиана / количество закрытых запросов. Открыть сводный отчёт">—</a></strong>
@@ -437,10 +436,36 @@
     panelStack.classList.add('open');
   }
 
+  // «Команда: N» — участники за 3 спринта: выработка по группам, Lead time; клик по
+  // участнику — его задачи с историей. Только здесь, в отчёте для техлидов.
+  function openTeam() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Команда';
+    stackTitle.textContent = team.team + ' · ' + team.sprintName;
+    var m = outputModel(team);
+    storiesLabel.textContent = m ? 'Участники за 3 спринта · ' + (m.sp ? 'SP' : 'задачи') : 'Участники';
+    if (!m) {
+      storiesBody.innerHTML = '<div class="sidebar-empty">Выработки участников в данных нет: её отдаёт сборщик 1.3.0+ (поле output).</div>';
+    } else {
+      OUT_TIPS = [];
+      MEMBER_REFS = [];
+      storiesBody.innerHTML = '<div class="team-legend">' + OUT_GROUPS.map(function (g) {
+        return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
+      }).join('') + '<span class="hint">наведите на ячейку — раскладка, клик по имени — задачи</span></div>' +
+        '<div class="team-tab-wrap">' + memberTable(team, m, { back: true }) + '</div>';
+    }
+    overlay.classList.add('open');
+    panelStack.classList.add('open');
+  }
+
   function renderHero() {
-    document.getElementById('teamName').textContent = team.team;
     refreshInterpBtn();
-    document.getElementById('sprintName').textContent = team.sprintName;
+    var m = outputModel(team);
+    var people = m ? m.rows.filter(function (r) { return r.name !== 'Не назначен'; }).length : 0;
+    var tl = document.getElementById('teamLink');
+    tl.textContent = m ? people + ' ' + plural(people, 'участник', 'участника', 'участников') : 'нет данных';
     var bl = document.getElementById('boardLink');
     bl.textContent = team.boardName;
     bl.href = team.boardUrl;
@@ -475,6 +500,10 @@
     openMetrics();
   });
   document.getElementById('interpBtn').addEventListener('click', openInterpretation);
+  document.getElementById('teamLink').addEventListener('click', function (e) {
+    e.preventDefault();
+    openTeam();
+  });
 
   // «Бизнес-отчёт»: промт на колоду «ФАКТ | спринт» — тем же данным, своим навыком
   function businessPrompt() {

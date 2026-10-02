@@ -115,54 +115,20 @@ await goTo('#deckSlides .fslide.ops');
 check(await p.isVisible('#deckSlides .fslide.ops') &&
       await p.evaluate(() => document.querySelector('#deckTocList a.cur') !== null), 'переход к слайду из списка, текущий отмечен');
 
-// операционный отчёт: без заголовка; производительность и диаграмма управления, участники тремя группами
+// операционный отчёт: без заголовка; производительность и диаграмма управления, участников здесь нет
 const ops = await p.evaluate(() => {
   const s = document.querySelector('#deckSlides .fslide.ops');
   return { title: !!s.querySelector('.slide-title'),
            heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
-           cols: [...s.querySelectorAll('table.mtab thead th')].map(h => h.firstChild.textContent),
-           sprints: TEAMS[0].output.sprints.map(x => x.name),
-           rows: s.querySelectorAll('table.mtab tbody tr').length,
-           members: new Set(TEAMS[0].output.sprints.flatMap(x => x.members.map(m => m.name))).size,
-           nums: s.querySelectorAll('table.mtab td.mcell[data-tip] .mc-nums > span:not(.sep)').length,
-           cells: s.querySelectorAll('table.mtab td.mcell[data-tip]').length,
+           table: !!s.querySelector('table.mtab'),
            streams: s.querySelectorAll('svg circle').length,
            legend: s.querySelector('.ops-legend').textContent };
 });
 check(!ops.title, 'у операционного слайда нет заголовка');
 check(ops.heads[0].startsWith('Общая производительность команды') && ops.heads[1].startsWith('Диаграмма управления за 3 спринта'),
-      'слева производительность и диаграмма управления за 3 спринта');
+      'производительность и диаграмма управления за 3 спринта');
 check(ops.streams > 10 && ops.legend.startsWith('Не начатоВ работеВыполнено'), 'точки историй и подзадач; три группы статусов');
-check(ops.cols.join('|') === ['Участник', ...ops.sprints, 'Lead time'].join('|'), 'таблица: участник, три спринта, Lead time');
-check(ops.rows === ops.members + 1, 'по строке на участника и итог команды');
-check(ops.nums === ops.cells * 3, 'в ячейке три числа: не начато · в работе · выполнено');
-await p.hover('#deckSlides .fslide.ops td.mcell[data-tip] >> nth=1');
-await p.waitForTimeout(150);
-const outTip = await p.evaluate(() => { const t = document.querySelector('.deck-tip'); return { shown: !t.hidden, text: t.textContent }; });
-check(outTip.shown && ['Backlog / To Do', 'В блоке', 'Ревью', 'Отладка', 'Отменено'].every(x => outTip.text.includes(x)),
-      'наведение — раскрытые группы: backlog, в блоке; в работе, ревью, отладка; готово, отменено');
-await p.click('#deckSlides .fslide.ops button.mname >> nth=0');
-await p.waitForTimeout(300);
-const mem = await p.evaluate(() => ({ open: document.getElementById('panelStack').classList.contains('open'),
-  tabs: [...document.querySelectorAll('.side-tab')].map(x => x.textContent.split(' · ')[0]),
-  first: (document.querySelector('#storiesBody .mi-head') || {}).textContent || '',
-  rows: document.querySelectorAll('#storiesBody .mi-row').length }));
-check(mem.open && mem.tabs.join('|') === ops.sprints.join('|') && mem.first.startsWith('Выполнено — в зачёт'),
-      'клик по участнику — сайдбар его задач по спринтам, сначала то, что пошло в зачёт');
-await p.click('.side-tab >> nth=0');
-await p.click('#storiesBody .mi-row >> nth=0');
-await p.waitForTimeout(200);
-const act = await p.evaluate(() => {
-  const d = document.querySelector('#storiesBody .mi-row + .mi-detail');
-  const at = [...d.querySelectorAll('.mi-act .mi-when')].map(x => x.textContent);
-  return { n: at.length, rows: document.querySelectorAll('#storiesBody .mi-row').length,
-           sorted: at.every((x, i) => !i || x.slice(3, 5) + x.slice(0, 2) + x.slice(6) >= at[i - 1].slice(3, 5) + at[i - 1].slice(0, 2) + at[i - 1].slice(6)) };
-});
-check(act.n > 0 && act.sorted && act.rows > 1, 'клик по задаче — её смены статуса и комментарии на том же экране, по хронологии');
-await p.click('#storiesBody .mi-row >> nth=0');
-check((await p.locator('#storiesBody .mi-detail').count()) === 0, 'повторный клик сворачивает историю');
-await p.keyboard.press('Escape');
-await p.waitForTimeout(200);
+check(!ops.table, 'выработки по участникам в бизнес-отчёте нет — она в отчёте PO');
 // планы на следующий спринт
 await goTo('#deckSlides .fslide.plans');
 const plans = await p.evaluate(() => [...document.querySelector('#deckSlides .fslide.plans').querySelectorAll('.pcol')]

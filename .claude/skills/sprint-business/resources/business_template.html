@@ -85,24 +85,6 @@
   .ops-legend { font-size: 11px; color: #666; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 2px; }
   .ops-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
   .ops-legend .l-avg { width: 16px; height: 0; border-top: 2px dashed #111; border-radius: 0; }
-  table.mtab { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
-  table.mtab th, table.mtab td { border: 1px solid var(--gray-border); padding: 10px 6px; text-align: center; }
-  table.mtab th { background: #f3f3f3; font-weight: 700; font-size: 12px; }
-  table.mtab th small { display: block; font-weight: 400; color: #888; font-size: 10.5px; }
-  table.mtab td.who { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  table.mtab td.lead { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  table.mtab tr.total td { background: #f7f7f7; font-weight: 600; }
-  .deck-tip {
-    position: fixed; z-index: 400; pointer-events: none; background: #fff; color: #111;
-    border: 1px solid #ddd; box-shadow: 0 6px 20px rgba(0,0,0,.15); border-radius: 6px;
-    padding: 10px 12px; font: 12px/1.5 Arial, sans-serif; min-width: 230px;
-  }
-  .deck-tip b { display: block; margin-bottom: 4px; }
-  .deck-tip .tr { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: center; }
-  .deck-tip .tr i { width: 9px; height: 9px; border-radius: 2px; }
-  .deck-tip .tr span:last-child { font-variant-numeric: tabular-nums; color: #333; }
-  .deck-tip .tr.zero { color: #aaa; }
-  .deck-tip .sum { border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px; color: #555; }
   table.vtab { width: 100%; border-collapse: collapse; font-size: 13px; }
   table.vtab th, table.vtab td { border: 1px solid var(--gray-border); padding: 8px 10px; text-align: right; }
   table.vtab th:first-child, table.vtab td:first-child { text-align: left; }
@@ -172,31 +154,9 @@
   /* операционный: метка вместо заголовка, участники — три группы */
   .ops-tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   .fslide.ops .ops2 { margin-top: 0; }
+  .ops2.two { grid-template-columns: 1fr 1fr; gap: 36px; margin-top: 24px; }
   .ops-h2 { margin-top: 12px; }
   .ops-legend .l-dot, .ops-legend .l-ring { border-radius: 50%; border: 1.5px solid; width: 7px; height: 7px; }
-  table.mtab button.mname { font: inherit; font-weight: 600; background: none; border: 0; padding: 0; cursor: pointer; color: #111;
-                            border-bottom: 1px dashed #999; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  table.mtab button.mname:hover { border-bottom-style: solid; }
-  table.mtab td.mcell { cursor: help; padding: 5px 10px; }
-  table.mtab td.who, table.mtab td.lead { padding: 5px 6px; }
-  table.mtab td.mcell:hover { background: #fafafa; }
-  .mc-top { display: flex; align-items: baseline; justify-content: center; gap: 5px; }
-  .mc-top b { font-size: 17px; line-height: 1.15; color: var(--c-done); font-variant-numeric: tabular-nums; }
-  .mc-top span { font-size: 11px; color: #888; }
-  .mc-bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: #eee; margin: 3px 0 2px; }
-  .mc-bar i { display: block; height: 100%; }
-  .mc-nums { font-size: 11px; font-variant-numeric: tabular-nums; }
-  .mc-nums .sep { color: #ccc; margin: 0 4px; }
-  .mc-nums .g-todo { color: var(--c-open); } .mc-nums .g-work { color: var(--c-progress); } .mc-nums .g-done { color: var(--c-done); font-weight: 700; }
-  .mc-nums .z { color: var(--c-zero); font-weight: 400; }
-  table.mtab .none { color: #bbb; }
-  table.mtab.dense .mc-nums { display: none; }
-  table.mtab.dense td.mcell { padding: 4px 10px; }
-  .deck-tip .tg { margin-top: 6px; }
-  .deck-tip .tr.head { font-weight: 700; }
-  .deck-tip .tr.sub { padding-left: 4px; color: #444; }
-  .deck-tip .tr.sub i { background: none; }
-
   /* «Планы на следующий спринт» */
   .plans-team { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: #888; margin: 2px 0 18px; }
   .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
@@ -211,35 +171,6 @@
   .pc-keys { font-size: 11px; color: #999; margin-top: 6px; }
   .pc-empty { font-size: 13px; color: #aaa; padding: 8px 2px; }
 
-  /* сайдбар участника */
-  .mi-group { margin-bottom: 14px; }
-  .mi-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-  .mi-head i { width: 9px; height: 9px; border-radius: 2px; }
-  .mi-head span { margin-left: auto; font-weight: 400; color: var(--muted); }
-  .mi-row { display: grid; grid-template-columns: 86px 1fr auto 56px; gap: 10px; align-items: center; width: 100%; text-align: left;
-            font: inherit; font-size: 13px; background: none; border: 0; border-bottom: 1px solid #f0f0f0; padding: 8px 2px; cursor: pointer; color: var(--fg); }
-  .mi-row:hover { background: #f7f7f7; }
-  .mi-key { color: var(--muted); font-size: 12px; }
-  .mi-sp { text-align: right; font-variant-numeric: tabular-nums; color: #333; }
-  .mi-empty { font-size: 12px; color: var(--muted); padding: 6px 2px; }
-  .mi-row.open { background: #f7f7f7; }
-  .mi-detail { padding: 4px 4px 12px 98px; border-bottom: 1px solid #f0f0f0; }
-  .mi-act { list-style: none; margin: 0; padding: 0; }
-  .mi-act li { display: grid; grid-template-columns: 82px 1fr 30px; gap: 8px; align-items: center; padding: 3px 0; font-size: 12.5px; }
-  .mi-act .mi-when { color: var(--muted); font-variant-numeric: tabular-nums; }
-  .mi-act .mi-what { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  .mi-act .arrow { color: var(--c-zero); }
-  .mi-act .mi-c { color: #333; font-style: italic; }
-  .mi-act .mi-by { color: var(--muted); font-size: 11px; text-align: right; }
-  .mi-act-empty { font-size: 12px; color: var(--muted); padding: 4px 0; }
-  .mi-jira { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--muted); }
-  .mi-back { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; margin-bottom: 12px; }
-  .mi-back:hover { color: var(--fg); }
-  .mi-task { margin-bottom: 14px; }
-  .mi-task .key-link { color: var(--muted); font-size: 13px; text-decoration: none; letter-spacing: .04em; }
-  .mi-task .key-link:hover { color: var(--fg); }
-  .mi-task-title { font-size: 16px; font-weight: 600; margin: 4px 0 8px; }
-  .mi-task-meta { display: flex; gap: 10px; align-items: center; font-size: 13px; }
 
   .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
   .fkpi { border: 1px solid var(--gray-border); border-radius: 4px; padding: 18px; text-align: center; }
@@ -677,84 +608,6 @@
   }
 
   // ---------- операционный отчёт команды ----------
-  // Три группы статусов вместо шести: так строку участника можно прочитать с экрана.
-  // Раскладка внутри группы — по наведению.
-  var CANCEL_RE = /отмен|отклон|cancel|reject|won.?t/i;
-  var OUT_GROUPS = [
-    { id: 'todo', label: 'Не начато', color: 'var(--c-open)',
-      parts: [{ label: 'Backlog / To Do', b: 'open' }, { label: 'В блоке', b: 'blocked' }] },
-    { id: 'work', label: 'В работе', color: 'var(--c-progress)',
-      parts: [{ label: 'В работе', b: 'progress' }, { label: 'Ревью', b: 'review' }, { label: 'Отладка', b: 'testing' }] },
-    { id: 'done', label: 'Выполнено', color: 'var(--c-done)',
-      parts: [{ label: 'Готово', b: 'done', cancel: false }, { label: 'Отменено', b: 'done', cancel: true }] }
-  ];
-
-
-  var OUT_TIPS = [];      // расшифровки ячеек: data-tip — индекс
-  var MEMBER_REFS = [];   // участник по клику: data-member — индекс
-
-  function shortName(name) {
-    var parts = String(name || '').trim().split(/\s+/);
-    if (parts.length < 2 || name === 'Не назначен') return name;
-    return parts[0] + ' ' + parts.slice(1, 3).map(function (x) { return x.charAt(0).toUpperCase() + '.'; }).join(' ');
-  }
-
-
-  // ячейка участника за спринт: группы → части → [задач, SP]; отменённое — по имени статуса
-  function memberCell(m) {
-    if (!m) return null;
-    var parts = {};
-    OUT_GROUPS.forEach(function (g) { g.parts.forEach(function (pt, i) { parts[g.id + i] = [0, 0]; }); });
-    var put = function (b, cancel, n, sp) {
-      OUT_GROUPS.forEach(function (g) {
-        g.parts.forEach(function (pt, i) {
-          if (pt.b === b && (pt.cancel === undefined || pt.cancel === cancel)) { parts[g.id + i][0] += n; parts[g.id + i][1] += sp; }
-        });
-      });
-    };
-    if (m.items) m.items.forEach(function (it) { put(it.bucket, it.bucket === 'done' && CANCEL_RE.test(it.status), 1, it.sp || 0); });
-    else Object.keys(m.split).forEach(function (b) { put(b, false, m.split[b][0], m.split[b][1]); });
-    var groups = {};
-    OUT_GROUPS.forEach(function (g) {
-      groups[g.id] = g.parts.reduce(function (a, pt, i) { return [a[0] + parts[g.id + i][0], a[1] + parts[g.id + i][1]]; }, [0, 0]);
-    });
-    return { parts: parts, groups: groups };
-  }
-
-  function sumCells(cells) {
-    var out = null;
-    cells.forEach(function (c) {
-      if (!c) return;
-      if (!out) out = JSON.parse(JSON.stringify(c));
-      else {
-        Object.keys(c.parts).forEach(function (k) { out.parts[k][0] += c.parts[k][0]; out.parts[k][1] += c.parts[k][1]; });
-        Object.keys(c.groups).forEach(function (k) { out.groups[k][0] += c.groups[k][0]; out.groups[k][1] += c.groups[k][1]; });
-      }
-    });
-    return out;
-  }
-
-  function outputModel(t) {
-    var out = t.output;
-    if (!out || !out.sprints || !out.sprints.length) return null;
-    var sprints = out.sprints.slice(-3);
-    var names = {};
-    sprints.forEach(function (s) { s.members.forEach(function (m) { names[m.name] = true; }); });
-    var sp = !!out.field;
-    var rows = Object.keys(names).map(function (name) {
-      var members = sprints.map(function (s) { return s.members.find(function (x) { return x.name === name; }) || null; });
-      var cells = members.map(memberCell);
-      var doneSum = cells.reduce(function (a, c) { return a + (c ? c.groups.done[sp ? 1 : 0] : 0); }, 0);
-      return { name: name, members: members, cells: cells, doneSum: doneSum, lead: (out.lead || {})[name] || null };
-    });
-    rows.sort(function (a, b) {
-      if ((a.name === 'Не назначен') !== (b.name === 'Не назначен')) return a.name === 'Не назначен' ? 1 : -1;
-      return b.doneSum - a.doneSum || (a.name < b.name ? -1 : 1);
-    });
-    var team = sprints.map(function (s, i) { return sumCells(rows.map(function (r) { return r.cells[i]; })); });
-    return { unit: sp ? 'SP' : 'задач', sp: sp, sprints: sprints, rows: rows, team: team };
-  }
-
   // «Общая производительность команды»: план по трём группам на конец спринта и сделано
   function teamOutputChart(m) {
     var k = m.sp ? 1 : 0;
@@ -769,12 +622,12 @@
       }),
       avgDone: avgOf.length ? avgOf.reduce(function (a, c) { return a + c.groups.done[k]; }, 0) / avgOf.length : 0
     };
-    return withChartBox({ W: 470, H: 220 }, function () { return velocityChart(data); });
+    return withChartBox({ W: 560, H: 330 }, function () { return velocityChart(data); });
   }
 
   // Обзорная диаграмма управления за 3 спринта: два потока — истории и подзадачи,
   // у каждого своя медиана; границы спринтов — вертикальными линиями.
-  function controlOverview(t, m) {
+  function controlOverview(t, m, box) {
     var c = t.control || {};
     var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
     var starts = m ? m.sprints.map(function (s) { return s.start; }).filter(Boolean) : [];
@@ -791,7 +644,7 @@
     });
     var all = streams[0].pts.concat(streams[1].pts);
     if (!all.length) return '<div class="ops-empty">За три спринта закрытых задач нет.</div>';
-    var W = 470, H = 220, padL = 34, padR = 10, padT = 18, padB = 26;
+    var W = (box && box.W) || 470, H = (box && box.H) || 220, padL = 34, padR = 10, padT = 18, padB = 26;
     var t0 = new Date(from + 'T00:00:00').getTime(), t1 = new Date(today + 'T23:59:59').getTime();
     var maxY = Math.max.apply(null, all.map(function (p) { return p.cycle; })) * 1.08 || 1;
     var xOf = function (iso) { return padL + (W - padL - padR) * (new Date(iso + 'T12:00:00').getTime() - t0) / (t1 - t0); };
@@ -828,57 +681,6 @@
       '<div class="ops-legend">' + legend + '</div>';
   }
 
-  // ячейка таблицы: выполнено крупно, полоса из трёх групп, расшифровка — по наведению
-  function outCell(c, m, who, sprint) {
-    if (!c) return '<td class="mcell"><span class="none">—</span></td>';
-    var k = m.sp ? 1 : 0, g = c.groups, total = g.todo[k] + g.work[k] + g.done[k];
-    OUT_TIPS.push({ who: who, sprint: sprint.name, current: sprint.current, c: c, sp: m.sp });
-    var bar = OUT_GROUPS.map(function (gr) {
-      var w = total ? 100 * g[gr.id][k] / total : 0;
-      return w ? '<i style="width:' + w.toFixed(1) + '%;background:' + gr.color + '"></i>' : '';
-    }).join('');
-    return '<td class="mcell" data-tip="' + (OUT_TIPS.length - 1) + '"><div class="mc-top"><b>' + fmtNum(g.done[k]) + '</b>' +
-      '<span>' + (m.sp ? 'SP' : '') + ' из ' + fmtNum(total) + '</span></div><div class="mc-bar">' + bar + '</div>' +
-      '<div class="mc-nums">' + OUT_GROUPS.map(function (gr) {
-        return '<span class="g-' + gr.id + (g[gr.id][k] ? '' : ' z') + '">' + fmtNum(g[gr.id][k]) + '</span>';
-      }).join('<span class="sep">·</span>') + '</div></td>';
-  }
-
-  function tipHtml(d) {
-    var k = d.sp ? 1 : 0;
-    var unit = function (n, sp) { return n + ' ' + plural(n, 'задача', 'задачи', 'задач') + (d.sp ? ' · ' + fmtNum(sp) + ' SP' : ''); };
-    var html = OUT_GROUPS.map(function (g) {
-      var gv = d.c.groups[g.id];
-      return '<div class="tg"><div class="tr head' + (gv[0] ? '' : ' zero') + '"><i style="background:' + g.color + '"></i><span>' + g.label +
-        '</span><span>' + unit(gv[0], gv[1]) + '</span></div>' + g.parts.map(function (pt, i) {
-          var v = d.c.parts[g.id + i];
-          return '<div class="tr sub' + (v[0] ? '' : ' zero') + '"><i></i><span>' + pt.label + '</span><span>' + unit(v[0], v[1]) + '</span></div>';
-        }).join('') + '</div>';
-    }).join('');
-    return '<b>' + esc(d.who) + ' · ' + esc(d.sprint) + '</b>' + html +
-      '<div class="sum">В зачёт — «Выполнено»' + (d.current ? ', на сейчас' : ', на конец спринта') + '</div>';
-  }
-
-  function memberTable(t, m) {
-    var head = '<tr><th style="width:118px">Участник</th>' + m.sprints.map(function (s, i) {
-      var rel = m.sprints.length - 1 - i;
-      return '<th>' + esc(s.name) + '<small>' + (rel ? 'S−' + rel : 'S · ' + (s.current ? 'сейчас' : 'последний')) + '</small></th>';
-    }).join('') + '<th style="width:70px">Lead time<small>медиана</small></th></tr>';
-    var body = m.rows.map(function (r) {
-      MEMBER_REFS.push({ team: t, row: r, m: m });
-      return '<tr><td class="who"><button type="button" class="mname" data-member="' + (MEMBER_REFS.length - 1) + '" title="Задачи участника за спринт">' +
-        esc(shortName(r.name)) + '</button></td>' +
-        r.cells.map(function (c, i) { return outCell(c, m, r.name, m.sprints[i]); }).join('') +
-        '<td class="lead" title="' + (r.lead ? 'закрыто ' + r.lead.count + ' за спринты отчёта' : 'закрытых нет') + '">' +
-        (r.lead ? fmtNum(r.lead.median) + ' дн.' : '—') + '</td></tr>';
-    }).join('');
-    var total = '<tr class="total"><td class="who">Команда</td>' + m.team.map(function (c, i) {
-      return outCell(c, m, 'Команда', m.sprints[i]);
-    }).join('') + '<td class="lead"></td></tr>';
-    // много участников — плотнее: числа по группам остаются в подсказке
-    return '<table class="mtab' + (m.rows.length > 7 ? ' dense' : '') + '"><thead>' + head + '</thead><tbody>' + body + total + '</tbody></table>';
-  }
-
   // Операционный отчёт команды — один слайд без заголовка: слева производительность
   // и диаграмма управления, справа участники за 3 спринта.
   function opsSlide(t) {
@@ -886,13 +688,12 @@
     var legend = '<div class="ops-legend">' + OUT_GROUPS.map(function (g) {
       return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
     }).join('') + '<span><i class="l-avg"></i>среднее выполненное</span></div>';
-    var left = '<div><div class="ops-h">Общая производительность команды <small>· ' + (m && m.sp ? 'SP' : 'задач') + '</small></div>' +
-      '<div class="ops-chart">' + (m ? teamOutputChart(m) : withTeam(t, function () { return withChartBox({ W: 470, H: 220 }, velocityChart); })) + '</div>' + legend +
-      '<div class="ops-h ops-h2">Диаграмма управления за 3 спринта <small>· Cycle Time, дн.</small></div>' +
-      '<div class="ops-chart">' + controlOverview(t, m) + '</div></div>';
-    var right = m ? '<div class="ops-tab">' + memberTable(t, m) + '</div>'
-      : '<div class="ops-empty">Выработки участников в данных нет: её отдаёт сборщик 1.3.0+ (поле output). Пересоберите отчёт.</div>';
-    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops2">' + left + right + '</div>',
+    // выработка по участникам — только в отчёте PO для техлидов («Команда: N»)
+    var perf = '<div><div class="ops-h">Общая производительность команды <small>· ' + (m && m.sp ? 'SP' : 'задач') + '</small></div>' +
+      '<div class="ops-chart">' + (m ? teamOutputChart(m) : withTeam(t, function () { return withChartBox({ W: 560, H: 330 }, velocityChart); })) + '</div>' + legend + '</div>';
+    var ctl = '<div><div class="ops-h">Диаграмма управления за 3 спринта <small>· Cycle Time, дн.</small></div>' +
+      '<div class="ops-chart">' + controlOverview(t, m, { W: 560, H: 330 }) + '</div></div>';
+    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops2 two">' + perf + ctl + '</div>',
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Операционный отчёт · ' + t.team }));
   }
 
@@ -1099,34 +900,6 @@
     if (was && !on) { renderToc(); goSlide(currentSlide(), true); }
   }
 
-  // расшифровка выработки по наведению (на телефоне — по тапу)
-  var deckTip = document.createElement('div');
-  deckTip.className = 'deck-tip';
-  deckTip.hidden = true;
-  document.body.appendChild(deckTip);
-  function placeTip(cell, x, y) {
-    var d = OUT_TIPS[+cell.getAttribute('data-tip')];
-    if (!d) return;
-    deckTip.innerHTML = tipHtml(d);
-    deckTip.hidden = false;
-    var w = deckTip.offsetWidth, h = deckTip.offsetHeight;
-    deckTip.style.left = Math.max(8, Math.min(x + 14, innerWidth - w - 8)) + 'px';
-    deckTip.style.top = Math.max(8, y + 16 + h > innerHeight ? y - h - 12 : y + 16) + 'px';
-  }
-  deckSlides.addEventListener('mousemove', function (e) {
-    var cell = e.target.closest && e.target.closest('[data-tip]');
-    if (!cell) { deckTip.hidden = true; return; }
-    placeTip(cell, e.clientX, e.clientY);
-  });
-  deckSlides.addEventListener('mouseleave', function () { deckTip.hidden = true; });
-  deckSlides.addEventListener('click', function (e) {
-    var cell = e.target.closest && e.target.closest('[data-tip]');
-    if (!cell) { deckTip.hidden = true; return; }
-    var r = cell.getBoundingClientRect();
-    placeTip(cell, r.left, r.bottom - 10);
-  });
-  document.getElementById('deckFeed').addEventListener('scroll', function () { deckTip.hidden = true; }, { passive: true });
-
   deckSlides.addEventListener('input', function (e) {
     var el = e.target.closest && e.target.closest('[data-edit]');
     if (!el) return;
@@ -1160,27 +933,6 @@
     if (el && el.dataset.team !== team.slug) switchTeam(el.dataset.team);
   }, true);
 
-  // ---------- сайдбары поверх колоды ----------
-  function sideTabs(tabs, active, render, head) {
-    var bar = (head || '') + '<div class="side-tabs">' + tabs.map(function (t) {
-      return '<button type="button" class="side-tab' + (t.id === active ? ' active' : '') + '" data-tab="' + t.id + '">' +
-        esc(t.label) + ' · ' + t.n + '</button>';
-    }).join('') + '</div>';
-    storiesBody.innerHTML = bar + '<div class="side-body"></div>';
-    var body = storiesBody.querySelector('.side-body');
-    var show = function (id) {
-      storiesBody.querySelectorAll('.side-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === id); });
-      body.innerHTML = '';
-      render(id, body);
-    };
-    storiesBody.querySelectorAll('.side-tab').forEach(function (b) {
-      b.addEventListener('click', function () { show(b.dataset.tab); });
-    });
-    show(active);
-  }
-
-  function openPanel() { overlay.classList.add('open'); panelStack.classList.add('open'); }
-
   // KR: тот же «Весь эпик», что в отчёте PO — когда будет выполнен, на чём прогноз,
   // что сделано и что осталось
   function openKr(ref) {
@@ -1193,73 +945,6 @@
     storiesLabel.textContent = kr.kr ? kr.kr : 'Весь эпик';
     if (epic.scope) renderScope(epic);
     else storiesBody.innerHTML = '<div class="sidebar-empty">Объёма эпика в данных нет (params.epic_scope).</div>';
-    openPanel();
-  }
-
-  // ---------- участник: его задачи за спринт и активность по задаче ----------
-  function memberItemsHtml(items, sp) {
-    // сначала то, что пошло в зачёт
-    var groups = OUT_GROUPS.slice().reverse().map(function (g) {
-      var list = items.filter(function (it) { return g.parts.some(function (pt) { return pt.b === it.bucket; }); });
-      return { g: g, list: list };
-    });
-    return groups.map(function (x) {
-      var spSum = x.list.reduce(function (a, it) { return a + (it.sp || 0); }, 0);
-      return '<div class="mi-group"><div class="mi-head"><i style="background:' + x.g.color + '"></i>' + x.g.label +
-        (x.g.id === 'done' ? ' — в зачёт' : '') + '<span>' + x.list.length + (sp ? ' · ' + fmtNum(spSum) + ' SP' : '') + '</span></div>' +
-        (x.list.length ? x.list.map(function (it) {
-          var i = items.indexOf(it);
-          return '<button type="button" class="mi-row" data-item="' + i + '"><span class="mi-key">' + esc(it.key) + '</span>' +
-            '<span class="mi-title">' + esc(it.title) + '</span><span class="status ' + bucketClass(it.status, '') + '">' + esc(it.status) + '</span>' +
-            '<span class="mi-sp">' + (sp ? fmtNum(it.sp || 0) + ' SP' : '') + '</span></button>';
-        }).join('') : '<div class="mi-empty">нет</div>') + '</div>';
-    }).join('');
-  }
-
-  // коротко и по хронологии: смены статуса и комментарии задачи за спринт
-  function itemActivityHtml(it) {
-    var ev = (it.history || []).map(function (h) { return { at: h.at, by: h.by, h: h }; })
-      .concat((it.comments || []).map(function (c) { return { at: c.at, by: c.by, c: c }; }))
-      .sort(function (a, b) { return a.at < b.at ? -1 : 1; });
-    if (!ev.length) return '<div class="mi-act-empty">За спринт ни смен статуса, ни комментариев.</div>';
-    return '<ol class="mi-act">' + ev.map(function (e) {
-      var when = e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + ' ' + e.at.slice(11, 16);
-      var what = e.c ? '<span class="mi-c">«' + esc(e.c.body) + '»</span>'
-        : '<span class="status b-open">' + esc(e.h.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.h.to, '') + '">' + esc(e.h.to) + '</span>';
-      return '<li class="' + (e.c ? 'is-c' : 'is-s') + '"><span class="mi-when">' + when + '</span><span class="mi-what">' + what +
-        '</span><span class="mi-by" title="' + esc(e.by || '') + '">' + esc(initials(e.by || '—')) + '</span></li>';
-    }).join('') + '</ol>';
-  }
-
-  function openMember(ref, sprintIdx) {
-    if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
-    var r = ref.row, m = ref.m;
-    stackTitle.parentNode.removeAttribute('data-ctx');
-    stackKey.textContent = 'Участник · ' + ref.team.team;
-    stackTitle.textContent = r.name;
-    scopeBtn.hidden = true;
-    scopeEpic = null;
-    storiesLabel.textContent = 'Задачи за спринт: что пошло в зачёт' + (m.sp ? ' · SP' : '');
-    var tabs = m.sprints.map(function (s, i) {
-      return { id: String(i), label: s.name, n: ((r.members[i] || {}).items || []).length };
-    });
-    var active = sprintIdx === undefined ? String(m.sprints.length - 1) : String(sprintIdx);
-    sideTabs(tabs, active, function (id, body) {
-      var mem = r.members[+id];
-      var items = (mem && mem.items) || [];
-      if (!items.length) { body.innerHTML = '<div class="sidebar-empty">' + (mem ? 'Список задач в данных нет: нужен сборщик 1.4.0+.' : 'В этом спринте задач нет.') + '</div>'; return; }
-      // клик по задаче раскрывает под ней её историю за спринт, на том же экране
-      body.innerHTML = memberItemsHtml(items, m.sp);
-      body.querySelectorAll('.mi-row').forEach(function (b) {
-        b.addEventListener('click', function () {
-          var next = b.nextElementSibling;
-          if (next && next.classList.contains('mi-detail')) { next.remove(); b.classList.remove('open'); return; }
-          b.classList.add('open');
-          b.insertAdjacentHTML('afterend', '<div class="mi-detail">' + itemActivityHtml(items[+b.dataset.item]) +
-            '<a class="mi-jira" href="' + jiraUrl(items[+b.dataset.item].key) + '" target="_blank" rel="noopener">Открыть в JIRA ↗</a></div>');
-        });
-      });
-    });
     openPanel();
   }
 
@@ -1301,8 +986,6 @@
 
   deckSlides.addEventListener('click', function (e) {
     if (deckEditing || e.target.closest('a')) return;
-    var mb = e.target.closest('[data-member]');
-    if (mb) { openMember(MEMBER_REFS[+mb.dataset.member]); return; }
     var el = e.target.closest('[data-ref]');
     var ref = el && deckRefs[el.dataset.ref];
     if (!ref) return;

@@ -1350,3 +1350,254 @@
     useTeam(cur);
     return lines;
   }
+
+  // ---------- участники: выработка по спринтам (отчёт PO — «Команда: N») ----------
+  // Три группы статусов вместо шести: так строку участника можно прочитать с экрана.
+  // Раскладка внутри группы — по наведению.
+  var CANCEL_RE = /отмен|отклон|cancel|reject|won.?t/i;
+  var OUT_GROUPS = [
+    { id: 'todo', label: 'Не начато', color: 'var(--c-open)',
+      parts: [{ label: 'Backlog / To Do', b: 'open' }, { label: 'В блоке', b: 'blocked' }] },
+    { id: 'work', label: 'В работе', color: 'var(--c-progress)',
+      parts: [{ label: 'В работе', b: 'progress' }, { label: 'Ревью', b: 'review' }, { label: 'Отладка', b: 'testing' }] },
+    { id: 'done', label: 'Выполнено', color: 'var(--c-done)',
+      parts: [{ label: 'Готово', b: 'done', cancel: false }, { label: 'Отменено', b: 'done', cancel: true }] }
+  ];
+
+
+  var OUT_TIPS = [];      // расшифровки ячеек: data-tip — индекс
+  var MEMBER_REFS = [];   // участник по клику: data-member — индекс
+
+  function shortName(name) {
+    var parts = String(name || '').trim().split(/\s+/);
+    if (parts.length < 2 || name === 'Не назначен') return name;
+    return parts[0] + ' ' + parts.slice(1, 3).map(function (x) { return x.charAt(0).toUpperCase() + '.'; }).join(' ');
+  }
+
+
+  // ячейка участника за спринт: группы → части → [задач, SP]; отменённое — по имени статуса
+  function memberCell(m) {
+    if (!m) return null;
+    var parts = {};
+    OUT_GROUPS.forEach(function (g) { g.parts.forEach(function (pt, i) { parts[g.id + i] = [0, 0]; }); });
+    var put = function (b, cancel, n, sp) {
+      OUT_GROUPS.forEach(function (g) {
+        g.parts.forEach(function (pt, i) {
+          if (pt.b === b && (pt.cancel === undefined || pt.cancel === cancel)) { parts[g.id + i][0] += n; parts[g.id + i][1] += sp; }
+        });
+      });
+    };
+    if (m.items) m.items.forEach(function (it) { put(it.bucket, it.bucket === 'done' && CANCEL_RE.test(it.status), 1, it.sp || 0); });
+    else Object.keys(m.split).forEach(function (b) { put(b, false, m.split[b][0], m.split[b][1]); });
+    var groups = {};
+    OUT_GROUPS.forEach(function (g) {
+      groups[g.id] = g.parts.reduce(function (a, pt, i) { return [a[0] + parts[g.id + i][0], a[1] + parts[g.id + i][1]]; }, [0, 0]);
+    });
+    return { parts: parts, groups: groups };
+  }
+
+  function sumCells(cells) {
+    var out = null;
+    cells.forEach(function (c) {
+      if (!c) return;
+      if (!out) out = JSON.parse(JSON.stringify(c));
+      else {
+        Object.keys(c.parts).forEach(function (k) { out.parts[k][0] += c.parts[k][0]; out.parts[k][1] += c.parts[k][1]; });
+        Object.keys(c.groups).forEach(function (k) { out.groups[k][0] += c.groups[k][0]; out.groups[k][1] += c.groups[k][1]; });
+      }
+    });
+    return out;
+  }
+
+  function outputModel(t) {
+    var out = t.output;
+    if (!out || !out.sprints || !out.sprints.length) return null;
+    var sprints = out.sprints.slice(-3);
+    var names = {};
+    sprints.forEach(function (s) { s.members.forEach(function (m) { names[m.name] = true; }); });
+    var sp = !!out.field;
+    var rows = Object.keys(names).map(function (name) {
+      var members = sprints.map(function (s) { return s.members.find(function (x) { return x.name === name; }) || null; });
+      var cells = members.map(memberCell);
+      var doneSum = cells.reduce(function (a, c) { return a + (c ? c.groups.done[sp ? 1 : 0] : 0); }, 0);
+      return { name: name, members: members, cells: cells, doneSum: doneSum, lead: (out.lead || {})[name] || null };
+    });
+    rows.sort(function (a, b) {
+      if ((a.name === 'Не назначен') !== (b.name === 'Не назначен')) return a.name === 'Не назначен' ? 1 : -1;
+      return b.doneSum - a.doneSum || (a.name < b.name ? -1 : 1);
+    });
+    var team = sprints.map(function (s, i) { return sumCells(rows.map(function (r) { return r.cells[i]; })); });
+    return { unit: sp ? 'SP' : 'задач', sp: sp, sprints: sprints, rows: rows, team: team };
+  }
+
+  // ячейка таблицы: выполнено крупно, полоса из трёх групп, расшифровка — по наведению
+  function outCell(c, m, who, sprint) {
+    if (!c) return '<td class="mcell"><span class="none">—</span></td>';
+    var k = m.sp ? 1 : 0, g = c.groups, total = g.todo[k] + g.work[k] + g.done[k];
+    OUT_TIPS.push({ who: who, sprint: sprint.name, current: sprint.current, c: c, sp: m.sp });
+    var bar = OUT_GROUPS.map(function (gr) {
+      var w = total ? 100 * g[gr.id][k] / total : 0;
+      return w ? '<i style="width:' + w.toFixed(1) + '%;background:' + gr.color + '"></i>' : '';
+    }).join('');
+    return '<td class="mcell" data-tip="' + (OUT_TIPS.length - 1) + '"><div class="mc-top"><b>' + fmtNum(g.done[k]) + '</b>' +
+      '<span>' + (m.sp ? 'SP' : '') + ' из ' + fmtNum(total) + '</span></div><div class="mc-bar">' + bar + '</div>' +
+      '<div class="mc-nums">' + OUT_GROUPS.map(function (gr) {
+        return '<span class="g-' + gr.id + (g[gr.id][k] ? '' : ' z') + '">' + fmtNum(g[gr.id][k]) + '</span>';
+      }).join('<span class="sep">·</span>') + '</div></td>';
+  }
+
+  function tipHtml(d) {
+    var k = d.sp ? 1 : 0;
+    var unit = function (n, sp) { return n + ' ' + plural(n, 'задача', 'задачи', 'задач') + (d.sp ? ' · ' + fmtNum(sp) + ' SP' : ''); };
+    var html = OUT_GROUPS.map(function (g) {
+      var gv = d.c.groups[g.id];
+      return '<div class="tg"><div class="tr head' + (gv[0] ? '' : ' zero') + '"><i style="background:' + g.color + '"></i><span>' + g.label +
+        '</span><span>' + unit(gv[0], gv[1]) + '</span></div>' + g.parts.map(function (pt, i) {
+          var v = d.c.parts[g.id + i];
+          return '<div class="tr sub' + (v[0] ? '' : ' zero') + '"><i></i><span>' + pt.label + '</span><span>' + unit(v[0], v[1]) + '</span></div>';
+        }).join('') + '</div>';
+    }).join('');
+    return '<b>' + esc(d.who) + ' · ' + esc(d.sprint) + '</b>' + html +
+      '<div class="sum">В зачёт — «Выполнено»' + (d.current ? ', на сейчас' : ', на конец спринта') + '</div>';
+  }
+
+  function memberTable(t, m, opts) {
+    var head = '<tr><th style="width:118px">Участник</th>' + m.sprints.map(function (s, i) {
+      var rel = m.sprints.length - 1 - i;
+      return '<th>' + esc(s.name) + '<small>' + (rel ? 'S−' + rel : 'S · ' + (s.current ? 'сейчас' : 'последний')) + '</small></th>';
+    }).join('') + '<th style="width:70px">Lead time<small>медиана</small></th></tr>';
+    var body = m.rows.map(function (r) {
+      MEMBER_REFS.push({ team: t, row: r, m: m, back: !!(opts && opts.back) });
+      return '<tr><td class="who"><button type="button" class="mname" data-member="' + (MEMBER_REFS.length - 1) + '" title="Задачи участника за спринт">' +
+        esc(shortName(r.name)) + '</button></td>' +
+        r.cells.map(function (c, i) { return outCell(c, m, r.name, m.sprints[i]); }).join('') +
+        '<td class="lead" title="' + (r.lead ? 'закрыто ' + r.lead.count + ' за спринты отчёта' : 'закрытых нет') + '">' +
+        (r.lead ? fmtNum(r.lead.median) + ' дн.' : '—') + '</td></tr>';
+    }).join('');
+    var total = '<tr class="total"><td class="who">Команда</td>' + m.team.map(function (c, i) {
+      return outCell(c, m, 'Команда', m.sprints[i]);
+    }).join('') + '<td class="lead"></td></tr>';
+    // много участников — плотнее: числа по группам остаются в подсказке
+    return '<table class="mtab' + (m.rows.length > 7 ? ' dense' : '') + '"><thead>' + head + '</thead><tbody>' + body + total + '</tbody></table>';
+  }
+
+  // ---------- сайдбары поверх колоды ----------
+  function sideTabs(tabs, active, render, head) {
+    var bar = (head || '') + '<div class="side-tabs">' + tabs.map(function (t) {
+      return '<button type="button" class="side-tab' + (t.id === active ? ' active' : '') + '" data-tab="' + t.id + '">' +
+        esc(t.label) + ' · ' + t.n + '</button>';
+    }).join('') + '</div>';
+    storiesBody.innerHTML = bar + '<div class="side-body"></div>';
+    var body = storiesBody.querySelector('.side-body');
+    var show = function (id) {
+      storiesBody.querySelectorAll('.side-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === id); });
+      body.innerHTML = '';
+      render(id, body);
+    };
+    storiesBody.querySelectorAll('.side-tab').forEach(function (b) {
+      b.addEventListener('click', function () { show(b.dataset.tab); });
+    });
+    show(active);
+  }
+
+  function openPanel() { overlay.classList.add('open'); panelStack.classList.add('open'); }
+
+  // ---------- участник: его задачи за спринт и активность по задаче ----------
+  function memberItemsHtml(items, sp) {
+    // сначала то, что пошло в зачёт
+    var groups = OUT_GROUPS.slice().reverse().map(function (g) {
+      var list = items.filter(function (it) { return g.parts.some(function (pt) { return pt.b === it.bucket; }); });
+      return { g: g, list: list };
+    });
+    return groups.map(function (x) {
+      var spSum = x.list.reduce(function (a, it) { return a + (it.sp || 0); }, 0);
+      return '<div class="mi-group"><div class="mi-head"><i style="background:' + x.g.color + '"></i>' + x.g.label +
+        (x.g.id === 'done' ? ' — в зачёт' : '') + '<span>' + x.list.length + (sp ? ' · ' + fmtNum(spSum) + ' SP' : '') + '</span></div>' +
+        (x.list.length ? x.list.map(function (it) {
+          var i = items.indexOf(it);
+          return '<button type="button" class="mi-row" data-item="' + i + '"><span class="mi-key">' + esc(it.key) + '</span>' +
+            '<span class="mi-title">' + esc(it.title) + '</span><span class="status ' + bucketClass(it.status, '') + '">' + esc(it.status) + '</span>' +
+            '<span class="mi-sp">' + (sp ? fmtNum(it.sp || 0) + ' SP' : '') + '</span></button>';
+        }).join('') : '<div class="mi-empty">нет</div>') + '</div>';
+    }).join('');
+  }
+
+  // коротко и по хронологии: смены статуса и комментарии задачи за спринт
+  function itemActivityHtml(it) {
+    var ev = (it.history || []).map(function (h) { return { at: h.at, by: h.by, h: h }; })
+      .concat((it.comments || []).map(function (c) { return { at: c.at, by: c.by, c: c }; }))
+      .sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+    if (!ev.length) return '<div class="mi-act-empty">За спринт ни смен статуса, ни комментариев.</div>';
+    return '<ol class="mi-act">' + ev.map(function (e) {
+      var when = e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + ' ' + e.at.slice(11, 16);
+      var what = e.c ? '<span class="mi-c">«' + esc(e.c.body) + '»</span>'
+        : '<span class="status b-open">' + esc(e.h.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.h.to, '') + '">' + esc(e.h.to) + '</span>';
+      return '<li class="' + (e.c ? 'is-c' : 'is-s') + '"><span class="mi-when">' + when + '</span><span class="mi-what">' + what +
+        '</span><span class="mi-by" title="' + esc(e.by || '') + '">' + esc(initials(e.by || '—')) + '</span></li>';
+    }).join('') + '</ol>';
+  }
+
+  function openMember(ref, sprintIdx) {
+    if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
+    var r = ref.row, m = ref.m;
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Участник · ' + ref.team.team;
+    stackTitle.textContent = r.name;
+    scopeBtn.hidden = true;
+    scopeEpic = null;
+    storiesLabel.textContent = 'Задачи за спринт: что пошло в зачёт' + (m.sp ? ' · SP' : '');
+    var tabs = m.sprints.map(function (s, i) {
+      return { id: String(i), label: s.name, n: ((r.members[i] || {}).items || []).length };
+    });
+    var active = sprintIdx === undefined ? String(m.sprints.length - 1) : String(sprintIdx);
+    // открыт из «Команды» (отчёт PO) — путь назад к таблице
+    var back = ref.back && typeof openTeam === 'function' ? '<button type="button" class="mi-back" data-team-back>← Команда</button>' : '';
+    sideTabs(tabs, active, function (id, body) {
+      var mem = r.members[+id];
+      var items = (mem && mem.items) || [];
+      if (!items.length) { body.innerHTML = '<div class="sidebar-empty">' + (mem ? 'Список задач в данных нет: нужен сборщик 1.4.0+.' : 'В этом спринте задач нет.') + '</div>'; return; }
+      // клик по задаче раскрывает под ней её историю за спринт, на том же экране
+      body.innerHTML = memberItemsHtml(items, m.sp);
+      body.querySelectorAll('.mi-row').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var next = b.nextElementSibling;
+          if (next && next.classList.contains('mi-detail')) { next.remove(); b.classList.remove('open'); return; }
+          b.classList.add('open');
+          b.insertAdjacentHTML('afterend', '<div class="mi-detail">' + itemActivityHtml(items[+b.dataset.item]) +
+            '<a class="mi-jira" href="' + jiraUrl(items[+b.dataset.item].key) + '" target="_blank" rel="noopener">Открыть в JIRA ↗</a></div>');
+        });
+      });
+    }, back);
+    openPanel();
+  }
+
+
+  // расшифровка ячейки участника по наведению (на телефоне — по тапу)
+  var deckTip = document.createElement('div');
+  deckTip.className = 'deck-tip';
+  deckTip.hidden = true;
+  document.body.appendChild(deckTip);
+  function placeTip(cell, x, y) {
+    var d = OUT_TIPS[+cell.getAttribute('data-tip')];
+    if (!d) return;
+    deckTip.innerHTML = tipHtml(d);
+    deckTip.hidden = false;
+    var w = deckTip.offsetWidth, h = deckTip.offsetHeight;
+    deckTip.style.left = Math.max(8, Math.min(x + 14, innerWidth - w - 8)) + 'px';
+    deckTip.style.top = Math.max(8, y + 16 + h > innerHeight ? y - h - 12 : y + 16) + 'px';
+  }
+  document.addEventListener('mousemove', function (e) {
+    var cell = e.target.closest && e.target.closest('[data-tip]');
+    if (!cell) { if (!deckTip.hidden) deckTip.hidden = true; return; }
+    placeTip(cell, e.clientX, e.clientY);
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('[data-team-back]')) { openTeam(); return; }
+    var mb = e.target.closest && e.target.closest('[data-member]');
+    if (mb) { deckTip.hidden = true; openMember(MEMBER_REFS[+mb.dataset.member]); return; }
+    var cell = e.target.closest && e.target.closest('[data-tip]');
+    if (!cell) { deckTip.hidden = true; return; }
+    var r = cell.getBoundingClientRect();
+    placeTip(cell, r.left, r.bottom - 10);
+  });
+  document.addEventListener('scroll', function () { deckTip.hidden = true; }, true);

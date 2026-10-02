@@ -162,8 +162,12 @@
   .ai-none { margin: 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
   .ai-none code { font: 12px "SF Mono", Menlo, Consolas, monospace; color: var(--fg); }
   /* «!» в шапке команды: интерпретация динамики команды ИИ-агентом */
-  .hero .name-row { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
-  .hero .name-row h1 { margin: 0; }
+  .hero .switch-row { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; }
+  .hero .switch-row .team-switch { margin: 0; min-width: 0; }
+  .team-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .team-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .team-legend .hint { margin-left: auto; }
+  .team-tab-wrap { overflow-x: auto; }
   .interp-btn {
     width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%;
     border: 2px solid var(--fg); background: var(--fg); color: var(--bg);
@@ -868,3 +872,75 @@
   .eb-legend .l-done { background: #cfe8c4; } .eb-legend .l-left { background: #6c9fd8; } .eb-legend .l-add { background: #3f6290; }
   .eb-legend .l-fc { background: #ececec; border: 1px solid #d4d4d4; } .eb-legend .l-due { width: 2px; height: 12px; background: #dc2626; border-radius: 0; }
   @media (max-width: 640px) { .eb-analysis { grid-template-columns: 1fr 1fr; gap: 10px 0; } .ea-cell:nth-child(odd) { border-left: 0; padding-left: 0; } }
+
+  /* участники: таблица по спринтам, подсказка, сайдбар участника (отчёт PO — «Команда: N») */
+  table.mtab { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+  table.mtab th, table.mtab td { border: 1px solid #cfcfcf; padding: 10px 6px; text-align: center; }
+  table.mtab th { background: #f3f3f3; font-weight: 700; font-size: 12px; }
+  table.mtab th small { display: block; font-weight: 400; color: #888; font-size: 10.5px; }
+  table.mtab td.who { text-align: left; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  table.mtab td.lead { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.mtab tr.total td { background: #f7f7f7; font-weight: 600; }
+  .deck-tip {
+    position: fixed; z-index: 400; pointer-events: none; background: #fff; color: #111;
+    border: 1px solid #ddd; box-shadow: 0 6px 20px rgba(0,0,0,.15); border-radius: 6px;
+    padding: 10px 12px; font: 12px/1.5 Arial, sans-serif; min-width: 230px;
+  }
+  .deck-tip b { display: block; margin-bottom: 4px; }
+  .deck-tip .tr { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: center; }
+  .deck-tip .tr i { width: 9px; height: 9px; border-radius: 2px; }
+  .deck-tip .tr span:last-child { font-variant-numeric: tabular-nums; color: #333; }
+  .deck-tip .tr.zero { color: #aaa; }
+  .deck-tip .sum { border-top: 1px solid #eee; margin-top: 5px; padding-top: 5px; color: #555; }
+  table.mtab button.mname { font: inherit; font-weight: 600; background: none; border: 0; padding: 0; cursor: pointer; color: #111;
+                            border-bottom: 1px dashed #999; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  table.mtab button.mname:hover { border-bottom-style: solid; }
+  table.mtab td.mcell { cursor: help; padding: 5px 10px; }
+  table.mtab td.who, table.mtab td.lead { padding: 5px 6px; }
+  table.mtab td.mcell:hover { background: #fafafa; }
+  .mc-top { display: flex; align-items: baseline; justify-content: center; gap: 5px; }
+  .mc-top b { font-size: 17px; line-height: 1.15; color: var(--c-done); font-variant-numeric: tabular-nums; }
+  .mc-top span { font-size: 11px; color: #888; }
+  .mc-bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; background: #eee; margin: 3px 0 2px; }
+  .mc-bar i { display: block; height: 100%; }
+  .mc-nums { font-size: 11px; font-variant-numeric: tabular-nums; }
+  .mc-nums .sep { color: #ccc; margin: 0 4px; }
+  .mc-nums .g-todo { color: var(--c-open); } .mc-nums .g-work { color: var(--c-progress); } .mc-nums .g-done { color: var(--c-done); font-weight: 700; }
+  .mc-nums .z { color: var(--c-zero); font-weight: 400; }
+  table.mtab .none { color: #bbb; }
+  table.mtab.dense .mc-nums { display: none; }
+  table.mtab.dense td.mcell { padding: 4px 10px; }
+  .deck-tip .tg { margin-top: 6px; }
+  .deck-tip .tr.head { font-weight: 700; }
+  .deck-tip .tr.sub { padding-left: 4px; color: #444; }
+  .deck-tip .tr.sub i { background: none; }
+
+  /* сайдбар участника */
+  .mi-group { margin-bottom: 14px; }
+  .mi-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .mi-head i { width: 9px; height: 9px; border-radius: 2px; }
+  .mi-head span { margin-left: auto; font-weight: 400; color: var(--muted); }
+  .mi-row { display: grid; grid-template-columns: 86px 1fr auto 56px; gap: 10px; align-items: center; width: 100%; text-align: left;
+            font: inherit; font-size: 13px; background: none; border: 0; border-bottom: 1px solid #f0f0f0; padding: 8px 2px; cursor: pointer; color: var(--fg); }
+  .mi-row:hover { background: #f7f7f7; }
+  .mi-key { color: var(--muted); font-size: 12px; }
+  .mi-sp { text-align: right; font-variant-numeric: tabular-nums; color: #333; }
+  .mi-empty { font-size: 12px; color: var(--muted); padding: 6px 2px; }
+  .mi-row.open { background: #f7f7f7; }
+  .mi-detail { padding: 4px 4px 12px 98px; border-bottom: 1px solid #f0f0f0; }
+  .mi-act { list-style: none; margin: 0; padding: 0; }
+  .mi-act li { display: grid; grid-template-columns: 82px 1fr 30px; gap: 8px; align-items: center; padding: 3px 0; font-size: 12.5px; }
+  .mi-act .mi-when { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mi-act .mi-what { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .mi-act .arrow { color: var(--c-zero); }
+  .mi-act .mi-c { color: #333; font-style: italic; }
+  .mi-act .mi-by { color: var(--muted); font-size: 11px; text-align: right; }
+  .mi-act-empty { font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .mi-jira { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .mi-back { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; margin-bottom: 12px; }
+  .mi-back:hover { color: var(--fg); }
+  .mi-task { margin-bottom: 14px; }
+  .mi-task .key-link { color: var(--muted); font-size: 13px; text-decoration: none; letter-spacing: .04em; }
+  .mi-task .key-link:hover { color: var(--fg); }
+  .mi-task-title { font-size: 16px; font-weight: 600; margin: 4px 0 8px; }
+  .mi-task-meta { display: flex; gap: 10px; align-items: center; font-size: 13px; }

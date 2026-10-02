@@ -262,6 +262,59 @@ check(await p.evaluate(() => document.getElementById('interpBtn').classList.cont
 await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 
+// «Команда: N» в шапке — участники за 3 спринта; названия команды заголовком нет
+await p.keyboard.press('Escape');
+await p.click('[data-team="platform"]');
+const hero = await p.evaluate(() => ({ h1: !!document.querySelector('.hero h1'), kicker: !!document.querySelector('.hero .team'),
+  meta: document.querySelector('.hero .meta').textContent, link: document.getElementById('teamLink').textContent }));
+check(!hero.h1 && !hero.kicker && !/Спринт:/.test(hero.meta) && /^Команда: \d+ участник/.test(hero.meta.trim()),
+      'в шапке ни «Команда» с названием, ни «Спринт:» — вместо него «Команда: N участников»');
+await p.click('#teamLink');
+await p.waitForTimeout(300);
+const team = await p.evaluate(() => {
+  const b = document.getElementById('storiesBody');
+  return { open: document.getElementById('panelStack').classList.contains('open'),
+           cols: [...b.querySelectorAll('table.mtab thead th')].map(h => h.firstChild.textContent),
+           sprints: TEAMS[0].output.sprints.map(x => x.name),
+           rows: b.querySelectorAll('table.mtab tbody tr').length,
+           members: new Set(TEAMS[0].output.sprints.flatMap(x => x.members.map(m => m.name))).size,
+           nums: b.querySelectorAll('table.mtab td.mcell[data-tip] .mc-nums > span:not(.sep)').length,
+           cells: b.querySelectorAll('table.mtab td.mcell[data-tip]').length };
+});
+check(team.open && team.cols.join('|') === ['Участник', ...team.sprints, 'Lead time'].join('|'), '«Команда» — сайдбар: участник, три спринта, Lead time');
+check(team.rows === team.members + 1, 'по строке на участника и итог команды');
+check(team.nums === team.cells * 3, 'в ячейке три числа: не начато · в работе · выполнено');
+await p.hover('#storiesBody td.mcell[data-tip] >> nth=1');
+await p.waitForTimeout(150);
+const outTip = await p.evaluate(() => { const t = document.querySelector('.deck-tip'); return { shown: !t.hidden, text: t.textContent }; });
+check(outTip.shown && ['Backlog / To Do', 'В блоке', 'Ревью', 'Отладка', 'Отменено'].every(x => outTip.text.includes(x)),
+      'наведение — раскрытые группы: backlog, в блоке; в работе, ревью, отладка; готово, отменено');
+await p.click('#storiesBody button.mname >> nth=0');
+await p.waitForTimeout(300);
+const mem = await p.evaluate(() => ({ open: document.getElementById('panelStack').classList.contains('open'),
+  tabs: [...document.querySelectorAll('.side-tab')].map(x => x.textContent.split(' · ')[0]),
+  first: (document.querySelector('#storiesBody .mi-head') || {}).textContent || '',
+  rows: document.querySelectorAll('#storiesBody .mi-row').length }));
+check(mem.open && mem.tabs.join('|') === team.sprints.join('|') && mem.first.startsWith('Выполнено — в зачёт'),
+      'клик по участнику — сайдбар его задач по спринтам, сначала то, что пошло в зачёт');
+await p.click('.side-tab >> nth=0');
+await p.click('#storiesBody .mi-row >> nth=0');
+await p.waitForTimeout(200);
+const act = await p.evaluate(() => {
+  const d = document.querySelector('#storiesBody .mi-row + .mi-detail');
+  const at = [...d.querySelectorAll('.mi-act .mi-when')].map(x => x.textContent);
+  return { n: at.length, rows: document.querySelectorAll('#storiesBody .mi-row').length,
+           sorted: at.every((x, i) => !i || x.slice(3, 5) + x.slice(0, 2) + x.slice(6) >= at[i - 1].slice(3, 5) + at[i - 1].slice(0, 2) + at[i - 1].slice(6)) };
+});
+check(act.n > 0 && act.sorted && act.rows > 1, 'клик по задаче — её смены статуса и комментарии на том же экране, по хронологии');
+await p.click('#storiesBody .mi-row >> nth=0');
+check((await p.locator('#storiesBody .mi-detail').count()) === 0, 'повторный клик сворачивает историю');
+await p.click('[data-team-back]');
+await p.waitForTimeout(200);
+check(await p.isVisible('#storiesBody table.mtab'), '«← Команда» возвращает к таблице участников');
+await p.keyboard.press('Escape');
+await p.click('[data-team="catalog"]');
+
 // «Бизнес-отчёт» — не колода на этой странице, а промт для навыка sprint-business
 await p.keyboard.press('Escape');
 check(await p.$('#deck') === null, 'колоды в отчёте PO нет: бизнес-отчёт — отдельный файл');

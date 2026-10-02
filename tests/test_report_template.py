@@ -101,6 +101,16 @@ class TemplateTest(unittest.TestCase):
         kr = biz[biz.index('function openKr('):]
         self.assertIn('renderScope(epic)', kr[:kr.index('\n  }\n')])
 
+    def test_team_link_instead_of_sprint(self):
+        """Шапка: ни метки «Команда», ни названия заголовком — вместо «Спринт:» ссылка «Команда: N» на участников."""
+        hero = self.html[self.html.index('<div class="hero">'):self.html.index('<main>')]
+        self.assertNotIn('<h1', hero)
+        self.assertNotIn('Спринт:', hero)
+        self.assertIn('id="teamLink"', hero)
+        self.assertIn('id="interpBtn"', hero)
+        for part in ('function openTeam(', 'memberTable(team, m, { back: true })', 'data-team-back'):
+            self.assertIn(part, self.html)
+
     def test_business_report_is_separate(self):
         """Колоды в отчёте PO нет: «Бизнес-отчёт» даёт промт на отдельный навык sprint-business."""
         bar = self.html[self.html.index('<div class="pb-row">'):self.html.index('<div class="notes-panel"')]
@@ -157,8 +167,9 @@ class BusinessTemplateTest(unittest.TestCase):
         ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function changesSlide(')]
         order = [ops.index("label: '" + g + "'") for g in ('Не начато', 'В работе', 'Выполнено')]
         self.assertEqual(sorted(order), order, 'три группы: не начато / в работе / выполнено')
-        slide = ops[ops.index('function opsSlide('):]
+        slide = self.html[self.html.index('function opsSlide('):]
         self.assertNotIn('slide-title', slide[:slide.index('function plansSlide(')], 'заголовка у операционного слайда нет')
+        self.assertNotIn('memberTable(', slide[:slide.index('function plansSlide(')], 'участники — только в отчёте PO')
         self.assertNotIn('function memberChart(', self.html, 'графика выработки по участникам больше нет')
 
     def test_title_team_and_plans_slides(self):
