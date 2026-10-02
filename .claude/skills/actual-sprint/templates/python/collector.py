@@ -27,6 +27,7 @@
     progress_categories ["В работе", "In Progress"]   категории «взято в работу"
     epic_scope       true               забрать весь объём эпиков, не только задачи спринта
     epic_scope_max   2000               сколько задач эпиков забирать максимум за запуск
+    epic_scope_subtasks true            даты подзадач объёма — для сгорания эпика по подзадачам
     sp_field         "auto"             поле Story Points или customfield_XXXXX
     sp_names         ["story points", "story point estimate", …]  по каким именам искать поле
 
@@ -47,7 +48,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.5.0'
+VERSION = '1.6.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -536,6 +537,8 @@ class Collector:
         m = re.match(r'customfield_(\d+)$', epic_field)
         field_ref = f'cf[{m.group(1)}]' if m else f'"{epic_field}"'
         fields = f'summary,status,issuetype,assignee,priority,subtasks,created,resolutiondate,{epic_field}'
+        if self.sp_id:
+            fields += ',' + self.sp_id
         chunk = int(self.params.get('epic_batch', 50))
         by_epic, seen = {k: [] for k in keys}, 0
         for start in range(0, len(keys), chunk):
@@ -568,6 +571,7 @@ class Collector:
                         # даты — для графика сгорания эпика: когда задача появилась и когда закрыта
                         'created': (f.get('created') or '')[:10] or None,
                         'doneAt': done_at[:10] if done_at else None,
+                        'sp': f.get(self.sp_id) if self.sp_id and isinstance(f.get(self.sp_id), (int, float)) else None,
                         'subtasks': [],
                     }
                     for sub in f.get('subtasks') or []:
@@ -585,9 +589,36 @@ class Collector:
                 self.warn(f'объём эпиков обрезан на {self.epic_scope_max} задачах — '
                           f'поднимите params.epic_scope_max')
                 break
+        if self.params.get('epic_scope_subtasks', True):
+            self.scope_subtask_dates([it for items in by_epic.values() for it in items])
         for e in epics:
             if e['epicKey']:
                 e['scope'] = by_epic.get(e['epicKey'], [])
+
+    def scope_subtask_dates(self, items):
+        """Даты подзадач объёма эпиков: пакетный поиск по родителям, без запроса на подзадачу."""
+        parents = [it['key'] for it in items if it['subtasks']]
+        chunk = int(self.params.get('epic_batch', 50))
+        dates = {}
+        for start in range(0, len(parents), chunk):
+            batch = parents[start:start + chunk]
+            jql = 'parent in (' + ','.join(batch) + ')'
+            at = 0
+            while True:
+                page = self.jira.api('/rest/api/2/search', jql=jql, fields='status,created,resolutiondate',
+                                     startAt=at, maxResults=100)
+                found = page.get('issues', [])
+                for i in found:
+                    f = i['fields']
+                    cat = self.cats.get(str(f['status']['id'])) or f['status'].get('statusCategory', {}).get('name', '')
+                    done = self.bucket(f['status']['name'], cat) == 'done' and f.get('resolutiondate')
+                    dates[i['key']] = ((f.get('created') or '')[:10] or None, done[:10] if done else None)
+                at += len(found)
+                if not found or at >= page.get('total', 0):
+                    break
+        for it in items:
+            for sub in it['subtasks']:
+                sub['created'], sub['doneAt'] = dates.get(sub['key'], (None, None))
 
     def build_metrics(self, sprints, per_sprint):
         sprint_rows, all_closed, velocity = [], [], []

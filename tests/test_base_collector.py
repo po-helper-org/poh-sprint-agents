@@ -226,6 +226,11 @@ class LegacyParityTest(unittest.TestCase):
         done = [i for i in scope if i['status'] == 'Закрыт']
         self.assertTrue(done and all(i['doneAt'] for i in done))
         self.assertTrue(all(i['doneAt'] is None for i in scope if i['status'] == 'Бэклог'))
+        # 1.6.0: оценка задачи и даты подзадач — для сгорания по SP и по подзадачам
+        self.assertTrue(any(i['sp'] for i in scope))
+        subs = [sub for i in scope for sub in i['subtasks']]
+        self.assertTrue(subs and all(sub['created'] for sub in subs))
+        self.assertTrue(any(sub['doneAt'] for sub in subs))
 
     def test_no_story_points_field_counts_tasks(self):
         data = collect_in_process(params={'sp_names': ['нет такого поля']})

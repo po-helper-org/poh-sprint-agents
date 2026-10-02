@@ -746,42 +746,62 @@
   // трёх недель и панель: сколько недель до закрытия, прогноз и план (срок эпика).
   var BURN_WEEKS = 10, BURN_FORECAST = 8;
 
-  function epicBurn(t, epic) {
-    var items = (epic.scope || []).filter(function (it) { return it.created; });
-    if (!items.length) return null;
+  // Основа расчёта: SP задач эпика, закрытие историй (задач эпика) или всех подзадач.
+  var BURN_MODES = [
+    { id: 'sp', label: 'SP', unit: 'SP' },
+    { id: 'stories', label: 'Закрытие историй', unit: 'ист.' },
+    { id: 'subtasks', label: 'Закрытие подзадач', unit: 'подз.' }
+  ];
+  var burnMode = null;           // выбор PO — один на страницу, переживает переключение эпиков
+  var BURN_REFS = [];
+
+  // единицы сгорания: [{created, doneAt, w}] — вес 1 у истории и подзадачи, SP у оценки
+  function burnUnits(epic, mode, today) {
+    var scope = epic.scope || [];
+    var isDone = function (x) { return classifyBucket(x.status, x.category) === 'done'; };
+    var unit = function (x, w) { return { created: x.created, doneAt: isDone(x) ? (x.doneAt || today) : null, w: w }; };
+    if (mode === 'subtasks') {
+      return scope.reduce(function (a, it) { return a.concat((it.subtasks || []).filter(function (s) { return s.created; }).map(function (s) { return unit(s, 1); })); }, []);
+    }
+    var items = scope.filter(function (it) { return it.created; });
+    if (mode === 'sp') return items.filter(function (it) { return it.sp; }).map(function (it) { return unit(it, it.sp); });
+    return items.map(function (it) { return unit(it, 1); });
+  }
+
+  function epicBurn(t, epic, mode) {
     var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
-    var isDone = function (it) { return classifyBucket(it.status, it.category) === 'done'; };
-    var doneAt = function (it) { return isDone(it) ? (it.doneAt || today) : null; };
-    var start = items.map(function (it) { return it.created; }).sort()[0];
+    var units = burnUnits(epic, mode, today);
+    if (!units.length) return null;
+    var sum = function (list) { return list.reduce(function (a, u) { return a + u.w; }, 0); };
+    var start = units.map(function (u) { return u.created; }).sort()[0];
     var weeks = Math.max(1, Math.ceil((dayMs(today) - dayMs(start) + 86400000) / (7 * 86400000)));
     var shown = Math.min(weeks, BURN_WEEKS);
-    var base = addDays(today, -7 * shown);                       // конец «начальной» точки
-    var openAt = function (d) { return items.filter(function (it) { var x = doneAt(it); return it.created <= d && !(x && x <= d); }).length; };
+    var base = addDays(today, -7 * shown);
+    var openAt = function (d) { return sum(units.filter(function (u) { return u.created <= d && !(u.doneAt && u.doneAt <= d); })); };
     var bars = [{ label: weeks > shown ? 'до ' + ddmm(base) : 'начало', to: base, done: 0, left: openAt(base), added: 0, top: 0, base: true }];
     var top = 0;
     for (var k = shown - 1; k >= 0; k--) {
       var from = addDays(today, -7 * (k + 1)), to = addDays(today, -7 * k);
       var inP = function (d) { return d && d > from && d <= to; };
-      var done = items.filter(function (it) { return inP(doneAt(it)); }).length;
-      var addedOpen = items.filter(function (it) { return inP(it.created) && !(doneAt(it) && doneAt(it) <= to); }).length;
-      var added = items.filter(function (it) { return inP(it.created); }).length;
-      var left = openAt(to);
-      bars.push({ label: ddmm(to), from: from, to: to, done: done, left: left - addedOpen, added: addedOpen, addedAll: added, top: top, current: k === 0 });
+      var done = sum(units.filter(function (u) { return inP(u.doneAt); }));
+      var addedOpen = sum(units.filter(function (u) { return inP(u.created) && !(u.doneAt && u.doneAt <= to); }));
+      var added = sum(units.filter(function (u) { return inP(u.created); }));
+      bars.push({ label: ddmm(to), from: from, to: to, done: done, left: openAt(to) - addedOpen, added: addedOpen, addedAll: added, top: top, current: k === 0 });
       top += done;
     }
     var remaining = openAt(today);
-    var recent = bars.filter(function (b) { return !b.base; }).slice(-3);
-    var pace = recent.reduce(function (a, b) { return a + b.done; }, 0) / Math.max(1, recent.length);
-    var paceBasis = recent.length + ' нед.';
-    if (!pace) {
-      var all = bars.filter(function (b) { return !b.base; });
-      pace = all.reduce(function (a, b) { return a + b.done; }, 0) / Math.max(1, all.length);
-      paceBasis = 'за ' + all.length + ' нед.';
-    }
+    var hist = bars.filter(function (b) { return !b.base; });
+    var recent = hist.slice(-3);
+    var pace = sum(recent.map(function (b) { return { w: b.done }; })) / Math.max(1, recent.length);
+    var paceBasis = 'последние ' + recent.length + ' нед.';
+    if (!pace) { pace = sum(hist.map(function (b) { return { w: b.done }; })) / Math.max(1, hist.length); paceBasis = 'за ' + hist.length + ' нед.'; }
     var weeksLeft = remaining ? (pace ? Math.ceil(remaining / pace) : null) : 0;
-    var forecast = weeksLeft === null ? null : addDays(today, 7 * weeksLeft);
-    return { today: today, total: items.length, remaining: remaining, bars: bars, top: top, pace: pace, paceBasis: paceBasis,
-             weeksLeft: weeksLeft, forecast: forecast, due: epic.epicDue || null };
+    var meta = BURN_MODES.find(function (m) { return m.id === mode; });
+    var unestimated = mode === 'sp' ? (epic.scope || []).filter(function (it) { return it.created && !it.sp; }).length : 0;
+    return { mode: mode, unit: meta.unit, today: today, total: sum(units), done: sum(units) - remaining, remaining: remaining,
+             bars: bars, top: top, pace: pace, paceBasis: paceBasis, weeksLeft: weeksLeft, unestimated: unestimated,
+             count: (epic.scope || []).filter(function (it) { return it.created; }).length,
+             forecast: weeksLeft === null ? null : addDays(today, 7 * weeksLeft), due: epic.epicDue || null };
   }
 
   function epicBurnChart(b) {
@@ -795,7 +815,7 @@
       }
     }
     var cols = b.bars.length + fc.length + (b.weeksLeft > BURN_FORECAST ? 1 : 0);
-    var W = 600, H = 330, padL = 10, padR = 8, padT = 24, padB = 34;
+    var W = 760, H = 300, padL = 10, padR = 8, padT = 24, padB = 34;
     var colW = (W - padL - padR) / cols, barW = Math.min(40, colW * 0.62);
     var maxY = Math.max.apply(null, b.bars.map(function (x) { return x.top + x.done + x.left + x.added; })
       .concat(fc.map(function (x) { return x.top + x.done + x.left; }))) || 1;
@@ -813,9 +833,9 @@
     var xAt = function (i) { return padL + colW * i + (colW - barW) / 2; };
     b.bars.forEach(function (x, i) {
       var cx = xAt(i), when = x.base ? x.label : 'неделя по ' + x.label;
-      seg(cx, x.top, x.done, '#cfe8c4', '−' + x.done, '#2f7a2f', when + ': выполнено ' + x.done);
-      seg(cx, x.top + x.done, x.left, '#6c9fd8', String(x.left), '#fff', when + ': осталось ' + x.left);
-      seg(cx, x.top + x.done + x.left, x.added, '#3f6290', '+' + x.added, '#fff', when + ': добавлено ' + (x.addedAll || x.added) + (x.addedAll > x.added ? ', из них закрыто сразу ' + (x.addedAll - x.added) : ''));
+      seg(cx, x.top, x.done, '#cfe8c4', '−' + fmtNum(x.done), '#2f7a2f', when + ': выполнено ' + fmtNum(x.done) + ' ' + b.unit);
+      seg(cx, x.top + x.done, x.left, '#6c9fd8', fmtNum(x.left), '#fff', when + ': осталось ' + fmtNum(x.left) + ' ' + b.unit);
+      seg(cx, x.top + x.done + x.left, x.added, '#3f6290', '+' + fmtNum(x.added), '#fff', when + ': добавлено ' + fmtNum(x.addedAll || x.added) + ' ' + b.unit + (x.addedAll > x.added ? ', из них закрыто сразу ' + fmtNum(x.addedAll - x.added) : ''));
       parts.push('<text x="' + (cx + barW / 2).toFixed(1) + '" y="' + (H - 18) + '" font-size="10" fill="#555" text-anchor="middle">' + esc(x.label) + '</text>');
       if (x.current) parts.push('<text x="' + (cx + barW / 2).toFixed(1) + '" y="' + (H - 6) + '" font-size="9.5" fill="#888" text-anchor="middle">сейчас</text>');
     });
@@ -843,24 +863,57 @@
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>';
   }
 
-  function epicBurnHtml(t, epic) {
-    var b = epicBurn(t, epic);
-    if (!b) return '<div class="eb"><div class="eb-title">Сгорание эпика</div><div class="sidebar-empty">Нет дат задач эпика: нужен сборщик 1.4.0+.</div></div>';
-    var late = b.due && b.forecast && b.forecast > b.due;
-    var diff = b.due && b.forecast ? Math.round((dayMs(b.forecast) - dayMs(b.due)) / 86400000) : null;
-    var head = !b.remaining ? '✓ Эпик выполнен'
-      : b.weeksLeft === null ? 'Прогноза нет: задачи не закрываются'
-      : (late ? '' : '✓ ') + '≈ ' + b.weeksLeft + ' ' + plural(b.weeksLeft, 'неделя', 'недели', 'недель') + ' до закрытия';
-    var verdict = b.due && b.forecast && b.remaining ? (late ? '<div class="eb-v bad">опоздание на ' + diff + ' дн.</div>' : '<div class="eb-v ok">в срок</div>') : '';
-    return '<div class="eb"><div class="eb-title">Сгорание эпика · задачи по неделям</div><div class="eb-wrap"><div class="eb-chart">' + epicBurnChart(b) +
-      '<div class="eb-legend"><span><i class="l-done"></i>выполнено</span><span><i class="l-left"></i>осталось</span>' +
-      '<span><i class="l-add"></i>добавлено</span><span><i class="l-fc"></i>прогноз</span><span><i class="l-due"></i>план</span></div></div>' +
-      '<div class="eb-panel' + (late || b.weeksLeft === null ? ' warn' : '') + '"><div class="eb-head">' + head + '</div>' +
-        '<div class="eb-row"><b>' + (b.forecast && b.remaining ? ddmmyy(b.forecast) : '—') + '</b><span>прогноз</span></div>' +
-        '<div class="eb-row"><b>' + (b.due ? ddmmyy(b.due) : '—') + '</b><span>план</span></div>' + verdict +
-        '<div class="eb-row"><b>' + fmtNum(b.pace) + '</b><span>в неделю (' + b.paceBasis + ')</span></div>' +
-        '<div class="eb-row"><b>' + b.remaining + '</b><span>осталось из ' + b.total + '</span></div></div></div></div>';
+  function burnDefault(epic) {
+    var hasSp = (epic.scope || []).some(function (it) { return it.sp; });
+    return burnMode && (burnMode !== 'sp' || hasSp) ? burnMode : (hasSp ? 'sp' : 'stories');
   }
+
+  // Сгорание эпика: переключатель основы, график по неделям и под ним — панель анализа.
+  function epicBurnHtml(t, epic, ref) {
+    if (ref === undefined) { BURN_REFS.push({ t: t, epic: epic }); ref = BURN_REFS.length - 1; }
+    var mode = burnDefault(epic);
+    var b = epicBurn(t, epic, mode);
+    var tabs = '<div class="eb-modes" role="tablist">' + BURN_MODES.map(function (m) {
+      return '<button type="button" role="tab" class="eb-mode' + (m.id === mode ? ' on' : '') + '" data-burn-mode="' + m.id + '" aria-selected="' + (m.id === mode) + '">' + m.label + '</button>';
+    }).join('') + '</div>';
+    var head = '<div class="eb-top"><div class="eb-title">Сгорание эпика</div>' + tabs + '</div>';
+    if (!b) {
+      var why = mode === 'sp' ? 'У задач эпика нет оценки в SP.' : mode === 'subtasks' ? 'Нет подзадач с датами: нужен сборщик 1.6.0+.' : 'Нет дат задач эпика: нужен сборщик 1.4.0+.';
+      return '<div class="eb" data-burn="' + ref + '">' + head + '<div class="sidebar-empty">' + why + '</div></div>';
+    }
+    var u = b.unit;
+    var late = b.due && b.forecast && b.remaining && b.forecast > b.due;
+    var diff = b.due && b.forecast ? Math.round((dayMs(b.forecast) - dayMs(b.due)) / 86400000) : null;
+    var status = !b.remaining ? '<span class="ok">выполнено</span>'
+      : b.weeksLeft === null ? '<span class="bad">нет темпа</span>'
+      : !b.due ? '—'
+      : late ? '<span class="bad">опоздание ' + diff + ' дн.</span>' : '<span class="ok">в срок' + (diff < 0 ? ', запас ' + (-diff) + ' дн.' : '') + '</span>';
+    var cell = function (big, label, sub, cls) {
+      return '<div class="ea-cell' + (cls ? ' ' + cls : '') + '"><span class="ea-label">' + label + '</span><b>' + big + '</b>' + (sub ? '<span class="ea-sub">' + sub + '</span>' : '') + '</div>';
+    };
+    var analysis = '<div class="eb-analysis">' +
+      cell(b.due ? ddmmyy(b.due) : '—', 'Плановая дата', b.due ? 'срок эпика в JIRA' : 'срок не задан') +
+      cell(b.remaining ? (b.forecast ? ddmmyy(b.forecast) : '—') : 'готов', 'Расчётная дата',
+           b.remaining && b.weeksLeft !== null ? '≈ ' + b.weeksLeft + ' ' + plural(b.weeksLeft, 'неделя', 'недели', 'недель') : '', late ? 'bad' : '') +
+      cell(fmtNum(b.pace) + ' <small>' + u + '/нед.</small>', 'Темп сгорания', b.paceBasis) +
+      cell(fmtNum(b.remaining) + ' <small>из ' + fmtNum(b.total) + ' ' + u + '</small>', 'Осталось',
+           b.unestimated ? b.unestimated + ' ' + plural(b.unestimated, 'задача', 'задачи', 'задач') + ' без оценки' : '') +
+      cell(status, 'Итог', b.remaining && !b.due ? 'не с чем сравнить' : '') + '</div>';
+    return '<div class="eb" data-burn="' + ref + '">' + head + epicBurnChart(b) +
+      '<div class="eb-legend"><span><i class="l-done"></i>выполнено</span><span><i class="l-left"></i>осталось</span>' +
+      '<span><i class="l-add"></i>добавлено</span><span><i class="l-fc"></i>прогноз</span>' + (b.due ? '<span><i class="l-due"></i>план</span>' : '') + '</div>' +
+      analysis + '</div>';
+  }
+
+  // переключение основы: перерисовать только этот блок
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest && e.target.closest('[data-burn-mode]');
+    if (!btn) return;
+    var box = btn.closest('[data-burn]'), ref = BURN_REFS[+box.dataset.burn];
+    if (!ref) return;
+    burnMode = btn.dataset.burnMode;
+    box.outerHTML = epicBurnHtml(ref.t, ref.epic, +box.dataset.burn);
+  });
 
   function renderScope(epic) {
     // у задач текущего спринта берём строку из данных спринта: там у подзадач есть

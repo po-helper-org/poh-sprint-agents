@@ -848,17 +848,23 @@
   /* «Весь эпик»: когда будет выполнен и на чём прогноз — общий для отчёта PO и бизнес-отчёта */
   .eb { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 10px; margin-bottom: 16px; }
   .eb-title { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  .eb-wrap { display: flex; gap: 14px; align-items: flex-start; }
-  .eb-chart { flex: 1; min-width: 0; }
+  .eb-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .eb-top .eb-title { margin: 0; }
+  .eb-modes { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+  .eb-mode { font: inherit; font-size: 12px; padding: 4px 12px; border: 0; border-radius: 999px; background: none; color: var(--muted); cursor: pointer; }
+  .eb-mode:hover { color: var(--fg); }
+  .eb-mode.on { background: var(--fg); color: var(--bg); }
   .eb .chart { width: 100%; height: auto; display: block; }
-  .eb-panel { width: 190px; flex-shrink: 0; border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; font-size: 12px; }
-  .eb-panel.warn { border-color: #f3c4c4; background: #fff8f8; }
-  .eb-head { font-size: 15px; font-weight: 700; margin-bottom: 10px; line-height: 1.3; }
-  .eb-row { display: flex; align-items: baseline; gap: 8px; margin: 5px 0; color: var(--muted); }
-  .eb-row b { color: var(--fg); font-size: 14px; font-variant-numeric: tabular-nums; min-width: 62px; }
-  .eb-v { font-weight: 700; margin: 2px 0 6px; } .eb-v.bad { color: var(--c-blocked); } .eb-v.ok { color: var(--c-done); }
+  .eb-analysis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .ea-cell { padding: 0 12px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+  .ea-cell:first-child { border-left: 0; padding-left: 0; }
+  .ea-label { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .ea-cell b { font-size: 18px; font-variant-numeric: tabular-nums; }
+  .ea-cell b small { font-size: 12px; font-weight: 400; color: var(--muted); }
+  .ea-cell .ea-sub { font-size: 11.5px; color: var(--muted); }
+  .ea-cell.bad b, .ea-cell .bad { color: var(--c-blocked); } .ea-cell .ok { color: var(--c-done); }
   .eb-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
   .eb-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
   .eb-legend .l-done { background: #cfe8c4; } .eb-legend .l-left { background: #6c9fd8; } .eb-legend .l-add { background: #3f6290; }
   .eb-legend .l-fc { background: #ececec; border: 1px solid #d4d4d4; } .eb-legend .l-due { width: 2px; height: 12px; background: #dc2626; border-radius: 0; }
-  @media (max-width: 640px) { .eb-wrap { flex-direction: column; } .eb-panel { width: auto; align-self: stretch; } }
+  @media (max-width: 640px) { .eb-analysis { grid-template-columns: 1fr 1fr; gap: 10px 0; } .ea-cell:nth-child(odd) { border-left: 0; padding-left: 0; } }

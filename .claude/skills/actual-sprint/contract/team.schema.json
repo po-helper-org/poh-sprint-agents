@@ -98,6 +98,7 @@
         "inSprint": { "type": "boolean", "description": "Задача в текущем спринте." },
         "created": { "type": ["string", "null"], "description": "Дата создания задачи, YYYY-MM-DD — для графика сгорания эпика." },
         "doneAt": { "type": ["string", "null"], "description": "Дата решения (resolutiondate) закрытой задачи, YYYY-MM-DD; у незакрытой — null." },
+        "sp": { "type": ["number", "null"], "description": "Story Points задачи (сборщик 1.6.0+); null — без оценки. Для сгорания эпика в SP." },
         "subtasks": {
           "type": "array",
           "items": {
@@ -108,7 +109,9 @@
               "summary": { "type": "string" },
               "status": { "type": "string", "minLength": 1 },
               "category": { "type": "string" },
-              "priority": { "type": ["string", "null"] }
+              "priority": { "type": ["string", "null"] },
+              "created": { "type": ["string", "null"], "description": "Дата создания подзадачи, YYYY-MM-DD (сборщик 1.6.0+) — для сгорания эпика по подзадачам." },
+              "doneAt": { "type": ["string", "null"], "description": "Дата решения подзадачи, YYYY-MM-DD; у незакрытой — null." }
             }
           }
         }

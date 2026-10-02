@@ -201,13 +201,15 @@ await p.click('#deckSlides tr.grp.kr >> nth=0');
 await p.waitForTimeout(300);
 const eb = await p.evaluate(() => ({ chart: !!document.querySelector('#storiesBody .eb svg'),
   bars: document.querySelectorAll('#storiesBody .eb svg rect').length,
-  panel: (document.querySelector('#storiesBody .eb-panel') || {}).textContent || '',
+  panel: (document.querySelector('#storiesBody .eb-analysis') || {}).textContent || '',
+  modes: [...document.querySelectorAll('#storiesBody .eb-mode')].map(b => b.textContent),
   why: !!document.querySelector('#storiesBody .eb-why'),
   secs: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head')].map(h => h.textContent),
   n: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head .n')].reduce((a, x) => a + parseInt(x.textContent.replace('·', ''), 10), 0),
   scope: TEAMS[0].epics[0].scope.length }));
-check(eb.chart && eb.bars > 5 && /до закрытия|выполнен|Прогноза нет/.test(eb.panel) && /прогноз/.test(eb.panel) && /план/.test(eb.panel),
-      'клик по KR — сгорание эпика по неделям и панель: сколько недель до закрытия, прогноз, план');
+check(eb.chart && eb.bars > 5 && /Плановая дата/.test(eb.panel) && /Расчётная дата/.test(eb.panel) && /Темп сгорания/.test(eb.panel),
+      'клик по KR — сгорание эпика по неделям, под ним панель анализа: план, расчёт, темп');
+check(eb.modes.join('|') === 'SP|Закрытие историй|Закрытие подзадач', 'основа расчёта: SP, закрытие историй, закрытие подзадач');
 check(!eb.why, 'без пояснений словами');
 check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith('Что выполнено') && eb.n === eb.scope,
       'ниже — что осталось и что выполнено: весь объём эпика, как в отчёте PO');

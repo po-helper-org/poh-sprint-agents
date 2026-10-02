@@ -122,12 +122,23 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
               'category': st['category'], 'assignee': st['assignee'], 'priority': st['priority'],
               'sprint': sprint_name, 'inSprint': True, 'created': day(r.randint(8, 30)),
               'doneAt': st['statusChanged'][:10] if st['category'] == 'Выполнено' else None,
+              'sp': r.choice([1, 2, 3, 5, 5, 8, 13, None]),
               'subtasks': [{k: sub[k] for k in ('key', 'summary', 'status', 'category', 'priority')}
                            for sub in st['subtasks']]} for st in stories]
     plan = [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 2}')] * r.randint(3, 6) + \
            [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 1}')] * r.randint(2, 5) + \
            [('Бэклог', 'К выполнению', None)] * r.randint(2, 6) + \
            [('Анализ', 'В работе', None)] * r.randint(0, 2)
+    # даты подзадач: созданы чуть позже родителя, закрыты — к закрытию родителя или раньше
+    def sub_dates(parent):
+        for sub in parent['subtasks']:
+            c = parent['created'] or day(20)
+            sub['created'] = min(day(0), (datetime.fromisoformat(c) + timedelta(days=r.randint(0, 3))).date().isoformat())
+            if sub['category'] == 'Выполнено':
+                end = parent['doneAt'] or day(r.randint(0, 6))
+                sub['doneAt'] = max(sub['created'], (datetime.fromisoformat(end) - timedelta(days=r.randint(0, 4))).date().isoformat())
+            else:
+                sub['doneAt'] = None
     for status, cat, sprint in plan:
         key = f'INIT-{next(SCOPE_KEYS)}'
         subs = []
@@ -141,7 +152,10 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
                       'status': status, 'category': cat, 'assignee': r.choice(PEOPLE),
                       'priority': priority(key), 'sprint': sprint, 'inSprint': False,
                       'created': day((done_ago or 0) + r.randint(5, 25)),
-                      'doneAt': day(done_ago) if done_ago and cat == 'Выполнено' else None, 'subtasks': subs})
+                      'doneAt': day(done_ago) if done_ago and cat == 'Выполнено' else None,
+                      'sp': r.choice([1, 2, 3, 5, 8, 13, None]), 'subtasks': subs})
+    for it in scope:
+        sub_dates(it)
     return scope
 
 

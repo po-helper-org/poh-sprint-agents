@@ -144,8 +144,18 @@ const scope = await p.evaluate(() => {
            outside: e.scope.filter(i => !i.inSprint).length };
 });
 check((await p.textContent('.scope-sum .big')).startsWith(`Сделано ${scope.done} из ${scope.total}`), 'сводка «сделано из» по данным');
-check(await p.isVisible('#storiesBody .eb svg') && /до закрытия|выполнен|Прогноза нет/.test(await p.textContent('#storiesBody .eb-panel')) &&
-      (await p.$('#storiesBody .eb-why')) === null, '«Весь эпик»: сгорание по неделям и панель прогноза, без пояснений словами');
+const burn = async () => p.evaluate(() => ({ mode: document.querySelector('#storiesBody .eb-mode.on').dataset.burnMode,
+  analysis: document.querySelector('#storiesBody .eb-analysis').textContent, svg: !!document.querySelector('#storiesBody .eb svg') }));
+let bv = await burn();
+check(bv.svg && bv.mode === 'sp' && /Плановая дата/.test(bv.analysis) && /Расчётная дата/.test(bv.analysis) && /SP\/нед/.test(bv.analysis),
+      '«Весь эпик»: сгорание по неделям в SP, под графиком — плановая, расчётная дата и темп');
+await p.click('#storiesBody [data-burn-mode="stories"]');
+bv = await burn();
+check(bv.mode === 'stories' && /ист\.\/нед/.test(bv.analysis), 'основа «Закрытие историй» — пересчёт графика и панели');
+await p.click('#storiesBody [data-burn-mode="subtasks"]');
+bv = await burn();
+check(bv.mode === 'subtasks' && /подз\.\/нед/.test(bv.analysis), 'основа «Закрытие подзадач»');
+await p.click('#storiesBody [data-burn-mode="sp"]');
 check((await p.textContent('.scope-sec[data-sec=left] .sec-head .n')).includes(String(scope.left)), 'раздел «Осталось» со счётчиком');
 check((await p.textContent('.scope-sec[data-sec=done] .sec-head .n')).includes(String(scope.done)), 'раздел «Сделано» со счётчиком');
 check((await p.$$('.scope-sec .story-row')).length === scope.total, 'в объёме все задачи эпика, не только спринта');

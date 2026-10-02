@@ -93,7 +93,8 @@ class TemplateTest(unittest.TestCase):
         """«Весь эпик» в общем движке: сгорание по неделям с прогнозом — один вид в обоих отчётах."""
         scope = self.html[self.html.index('function renderScope('):self.html.index('function setScopeMode(')]
         self.assertIn('epicBurnHtml(team, epic)', scope)
-        for part in ('Сгорание эпика · задачи по неделям', 'до закрытия', 'BURN_WEEKS', "'Что осталось'", "'Что выполнено'"):
+        for part in ('BURN_WEEKS', 'BURN_MODES', "label: 'Закрытие историй'", "label: 'Закрытие подзадач'", "id: 'sp'",
+                     "'Плановая дата'", "'Расчётная дата'", "'Темп сгорания'", 'eb-analysis', "'Что осталось'", "'Что выполнено'"):
             self.assertIn(part, self.html)
         self.assertNotIn('На чём прогноз', self.html, 'пояснений словами нет — всё на графике')
         biz = build_mod.assemble(BUSINESS_TEMPLATE)
