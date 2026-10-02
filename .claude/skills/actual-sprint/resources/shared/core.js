@@ -693,8 +693,9 @@
   }
 
   // ------------------------- весь эпик -------------------------
-  // Полный объём эпика, не только спринт: что сделано и что осталось и в каком процессе.
-  // Тот же сайдбар; кнопка в шапке переключает «задачи спринта» ↔ «весь эпик».
+  // Полный объём эпика, не только спринт: когда будет выполнен и на чём прогноз, что
+  // сделано и что осталось и в каком процессе. Один и тот же вид в отчёте PO («Смотреть
+  // весь эпик») и в бизнес-отчёте (клик по KR).
   var SCOPE_ORDER = ['blocked', 'progress', 'testing', 'review', 'open'];
   var BUCKET_COLOR = { open: 'var(--c-open)', blocked: 'var(--c-blocked)', progress: 'var(--c-progress)',
                        testing: 'var(--c-testing)', review: 'var(--c-review)', done: 'var(--c-done)' };
@@ -722,6 +723,120 @@
     return sec;
   }
 
+  // ---------- сгорание эпика: объём, осталось, план и прогноз ----------
+  // Как отчёт «сгорание эпика» в JIRA: сколько задач в эпике и сколько осталось по дням.
+  // План — дедлайн эпика (duedate); прогноз — по темпу закрытия задач эпика в текущем
+  // спринте (нет закрытий в спринте — за последние 4 недели).
+  function isoDay(d) { return d.toISOString().slice(0, 10); }
+  function ddmm(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : '—'; }
+  function dayMs(iso) { return new Date(iso + 'T12:00:00').getTime(); }
+  function addDays(iso, n) { return isoDay(new Date(dayMs(iso) + n * 86400000)); }
+  function ddmmyy(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) + '.' + iso.slice(2, 4) : '—'; }
+
+  function epicBurn(t, epic) {
+    var items = (epic.scope || []).filter(function (it) { return it.created; });
+    if (!items.length) return null;
+    var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
+    var isDone = function (it) { return classifyBucket(it.status, it.category) === 'done'; };
+    var doneAt = function (it) { return isDone(it) ? (it.doneAt || today) : null; };
+    var start = items.map(function (it) { return it.created; }).sort()[0];
+    var total = items.length, done = items.filter(isDone).length, left = total - done;
+    var sprintStart = (t.burndown && t.burndown.start) || addDays(today, -14);
+    var inSprint = items.filter(function (it) { var d = doneAt(it); return d && d >= sprintStart; }).length;
+    var days = Math.max(1, (dayMs(today) - dayMs(sprintStart)) / 86400000);
+    var basis = 'по темпу текущего спринта';
+    var pace = inSprint / days;
+    if (!pace) {
+      var from = addDays(today, -28);
+      pace = items.filter(function (it) { var d = doneAt(it); return d && d >= from; }).length / 28;
+      basis = 'по темпу за 4 недели';
+    }
+    var forecast = left === 0 ? today : pace ? addDays(today, Math.ceil(left / pace)) : null;
+    return { start: start, today: today, total: total, done: done, left: left, due: epic.epicDue || null,
+             forecast: forecast, pace: pace, basis: basis, items: items, doneAt: doneAt };
+  }
+
+  function epicBurnChart(b) {
+    var W = 640, H = 236, padL = 34, padR = 14, padT = 32, padB = 28;
+    var horizon = addDays(b.today, 180);
+    var endIso = [b.today, b.due, b.forecast && b.forecast <= horizon ? b.forecast : null].filter(Boolean).sort().pop();
+    endIso = addDays(endIso, 7);
+    var t0 = dayMs(b.start), t1 = dayMs(endIso);
+    var xOf = function (iso) { return padL + (W - padL - padR) * (dayMs(iso) - t0) / (t1 - t0); };
+    var yOf = function (v) { return padT + (H - padT - padB) * (1 - v / Math.max(1, b.total)); };
+    var created = b.items.map(function (it) { return it.created; }).sort();
+    var closed = b.items.map(b.doneAt).filter(Boolean).sort();
+    var scope = [], left = [];
+    for (var d = b.start; d <= b.today; d = addDays(d, 1)) {
+      var n = created.filter(function (x) { return x <= d; }).length, c = closed.filter(function (x) { return x <= d; }).length;
+      scope.push(xOf(d).toFixed(1) + ',' + yOf(n).toFixed(1));
+      left.push(xOf(d).toFixed(1) + ',' + yOf(n - c).toFixed(1));
+    }
+    var parts = [];
+    [0, Math.round(b.total / 2), b.total].forEach(function (v) {
+      parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(v).toFixed(1) + '" y2="' + yOf(v).toFixed(1) + '" stroke="#eee"/>');
+      parts.push('<text x="4" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="10" fill="#666">' + v + '</text>');
+    });
+    parts.push('<polyline points="' + scope.join(' ') + '" fill="none" stroke="#9ca3af" stroke-width="1.6"><title>Объём эпика, задач</title></polyline>');
+    parts.push('<polygon points="' + xOf(b.start).toFixed(1) + ',' + yOf(0).toFixed(1) + ' ' + left.join(' ') + ' ' + xOf(b.today).toFixed(1) + ',' + yOf(0).toFixed(1) +
+      '" fill="#2563eb" fill-opacity=".12" stroke="none"/>');
+    parts.push('<polyline points="' + left.join(' ') + '" fill="none" stroke="#2563eb" stroke-width="2"><title>Осталось, задач</title></polyline>');
+    if (b.forecast && b.left && b.forecast <= horizon) {
+      parts.push('<line x1="' + xOf(b.today).toFixed(1) + '" y1="' + yOf(b.left).toFixed(1) + '" x2="' + xOf(b.forecast).toFixed(1) + '" y2="' + yOf(0).toFixed(1) +
+        '" stroke="#2563eb" stroke-width="1.6" stroke-dasharray="5 4"/>');
+    }
+    var vline = function (iso, color, label, dash, dy) {
+      var x = xOf(iso).toFixed(1);
+      parts.push('<line x1="' + x + '" x2="' + x + '" y1="' + padT + '" y2="' + (H - padB) + '" stroke="' + color + '" stroke-width="1.4"' + (dash ? ' stroke-dasharray="4 3"' : '') + '/>');
+      parts.push('<text x="' + x + '" y="' + (padT - 6 - (dy || 0)) + '" font-size="10.5" fill="' + color + '" text-anchor="middle">' + label + '</text>');
+    };
+    vline(b.today, '#111', 'сегодня', true, 0);
+    if (b.due) vline(b.due, '#dc2626', 'план ' + ddmm(b.due), false, b.due === b.today ? 10 : 0);
+    if (b.forecast && b.forecast <= horizon && b.forecast !== b.today) vline(b.forecast, '#2563eb', 'прогноз ' + ddmm(b.forecast), true, b.due && Math.abs(dayMs(b.due) - dayMs(b.forecast)) < 10 * 86400000 ? 11 : 0);
+    parts.push('<text x="' + padL + '" y="' + (H - 8) + '" font-size="10" fill="#777">' + ddmm(b.start) + '</text>');
+    parts.push('<text x="' + (W - padR) + '" y="' + (H - 8) + '" font-size="10" fill="#777" text-anchor="end">' + ddmm(endIso) + '</text>');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>';
+  }
+
+  function plDays(n) { var m10 = n % 10, m100 = n % 100; return n + ' ' + (m10 === 1 && m100 !== 11 ? 'день' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'дня' : 'дней'); }
+  function plTasks(n) { var m10 = n % 10, m100 = n % 100; return n + ' ' + (m10 === 1 && m100 !== 11 ? 'задача' : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'задачи' : 'задач'); }
+
+  // Когда эпик будет выполнен, на чём держится прогноз — словами, а не только графиком.
+  function epicBurnHtml(t, epic) {
+    var b = epicBurn(t, epic);
+    if (!b) return '<div class="eb"><div class="eb-title">Когда будет выполнен</div><div class="sidebar-empty">Нет дат задач эпика — прогноз не построить: нужен сборщик 1.4.0+.</div></div>';
+    var late = b.due && b.forecast && b.forecast > b.due;
+    var diff = b.due && b.forecast ? Math.round((dayMs(b.forecast) - dayMs(b.due)) / 86400000) : null;
+    var verdict = !b.left ? '<span class="ok">эпик закрыт</span>'
+      : !b.forecast ? '<span class="bad">темпа нет — прогноз не построить</span>'
+      : b.due ? (late ? '<span class="bad">опоздание на ' + plDays(diff) + '</span>' : '<span class="ok">в срок' + (diff < 0 ? ', запас ' + plDays(-diff) : '') + '</span>') : '';
+    var sprintStart = (t.burndown && t.burndown.start) || addDays(b.today, -14);
+    var closedIn = function (from) { return b.items.filter(function (it) { var d = b.doneAt(it); return d && d >= from; }).length; };
+    var spDays = Math.max(1, Math.round((dayMs(b.today) - dayMs(sprintStart)) / 86400000));
+    var grew = b.items.filter(function (it) { return it.created >= addDays(b.today, -28); }).length;
+    var why = [];
+    if (!b.left) why.push('Все ' + plTasks(b.total) + ' эпика закрыты.');
+    else if (b.basis === 'по темпу текущего спринта') {
+      why.push('Темп: в текущем спринте (с ' + ddmm(sprintStart) + ', ' + plDays(spDays) + ') закрыто ' + plTasks(closedIn(sprintStart)) +
+               ' эпика, ≈ ' + String(Math.round(b.pace * 70) / 10).replace('.', ',') + ' в неделю.');
+    } else if (b.forecast) {
+      why.push('В текущем спринте задач эпика не закрыто — темп взят за 4 недели: закрыто ' + plTasks(closedIn(addDays(b.today, -28))) +
+               ', ≈ ' + String(Math.round(b.pace * 70) / 10).replace('.', ',') + ' в неделю.');
+    } else why.push('Ни в текущем спринте, ни за 4 недели задачи эпика не закрывались — темпа для прогноза нет.');
+    if (b.left && b.forecast) why.push('Осталось ' + plTasks(b.left) + ' → при том же темпе ещё ≈ ' + plDays(Math.round((dayMs(b.forecast) - dayMs(b.today)) / 86400000)) + ', до ' + ddmmyy(b.forecast) + '.');
+    why.push(b.due ? 'План — срок эпика в JIRA: ' + ddmmyy(b.due) + '.' : 'Срок эпика в JIRA не задан — сравнить прогноз не с чем.');
+    if (grew) why.push('Объём растёт: за 4 недели в эпик добавлено ' + plTasks(grew) + ' — новые задачи сдвинут прогноз.');
+    why.push('Считается по числу задач, без оценки: крупные задачи в остатке делают прогноз оптимистичным.');
+    return '<div class="eb"><div class="eb-title">Когда будет выполнен</div>' +
+      '<div class="eb-kpis"><div><b>' + (b.left ? (b.forecast ? ddmmyy(b.forecast) : '—') : 'готов') + '</b><span>прогноз</span></div>' +
+      '<div><b>' + (b.due ? ddmmyy(b.due) : '—') + '</b><span>плановая дата' + (b.due ? '' : ' не задана') + '</span></div>' +
+      '<div><b>' + b.left + '<small>/' + b.total + '</small></b><span>осталось задач</span></div>' +
+      (verdict ? '<div class="eb-verdict">' + verdict + '</div>' : '') + '</div>' + epicBurnChart(b) +
+      '<div class="eb-legend"><span><i class="l-scope"></i>объём</span><span><i class="l-left"></i>осталось</span>' +
+      '<span><i class="l-fc"></i>прогноз</span><span><i class="l-due"></i>план</span></div>' +
+      '<div class="eb-why"><div class="eb-why-title">На чём прогноз</div><ul>' + why.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>';
+  }
+
   function renderScope(epic) {
     // у задач текущего спринта берём строку из данных спринта: там у подзадач есть
     // исполнитель и возраст статуса, которых поиск по эпику не отдаёт
@@ -743,13 +858,15 @@
     var sum = document.createElement('div');
     sum.className = 'scope-sum';
     sum.innerHTML = '<span class="big">Сделано ' + done.length + ' из ' + items.length + ' · ' + pct + '%</span>' +
-      '<span class="sub">задач эпика · в текущем спринте ' + inSprint + '</span>' +
+      '<span class="sub">задач эпика · ' + inSprint + ' в текущем спринте</span>' +
       '<div class="scope-bar" title="' + esc(BUCKETS.filter(function (b) { return byBucket[b.id].length; })
         .map(function (b) { return byBucket[b.id].length + ' — ' + b.phrase; }).join(', ')) + '">' +
       BUCKETS.filter(function (b) { return byBucket[b.id].length; }).map(function (b) {
         return '<i style="flex:' + byBucket[b.id].length + ';background:' + BUCKET_COLOR[b.id] + '"></i>';
       }).join('') + '</div>';
     storiesBody.appendChild(sum);
+    // когда эпик будет выполнен и на чём прогноз — сразу под итогом
+    storiesBody.insertAdjacentHTML('beforeend', epicBurnHtml(team, epic));
 
     if (!items.length) {
       storiesBody.insertAdjacentHTML('beforeend', '<div class="sidebar-empty">Задач в эпике нет.</div>');
@@ -778,8 +895,8 @@
       leftNodes.push(g);
     });
     // эпик может быть длинным: при открытии видны только итог и заголовки разделов
-    storiesBody.appendChild(scopeSection('left', 'Осталось', left, leftNodes, true));
-    storiesBody.appendChild(scopeSection('done', 'Сделано', done.length,
+    storiesBody.appendChild(scopeSection('left', 'Что осталось', left, leftNodes, true));
+    storiesBody.appendChild(scopeSection('done', 'Что выполнено', done.length,
       done.map(function (it) { return storyNode(it, epic, counts, sprintChip); }), true));
   }
 

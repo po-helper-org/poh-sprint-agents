@@ -195,17 +195,16 @@ await goTo('#deckSlides tr.grp.kr');
 await p.click('#deckSlides tr.grp.kr >> nth=0');
 await p.waitForTimeout(300);
 const eb = await p.evaluate(() => ({ chart: !!document.querySelector('#storiesBody .eb svg'),
-  kpis: document.querySelector('#storiesBody .eb-kpis') && document.querySelector('#storiesBody .eb-kpis').textContent,
-  first: document.querySelector('#storiesBody').firstElementChild.className }));
-check(eb.chart && eb.first === 'eb' && /осталось задач/.test(eb.kpis) && /плановая дата/.test(eb.kpis) && /прогноз/.test(eb.kpis),
-      'клик по KR — сверху сгорание эпика: осталось, плановая дата, прогноз');
-const krTabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]));
-check(krTabs.join('|') === 'Выполнено|В работе|Осталось', 'клик по KR — сайдбар «Выполнено / В работе / Осталось»');
-const krSum = await p.evaluate(() => {
-  const e = TEAMS[0].epics[0], n = [...document.querySelectorAll('.side-tab')].reduce((a, b) => a + parseInt(b.textContent.split(' · ')[1], 10), 0);
-  return { n, scope: e.scope.length };
-});
-check(krSum.n === krSum.scope, 'в сайдбаре KR — весь объём эпика');
+  kpis: (document.querySelector('#storiesBody .eb-kpis') || {}).textContent || '',
+  why: (document.querySelector('#storiesBody .eb-why') || {}).textContent || '',
+  secs: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head')].map(h => h.textContent),
+  n: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head .n')].reduce((a, x) => a + parseInt(x.textContent.replace('·', ''), 10), 0),
+  scope: TEAMS[0].epics[0].scope.length }));
+check(eb.chart && /прогноз/.test(eb.kpis) && /плановая дата/.test(eb.kpis) && /осталось задач/.test(eb.kpis),
+      'клик по KR — «Когда будет выполнен»: прогноз, плановая дата, осталось, график');
+check(/На чём прогноз/.test(eb.why) && /в неделю/.test(eb.why), 'и «На чём прогноз»: темп, остаток, срок');
+check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith('Что выполнено') && eb.n === eb.scope,
+      'ниже — что осталось и что выполнено: весь объём эпика, как в отчёте PO');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // ПКМ — комментарий

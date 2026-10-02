@@ -211,21 +211,6 @@
   .pc-keys { font-size: 11px; color: #999; margin-top: 6px; }
   .pc-empty { font-size: 13px; color: #aaa; padding: 8px 2px; }
 
-  /* сайдбар KR: сгорание эпика */
-  .eb { border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 10px; margin-bottom: 16px; }
-  .eb-title { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
-  .eb-kpis { display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: flex-end; margin-bottom: 6px; }
-  .eb-kpis b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
-  .eb-kpis b small { font-size: 13px; color: var(--muted); font-weight: 400; }
-  .eb-kpis span { font-size: 12px; color: var(--muted); }
-  .eb-verdict { margin-left: auto; font-size: 13px; font-weight: 600; }
-  .eb-verdict .bad { color: var(--c-blocked); } .eb-verdict .ok { color: var(--c-done); }
-  .eb .chart { width: 100%; height: auto; display: block; }
-  .eb-legend { display: flex; gap: 14px; font-size: 11.5px; color: var(--muted); }
-  .eb-legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid; margin-right: 5px; vertical-align: 3px; }
-  .eb-legend .l-scope { border-color: #9ca3af; } .eb-legend .l-left { border-color: #2563eb; }
-  .eb-legend .l-fc { border-color: #2563eb; border-top-style: dashed; } .eb-legend .l-due { border-color: #dc2626; }
-
   /* сайдбар участника */
   .mi-group { margin-bottom: 14px; }
   .mi-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
@@ -427,9 +412,7 @@
   var MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа',
                 'сентября', 'октября', 'ноября', 'декабря'];
   function dayMonth(iso) { return iso ? parseInt(iso.slice(8, 10), 10) + ' ' + MONTHS[parseInt(iso.slice(5, 7), 10) - 1] : '—'; }
-  function ddmm(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) : '—'; }
   function ddmmhhmm(iso) { return iso ? ddmm(iso) + ' ' + iso.slice(11, 16) : '—'; }
-  function isoDay(d) { return d.toISOString().slice(0, 10); }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 
   // Темп — та же идеальная прямая, что в burndown и в PDF /sprint-status.
@@ -1194,97 +1177,8 @@
 
   function openPanel() { overlay.classList.add('open'); panelStack.classList.add('open'); }
 
-  // ---------- сгорание эпика: объём, осталось, план и прогноз ----------
-  // Как отчёт «сгорание эпика» в JIRA: сколько задач в эпике и сколько осталось по дням.
-  // План — дедлайн эпика (duedate); прогноз — по темпу закрытия задач эпика в текущем
-  // спринте (нет закрытий в спринте — за последние 4 недели).
-  function dayMs(iso) { return new Date(iso + 'T12:00:00').getTime(); }
-  function addDays(iso, n) { return isoDay(new Date(dayMs(iso) + n * 86400000)); }
-  function ddmmyy(iso) { return iso ? iso.slice(8, 10) + '.' + iso.slice(5, 7) + '.' + iso.slice(2, 4) : '—'; }
-
-  function epicBurn(t, epic) {
-    var items = (epic.scope || []).filter(function (it) { return it.created; });
-    if (!items.length) return null;
-    var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
-    var isDone = function (it) { return classifyBucket(it.status, it.category) === 'done'; };
-    var doneAt = function (it) { return isDone(it) ? (it.doneAt || today) : null; };
-    var start = items.map(function (it) { return it.created; }).sort()[0];
-    var total = items.length, done = items.filter(isDone).length, left = total - done;
-    var sprintStart = (t.burndown && t.burndown.start) || addDays(today, -14);
-    var inSprint = items.filter(function (it) { var d = doneAt(it); return d && d >= sprintStart; }).length;
-    var days = Math.max(1, (dayMs(today) - dayMs(sprintStart)) / 86400000);
-    var basis = 'по темпу текущего спринта';
-    var pace = inSprint / days;
-    if (!pace) {
-      var from = addDays(today, -28);
-      pace = items.filter(function (it) { var d = doneAt(it); return d && d >= from; }).length / 28;
-      basis = 'по темпу за 4 недели';
-    }
-    var forecast = left === 0 ? today : pace ? addDays(today, Math.ceil(left / pace)) : null;
-    return { start: start, today: today, total: total, done: done, left: left, due: epic.epicDue || null,
-             forecast: forecast, pace: pace, basis: basis, items: items, doneAt: doneAt };
-  }
-
-  function epicBurnChart(b) {
-    var W = 640, H = 236, padL = 34, padR = 14, padT = 32, padB = 28;
-    var horizon = addDays(b.today, 180);
-    var endIso = [b.today, b.due, b.forecast && b.forecast <= horizon ? b.forecast : null].filter(Boolean).sort().pop();
-    endIso = addDays(endIso, 7);
-    var t0 = dayMs(b.start), t1 = dayMs(endIso);
-    var xOf = function (iso) { return padL + (W - padL - padR) * (dayMs(iso) - t0) / (t1 - t0); };
-    var yOf = function (v) { return padT + (H - padT - padB) * (1 - v / Math.max(1, b.total)); };
-    var created = b.items.map(function (it) { return it.created; }).sort();
-    var closed = b.items.map(b.doneAt).filter(Boolean).sort();
-    var scope = [], left = [];
-    for (var d = b.start; d <= b.today; d = addDays(d, 1)) {
-      var n = created.filter(function (x) { return x <= d; }).length, c = closed.filter(function (x) { return x <= d; }).length;
-      scope.push(xOf(d).toFixed(1) + ',' + yOf(n).toFixed(1));
-      left.push(xOf(d).toFixed(1) + ',' + yOf(n - c).toFixed(1));
-    }
-    var parts = [];
-    [0, Math.round(b.total / 2), b.total].forEach(function (v) {
-      parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(v).toFixed(1) + '" y2="' + yOf(v).toFixed(1) + '" stroke="#eee"/>');
-      parts.push('<text x="4" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="10" fill="#666">' + v + '</text>');
-    });
-    parts.push('<polyline points="' + scope.join(' ') + '" fill="none" stroke="#9ca3af" stroke-width="1.6"><title>Объём эпика, задач</title></polyline>');
-    parts.push('<polygon points="' + xOf(b.start).toFixed(1) + ',' + yOf(0).toFixed(1) + ' ' + left.join(' ') + ' ' + xOf(b.today).toFixed(1) + ',' + yOf(0).toFixed(1) +
-      '" fill="#2563eb" fill-opacity=".12" stroke="none"/>');
-    parts.push('<polyline points="' + left.join(' ') + '" fill="none" stroke="#2563eb" stroke-width="2"><title>Осталось, задач</title></polyline>');
-    if (b.forecast && b.left && b.forecast <= horizon) {
-      parts.push('<line x1="' + xOf(b.today).toFixed(1) + '" y1="' + yOf(b.left).toFixed(1) + '" x2="' + xOf(b.forecast).toFixed(1) + '" y2="' + yOf(0).toFixed(1) +
-        '" stroke="#2563eb" stroke-width="1.6" stroke-dasharray="5 4"/>');
-    }
-    var vline = function (iso, color, label, dash, dy) {
-      var x = xOf(iso).toFixed(1);
-      parts.push('<line x1="' + x + '" x2="' + x + '" y1="' + padT + '" y2="' + (H - padB) + '" stroke="' + color + '" stroke-width="1.4"' + (dash ? ' stroke-dasharray="4 3"' : '') + '/>');
-      parts.push('<text x="' + x + '" y="' + (padT - 6 - (dy || 0)) + '" font-size="10.5" fill="' + color + '" text-anchor="middle">' + label + '</text>');
-    };
-    vline(b.today, '#111', 'сегодня', true, 0);
-    if (b.due) vline(b.due, '#dc2626', 'план ' + ddmm(b.due), false, b.due === b.today ? 10 : 0);
-    if (b.forecast && b.forecast <= horizon && b.forecast !== b.today) vline(b.forecast, '#2563eb', 'прогноз ' + ddmm(b.forecast), true, b.due && Math.abs(dayMs(b.due) - dayMs(b.forecast)) < 10 * 86400000 ? 11 : 0);
-    parts.push('<text x="' + padL + '" y="' + (H - 8) + '" font-size="10" fill="#777">' + ddmm(b.start) + '</text>');
-    parts.push('<text x="' + (W - padR) + '" y="' + (H - 8) + '" font-size="10" fill="#777" text-anchor="end">' + ddmm(endIso) + '</text>');
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>';
-  }
-
-  function epicBurnHtml(t, epic) {
-    var b = epicBurn(t, epic);
-    if (!b) return '<div class="eb"><div class="eb-title">Сгорание эпика</div><div class="sidebar-empty">Нет дат задач эпика: нужен сборщик 1.4.0+.</div></div>';
-    var late = b.due && b.forecast && b.forecast > b.due;
-    var diff = b.due && b.forecast ? Math.round((dayMs(b.forecast) - dayMs(b.due)) / 86400000) : null;
-    var verdict = !b.left ? '<span class="ok">эпик закрыт</span>'
-      : !b.forecast ? '<span class="bad">темпа нет — прогноз не построить</span>'
-      : b.due ? (late ? '<span class="bad">опоздание на ' + diff + ' дн.</span>' : '<span class="ok">в срок' + (diff < 0 ? ', запас ' + (-diff) + ' дн.' : '') + '</span>') : '';
-    return '<div class="eb"><div class="eb-title">Сгорание эпика</div>' +
-      '<div class="eb-kpis"><div><b>' + b.left + '<small>/' + b.total + '</small></b><span>осталось задач</span></div>' +
-      '<div><b>' + (b.due ? ddmmyy(b.due) : '—') + '</b><span>плановая дата' + (b.due ? '' : ' не задана') + '</span></div>' +
-      '<div><b>' + (b.forecast ? ddmmyy(b.forecast) : '—') + '</b><span>прогноз ' + b.basis + '</span></div>' +
-      (verdict ? '<div class="eb-verdict">' + verdict + '</div>' : '') + '</div>' + epicBurnChart(b) +
-      '<div class="eb-legend"><span><i class="l-scope"></i>объём</span><span><i class="l-left"></i>осталось</span>' +
-      '<span><i class="l-fc"></i>прогноз</span><span><i class="l-due"></i>план</span></div></div>';
-  }
-
-  // KR: сгорание эпика, под ним — весь объём «Выполнено / В работе / Осталось»
+  // KR: тот же «Весь эпик», что в отчёте PO — когда будет выполнен, на чём прогноз,
+  // что сделано и что осталось
   function openKr(ref) {
     if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
     var epic = ref.epic;
@@ -1293,26 +1187,8 @@
     scopeBtn.hidden = true;
     var kr = (biz(ref.team).streams || {})[epic.epicKey] || {};
     storiesLabel.textContent = kr.kr ? kr.kr : 'Весь эпик';
-    var sprintRows = {};
-    (epic.stories || []).forEach(function (st) { sprintRows[st.key] = st; });
-    var items = (epic.scope && epic.scope.length ? epic.scope : (epic.stories || []).map(function (st) {
-      return Object.assign({ inSprint: true }, st);
-    })).map(function (it) {
-      var st = it.inSprint && sprintRows[it.key];
-      return st ? Object.assign({}, it, { subtasks: st.subtasks }) : it;
-    });
-    var groups = { done: [], work: [], left: [] };
-    items.forEach(function (it) {
-      var b = classifyBucket(it.status, it.category);
-      (b === 'done' ? groups.done : b === 'open' ? groups.left : groups.work).push(it);
-    });
-    var counts = commentCounts().byKey;
-    sideTabs([{ id: 'done', label: 'Выполнено', n: groups.done.length }, { id: 'work', label: 'В работе', n: groups.work.length },
-              { id: 'left', label: 'Осталось', n: groups.left.length }], 'left', function (id, body) {
-      var list = groups[id];
-      if (!list.length) { body.innerHTML = '<div class="sidebar-empty">Задач нет.</div>'; return; }
-      list.forEach(function (it) { body.appendChild(storyNode(it, epic, counts, sprintChip)); });
-    }, epicBurnHtml(ref.team, epic));
+    if (epic.scope) renderScope(epic);
+    else storiesBody.innerHTML = '<div class="sidebar-empty">Объёма эпика в данных нет (params.epic_scope).</div>';
     openPanel();
   }
 

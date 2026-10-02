@@ -58,13 +58,13 @@ class TemplateTest(unittest.TestCase):
         self.assertIn('id="cpopExisting"', self.html)
 
     def test_whole_epic_view(self):
-        """Кнопка «Смотреть весь эпик» в шапке панели; объём — «Осталось» по процессу и «Сделано»."""
+        """Кнопка «Смотреть весь эпик» в шапке панели; объём — «Что осталось» по процессу и «Что выполнено»."""
         head = self.html[self.html.index('<div class="stack-head">'):self.html.index('<div class="stack-body">')]
         self.assertIn('id="scopeBtn"', head)
         self.assertIn('Смотреть весь эпик', head)
         self.assertNotIn('Открыть в JIRA →', head, 'ссылка в JIRA — сам ключ эпика')
         self.assertIn('class="key-link"', self.html)
-        for part in ('function renderScope(', "scopeSection('left', 'Осталось'", "scopeSection('done', 'Сделано'",
+        for part in ('function renderScope(', "scopeSection('left', 'Что осталось'", "scopeSection('done', 'Что выполнено'",
                      'function sprintChip(', 'function storyNode('):
             self.assertIn(part, self.html)
 
@@ -88,6 +88,16 @@ class TemplateTest(unittest.TestCase):
         for part in ('@media (max-width: 640px)', '@media (hover: none)', 'env(safe-area-inset-top)',
                      "addEventListener('touchstart'", 'LONG_PRESS_MS', 'id="cpopCancel"'):
             self.assertIn(part, self.html)
+
+    def test_whole_epic_has_forecast(self):
+        """«Весь эпик» в общем движке: когда будет выполнен и на чём прогноз — один вид в обоих отчётах."""
+        scope = self.html[self.html.index('function renderScope('):self.html.index('function setScopeMode(')]
+        self.assertIn('epicBurnHtml(team, epic)', scope)
+        for part in ('Когда будет выполнен', 'На чём прогноз', "'Что осталось'", "'Что выполнено'"):
+            self.assertIn(part, self.html)
+        biz = build_mod.assemble(BUSINESS_TEMPLATE)
+        kr = biz[biz.index('function openKr('):]
+        self.assertIn('renderScope(epic)', kr[:kr.index('\n  }\n')])
 
     def test_business_report_is_separate(self):
         """Колоды в отчёте PO нет: «Бизнес-отчёт» даёт промт на отдельный навык sprint-business."""
@@ -159,7 +169,7 @@ class BusinessTemplateTest(unittest.TestCase):
 
     def test_kr_epic_burndown(self):
         """Клик по KR: сгорание эпика — объём, осталось, план (duedate) и прогноз по темпу спринта."""
-        for part in ('function epicBurn(', 'function epicBurnChart(', 'epic.epicDue', 'прогноз', 'epicBurnHtml(ref.team, epic)'):
+        for part in ('function epicBurn(', 'function epicBurnChart(', 'epic.epicDue', 'прогноз', 'renderScope(epic)'):
             self.assertIn(part, self.html)
 
     def test_deck_stage_full_screen(self):
