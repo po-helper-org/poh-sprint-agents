@@ -28,6 +28,7 @@
     "burndown": { "$ref": "#/definitions/burndown" },
     "control": { "$ref": "#/definitions/control" },
     "velocity": { "$ref": "#/definitions/velocity" },
+    "output": { "$ref": "#/definitions/output" },
     "logs": { "$ref": "#/definitions/logs" },
     "notes": {
       "type": "object",
@@ -289,6 +290,54 @@
                 "additionalProperties": { "type": "integer", "minimum": 0 }
               }
             }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "description": "Выработка участников по спринтам отчёта (сборщик 1.3.0+): задачи и Story Points по статусу и исполнителю на конец спринта (у текущего — на сейчас), без подзадач. Необязательное: нет поля — операционный слайд презентации без выработки участников.",
+      "required": ["unit", "field", "sprints", "lead"],
+      "properties": {
+        "unit": { "type": "string", "enum": ["SP", "задач"], "description": "SP — найдено поле Story Points; «задач» — не найдено, в split SP нули." },
+        "field": { "type": ["string", "null"], "description": "id поля Story Points в JIRA." },
+        "sprints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "current", "members"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "current": { "type": "boolean" },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "split"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1, "description": "displayName исполнителя на конец спринта; «Не назначен» — без исполнителя." },
+                    "split": {
+                      "type": "object",
+                      "description": "Бакет → [задач, SP] на конец спринта. done — выработка, остальное — застрявшее.",
+                      "required": ["open", "blocked", "progress", "testing", "review", "done"],
+                      "additionalProperties": {
+                        "type": "array", "minItems": 2, "maxItems": 2,
+                        "items": { "type": "number", "minimum": 0 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "lead": {
+          "type": "object",
+          "description": "Исполнитель → медиана Lead Time (дн.) его закрытых задач за спринты отчёта и их число.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["median", "count"],
+            "properties": { "median": { "type": "number" }, "count": { "type": "integer", "minimum": 1 } }
           }
         }
       }

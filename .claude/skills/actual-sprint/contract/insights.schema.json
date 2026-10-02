@@ -37,7 +37,8 @@
       "type": "object",
       "required": [
         "dataHash",
-        "observations"
+        "observations",
+        "interpretation"
       ],
       "additionalProperties": false,
       "properties": {
@@ -57,6 +58,9 @@
         },
         "business": {
           "$ref": "#/definitions/business"
+        },
+        "interpretation": {
+          "$ref": "#/definitions/interpretation"
         }
       }
     },
@@ -290,6 +294,51 @@
           "type": "string",
           "minLength": 10,
           "description": "Что под угрозой (коммитмент OKR, дата) и почему, до 280 знаков."
+        }
+      }
+    },
+    "interpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dynamics",
+        "attention",
+        "recommendations"
+      ],
+      "description": "Интерпретация ИИ для PO — кнопка «!» в шапке команды. Пишется при каждой генерации отчёта по промту prompts/interpretation.md навыка sprint-insights.",
+      "properties": {
+        "dynamics": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Одна мысль, до 240 знаков."
+          },
+          "description": "Что можно сказать о динамике команды: тенденция за спринты отчёта и по сравнению с прошлой интерпретацией."
+        },
+        "attention": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Одна мысль, до 240 знаков."
+          },
+          "description": "На что стоит обратить внимание сейчас."
+        },
+        "recommendations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "minLength": 10,
+            "description": "Одна мысль, до 240 знаков."
+          },
+          "description": "Рекомендации на будущее: что поменять в планировании и процессе."
         }
       }
     }

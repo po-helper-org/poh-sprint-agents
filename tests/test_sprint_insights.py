@@ -254,6 +254,30 @@ class CheckTest(unittest.TestCase):
         self.assertEqual([], errors)
         self.assertTrue(any('числа 813.7 нет в фактах' in w for w in warnings), warnings)
 
+    def test_interpretation_is_required(self):
+        """Интерпретация пишется при каждой генерации: без неё файл не принимается."""
+        del self.doc['teams']['platform']['interpretation']
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') and 'interpretation' in e for e in errors), errors)
+
+    def test_interpretation_has_three_parts(self):
+        interp = self.doc['teams']['platform']['interpretation']
+        interp['recommendations'] = []
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+        interp['recommendations'] = ['Делить подзадачи мельче до старта.']
+        interp['mood'] = ['лишнее поле']
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
+    def test_interpretation_checked_like_observations(self):
+        interp = self.doc['teams']['platform']['interpretation']
+        interp['attention'].append('Застряла ZZZ-7, а скорость 913.4 задачи в день. ' * 6)
+        errors, warnings = self.check(self.doc)
+        self.assertTrue(any('interpretation.attention #4: длиннее 240' in e for e in errors), errors)
+        self.assertTrue(any('ZZZ-7' in e for e in errors), errors)
+        self.assertTrue(any('interpretation.attention #4: числа 913.4' in w for w in warnings), warnings)
+
     def test_small_counts_and_dates_not_flagged(self):
         self.obs(0)['text'] = \
             'За 2 дня до 2026-09-22 закрыто 5 из 48: держим INIT-132 под контролем.'
@@ -277,9 +301,39 @@ class ApplyTest(unittest.TestCase):
         self.assertGreaterEqual(len(ins['observations']), 3)
         self.assertEqual('risk', ins['observations'][0]['level'], 'первым — главное')
         self.assertNotIn('insights', teams['mobile'], 'у команды без инсайдов поля нет')
+        self.assertEqual({'dynamics', 'attention', 'recommendations'}, set(ins['interpretation']),
+                         'интерпретация едет на страницу')
         self.assertEqual('OBJ 1 · KR 1.1 — заказы от партнёров без ручного ввода',
                          ins['business']['streams']['INIT-101']['obj'] + ' · ' + ins['business']['streams']['INIT-101']['kr'],
                          'бизнес-блок едет на страницу')
+
+    def test_apply_archives_and_next_facts_see_previous_interpretation(self):
+        """Принятый файл — в архив; следующий сбор (другой хеш) видит прошлую интерпретацию."""
+        doc = self.ws.example()
+        self.ws.write(doc)
+        proc = self.ws.cli('apply')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        archive = self.ws.dir / 'reports' / 'insights-archive'
+        files = list(archive.glob('*.json'))
+        self.assertEqual(1, len(files), 'принятый файл — в архиве')
+        self.assertIn(f'в архиве: {files[0].name}', proc.stdout)
+        facts = {t['slug']: t for t in self.ws.facts()['teams']}
+        self.assertNotIn('previousInterpretation', facts['platform'], 'те же данные — это не «прошлая»')
+        teams = json.loads(self.ws.data.read_text(encoding='utf-8'))
+        teams[0]['sprintName'] = 'Спринт 75'
+        self.ws.data.write_text(json.dumps(teams, ensure_ascii=False), encoding='utf-8')
+        facts = {t['slug']: t for t in self.ws.facts()['teams']}
+        prev = facts['platform']['previousInterpretation']
+        self.assertEqual(doc['teams']['platform']['interpretation']['dynamics'], prev['dynamics'])
+        self.assertEqual(doc['generatedAt'], prev['generatedAt'])
+        self.assertNotIn('previousInterpretation', facts['mobile'], 'у команды без интерпретации — нет')
+
+    def test_archive_keeps_last_files(self):
+        archive = self.ws.dir / 'arch'
+        for n in range(insights_mod.ARCHIVE_KEEP + 3):
+            (archive.mkdir(exist_ok=True), (archive / f'2000{n:04d}.json').write_text('{}'))
+        insights_mod.archive_doc({'teams': {}}, archive)
+        self.assertEqual(insights_mod.ARCHIVE_KEEP, len(list(archive.glob('*.json'))))
 
     def test_apply_refuses_bad_file_and_keeps_page(self):
         doc = self.ws.example()
@@ -291,7 +345,8 @@ class ApplyTest(unittest.TestCase):
         self.assertFalse(self.ws.page.exists(), 'страница не пересобиралась')
 
     def test_render_drops_stale_insights(self):
-        """Данные пересобраны после инсайдов: страница без них, runner говорит, что делать."""
+        """Данные пересобраны после инсайдов: наблюдений и бизнес-блока на странице нет,
+        интерпретация остаётся с пометкой stale, runner говорит, что делать."""
         self.ws.write(self.ws.example())
         teams = json.loads(self.ws.data.read_text(encoding='utf-8'))
         teams[0]['boardName'] = 'Другая доска'
@@ -301,7 +356,11 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(0, proc.returncode, proc.stdout)
         self.assertIn('инсайды устарели (данные пересобраны): platform — /sprint-insights', proc.stdout)
         teams = {t['slug']: t for t in self.ws.page_teams()}
-        self.assertNotIn('insights', teams['platform'], 'устаревшие не показываются')
+        stale = teams['platform']['insights']
+        self.assertTrue(stale['stale'])
+        self.assertEqual([], stale['observations'], 'устаревшие наблюдения не показываются')
+        self.assertNotIn('business', stale)
+        self.assertIn('dynamics', stale['interpretation'], 'интерпретация не теряется до новой')
         self.assertIn('insights', teams['catalog'], 'у соседней команды — свои, свежие')
         # все инсайды устарели — render сигналит кодом 1
         teams = json.loads(self.ws.data.read_text(encoding='utf-8'))
@@ -346,6 +405,28 @@ class PageTest(unittest.TestCase):
         tip = tip[:tip.index('\n  }\n')]
         self.assertNotIn('insight', tip.lower(), 'в подсказке «i» — только как читать график')
         self.assertNotIn('insight: [', self.html, 'советов «на все случаи» в шаблоне нет')
+
+    def test_interpretation_button_and_sidebar(self):
+        """«!» в шапке команды открывает сайдбар интерпретации из трёх разделов."""
+        hero = self.html[self.html.index('<div class="hero">'):]
+        hero = hero[:hero.index('<main>')]
+        self.assertIn('id="interpBtn"', hero)
+        for part in ('Что можно сказать о динамике команды', 'На что стоит обратить внимание',
+                     'Рекомендации на будущее', 'function openInterpretation(', 'Написано по прошлому сбору'):
+            self.assertIn(part, self.html)
+
+    def test_interpretation_prompt_runs_at_generation(self):
+        """Отдельный промт, и /actual-sprint вызывает его сразу после сбора."""
+        prompt = (INSIGHTS_DIR / 'prompts' / 'interpretation.md').read_text(encoding='utf-8')
+        for part in ('dynamics', 'attention', 'recommendations', 'previousInterpretation', '240'):
+            self.assertIn(part, prompt)
+        for path in (support.ROOT / '.claude' / 'commands' / 'actual-sprint.md', support.SKILL / 'SKILL.md',
+                     support.ROOT / '.claude' / 'commands' / 'sprint-insights.md', INSIGHTS_DIR / 'SKILL.md'):
+            text = path.read_text(encoding='utf-8')
+            self.assertIn('prompts/interpretation.md', text, path)
+        cmd = (support.ROOT / '.claude' / 'commands' / 'actual-sprint.md').read_text(encoding='utf-8')
+        self.assertLess(cmd.index('run.py run'), cmd.index('insights.py apply'))
+        self.assertLess(cmd.index('insights.py apply'), cmd.index('**STOP.**'))
 
     def test_skill_and_command_present(self):
         skill = (INSIGHTS_DIR / 'SKILL.md').read_text(encoding='utf-8')

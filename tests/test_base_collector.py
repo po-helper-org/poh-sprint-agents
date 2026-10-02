@@ -3,6 +3,8 @@
 Все прогоны идут по replay-фикстурам — без сети и без корпоративных данных.
 """
 import json
+import os
+import sys
 import unittest
 
 import support
@@ -77,6 +79,25 @@ class DeterminismTest(unittest.TestCase):
         self.assertEqual('2026-09-16T17:00:00.000+0300', later['_meta']['collectedAt'])
 
 
+def collect_in_process(dataset=None, params=None):
+    """Базовый сборщик по изменённому синтетическому набору, без replay-фикстур."""
+    sys.path.insert(0, str(support.HERE))
+    import fake_jira
+    mod = support.load_module(support.BASE_COLLECTOR, 'base_collector_inproc')
+    api, _ = fake_jira.make_api(dataset)
+
+    class Fake(mod.Jira):
+        def api(self, path, **params):
+            self.requests += 1
+            return api(path, **params)
+
+    req = support.request(board=fake_jira.BOARD_ID, url=fake_jira.BASE, params=params)
+    collector = mod.Collector(Fake(fake_jira.BASE, 'x'), req, mod.load_rules({}))
+    data = collector.collect()
+    data['_meta'] = {'warnings': collector.warnings}
+    return data
+
+
 class LegacyParityTest(unittest.TestCase):
     """Критерий приёмки: base без params даёт то же, что старый collect.py."""
 
@@ -95,7 +116,7 @@ class LegacyParityTest(unittest.TestCase):
 
     def test_same_as_legacy_golden(self):
         fresh = support.collect_ok()
-        stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap')}
+        stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap', 'output')}
         stripped['epics'] = self.without_priorities(stripped['epics'])
         self.assertEqual(LEGACY, stripped)
 
@@ -134,7 +155,54 @@ class LegacyParityTest(unittest.TestCase):
 
     def test_new_fields_are_the_only_addition(self):
         fresh = support.collect_ok()
-        self.assertEqual({'_meta', 'statusMap'}, set(fresh) - set(LEGACY))
+        self.assertEqual({'_meta', 'statusMap', 'output'}, set(fresh) - set(LEGACY))
+
+    def test_member_output_in_story_points(self):
+        """Выработка участников (1.3.0): SP и задачи по статусу на конец спринта, без подзадач."""
+        data = support.collect_ok()
+        out = data['output']
+        self.assertEqual(('SP', 'customfield_10106'), (out['unit'], out['field']))
+        self.assertEqual([s['name'] for s in data['metrics']['sprints']], [s['name'] for s in out['sprints']])
+        self.assertEqual([False, False, True], [s['current'] for s in out['sprints']])
+        for s, vel in zip(out['sprints'], data['velocity']['sprints']):
+            tasks = sum(n for m in s['members'] for n, _ in m['split'].values())
+            subtasks = sum(1 for e in data['epics'] for st in e['stories'] for _ in st['subtasks']) if s['current'] else None
+            self.assertLess(tasks, vel['planned'], 'подзадачи в выработку не входят')
+            if subtasks is not None:
+                self.assertEqual(vel['planned'] - subtasks, tasks)
+            for m in s['members']:
+                self.assertEqual({'open', 'blocked', 'progress', 'testing', 'review', 'done'}, set(m['split']))
+        done_sp = sum(m['split']['done'][1] for m in out['sprints'][0]['members'])
+        self.assertGreater(done_sp, 0)
+        for who, lead in out['lead'].items():
+            self.assertGreater(lead['count'], 0)
+
+    def test_member_output_uses_status_at_sprint_end(self):
+        """Задачу закрыли уже после конца спринта — в его выработке она не «готово»."""
+        sys.path.insert(0, str(support.HERE))
+        import fake_jira
+        ds = fake_jira.Dataset()
+        sprint = ds.sprints[0]
+        end = sprint['endDate']
+        story = next(i for i in ds.issues[sprint['id']]
+                     if not i['fields']['issuetype']['subtask'] and i['fields']['status']['name'] == 'Закрыт')
+        hist = story['changelog']['histories']
+        last = [h for h in hist if h['items'][0]['field'] == 'status'][-1]
+        late = fake_jira.datetime.fromisoformat(end) + fake_jira.timedelta(days=2)
+        last['created'] = fake_jira.iso(late)
+        hist.append(ds._history(99999, fake_jira.datetime.fromisoformat(end) - fake_jira.timedelta(days=1),
+                                'assignee', story['fields']['assignee']['displayName'], 'Участник Ю', author='x'))
+        data = collect_in_process(ds)
+        members = {m['name']: m for m in data['output']['sprints'][0]['members']}
+        self.assertIn('Участник Ю', members, 'исполнитель — на конец спринта')
+        split = members['Участник Ю']['split']
+        self.assertEqual(0, split['done'][0], 'закрыта после конца спринта — не в выработке')
+        self.assertEqual(1, sum(n for n, _ in split.values()))
+
+    def test_no_story_points_field_counts_tasks(self):
+        data = collect_in_process(params={'sp_names': ['нет такого поля']})
+        self.assertEqual(('задач', None), (data['output']['unit'], data['output']['field']))
+        self.assertTrue(any('Story Points не найдено' in w for w in data['_meta']['warnings']))
 
 
 class ParamsTest(unittest.TestCase):

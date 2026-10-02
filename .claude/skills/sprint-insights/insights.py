@@ -6,10 +6,13 @@
 
     insights.py facts [--team slug]   факты из снимка: графики, спринт сейчас, тенденция → stdout
     insights.py check [--file путь]   схема, хеш данных, ключи задач, числа против фактов
-    insights.py apply [--file путь]   check, затем страница пересобирается из снимка
+    insights.py apply [--file путь]   check, архив принятого файла, страница из снимка
 
-Агент читает только вывод facts и пишет reports/sprint-insights.json. В JIRA ни
-скрипт, ни агент не ходят. Коды выхода: 0 — успех, 1 — инсайды не приняты, 2 — нет
+Агент читает только вывод facts и пишет reports/sprint-insights.json: наблюдения,
+бизнес-блок презентации и интерпретацию динамики команды (отдельный промт —
+prompts/interpretation.md). Принятый файл копируется в insights-archive/ рядом с
+ним: оттуда facts берут прошлую интерпретацию, чтобы агент видел, что он говорил
+спринт назад. В JIRA ни скрипт, ни агент не ходят. Коды выхода: 0 — успех, 1 — инсайды не приняты, 2 — нет
 конфига или снимка.
 """
 import argparse
@@ -36,6 +39,10 @@ SCHEMA_PATH = ACTUAL / 'contract' / 'insights.schema.json'
 DEFAULT_CONFIG = 'sprint-report.config.toml'
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG = 0, 1, 2
 TEXT_MAX, ACTION_MAX = 280, 200
+INTERP_MAX = 240        # пункт интерпретации: одно-два предложения в сайдбаре
+INTERP_PARTS = ('dynamics', 'attention', 'recommendations')
+ARCHIVE_DIR = 'insights-archive'
+ARCHIVE_KEEP = 30       # столько принятых файлов храним; старше — удаляются
 # бизнес-блок презентации «ФАКТ | спринт»: поле → предел длины (слайд не резиновый)
 BUSINESS_MAX = {'objective': 100, 'kr': 120, 'promise': 160, 'shown': 160, 'done': 140, 'next': 100, 'blocker': 120,
                 'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280}
@@ -227,17 +234,82 @@ def trend_facts(team):
                     'leadMedian': med(s.get('lead')), 'cycleMedian': med(s.get('cycle')),
                     'leadStoryMedian': med(s.get('leadStory')), 'leadTaskMedian': med(s.get('leadTask'))})
     overall = team['metrics'].get('overall', {})
-    return {'sprints': out, 'leadMedianAll': med(overall.get('lead')),
-            'cycleMedianAll': med(overall.get('cycle'))}
+    trend = {'sprints': out, 'leadMedianAll': med(overall.get('lead')),
+             'cycleMedianAll': med(overall.get('cycle'))}
+    if team.get('output'):
+        trend['output'] = output_facts(team['output'])
+    return trend
 
 
-def facts(teams, only=None):
+def output_facts(output):
+    """Выработка команды по спринтам (SP или задачи) и где осело незакрытое на конец спринта.
+    Только команда целиком: интерпретация не оценивает людей."""
+    idx = 1 if output.get('field') else 0
+    rows = []
+    for s in output['sprints']:
+        split = {}
+        for m in s['members']:
+            for b, cell in m['split'].items():
+                split[b] = r1(split.get(b, 0) + cell[idx])
+        planned = r1(sum(split.values()))
+        rows.append({'sprint': s['name'], 'current': s['current'], 'planned': planned, 'done': split.get('done', 0),
+                     'donePct': round(100 * split.get('done', 0) / planned) if planned else 0,
+                     'notDone': {b: v for b, v in split.items() if b != 'done' and v}})
+    return {'unit': output['unit'], 'sprints': rows}
+
+
+def facts(teams, only=None, archive=None):
     rules = buckets_mod.load()
     picked = [t for t in teams if not only or t['slug'] == only]
     if not picked:
         raise InsightsError(f'команды {only} нет в снимке; есть: {", ".join(t["slug"] for t in teams)}',
                             EXIT_CONFIG)
-    return {'version': 1, 'teams': [team_facts(t, rules) for t in picked]}
+    out = []
+    for t in picked:
+        f = team_facts(t, rules)
+        prev = previous_interpretation(archive, t['slug'], f['dataHash'])
+        if prev:
+            f['previousInterpretation'] = prev
+        out.append(f)
+    return {'version': 1, 'teams': out}
+
+
+# ------------------------------------------------------------------ архив
+
+def archive_files(archive):
+    if not archive or not Path(archive).is_dir():
+        return []
+    return sorted(Path(archive).glob('*.json'))
+
+
+def previous_interpretation(archive, slug, data_hash):
+    """Последняя принятая интерпретация команды по другому сбору: агент сверяется с ней,
+    чтобы сказать, что изменилось, и не повторять прошлые рекомендации вслепую."""
+    for path in reversed(archive_files(archive)):
+        try:
+            doc = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, json.JSONDecodeError):
+            continue
+        entry = (doc.get('teams') or {}).get(slug) if isinstance(doc, dict) else None
+        if not isinstance(entry, dict) or not isinstance(entry.get('interpretation'), dict):
+            continue
+        if entry.get('dataHash') == data_hash:
+            continue        # это интерпретация этих же данных, а не прошлого спринта
+        return {'generatedAt': doc.get('generatedAt'), **entry['interpretation']}
+    return None
+
+
+def archive_doc(doc, archive):
+    """Принятый файл — в архив: интерпретация не теряется при следующем сборе."""
+    from datetime import datetime, timezone
+    archive = Path(archive)
+    archive.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
+    path = archive / f'{stamp}.json'
+    path.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+    for old in archive_files(archive)[:-ARCHIVE_KEEP]:
+        old.unlink()
+    return path
 
 
 # ------------------------------------------------------------------ проверка
@@ -302,9 +374,26 @@ def check(doc, teams):
                 small = num.isdigit() and int(num) <= FREE_INTS
                 if not small and num not in allowed:
                     warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
+        check_interpretation(slug, entry['interpretation'], keys, allowed, errors, warnings)
         if 'business' in entry:
             check_business(slug, entry['business'], team, keys, allowed, errors, warnings)
     return errors, warnings
+
+
+def check_interpretation(slug, interp, keys, allowed, errors, warnings):
+    """Интерпретация динамики команды: пункты короткие, задачи — из данных, числа — из фактов."""
+    for part in INTERP_PARTS:
+        for n, text in enumerate(interp[part], 1):
+            where = f'[{slug}] interpretation.{part} #{n}'
+            if len(text) > INTERP_MAX:
+                errors.append(f'{where}: длиннее {INTERP_MAX} знаков ({len(text)})')
+            for key in sorted(set(KEY_RE.findall(text))):
+                if key not in keys:
+                    errors.append(f'{where}: задачи {key} нет в данных команды')
+            for raw, num in text_numbers(text):
+                small = num.isdigit() and int(num) <= FREE_INTS
+                if not small and num not in allowed:
+                    warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
 
 
 def check_business(slug, biz, team, keys, allowed, errors, warnings):
@@ -362,7 +451,7 @@ def read_doc(path):
 
 def cmd_facts(args, cfg):
     teams = load_teams(Path(args.data).resolve() if args.data else cfg.data)
-    text = json.dumps(facts(teams, args.team), ensure_ascii=False, indent=1)
+    text = json.dumps(facts(teams, args.team, cfg.insights.parent / ARCHIVE_DIR), ensure_ascii=False, indent=1)
     if args.out:
         Path(args.out).write_text(text + '\n', encoding='utf-8')
         print(f'факты → {args.out}')
@@ -391,6 +480,9 @@ def cmd_apply(args, cfg):
     code = cmd_check(args, cfg, quiet=True)
     if code != EXIT_OK:
         return code
+    path = Path(args.file).resolve() if args.file else cfg.insights
+    saved = archive_doc(read_doc(path), cfg.insights.parent / ARCHIVE_DIR)
+    print(f'инсайды ✓   в архиве: {saved.name}')
     cmd = [sys.executable, str(RUNNER), '--config', str(cfg.path), 'render']
     if args.data:
         cmd += ['--data', args.data]

@@ -1,11 +1,11 @@
 ---
-description: "Отчёт по факту спринта: запустить runner → показать сводку → STOP. Данные собирают сборщики, не модель."
+description: "Отчёт по факту спринта: запустить runner → интерпретация ИИ (sprint-insights) → сводка → STOP. Данные собирают сборщики, не модель."
 ---
 # /actual-sprint {команда?}
 
 Роль: Sprint Reporter. Прочитай `.claude/skills/actual-sprint/SKILL.md` и следуй ему.
 
-Выполняешь ровно одну команду:
+1. Сбор — одна команда:
 
 ```bash
 python3 .claude/skills/actual-sprint/runner/run.py run --config sprint-report.config.toml
@@ -13,7 +13,9 @@ python3 .claude/skills/actual-sprint/runner/run.py run --config sprint-report.co
 
 Если `{команда}` передана — добавь `--only <slug>`. Слаг берётся из конфига; команды не в конфиге не существует — не угадывай доску и не подставляй id.
 
-Дальше: показать сводку runner (по каждой команде — доска, спринт, эпики, закрыто/всего, события, запросы, время; затем схема, инварианты, предупреждения, заметки) и путь к файлу. **STOP.**
+2. Сбор прошёл — **сразу интерпретация ИИ**, в этой же генерации (иначе она потеряется): `python3 .claude/skills/sprint-insights/insights.py facts` (с `--team <slug>` при `--only`) → по `.claude/skills/sprint-insights/SKILL.md` запиши `reports/sprint-insights.json`, а поле `interpretation` каждой команды — **по отдельному промту** `.claude/skills/sprint-insights/prompts/interpretation.md` → `python3 .claude/skills/sprint-insights/insights.py apply`. Есть `✗` — поправь файл и повтори `apply`. Сбор упал — шаг пропускаешь.
+
+3. Показать сводку runner (по каждой команде — доска, спринт, эпики, закрыто/всего, события, запросы, время; затем схема, инварианты, предупреждения, заметки), строку `apply` про интерпретацию и путь к файлу. **STOP.**
 
 При ошибке сначала `run.py doctor` — он проверяет стенд без похода в JIRA. Таблица «сообщение → причина → действие» — `docs/actual-sprint-debug.md`.
 

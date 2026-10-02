@@ -92,14 +92,33 @@ class TemplateTest(unittest.TestCase):
         self.assertIn('>Презентация<', bar)
         for part in ("var START_MODE = '{{START_MODE}}';", 'id="deck"', 'function titleSlide(', 'function heroSlide(',
                      'function objGroups(', 'function objSlide(', 'function krHeader(', 'function storyRow(',
-                     'function autoText(', 'function opsSlides(', 'function controlCards(', 'function changesSlide(',
+                     'function autoText(', 'function opsSlide(', 'function memberTable(', 'function changesSlide(',
                      'function demoSlide(', 'function totalsSlide(', 'function risksSlide(', 'function openKr(',
                      'function openStory(', "'Без привязки к OKR'", "'#presentation'", '@page { size: 1280px 720px',
                      '<th>Задачи</th><th>Комментарий</th><th>Результат</th>', 'stat-green', 'stat-yellow', 'stat-red',
-                     'ROWS_PER_SLIDE = 8', 'Прошлые 2 недели', 'Текущие 2 недели'):
+                     'ROWS_PER_SLIDE = 8'):
             self.assertIn(part, self.html)
         self.assertNotIn('class="legend"', self.html, 'пояснения цветов на слайдах нет')
         self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
+
+    def test_ops_slide_member_output(self):
+        """Операционный отчёт: производительность команды и выработка участников в SP, таблица за 3 спринта."""
+        for part in ('Общая производительность команды', 'Выработка каждого участника', 'Lead time',
+                     "label: 'Не начато'", "label: 'В блоке'", "label: 'Ревью'", "label: 'Отладка'",
+                     'function tipHtml(', 'Готово — выработка', 'function teamOutputChart(', 'function memberChart('):
+            self.assertIn(part, self.html)
+        ops = self.html[self.html.index('var OUT_ORDER = ['):self.html.index('function changesSlide(')]
+        order = [ops.index("id: '" + b + "'") for b in ('open', 'blocked', 'progress', 'review', 'testing', 'done')]
+        self.assertEqual(sorted(order), order, 'порядок статусов: не начато / в блоке / в работе / ревью / отладка / готово')
+        self.assertNotIn('controlChart', ops, 'диаграмм управления на слайде нет')
+
+    def test_deck_stage_full_screen(self):
+        """Широкий экран: один слайд на всю площадь, миниатюры слева, навигация кнопками."""
+        for part in ('id="deckPrev"', 'id="deckNext"', 'id="deckCount"', 'id="deckFull"', 'function fitStage(',
+                     'function renderToc(', 'thumb-box', '.deck.stage .deck-slides > .fslide.cur', 'scale(var(--k, 1))'):
+            self.assertIn(part, self.html)
+        printing = self.html[self.html.index('@media print'):]
+        self.assertIn('.deck .deck-slides > .fslide { display: block !important;', printing, 'в PDF — все слайды, не только текущий')
 
     def test_deck_text_editing_and_rmb_comments(self):
         """PO правит текст на слайде сам; комментарий — правым кликом (на телефоне — долгим нажатием)."""

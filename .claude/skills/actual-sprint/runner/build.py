@@ -83,8 +83,9 @@ def read_insights(path):
 def attach_insights(teams, doc):
     """Инсайды в поле insights команды — только если они написаны по этим же данным.
 
-    Возвращает (приложено, устарело): slug'и команд. Устаревшие не показываются:
-    интерпретация прошлого сбора рядом со свежими цифрами вводила бы в заблуждение.
+    Возвращает (приложено, устарело): slug'и команд. У устаревших не показываются
+    наблюдения и бизнес-блок — они про цифры прошлого сбора; интерпретация динамики
+    команды остаётся с пометкой stale, чтобы не потеряться до новой.
     """
     attached, stale = [], []
     for team in teams:
@@ -92,8 +93,15 @@ def attach_insights(teams, doc):
         entry = (doc or {}).get('teams', {}).get(team['slug'])
         if not isinstance(entry, dict):
             continue
+        interpretation = entry.get('interpretation') if isinstance(entry.get('interpretation'), dict) else None
         if entry.get('dataHash') != team_digest(team):
             stale.append(team['slug'])
+            # Наблюдения и бизнес-блок привязаны к цифрам — их не показываем. Интерпретацию
+            # динамики команды не теряем: она остаётся с пометкой «по прошлому сбору»,
+            # пока агент не напишет новую.
+            if interpretation:
+                team['insights'] = {'generatedAt': doc.get('generatedAt'), 'author': doc.get('author'),
+                                    'observations': [], 'interpretation': interpretation, 'stale': True}
             continue
         team['insights'] = {
             'generatedAt': doc.get('generatedAt'),
@@ -101,6 +109,8 @@ def attach_insights(teams, doc):
             'observations': [o for o in entry.get('observations') or []
                              if isinstance(o, dict) and o.get('text')],
         }
+        if interpretation:
+            team['insights']['interpretation'] = interpretation
         if isinstance(entry.get('business'), dict):
             team['insights']['business'] = entry['business']
         attached.append(team['slug'])

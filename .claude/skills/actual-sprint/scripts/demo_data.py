@@ -139,6 +139,39 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
     return scope
 
 
+def demo_output(slug, epics, sprint_names):
+    """Выработка участников: задачи и SP по статусу на конец спринта (как у сборщика 1.3.0).
+    Свой генератор от slug — остальные демо-числа от него не сдвигаются."""
+    r = random.Random('output:' + slug)
+    order = ('open', 'blocked', 'progress', 'testing', 'review', 'done')
+    sp_of = lambda: r.choice([1, 2, 3, 3, 5, 5, 8, 13])  # noqa: E731
+    stories = [st for e in epics for st in e['stories']]
+    people = sorted({st['assignee'] for st in stories if st.get('assignee')})
+    sprints, leads = [], {}
+    for i, name in enumerate(sprint_names):
+        current = i == len(sprint_names) - 1
+        members = {}
+        if current:
+            for st in stories:
+                row = members.setdefault(st.get('assignee') or 'Не назначен', {b: [0, 0] for b in order})
+                cell = row[bucket(st['status'], st['category'])]
+                cell[0] += 1
+                cell[1] += sp_of()
+        else:
+            for who in people:
+                row = members.setdefault(who, {b: [0, 0] for b in order})
+                for _ in range(r.randint(2, 6)):
+                    b = r.choices(order, [1, 1, 1, 1, 1, 12])[0]
+                    row[b][0] += 1
+                    row[b][1] += sp_of()
+        for who, row in members.items():
+            leads.setdefault(who, []).extend(round(r.uniform(2, 22), 1) for _ in range(row['done'][0]))
+        sprints.append({'name': name, 'current': current,
+                        'members': [{'name': w, 'split': row} for w, row in sorted(members.items())]})
+    lead = {w: {'median': round(statistics.median(v), 1), 'count': len(v)} for w, v in leads.items() if v}
+    return {'unit': 'SP', 'field': 'customfield_10106', 'sprints': sprints, 'lead': lead}
+
+
 def build_team(spec, rnd, keys):
     slug = spec['slug']
     start = NOW - timedelta(days=7)
@@ -318,6 +351,8 @@ def build_team(spec, rnd, keys):
     logs = {'events': events, 'days': 7, 'kinds': kinds,
             'authors': sorted(authors.items(), key=lambda x: -x[1])}
 
+    output = demo_output(slug, epics, [r['name'] for r in sprint_rows])
+
     return {'slug': slug, 'team': spec['team'], 'boardId': 1000 + len(slug),
             'boardName': spec['board'],
             'boardUrl': f'https://tracker.demo-workspace.local/boards/{slug}',
@@ -326,7 +361,7 @@ def build_team(spec, rnd, keys):
             'burndown': burndown, 'control': control, 'velocity':
                 {'sprints': velocity, 'unit': 'задач',
                  'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)},
-            'logs': logs,
+            'output': output, 'logs': logs,
             'statusMap': dict(sorted({(u.get('status')): bucket(u['status'], u['category'])
                                       for u in all_units}.items())),
             '_meta': {'collector': 'demo', 'version': '1.0.0', 'protocol': 1,

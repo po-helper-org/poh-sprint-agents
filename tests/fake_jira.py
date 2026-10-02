@@ -19,6 +19,7 @@ BOARD_ID = 101
 BOARD_NAME = 'Scrum Board Платформа'
 OTHER_BOARD_ID = 777
 EPIC_FIELD = 'customfield_10101'
+SP_FIELD = 'customfield_10106'
 
 PEOPLE = ['Участник ' + c for c in 'АБВГДЕ']
 
@@ -147,6 +148,9 @@ class Dataset:
             'priority': priority_obj(key),
             'subtasks': [],
             EPIC_FIELD: epic,
+            # оценка — на задаче, не на подзадаче; детерминированно от ключа, без rnd:
+            # остальной набор (и эталон legacy) от этого не меняется
+            SP_FIELD: None if subtask else (1, 2, 3, 5, 8)[int(key.split('-')[1]) % 5],
             'comment': {'comments': comments or []},
         }
         return {'key': key, 'fields': fields, 'parent': parent,
@@ -286,6 +290,7 @@ def make_api(dataset=None):
         if path == '/rest/api/2/field':
             return [{'id': 'summary', 'name': 'Summary'},
                     {'id': EPIC_FIELD, 'name': 'Ссылка на эпик'},
+                    {'id': SP_FIELD, 'name': 'Story Points'},
                     {'id': 'customfield_10100', 'name': 'Sprint'}]
         if path == '/rest/agile/1.0/board':
             return {'values': [{'id': BOARD_ID, 'name': BOARD_NAME},

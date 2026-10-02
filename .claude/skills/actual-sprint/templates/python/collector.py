@@ -27,6 +27,8 @@
     progress_categories ["В работе", "In Progress"]   категории «взято в работу"
     epic_scope       true               забрать весь объём эпиков, не только задачи спринта
     epic_scope_max   2000               сколько задач эпиков забирать максимум за запуск
+    sp_field         "auto"             поле Story Points или customfield_XXXXX
+    sp_names         ["story points", "story point estimate", …]  по каким именам искать поле
 
 Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
 """
@@ -45,7 +47,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.2.0'
+VERSION = '1.3.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -264,6 +266,20 @@ def lead_cycle(issue, cats, rules):
     return lead, cycle, done_at
 
 
+def value_at(issue, field, moment):
+    """(значение, id) поля из changelog на момент moment: статус и исполнитель на конец
+    спринта, а не сейчас. Смен до момента нет — берётся «from» первой смены после него;
+    смен нет вовсе — None (значит, текущее значение)."""
+    changes = sorted(((h['created'], it) for h in issue.get('changelog', {}).get('histories', [])
+                      for it in h['items'] if it['field'] == field), key=lambda c: c[0])
+    if not changes:
+        return None
+    before = [it for at, it in changes if parse(at) <= moment]
+    if before:
+        return before[-1].get('toString'), before[-1].get('to')
+    return changes[0][1].get('fromString'), changes[0][1].get('from')
+
+
 def in_progress_since(issue, cats, rules):
     """Когда задачу взяли в работу, если она до сих пор не закрыта. Иначе None."""
     if rules.is_done(cats.get(str(issue['fields']['status']['id']))):
@@ -295,6 +311,7 @@ class Collector:
         self.control_days = int(p.get('control_days', 30))
         self.epic_scope = bool(p.get('epic_scope', True))
         self.epic_scope_max = int(p.get('epic_scope_max', 2000))
+        self.sp_id = None   # поле Story Points; находится в collect()
 
     # ---------------------------------------------------------- инфраструктура
 
@@ -341,12 +358,26 @@ class Collector:
                   'Задайте params.epic_link_field.')
         return None
 
+    def sp_field(self):
+        """TEAM RULE: поле Story Points. Нет его — выработка считается в задачах."""
+        explicit = self.params.get('sp_field', 'auto')
+        if explicit and explicit != 'auto':
+            return explicit
+        names = [n.lower() for n in (self.params.get('sp_names')
+                                     or ('story points', 'story point estimate', 'сторипоинты', 'стори поинты'))]
+        for f in self.jira.api('/rest/api/2/field'):
+            if f['name'].strip().lower() in names:
+                return f['id']
+        self.warn('поле Story Points не найдено — выработка участников в задачах. Задайте params.sp_field.')
+        return None
+
     # ---------------------------------------------------------- сбор
 
     def collect(self):
         board_id = self.team['board']
         self.cats = self.status_categories()
         epic_field = self.epic_link_field()
+        self.sp_id = self.sp_field()
 
         board_name = self.board_name(board_id)
 
@@ -368,6 +399,8 @@ class Collector:
         fields = 'key,summary,status,issuetype,created,creator,assignee,subtasks,priority'
         if epic_field:
             fields += ',' + epic_field  # иначе пришлось бы делать запрос на каждую историю
+        if self.sp_id:
+            fields += ',' + self.sp_id
         per_sprint = {s['id']: self.jira.sprint_issues(s['id'], fields, expand='changelog')
                       for s in last}
         # второй пакетный проход: в ответе с expand=changelog комментариев нет
@@ -381,6 +414,7 @@ class Collector:
         burndown = self.build_burndown(active, issues)
         control = self.build_control(last, per_sprint)
         logs = self.build_logs(last, per_sprint, with_comments)
+        output = self.build_output(last, per_sprint, active)
 
         return {
             'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
@@ -388,7 +422,7 @@ class Collector:
             'boardUrl': f'{self.jira.base}/secure/RapidBoard.jspa?rapidView={board_id}',
             'jiraBase': self.jira.base, 'sprintName': active['name'],
             'epics': epics, 'metrics': metrics, 'burndown': burndown, 'control': control,
-            'velocity': velocity, 'logs': logs,
+            'velocity': velocity, 'output': output, 'logs': logs,
             'statusMap': dict(sorted(self.status_map.items())),
         }
 
@@ -569,6 +603,40 @@ class Collector:
         vel = {'sprints': velocity, 'unit': 'задач',
                'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)}
         return metrics, vel
+
+    def build_output(self, sprints, per_sprint, active):
+        """Выработка участников по спринтам: задачи и Story Points по статусу на конец
+        спринта (у активного — на сейчас), по исполнителю на тот же момент. Подзадачи не
+        считаются: оценка живёт на задаче. Lead Time участника — медиана его закрытых."""
+        out, leads = [], {}
+        for s in sprints:
+            current = s['id'] == active['id']
+            end = self.now if current else parse(s.get('completeDate') or s.get('endDate') or self.now.isoformat())
+            members = {}
+            for i in per_sprint[s['id']]:
+                f = i['fields']
+                if f['issuetype'].get('subtask'):
+                    continue
+                st = value_at(i, 'status', end) if not current else None
+                name, sid = st if st and st[0] else (f['status']['name'], f['status']['id'])
+                bucket = self.bucket(name, self.cats.get(str(sid)) or '')
+                who = value_at(i, 'assignee', end) if not current else None
+                who = who[0] if who else (f.get('assignee') or {}).get('displayName')
+                who = who or 'Не назначен'
+                sp = f.get(self.sp_id) if self.sp_id else None
+                sp = sp if isinstance(sp, (int, float)) else 0
+                row = members.setdefault(who, {b: [0, 0] for b in self.rules.empty_counts()})
+                row[bucket][0] += 1
+                row[bucket][1] += sp
+                lead, _, _ = lead_cycle(i, self.cats, self.rules)
+                if lead is not None:
+                    leads.setdefault(who, {})[i['key']] = lead
+            out.append({'name': s['name'], 'current': current,
+                        'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in row.items()}}
+                                    for who, row in sorted(members.items())]})
+        lead_by = {who: stats(list(v.values())) for who, v in leads.items()}
+        return {'unit': 'SP' if self.sp_id else 'задач', 'field': self.sp_id, 'sprints': out,
+                'lead': {who: {'median': st['median'], 'count': st['count']} for who, st in lead_by.items() if st}}
 
     def build_burndown(self, active, issues):
         start, end = parse(active['startDate']), parse(active['endDate'])

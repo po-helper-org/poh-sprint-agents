@@ -230,14 +230,40 @@ await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 check(await count() === '0', 'у другой команды своя корзина');
 
+// «!» в шапке — интерпретация ИИ: динамика, внимание, рекомендации
+await p.keyboard.press('Escape');
+await p.click('#interpBtn');
+await p.waitForTimeout(300);
+const interp = await p.evaluate(() => ({ open: document.getElementById('panelStack').classList.contains('open'),
+  heads: [...document.querySelectorAll('#storiesBody .interp-sec h3')].map(h => h.textContent),
+  items: document.querySelectorAll('#storiesBody .interp-sec li').length,
+  by: (document.querySelector('#storiesBody .ai-by') || {}).textContent || '' }));
+check(interp.open && interp.heads.join('|') === 'Что можно сказать о динамике команды|На что стоит обратить внимание|Рекомендации на будущее',
+      '«!» открывает сайдбар интерпретации из трёх разделов');
+check(interp.items >= 3 && interp.by.startsWith('Интерпретация ИИ, не данные'), 'пункты интерпретации и подпись «не данные»');
+await p.keyboard.press('Escape');
+await p.click('[data-team="mobile"]');
+await p.click('#interpBtn');
+await p.waitForTimeout(300);
+check(await p.evaluate(() => document.getElementById('interpBtn').classList.contains('empty')) &&
+      (await p.textContent('#storiesBody')).includes('/actual-sprint'), 'нет интерпретации — серая «!» и объяснение, откуда она');
+await p.keyboard.press('Escape');
+await p.click('[data-team="catalog"]');
+
 // презентация «ФАКТ | спринт»: от целей — OBJ → KR (эпик) → истории спринта
 await p.keyboard.press('Escape');
 await p.click('#presBtn');
 await p.waitForTimeout(400);
 const deckInfo = await p.evaluate(() => ({
   open: !document.getElementById('deck').hidden, hash: location.hash,
-  slides: [...document.querySelectorAll('#deckSlides .fslide')].map(s => ({
-    title: (s.querySelector('.slide-title, h1') || {}).textContent || '', h: Math.round(s.getBoundingClientRect().height) })),
+  // на сцене виден один слайд: высоту содержимого меряем, показывая каждый по очереди
+  slides: [...document.querySelectorAll('#deckSlides > .fslide')].map(s => {
+    const was = s.classList.contains('cur');
+    s.classList.add('cur');
+    const h = s.scrollHeight;
+    if (!was) s.classList.remove('cur');
+    return { title: (s.querySelector('.slide-title, h1') || {}).textContent || '', h };
+  }),
   toc: document.querySelectorAll('#deckTocList a').length,
   heroes: [...document.querySelectorAll('#deckSlides .hero-slide h1')].map(h => h.textContent).join('|'),
   teams: TEAMS.map(t => t.team).join('|'),
@@ -252,14 +278,64 @@ check(deckInfo.slides.some(s => s.title.startsWith('OBJ 1: Партнёрски�
 check(deckInfo.slides.some(s => s.title.startsWith('Без привязки к OKR')), 'эпики без цели — «Без привязки к OKR»');
 check(!deckInfo.slides.some(s => s.title.startsWith('Стримы')) && !deckInfo.legend, 'нет «Стримы: команда» и пояснения цветов');
 check(deckInfo.rows === deckInfo.stories, 'в таблицах — все истории спринта, по строке на историю');
-check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720');
+check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720, содержимое не вылезает');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
-check(deckInfo.slides.filter(s => s.title.startsWith('Операционный отчёт')).length === 3 * TEAMS_N(deckInfo),
-      'операционный отчёт — три слайда на команду');
-const ops = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.ops')].slice(0, 2)
-  .map(s => [...s.querySelectorAll('.metric-card h3')].map(h => h.textContent)));
-check(ops.every(t => t.length === 3 && t[0].startsWith('Общий') && t[1].startsWith('Прошлые 2 недели') && t[2].startsWith('Текущие 2 недели')),
-      'управление по историям и подзадачам: общий, прошлые и текущие 2 недели');
+check(deckInfo.slides.filter(s => s.title.startsWith('Операционный отчёт')).length === TEAMS_N(deckInfo),
+      'операционный отчёт — один слайд на команду');
+
+// сцена: один слайд на всю площадь, миниатюры слева, навигация кнопками
+const stage = await p.evaluate(() => {
+  const cur = document.querySelectorAll('#deckSlides > .fslide.cur');
+  const r = cur[0].getBoundingClientRect(), feed = document.getElementById('deckFeed').getBoundingClientRect();
+  return { cur: cur.length, first: cur[0] === document.querySelector('#deckSlides > .fslide'), w: r.width, feedW: feed.width,
+           thumbs: document.querySelectorAll('#deckTocList .thumb-box .fslide').length,
+           rail: getComputedStyle(document.getElementById('deckToc')).display, count: document.getElementById('deckCount').textContent };
+});
+check(stage.cur === 1 && stage.first, 'на сцене — один слайд, с первого');
+check(stage.w > stage.feedW - 60, 'слайд растянут на всю ширину сцены');
+check(stage.rail !== 'none' && stage.thumbs === deckInfo.slides.length, 'слева — миниатюры всех слайдов');
+check(stage.count === '1 / ' + deckInfo.slides.length, 'счётчик «1 / N»');
+await p.click('#deckNext');
+await p.keyboard.press('ArrowRight');
+check((await p.textContent('#deckCount')).startsWith('3 / '), 'кнопка › и стрелка листают');
+await p.click('#deckPrev');
+check((await p.textContent('#deckCount')).startsWith('2 / '), 'кнопка ‹ — назад');
+const goTo = async (sel) => {
+  await p.evaluate(sel => {
+    const s = document.querySelector(sel).closest('#deckSlides > .fslide');
+    document.querySelectorAll('#deckTocList a')[[...document.querySelectorAll('#deckSlides > .fslide')].indexOf(s)].click();
+  }, sel);
+  await p.waitForTimeout(100);
+};
+await goTo('#deckSlides .fslide.ops');
+check(await p.isVisible('#deckSlides .fslide.ops') &&
+      await p.evaluate(() => document.querySelector('#deckTocList a.cur') !== null), 'клик по миниатюре — переход к слайду');
+
+// операционный отчёт: общая производительность, выработка участников, таблица за 3 спринта
+const ops = await p.evaluate(() => {
+  const s = document.querySelector('#deckSlides .fslide.ops');
+  return { heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
+           cols: [...s.querySelectorAll('table.mtab thead th')].map(h => h.firstChild.textContent),
+           sprints: TEAMS[0].output.sprints.map(x => x.name),
+           rows: s.querySelectorAll('table.mtab tbody tr').length,
+           members: new Set(TEAMS[0].output.sprints.flatMap(x => x.members.map(m => m.name))).size,
+           cell: s.querySelector('table.mtab td.out[data-tip]').textContent,
+           legend: s.querySelector('.ops-legend').textContent,
+           control: !!s.querySelector('.metric-card') };
+});
+check(ops.heads[0].startsWith('Общая производительность команды') && ops.heads[1].startsWith('Выработка каждого участника'),
+      'слева два графика: производительность команды и выработка участников');
+check(ops.cols.join('|') === ['Участник', ...ops.sprints, 'Lead time'].join('|'), 'таблица: участник, три спринта, Lead time');
+check(ops.rows === ops.members + 1, 'по строке на участника и итог команды');
+check(/^\d+\(\d+(,\d)?\)(\/\d+\(\d+(,\d)?\)){5}$/.test(ops.cell), 'выработка: задачи(SP) по шести статусам через «/»');
+check(ops.legend.startsWith('Не начатоВ блокеВ работеРевьюОтладкаГотово'), 'цвета статусов: не начато / в блоке / в работе / ревью / отладка / готово');
+check(!ops.control, 'диаграмм управления на слайде нет');
+await p.hover('#deckSlides .fslide.ops td.out[data-tip] >> nth=1');
+await p.waitForTimeout(150);
+const outTip = await p.evaluate(() => { const t = document.querySelector('.deck-tip'); return { shown: !t.hidden, text: t.textContent }; });
+check(outTip.shown && outTip.text.includes('Готово — выработка') && outTip.text.includes('SP') && outTip.text.includes('Не закрыто'),
+      'наведение на выработку — расшифровка по статусам');
+await goTo('#deckSlides tr.row[data-key="INIT-136"]');
 const rowCheck = await p.evaluate(() => {
   const tr = document.querySelector('#deckSlides tr.row[data-key="INIT-136"]');
   const auto = document.querySelector('#deckSlides tr.row[data-key="INIT-126"]');
@@ -275,6 +351,7 @@ check(/^Сделано: .+\(\d+ из \d+ подзадач\)\.$/.test(rowCheck.au
       'без агента текст строки — из данных: закрытые подзадачи и следующая открытая');
 check(rowCheck.kr, 'шапка группы — KR');
 // клик по строке — активность истории
+await goTo('#deckSlides tr.row[data-key="INIT-112"]');
 await p.click('#deckSlides tr.row[data-key="INIT-112"] td.task');
 await p.waitForTimeout(300);
 const tabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent));
@@ -285,6 +362,7 @@ await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 check(await p.isVisible('#deck') && !(await p.isVisible('#panelStack.open')), 'Esc закрывает сайдбар, колода остаётся');
 // клик по KR — объём эпика
+await goTo('#deckSlides tr.grp.kr');
 await p.click('#deckSlides tr.grp.kr >> nth=0');
 await p.waitForTimeout(300);
 const krTabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]));
@@ -297,6 +375,7 @@ check(krSum.n === krSum.scope, 'в сайдбаре KR — весь объём �
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // ПКМ — комментарий
+await goTo('#deckSlides tr.row[data-key="INIT-136"]');
 await p.click('#deckSlides tr.row[data-key="INIT-136"] td.task', { button: 'right' });
 check(await p.isVisible('#cpop') && (await p.textContent('#cpopTarget')).includes('INIT-136'), 'правый клик по строке — комментарий к истории');
 await p.fill('#cpopText', 'Уточнить дату выкатки');
@@ -313,6 +392,8 @@ await p.keyboard.press('Enter');
 check(!(await p.isVisible('#panelStack.open')), 'в режиме правки клик не открывает сайдбар');
 await p.click('#deckEdit');
 await p.reload();
+await p.waitForTimeout(300);
+await goTo('[data-edit="done:INIT-136"]');
 await p.waitForTimeout(300);
 check((await p.textContent('[data-edit="done:INIT-136"]')).endsWith('Показали PO.'), 'правка текста сохраняется и переживает перезагрузку');
 p.once('dialog', d => d.accept());

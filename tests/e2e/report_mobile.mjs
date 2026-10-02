@@ -93,6 +93,16 @@ check(await noSideScroll(), '«Весь эпик» без горизонталь
 await p.tap('.sidebar-close');
 await p.waitForTimeout(300);
 
+// «!» — интерпретация ИИ на весь экран
+const ib = await p.locator('#interpBtn').boundingBox();
+check(ib.width >= 28 && ib.x + ib.width <= 393, '«!» рядом с названием команды, в пределах экрана');
+await p.tap('#interpBtn');
+await p.waitForTimeout(350);
+check(await panelOpen() && (await p.locator('#storiesBody .interp-sec').count()) === 3 && await noSideScroll(),
+      'тап по «!» — интерпретация из трёх разделов, без горизонтальной прокрутки');
+await p.tap('.sidebar-close');
+await p.waitForTimeout(300);
+
 // метрики: подсказка «i» по тапу, шторкой снизу
 await p.tap('#metricsLink');
 await p.waitForTimeout(400);
