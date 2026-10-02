@@ -155,7 +155,35 @@
   .ops-tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   .fslide.ops .ops2 { margin-top: 0; }
   .ops3 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 36px; margin-top: 4px; }
-  .ops3 .ops-wide { grid-column: 1 / -1; }
+  /* «Сроки»: cycle time с полосами спринтов и время в статусах */
+  .cyc { cursor: pointer; border-radius: 6px; }
+  .cyc:hover { box-shadow: 0 0 0 6px #f7f7f7; background: #f7f7f7; }
+  .cyc .chart { width: 100%; height: auto; display: block; }
+  .ops-legend .l-pt { width: 8px; height: 8px; border-radius: 50%; opacity: .6; }
+  .ops-legend .l-line { width: 18px; height: 0; border-radius: 0; }
+  .tis-title { margin-top: 16px; }
+  .tis-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 6px; }
+  .tis { border-top: 1px solid #e5e5e5; padding-top: 8px; }
+  .tis-h { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #777; }
+  .tis-big { font-size: 34px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .tis-big small { font-size: 15px; font-weight: 400; color: #888; }
+  .tis-d { font-size: 12px; display: block; margin: 2px 0 4px; }
+  .tis-d.worse { color: var(--c-blocked); } .tis-d.better { color: var(--c-done); } .tis-d.same { color: #888; }
+  .tis .chart { width: 100%; height: auto; display: block; }
+  .tis-none { font-size: 13px; color: #999; margin-top: 8px; }
+  .ckpis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 4px; }
+  .ck { padding: 0 8px; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  .ck:first-child { border-left: 0; }
+  .ck b { font-size: 17px; font-variant-numeric: tabular-nums; } .ck b small { font-size: 11px; font-weight: 400; color: var(--muted); }
+  .ck span { font-size: 11px; color: var(--muted); }
+  .ck[title] { cursor: help; }
+  .cbig .chart { width: 100%; height: auto; display: block; }
+  .cbig { margin-bottom: 14px; }
+  table.ctab { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+  table.ctab th, table.ctab td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; }
+  table.ctab th:first-child, table.ctab td:first-child { text-align: left; }
+  table.ctab th { font-size: 11.5px; color: var(--muted); font-weight: 400; }
+  @media (max-width: 700px) { .tis-row { grid-template-columns: 1fr; gap: 12px; } .ckpis { grid-template-columns: repeat(4, 1fr); row-gap: 8px; } }
   .ops-legend .l-ideal { width: 16px; height: 0; border-top: 2px solid #9ca3af; border-radius: 0; }
   .ops-legend .l-fact { width: 16px; height: 0; border-top: 2px solid #dc2626; border-radius: 0; }
   .ops-legend .l-wknd { background: #eee; }
@@ -636,7 +664,7 @@
 
   // ---------- операционный отчёт команды ----------
   // «Общая производительность команды»: план по трём группам на конец спринта и сделано
-  function teamOutputChart(m) {
+  function teamOutputChart(m, box) {
     var k = m.sp ? 1 : 0;
     var finished = m.team.filter(function (c, i) { return c && !m.sprints[i].current; });
     var avgOf = finished.length ? finished : m.team.filter(Boolean);
@@ -649,83 +677,228 @@
       }),
       avgDone: avgOf.length ? avgOf.reduce(function (a, c) { return a + c.groups.done[k]; }, 0) / avgOf.length : 0
     };
-    return withChartBox({ W: 560, H: 220 }, function () { return velocityChart(data); });
+    return withChartBox(box || { W: 560, H: 220 }, function () { return velocityChart(data); });
   }
 
-  // Обзорная диаграмма управления за 3 спринта: два потока — истории и подзадачи,
-  // у каждого своя медиана; границы спринтов — вертикальными линиями.
-  function controlOverview(t, m, box) {
-    var c = t.control || {};
+  // ---------- слайд «Сроки» ----------
+  // короткое имя спринта для подписей: «Спринт 72» → «С72»
+  function sprintShort(name) {
+    var n = /(\d+)\s*$/.exec(name || '');
+    return n ? 'С' + n[1] : (name || '');
+  }
+
+  // сглаженная линия через точки, монотонная по x (как curveMonotoneX): не петляет
+  // назад и не выходит за соседние значения; точки одного x сливаются в последнюю
+  function smoothPath(pts) {
+    var p = [];
+    pts.forEach(function (q) { if (p.length && Math.abs(p[p.length - 1][0] - q[0]) < .5) p[p.length - 1] = q; else p.push(q); });
+    if (!p.length) return '';
+    var n = p.length, d = 'M' + p[0][0].toFixed(1) + ' ' + p[0][1].toFixed(1);
+    if (n === 1) return d;
+    var sl = [], m = [];
+    for (var i = 0; i < n - 1; i++) sl.push((p[i + 1][1] - p[i][1]) / (p[i + 1][0] - p[i][0]));
+    m[0] = sl[0]; m[n - 1] = sl[n - 2];
+    for (i = 1; i < n - 1; i++) m[i] = sl[i - 1] * sl[i] <= 0 ? 0 : 2 / (1 / sl[i - 1] + 1 / sl[i]);
+    for (i = 0; i < n - 1; i++) {
+      var h = (p[i + 1][0] - p[i][0]) / 3;
+      d += ' C' + (p[i][0] + h).toFixed(1) + ' ' + (p[i][1] + m[i] * h).toFixed(1) + ' ' + (p[i + 1][0] - h).toFixed(1) + ' ' +
+        (p[i + 1][1] - m[i + 1] * h).toFixed(1) + ' ' + p[i + 1][0].toFixed(1) + ' ' + p[i + 1][1].toFixed(1);
+    }
+    return d;
+  }
+
+  var d1 = function (v) { return (Math.round(v * 10) / 10).toFixed(1).replace('.', ','); };
+
+  var CYCLE_STREAMS = [
+    { id: 'stories', label: 'Истории', color: '#2563eb', dash: '' },
+    { id: 'subtasks', label: 'Подзадачи', color: '#ea580c', dash: '7 5' }
+  ];
+  var CYCLE_ROLL = 5;
+
+  // Cycle time закрытых задач за 3 спринта: полосы спринтов, точки двух потоков и
+  // скользящее среднее по последним пяти задачам потока, значение — подписью в конце линии.
+  function cycleChart(t, m, box) {
+    var from = opsFrom(t, m);
     var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
-    var starts = m ? m.sprints.map(function (s) { return s.start; }).filter(Boolean) : [];
-    var from = starts[0] || isoDay(new Date(new Date(today + 'T12:00:00').getTime() - 42 * 86400000));
-    var streams = [
-      { id: 'stories', label: 'Истории', color: '#2563eb', pts: ((c.stories || {}).points || []) },
-      { id: 'subtasks', label: 'Подзадачи', color: '#ea580c', pts: ((c.subtasks || {}).points || []) }
-    ].map(function (st) {
-      st.pts = st.pts.filter(function (p) { return p.doneAt >= from && p.doneAt <= today; });
-      var xs = st.pts.map(function (p) { return p.cycle; }).sort(function (a, b) { return a - b; });
-      var mid = Math.floor(xs.length / 2);
-      st.median = xs.length ? (xs.length % 2 ? xs[mid] : (xs[mid - 1] + xs[mid]) / 2) : null;
-      return st;
+    var streams = CYCLE_STREAMS.map(function (st) {
+      var pts = controlWindow((t.control || {})[st.id], from, today).points;
+      var roll = pts.map(function (p, i) {
+        var w = pts.slice(Math.max(0, i - CYCLE_ROLL + 1), i + 1);
+        return w.reduce(function (a, q) { return a + q.cycle; }, 0) / w.length;
+      });
+      return Object.assign({ pts: pts, roll: roll }, st);
     });
     var all = streams[0].pts.concat(streams[1].pts);
     if (!all.length) return '<div class="ops-empty">За три спринта закрытых задач нет.</div>';
-    var W = (box && box.W) || 470, H = (box && box.H) || 220, padL = 34, padR = 10, padT = 18, padB = 26;
+    var W = box.W, H = box.H, padL = 34, padR = 128, padT = 26, padB = 22;
     var t0 = new Date(from + 'T00:00:00').getTime(), t1 = new Date(today + 'T23:59:59').getTime();
-    var maxY = Math.max.apply(null, all.map(function (p) { return p.cycle; })) * 1.08 || 1;
-    var xOf = function (iso) { return padL + (W - padL - padR) * (new Date(iso + 'T12:00:00').getTime() - t0) / (t1 - t0); };
+    var maxY = Math.max.apply(null, all.map(function (p) { return p.cycle; })) * 1.06 || 1;
+    var xOf = function (iso) {
+      var v = new Date(iso.length > 10 ? iso : iso + 'T12:00:00').getTime();
+      return padL + (W - padL - padR) * Math.min(1, Math.max(0, (v - t0) / (t1 - t0)));
+    };
     var yOf = function (v) { return padT + (H - padT - padB) * (1 - v / maxY); };
     var parts = [];
-    [0, Math.round(maxY / 2), Math.round(maxY)].forEach(function (v) {
-      parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(v).toFixed(1) + '" y2="' + yOf(v).toFixed(1) + '" stroke="#eee"/>');
-      parts.push('<text x="4" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="10" fill="#666">' + v + '</text>');
+    // полосы спринтов: чередующаяся заливка и короткое имя сверху
+    (m ? m.sprints : []).forEach(function (s, i) {
+      if (!s.start) return;
+      var x0 = xOf(s.start < from ? from : s.start), x1 = xOf(s.end && s.end < today ? s.end : today);
+      if (x1 <= x0) return;
+      parts.push('<rect x="' + x0.toFixed(1) + '" y="' + padT + '" width="' + (x1 - x0).toFixed(1) + '" height="' + (H - padT - padB) +
+        '" fill="' + (i % 2 ? '#f3f4f6' : '#fafafa') + '"/>');
+      parts.push('<text x="' + ((x0 + x1) / 2).toFixed(1) + '" y="' + (padT - 9) + '" font-size="12" font-weight="700" fill="#888" text-anchor="middle">' +
+        esc(sprintShort(s.name)) + (s.current ? ' · идёт' : '') + '</text>');
     });
-    (m ? m.sprints : []).forEach(function (s) {
-      if (!s.start || s.start < from) return;
-      var x = xOf(s.start).toFixed(1);
-      parts.push('<line x1="' + x + '" x2="' + x + '" y1="' + padT + '" y2="' + (H - padB) + '" stroke="#bbb" stroke-dasharray="2 3"/>');
-      parts.push('<text x="' + (+x + 4) + '" y="' + (padT - 6) + '" font-size="10" fill="#777">' + esc(s.name) + '</text>');
-    });
+    var step = maxY > 40 ? 10 : maxY > 16 ? 5 : 2;
+    for (var v = 0; v <= maxY; v += step) {
+      parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(v).toFixed(1) + '" y2="' + yOf(v).toFixed(1) + '" stroke="#e5e7eb"/>');
+      parts.push('<text x="' + (padL - 6) + '" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="11" fill="#888" text-anchor="end">' + v + '</text>');
+    }
     streams.forEach(function (st) {
-      if (st.median !== null) {
-        parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(st.median).toFixed(1) + '" y2="' + yOf(st.median).toFixed(1) +
-          '" stroke="' + st.color + '" stroke-width="1.4" stroke-dasharray="5 4" opacity=".8"><title>' + st.label + ': медиана ' + fmtNum(st.median) + ' дн.</title></line>');
-      }
       st.pts.forEach(function (p) {
-        parts.push('<circle cx="' + xOf(p.doneAt).toFixed(1) + '" cy="' + yOf(p.cycle).toFixed(1) + '" r="' + (st.id === 'stories' ? 3.6 : 3) +
-          '" fill="' + (st.id === 'stories' ? st.color : '#fff') + '" stroke="' + st.color + '" stroke-width="1.4" opacity=".9"><title>' +
-          esc(p.key + ' · ' + fmtNum(p.cycle) + ' дн. · закрыта ' + ddmm(p.doneAt) + '\n' + p.title) + '</title></circle>');
+        parts.push('<circle cx="' + xOf(p.doneAt).toFixed(1) + '" cy="' + yOf(p.cycle).toFixed(1) + '" r="' + (st.id === 'stories' ? 4 : 3.2) +
+          '" fill="' + st.color + '" opacity=".45"><title>' + esc(p.key + ' · ' + fmtNum(p.cycle) + ' дн. · закрыта ' + ddmm(p.doneAt) + '\n' + p.title) + '</title></circle>');
       });
     });
-    parts.push('<text x="' + (W - padR) + '" y="' + (H - 6) + '" font-size="10" fill="#999" text-anchor="end">дата закрытия →</text>');
-    var legend = streams.map(function (st) {
-      return '<span><i class="' + (st.id === 'stories' ? 'l-dot' : 'l-ring') + '" style="border-color:' + st.color + ';background:' +
-        (st.id === 'stories' ? st.color : '#fff') + '"></i>' + st.label + ' · ' + st.pts.length +
-        (st.median !== null ? ' · медиана ' + fmtNum(st.median) + ' дн.' : '') + '</span>';
-    }).join('');
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' +
-      '<div class="ops-legend">' + legend + '</div>';
+    // сглаженные средние и подписи в конце; близкие подписи разводим по вертикали
+    var ends = [];
+    streams.forEach(function (st) {
+      if (!st.pts.length) return;
+      var line = st.pts.map(function (p, i) { return [xOf(p.doneAt), yOf(st.roll[i])]; });
+      parts.push('<path d="' + smoothPath(line) + '" fill="none" stroke="' + st.color + '" stroke-width="2.6"' +
+        (st.dash ? ' stroke-dasharray="' + st.dash + '"' : '') + ' stroke-linecap="round"/>');
+      var last = line[line.length - 1];
+      ends.push({ st: st, x: last[0], y: last[1], val: st.roll[st.roll.length - 1] });
+    });
+    ends.sort(function (a, b) { return a.y - b.y; });
+    if (ends.length === 2 && ends[1].y - ends[0].y < 34) {
+      var mid = (ends[0].y + ends[1].y) / 2;
+      ends[0].ly = mid - 17; ends[1].ly = mid + 17;
+    }
+    ends.forEach(function (e) {
+      var ly = e.ly === undefined ? e.y : e.ly;
+      parts.push('<circle cx="' + e.x.toFixed(1) + '" cy="' + e.y.toFixed(1) + '" r="4.5" fill="#fff" stroke="' + e.st.color + '" stroke-width="2.4"/>');
+      parts.push('<text x="' + (W - padR + 12) + '" y="' + (ly - 2).toFixed(1) + '" font-size="12" fill="' + e.st.color + '">' + e.st.label + '</text>');
+      parts.push('<text x="' + (W - padR + 12) + '" y="' + (ly + 16).toFixed(1) + '" font-size="17" font-weight="700" fill="' + e.st.color + '">' +
+        d1(e.val) + ' дн.</text>');
+    });
+    var legend = '<div class="ops-legend">' + streams.map(function (st) {
+      return '<span><i class="l-pt" style="background:' + st.color + '"></i>' + st.label + ' · ' + st.pts.length + '</span>';
+    }).join('') + streams.map(function (st) {
+      return '<span><i class="l-line" style="border-top:2.5px ' + (st.dash ? 'dashed' : 'solid') + ' ' + st.color + '"></i>' +
+        st.label.toLowerCase() + ': среднее по ' + CYCLE_ROLL + ' последним</span>';
+    }).join('') + '</div>';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' + legend;
   }
 
-  // Операционный отчёт команды — один слайд без заголовка: слева производительность
-  // и диаграмма управления, справа участники за 3 спринта.
+  // «Среднее время в статусе по спринтам»: крупно текущее значение, изменение к первому
+  // спринту окна (больше времени — хуже), столбики по спринтам — текущий насыщенный.
+  var TIS = [
+    { id: 'blocked', label: 'Заблокировано', color: 'var(--c-blocked)' },
+    { id: 'review', label: 'Ревью', color: 'var(--c-review)' },
+    { id: 'testing', label: 'Отладка', color: 'var(--c-testing)' }
+  ];
+
+  function statusTimePanel(m, st) {
+    var vals = m.sprints.map(function (s) { var v = (s.timeInStatus || {})[st.id]; return typeof v === 'number' ? v : null; });
+    var have = vals.map(function (v, i) { return v === null ? -1 : i; }).filter(function (i) { return i >= 0; });
+    if (!have.length) return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-none">нет данных</div></div>';
+    var cur = vals[have[have.length - 1]], first = vals[have[0]];
+    var delta = '';
+    if (have.length > 1) {
+      var base = sprintShort(m.sprints[have[0]].name);
+      var pct = first ? Math.round(100 * (cur - first) / first) : (cur ? 100 : 0);
+      delta = Math.abs(pct) < 5 ? '<span class="tis-d same">без изменений к ' + esc(base) + '</span>'
+        : '<span class="tis-d ' + (pct > 0 ? 'worse' : 'better') + '">' + (pct > 0 ? '+' : '−') + Math.abs(pct) + '% к ' + esc(base) +
+          ', ' + (pct > 0 ? 'хуже' : 'лучше') + '</span>';
+    }
+    var W = 340, H = 104, padB = 18, padT = 16, max = Math.max.apply(null, have.map(function (i) { return vals[i]; })) || 1;
+    var n = m.sprints.length, bw = Math.min(64, (W - 20) / n - 14);
+    var bars = m.sprints.map(function (s, i) {
+      var x = 10 + (W - 20) * (i + .5) / n - bw / 2, v = vals[i];
+      var h = v === null ? 0 : (H - padT - padB) * v / max, y = H - padB - h;
+      var isCur = i === have[have.length - 1];
+      return (v === null ? '' : '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
+          '" rx="2" fill="' + st.color + '" opacity="' + (isCur ? 1 : .3) + '"/><text x="' + (x + bw / 2).toFixed(1) + '" y="' + (y - 4).toFixed(1) +
+          '" font-size="11" text-anchor="middle" fill="' + (isCur ? '#111' : '#888') + '">' + d1(v) + '</text>') +
+        '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" font-size="11" text-anchor="middle" fill="' + (isCur ? '#111' : '#999') + '"' +
+        (isCur ? ' font-weight="700"' : '') + '>' + esc(sprintShort(s.name)) + '</text>';
+    }).join('');
+    return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-big" style="color:' + st.color + '">' + fmtNum(cur) +
+      ' <small>дн.</small></div>' + delta + '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + bars + '</svg></div>';
+  }
+
+  function cycleSlide(t) {
+    var m = outputModel(t);
+    var chart = '<div class="cyc" data-ctl="' + esc(t.slug) + '" title="Подробный разбор: диаграмма управления">' +
+      '<div class="ops-h">Cycle time закрытых задач, дни <small>· за 3 спринта, клик — разбор</small></div>' +
+      cycleChart(t, m, { W: 1184, H: 330 }) + '</div>';
+    var tis = m && m.sprints.some(function (s) { return s.timeInStatus; })
+      ? '<div class="tis-row">' + TIS.map(function (st) { return statusTimePanel(m, st); }).join('') + '</div>'
+      : '<div class="ops-empty">Сборщик не отдал время в статусах (нужна версия 1.8.0).</div>';
+    return slide('ops cycle', '<div class="ops-tag">' + esc(t.team) + ' · сроки</div>' + chart +
+      '<div class="ops-h tis-title">Среднее время в статусе по спринтам, дни</div>' + tis,
+      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Сроки · ' + t.team }));
+  }
+
+  // начало окна «за 3 спринта»: старт первого из трёх спринтов выработки, иначе −6 недель
+  function opsFrom(t, m) {
+    var starts = m ? m.sprints.map(function (s) { return s.start; }).filter(Boolean) : [];
+    var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
+    return starts[0] || addDays(today, -42);
+  }
+
+  // Детальный разбор диаграммы управления: по потоку — показатели, диаграмма со
+  // списками выбросов и зоны риска, разбивка по спринтам.
+  function openControl(t) {
+    if (team.slug !== t.slug) switchTeam(t.slug);
+    var m = outputModel(t), from = opsFrom(t, m);
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Диаграмма управления · ' + t.team;
+    stackTitle.textContent = 'Cycle Time за 3 спринта, с ' + ddmm(from);
+    scopeBtn.hidden = true;
+    scopeEpic = null;
+    storiesLabel.textContent = '';
+    var data = { stories: controlWindow((t.control || {}).stories, from), subtasks: controlWindow((t.control || {}).subtasks, from) };
+    var sprints = m ? m.sprints : [];
+    sideTabs([{ id: 'stories', label: 'Истории', n: data.stories.points.length },
+              { id: 'subtasks', label: 'Подзадачи', n: data.subtasks.points.length }], 'stories', function (id, body) {
+      var c = data[id], gen = id === 'stories' ? 'историй' : 'подзадач';
+      if (!c.points.length) { body.innerHTML = '<div class="sidebar-empty">Закрытых ' + gen + ' за 3 спринта нет.</div>'; return; }
+      var kpi = function (v, l, tip) { return '<div class="ck"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><b>' + v + '</b><span>' + l + '</span></div>'; };
+      var pct = Math.round(100 * c.outliers / c.points.length);
+      var rows = sprints.map(function (s, i) {
+        var next = sprints[i + 1];
+        var w = controlWindow((t.control || {})[id], s.start, next && next.start ? addDays(next.start, -1) : null);
+        return '<tr><td>' + esc(s.name) + (s.current ? ' <small>идёт</small>' : '') + '</td><td>' + w.points.length + '</td><td>' +
+          (w.points.length ? fmt(w.median) : '—') + '</td><td>' + (w.points.length ? fmt(w.mean) : '—') + '</td><td>' +
+          (w.points.length ? w.outliers : '—') + '</td></tr>';
+      }).join('');
+      body.innerHTML = '<div class="ckpis">' + kpi(c.points.length, 'закрыто') + kpi(fmt(c.median) + ' <small>дн.</small>', 'медиана') +
+        kpi(fmt(c.mean) + ' <small>дн.</small>', 'среднее') + kpi(fmt(c.sd) + ' <small>дн.</small>', 'σ', 'Разброс: σ не меньше среднего — сроки непредсказуемы') +
+        kpi(fmt(c.limit) + ' <small>дн.</small>', 'порог выброса', 'среднее + σ') +
+        kpi(c.outliers + ' <small>· ' + pct + '%</small>', 'выбросов') + kpi(c.risks.length, 'в зоне риска', 'не закрыты и идут дольше медианы') + '</div>' +
+        '<div class="cbig">' + withTeam(t, function () { return withChartBox({ W: 760, H: 280 }, function () { return controlChart(c, gen, id === 'stories' ? 'story' : 'subtask'); }); }) + '</div>' +
+        (rows ? '<div class="pane-label">По спринтам</div><table class="ctab"><thead><tr><th>Спринт</th><th>закрыто</th><th>медиана, дн.</th><th>среднее, дн.</th><th>выбросов</th></tr></thead><tbody>' + rows + '</tbody></table>' : '');
+    });
+    openPanel();
+  }
+
   function opsSlide(t) {
     var m = outputModel(t);
+    var box = { W: 560, H: 540 };
     var legend = '<div class="ops-legend">' + OUT_GROUPS.map(function (g) {
       return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
     }).join('') + '<span><i class="l-avg"></i>среднее выполненное</span></div>';
-    // сверху: производительность за 3 спринта и сгорание текущего спринта; снизу во всю
-    // ширину — диаграмма управления за 3 спринта. Выработка по участникам — в отчёте PO.
+    // слева производительность за 3 спринта, справа сгорание текущего спринта — крупно.
+    // Сроки и диаграмма управления — следующий слайд, выработка по участникам — в отчёте PO.
     var perf = '<div><div class="ops-h">Производительность команды за 3 спринта <small>· ' + (m && m.sp ? 'SP' : 'задач') + '</small></div>' +
-      '<div class="ops-chart">' + (m ? teamOutputChart(m) : withTeam(t, function () { return withChartBox({ W: 560, H: 220 }, velocityChart); })) + '</div>' + legend + '</div>';
+      '<div class="ops-chart">' + (m ? teamOutputChart(m, box) : withTeam(t, function () { return withChartBox(box, velocityChart); })) + '</div>' + legend + '</div>';
     var p = teamPace(t);
     var burn = '<div><div class="ops-h">Сгорание спринта <small>· ' + esc(t.sprintName) + (p ? ', день ' + p.workday + ' из ' + p.workdays : '') + '</small></div>' +
-      '<div class="ops-chart">' + withTeam(t, function () { return withChartBox({ W: 560, H: 220 }, burndownChart); }) + '</div>' +
+      '<div class="ops-chart">' + withTeam(t, function () { return withChartBox(box, burndownChart); }) + '</div>' +
       '<div class="ops-legend"><span><i class="l-ideal"></i>идеальная линия</span><span><i class="l-fact"></i>осталось задач</span><span><i class="l-wknd"></i>выходные</span></div></div>';
-    var ctl = '<div class="ops-wide"><div class="ops-h">Диаграмма управления за 3 спринта <small>· Cycle Time, дн.</small></div>' +
-      '<div class="ops-chart">' + controlOverview(t, m, { W: 1180, H: 240 }) + '</div></div>';
-    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops3">' + perf + burn + ctl + '</div>',
+    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops3">' + perf + burn + '</div>',
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Операционный отчёт · ' + t.team }));
   }
 
@@ -872,6 +1045,7 @@
         pages.forEach(function (page, i) { html += objSlide(x.t, g, page, i, pages.length); });
       });
       html += opsSlide(x.t);
+      html += cycleSlide(x.t);
       html += plansSlide(x.t, x.streams);
     });
     html += changesSlide() + demoSlide() + totalsSlide(all) + risksSlide();
@@ -888,7 +1062,7 @@
   // «Слайды»: краткий список — номер · тип · заголовок, из фактической колоды
   function renderToc() {
     document.getElementById('deckTocList').innerHTML = Array.prototype.map.call(deckSlides.querySelectorAll(':scope > .fslide'), function (s, i) {
-      var h = s.querySelector('.slide-title, h1');
+      var h = s.querySelector('.slide-title, h1, .ops-tag');
       var kind = s.classList.contains('hero-slide') ? 'команда' : s.classList.contains('title-slide') ? 'титул' : 'слайд';
       var title = h ? h.textContent : '';
       return '<a href="#' + s.id + '" data-go="' + s.id + '" title="' + esc(title) + '"><span class="kind">' + (i + 1) + ' · ' + kind +
@@ -1098,6 +1272,8 @@
 
   deckSlides.addEventListener('click', function (e) {
     if (deckEditing || e.target.closest('a')) return;
+    var ctl = e.target.closest('[data-ctl]');
+    if (ctl) { openControl(TEAMS.find(function (x) { return x.slug === ctl.dataset.ctl; })); return; }
     var el = e.target.closest('[data-ref]');
     var ref = el && deckRefs[el.dataset.ref];
     if (!ref) return;

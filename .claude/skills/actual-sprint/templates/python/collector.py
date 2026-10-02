@@ -48,7 +48,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.7.0'
+VERSION = '1.8.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -293,6 +293,25 @@ def status_history(issue, until, since=None):
             if it['field'] == 'status':
                 out.append({'at': h['created'][:16], 'from': it.get('fromString'), 'to': it.get('toString'),
                             'by': (h.get('author') or {}).get('displayName')})
+    return out
+
+
+def status_intervals(issue, cats, bucket_of):
+    """Интервалы задачи по бакетам статусов за всё время: [(начало, конец|None, бакет)]."""
+    f = issue['fields']
+    changes = sorted(((h['created'], it) for h in issue.get('changelog', {}).get('histories', [])
+                      for it in h['items'] if it['field'] == 'status'), key=lambda c: c[0])
+    if changes:
+        first = changes[0][1]
+        state = bucket_of(first.get('fromString') or '', cats.get(str(first.get('from'))) or '')
+    else:
+        state = bucket_of(f['status']['name'], cats.get(str(f['status']['id'])) or '')
+    out, at = [], parse(f['created'])
+    for when, it in changes:
+        when = parse(when)
+        out.append((at, when, state))
+        at, state = when, bucket_of(it.get('toString') or '', cats.get(str(it.get('to'))) or '')
+    out.append((at, None, state))
     return out
 
 
@@ -703,6 +722,7 @@ class Collector:
             end = self.now if current else parse(s.get('completeDate') or s.get('endDate') or self.now.isoformat())
             begin = parse(s['startDate']) if s.get('startDate') else None
             members, items = {}, {}
+            spent = {}            # бакет → [дней по задачам]: среднее время в статусе за спринт
             for i in per_sprint[s['id']]:
                 f = i['fields']
                 if f['issuetype'].get('subtask'):
@@ -729,8 +749,19 @@ class Collector:
                 lead, _, _ = lead_cycle(i, self.cats, self.rules)
                 if lead is not None:
                     leads.setdefault(who, {})[i['key']] = lead
+            # время в статусах — по всем задачам спринта, включая подзадачи, в границах спринта
+            for i in per_sprint[s['id']]:
+                acc = {}
+                for a, b, bk in status_intervals(i, self.cats, lambda n, c: self.rules.classify(n, c)[0]):
+                    lo, hi = max(a, begin) if begin else a, min(b or end, end)
+                    if hi > lo:
+                        acc[bk] = acc.get(bk, 0) + (hi - lo).total_seconds() / 86400
+                for bk, d in acc.items():
+                    spent.setdefault(bk, []).append(d)
             out.append({'name': s['name'], 'current': current,
                         'start': (s.get('startDate') or '')[:10] or None, 'end': (s.get('endDate') or '')[:10] or None,
+                        'timeInStatus': {bk: round(sum(v) / len(v), 1) for bk, v in sorted(spent.items())
+                                         if bk in ('blocked', 'progress', 'review', 'testing')},
                         'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in row.items()},
                                      'items': items.get(who, [])}
                                     for who, row in sorted(members.items())]})

@@ -160,10 +160,9 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
 
     def test_ops_slide_member_output(self):
-        """Операционный отчёт без заголовка: производительность, диаграмма управления за 3 спринта
-        (истории и подзадачи), участники тремя группами с раскрытием по наведению и сайдбаром."""
-        for part in ('Общая производительность команды', 'Диаграмма управления за 3 спринта', 'function controlOverview(',
-                     'Lead time', 'function tipHtml(', 'function teamOutputChart(', 'function openMember(',
+        """Операционный отчёт без заголовка: производительность и сгорание спринта; группы статусов
+        участников — для подсказок и сайдбара участника."""
+        for part in ('Производительность команды за 3 спринта', 'Lead time', 'function tipHtml(', 'function teamOutputChart(', 'function openMember(',
                      'function itemActivityHtml(', "label: 'Backlog / To Do'", "label: 'Отменено'", 'CANCEL_RE'):
             self.assertIn(part, self.html)
         ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function changesSlide(')]
@@ -189,10 +188,23 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertNotIn("'Активность за '", self.html)
 
     def test_ops_three_charts(self):
-        """Операционный слайд: производительность и сгорание спринта сверху, диаграмма управления снизу во всю ширину."""
-        ops = self.html[self.html.index('function opsSlide('):self.html.index('function plansSlide(')]
-        self.assertLess(ops.index('teamOutputChart(m)'), ops.index('burndownChart'))
-        self.assertIn("'<div class=\"ops-wide\">", ops)
+        """Операционный слайд: крупно производительность и сгорание спринта; следом слайд «Сроки»."""
+        ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
+        self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index('burndownChart'))
+        self.assertNotIn('controlChart', ops, 'диаграмма управления — на слайде «Сроки» и в его разборе')
+        self.assertNotIn('function controlOverview(', self.html)
+        build = self.html[self.html.index('function buildDeck('):]
+        self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += cycleSlide(x.t);'))
+        self.assertLess(build.index('html += cycleSlide(x.t);'), build.index('html += plansSlide('))
+
+    def test_cycle_slide(self):
+        """«Сроки»: cycle time с полосами спринтов и скользящими средними, время в статусах по спринтам;
+        клик по графику — разбор в классической диаграмме управления."""
+        for part in ('function cycleSlide(', 'function cycleChart(', 'function smoothPath(', 'CYCLE_ROLL = 5',
+                     'Cycle time закрытых задач, дни', 'Среднее время в статусе по спринтам, дни', "label: 'Заблокировано'",
+                     "label: 'Ревью'", "label: 'Отладка'", 'timeInStatus', "'хуже'", "'лучше'", 'без изменений к ',
+                     'data-ctl=', 'function openControl(', 'controlWindow(', 'По спринтам'):
+            self.assertIn(part, self.html)
 
     def test_kr_epic_burndown(self):
         """Клик по KR: сгорание эпика — объём, осталось, план (duedate) и прогноз по темпу спринта."""

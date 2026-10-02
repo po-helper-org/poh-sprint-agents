@@ -55,8 +55,10 @@ check(deckInfo.rows === deckInfo.stories, 'в таблицах — все ист
 check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720, содержимое не вылезает');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
 const kinds = await p.evaluate(() => [...document.querySelectorAll('#deckSlides > .fslide')].map(s => s.className));
-check(kinds.filter(c => c.includes(' ops')).length === TEAMS_N(deckInfo), 'операционный отчёт — один слайд на команду');
-check(kinds.every((c, i) => !c.includes(' ops') || kinds[i + 1].includes(' plans')), 'сразу после операционного — «Планы на следующий спринт»');
+const isOps = c => c.includes(' ops') && !c.includes(' cycle');
+check(kinds.filter(isOps).length === TEAMS_N(deckInfo), 'операционный отчёт — один слайд на команду');
+check(kinds.every((c, i) => !isOps(c) || kinds[i + 1].includes(' cycle')), 'сразу после операционного — «Сроки»');
+check(kinds.every((c, i) => !c.includes(' cycle') || kinds[i + 1].includes(' plans')), 'после «Сроков» — «Планы на следующий спринт»');
 // титул и слайд команды: сводка, а не голый текст; ни подписи про агента, ни «эпик · Sprint Goal» в шапках KR
 const heads = await p.evaluate(() => ({
   cards: document.querySelectorAll('.title-slide .t-card').length,
@@ -115,23 +117,52 @@ await goTo('#deckSlides .fslide.ops');
 check(await p.isVisible('#deckSlides .fslide.ops') &&
       await p.evaluate(() => document.querySelector('#deckTocList a.cur') !== null), 'переход к слайду из списка, текущий отмечен');
 
-// операционный отчёт: без заголовка; производительность и диаграмма управления, участников здесь нет
+// операционный отчёт: без заголовка; крупно производительность и сгорание спринта, участников здесь нет
 const ops = await p.evaluate(() => {
-  const s = document.querySelector('#deckSlides .fslide.ops');
+  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
   return { title: !!s.querySelector('.slide-title'),
            heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
-           table: !!s.querySelector('table.mtab'),
-           streams: s.querySelectorAll('svg circle').length,
+           table: !!s.querySelector('table.mtab'), ctl: !!s.querySelector('[data-ctl]'),
+           big: s.querySelector('.ops-chart svg').getBoundingClientRect().height,
            legend: s.querySelector('.ops-legend').textContent };
 });
 check(!ops.title, 'у операционного слайда нет заголовка');
-check(ops.heads[0].startsWith('Производительность команды за 3 спринта') && ops.heads[1].startsWith('Сгорание спринта') &&
-      ops.heads[2].startsWith('Диаграмма управления за 3 спринта'), 'три графика: производительность и сгорание спринта сверху, диаграмма управления снизу');
-const wide = await p.evaluate(() => { const s = document.querySelector('#deckSlides .fslide.ops');
-  return s.querySelector('.ops-wide').getBoundingClientRect().width > s.querySelector('.ops3 > div').getBoundingClientRect().width * 1.8; });
-check(wide, 'диаграмма управления — во всю ширину');
-check(ops.streams > 10 && ops.legend.startsWith('Не начатоВ работеВыполнено'), 'точки историй и подзадач; три группы статусов');
+check(ops.heads.length === 2 && ops.heads[0].startsWith('Производительность команды за 3 спринта') && ops.heads[1].startsWith('Сгорание спринта'),
+      'два графика: производительность за 3 спринта и сгорание спринта');
+check(ops.big > 400 && !ops.ctl, 'графики крупные; диаграмма управления — на слайде «Сроки»');
+check(ops.legend.startsWith('Не начатоВ работеВыполнено'), 'три группы статусов в легенде');
 check(!ops.table, 'выработки по участникам в бизнес-отчёте нет — она в отчёте PO');
+// «Сроки»: cycle time по спринтам со скользящими средними, время в статусах; клик — разбор
+await goTo('#deckSlides .fslide.cycle');
+const cyc = await p.evaluate(() => {
+  const s = document.querySelector('#deckSlides .fslide.cycle');
+  const svg = s.querySelector('.cyc svg');
+  return { heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
+           points: svg.querySelectorAll('circle').length, lines: svg.querySelectorAll('path').length,
+           bands: [...svg.querySelectorAll('text')].map(t => t.textContent).filter(t => /^С\d+/.test(t)).length,
+           ends: [...svg.querySelectorAll('text')].map(t => t.textContent).filter(t => t === 'Истории' || t === 'Подзадачи').length,
+           tis: [...s.querySelectorAll('.tis-h')].map(h => h.textContent).join('|'),
+           big: [...s.querySelectorAll('.tis-big')].every(b => /\d,\d/.test(b.textContent)),
+           delta: [...s.querySelectorAll('.tis-d')].every(d => /(хуже|лучше)$|^без изменений к С\d+/.test(d.textContent)),
+           bars: s.querySelectorAll('.tis svg rect').length };
+});
+check(cyc.heads[0].startsWith('Cycle time закрытых задач, дни') && cyc.heads[1] === 'Среднее время в статусе по спринтам, дни', '«Сроки»: два блока по эталону');
+check(cyc.points > 10 && cyc.lines === 2 && cyc.bands === 3 && cyc.ends === 2,
+      'точки историй и подзадач, два скользящих средних с подписью в конце, полосы трёх спринтов');
+check(cyc.tis === 'Заблокировано|Ревью|Отладка' && cyc.big && cyc.delta && cyc.bars === 9,
+      'время в статусах: текущее крупно, изменение к первому спринту, столбики по спринтам');
+await p.click('#deckSlides .fslide.cycle .cyc');
+await p.waitForTimeout(300);
+const ctl = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent,
+  tabs: [...document.querySelectorAll('.side-tab')].map(t => t.textContent),
+  kpis: document.querySelectorAll('#storiesBody .ck').length,
+  chart: !!document.querySelector('#storiesBody .cbig svg'), rows: document.querySelectorAll('#storiesBody table.ctab tbody tr').length }));
+check(ctl.key.startsWith('Диаграмма управления') && ctl.tabs.length === 2 && ctl.tabs[0].startsWith('Истории') && ctl.kpis === 7 && ctl.chart && ctl.rows === 3,
+      'клик по cycle time — сайдбар: показатели, диаграмма управления, разбивка по спринтам');
+await p.click('.side-tab >> nth=1');
+check(await p.isVisible('#storiesBody .cbig svg'), 'вкладка «Подзадачи» — своя диаграмма');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
 // планы на следующий спринт
 await goTo('#deckSlides .fslide.plans');
 const plans = await p.evaluate(() => [...document.querySelector('#deckSlides .fslide.plans').querySelectorAll('.pcol')]

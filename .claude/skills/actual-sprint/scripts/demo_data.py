@@ -248,7 +248,9 @@ def demo_output(slug, epics, sprint_names):
             leads.setdefault(who, []).extend(round(r.uniform(2, 22), 1) for _ in range(split['done'][0]))
             out.append({'name': who, 'split': split, 'items': items})
         sprints.append({'name': name, 'current': current, 'start': s_start.isoformat(), 'end': s_end.isoformat(),
-                        'members': out})
+                        'members': out,
+                        'timeInStatus': {'blocked': round(r.uniform(0.8, 4.5), 1), 'progress': round(r.uniform(2, 5), 1),
+                                         'review': round(r.uniform(0.6, 2.5), 1), 'testing': round(r.uniform(0.8, 3), 1)}})
     lead = {w: {'median': round(statistics.median(v), 1), 'count': len(v)} for w, v in leads.items() if v}
     return {'unit': 'SP', 'field': 'customfield_10106', 'sprints': sprints, 'lead': lead}
 

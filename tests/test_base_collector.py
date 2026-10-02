@@ -253,6 +253,15 @@ class ParamsTest(unittest.TestCase):
         self.assertEqual(2, len(two['metrics']['sprints']))
         self.assertEqual(3, len(support.collect_ok()['metrics']['sprints']))
 
+    def test_time_in_status_per_sprint(self):
+        """1.8.0: среднее время в статусе по спринтам — в днях, в пределах длины спринта."""
+        data = support.collect_ok()
+        for s in data['output']['sprints']:
+            tis = s['timeInStatus']
+            self.assertTrue(set(tis) <= {'blocked', 'progress', 'review', 'testing'})
+            self.assertTrue(all(0 < v <= 15 for v in tis.values()), tis)
+        self.assertTrue(any('progress' in s['timeInStatus'] for s in data['output']['sprints']))
+
     def test_story_events_all_time(self):
         """1.7.0: у истории — хронология за всё время: она и её подзадачи, по времени."""
         data = support.collect_ok()

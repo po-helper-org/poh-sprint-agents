@@ -323,6 +323,7 @@
               "current": { "type": "boolean" },
               "start": { "type": ["string", "null"], "description": "Дата начала спринта, YYYY-MM-DD." },
               "end": { "type": ["string", "null"], "description": "Плановая дата конца спринта, YYYY-MM-DD." },
+              "timeInStatus": { "type": "object", "description": "Среднее время задачи спринта в статусе, дней (сборщик 1.8.0+): blocked, progress, review, testing — по задачам и подзадачам, побывавшим в статусе, в границах спринта.", "additionalProperties": { "type": "number", "minimum": 0 } },
               "members": {
                 "type": "array",
                 "items": {

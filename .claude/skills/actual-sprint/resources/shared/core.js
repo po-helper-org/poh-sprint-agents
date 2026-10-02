@@ -1084,6 +1084,26 @@
     try { return fn(); } finally { CHART_BOX = prev; }
   }
 
+  // Окно диаграммы управления с даты from: статистика и выбросы пересчитываются по
+  // закрытым в окне — так «за 3 спринта» не зависит от окна сбора control_days.
+  function controlWindow(c, from, to) {
+    c = c || {};
+    var pts = (c.points || []).filter(function (p) { return (!from || p.doneAt >= from) && (!to || p.doneAt <= to); })
+      .slice().sort(function (a, b) { return a.doneAt < b.doneAt ? -1 : 1; });
+    if (!pts.length) return { points: [], risks: c.risks || [], days: c.days, median: c.median };
+    var xs = pts.map(function (p) { return p.cycle; });
+    var mean = xs.reduce(function (a, v) { return a + v; }, 0) / xs.length;
+    var sd = Math.sqrt(xs.reduce(function (a, v) { return a + (v - mean) * (v - mean); }, 0) / xs.length);
+    var sorted = xs.slice().sort(function (a, b) { return a - b; }), mid = Math.floor(sorted.length / 2);
+    var median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    var limit = Math.round((mean + sd) * 100) / 100;
+    var r1 = function (v) { return Math.round(v * 10) / 10; };
+    return { points: pts.map(function (p) { return Object.assign({}, p, { outlier: p.cycle > limit }); }),
+             risks: (c.risks || []).filter(function (r) { return r.elapsed > median; }),
+             mean: r1(mean), median: r1(median), sd: r1(sd), limit: limit, days: c.days,
+             outliers: pts.filter(function (p) { return p.cycle > limit; }).length };
+  }
+
   function controlChart(c, label, kind) {
     if (!c || !c.points || !c.points.length) {
       return '<div class="m-muted">Нет закрытых ' + esc(label) + ' за период.</div>';
