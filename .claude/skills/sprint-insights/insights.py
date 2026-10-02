@@ -8,9 +8,10 @@
     insights.py check [--file путь]   схема, хеш данных, ключи задач, числа против фактов
     insights.py apply [--file путь]   check, архив принятого файла, страница из снимка
 
-Агент читает только вывод facts и пишет reports/sprint-insights.json: наблюдения,
-бизнес-блок презентации и интерпретацию динамики команды (отдельный промт —
-prompts/interpretation.md). Принятый файл копируется в insights-archive/ рядом с
+Агент читает только вывод facts и пишет reports/sprint-insights.json: наблюдения
+и интерпретацию динамики команды (отдельный промт — prompts/interpretation.md).
+Бизнес-блок отчёта «ФАКТ | спринт» — отдельный навык sprint-business (business.py),
+на тех же фактах. Принятый файл копируется в insights-archive/ рядом с
 ним: оттуда facts берут прошлую интерпретацию, чтобы агент видел, что он говорил
 спринт назад. В JIRA ни скрипт, ни агент не ходят. Коды выхода: 0 — успех, 1 — инсайды не приняты, 2 — нет
 конфига или снимка.
@@ -43,9 +44,6 @@ INTERP_MAX = 240        # пункт интерпретации: одно-два
 INTERP_PARTS = ('dynamics', 'attention', 'recommendations')
 ARCHIVE_DIR = 'insights-archive'
 ARCHIVE_KEEP = 30       # столько принятых файлов храним; старше — удаляются
-# бизнес-блок презентации «ФАКТ | спринт»: поле → предел длины (слайд не резиновый)
-BUSINESS_MAX = {'objective': 100, 'kr': 120, 'promise': 160, 'shown': 160, 'done': 140, 'next': 100, 'blocker': 120,
-                'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280}
 KEY_RE = re.compile(r'\b[A-Z][A-Z0-9_]*-\d+\b')
 # числа в тексте: не хвосты ключей задач и не части дат
 NUM_RE = re.compile(r'(?<![\w.,-])\d+(?:[.,]\d+)?(?![\w-])')
@@ -375,8 +373,6 @@ def check(doc, teams):
                 if not small and num not in allowed:
                     warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
         check_interpretation(slug, entry['interpretation'], keys, allowed, errors, warnings)
-        if 'business' in entry:
-            check_business(slug, entry['business'], team, keys, allowed, errors, warnings)
     return errors, warnings
 
 
@@ -394,48 +390,6 @@ def check_interpretation(slug, interp, keys, allowed, errors, warnings):
                 small = num.isdigit() and int(num) <= FREE_INTS
                 if not small and num not in allowed:
                     warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
-
-
-def check_business(slug, biz, team, keys, allowed, errors, warnings):
-    """Бизнес-блок презентации: KR — эпики команды, строки — истории её спринта, цели —
-    из списка objectives, длины — под слайд, ключи задач — из данных. Числа сверяются с
-    фактами там, где они из данных (строки, Sprint Goal); цели OKR, риски и договорённости
-    приходят из документов PO — их числа с фактами спринта не сверить."""
-    epics = {e['epicKey'] for e in team['epics'] if e.get('epicKey')}
-    stories = {st['key'] for e in team['epics'] for st in e['stories']}
-    objectives = biz.get('objectives', {})
-    texts = [(f'objectives.{k}', v, BUSINESS_MAX['objective'], False) for k, v in objectives.items()]
-    for key, st in biz.get('streams', {}).items():
-        if key not in epics:
-            errors.append(f'[{slug}] business.streams: эпика {key} нет в спринте команды; есть: {", ".join(sorted(epics))}')
-        if 'obj' in st and st['obj'] not in objectives:
-            warnings.append(f'[{slug}] business.streams.{key}: цели {st["obj"]} нет в objectives — заголовок слайда будет без названия')
-        texts += [(f'streams.{key}.kr', st['kr'], BUSINESS_MAX['kr'], False)] if 'kr' in st else []
-        texts += [(f'streams.{key}.{f}', st[f], BUSINESS_MAX[f], True) for f in ('promise', 'shown') if f in st]
-    for key, row in biz.get('rows', {}).items():
-        if key not in stories:
-            errors.append(f'[{slug}] business.rows: истории {key} нет в спринте команды')
-        texts += [(f'rows.{key}.{f}', row[f], BUSINESS_MAX[f], True) for f in ('done', 'next', 'blocker') if f in row]
-    for i, c in enumerate(biz.get('changes', []), 1):
-        texts += [(f'changes #{i}.{f}', c[f], BUSINESS_MAX[f], False) for f in ('affected', 'before', 'after', 'outcome') if f in c]
-    texts += [(f'demo #{i}', d['what'], BUSINESS_MAX['what'], False) for i, d in enumerate(biz.get('demo', []), 1)]
-    for i, r in enumerate(biz.get('risks', []), 1):
-        texts += [(f'risks #{i}.title', r['title'], BUSINESS_MAX['title'], False),
-                  (f'risks #{i}.text', r['text'], BUSINESS_MAX['text'], False)]
-    for where, text, limit, numbers in texts:
-        where = f'[{slug}] business.{where}'
-        if len(text) > limit:
-            errors.append(f'{where}: длиннее {limit} знаков ({len(text)}) — на слайд не влезет')
-        for key in sorted(set(KEY_RE.findall(text))):
-            if key not in keys:
-                errors.append(f'{where}: задачи {key} нет в данных команды')
-        for raw, num in (text_numbers(text) if numbers else ()):
-            small = num.isdigit() and int(num) <= FREE_INTS
-            if not small and num not in allowed:
-                warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
-    from_okr = objectives or any('kr' in st for st in biz.get('streams', {}).values()) or biz.get('risks')
-    if from_okr and not biz.get('goalsSource'):
-        warnings.append(f'[{slug}] business: цели OKR и риски без goalsSource — укажите, откуда они (OKR, roadmap, со слов PO)')
 
 
 def read_doc(path):

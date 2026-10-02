@@ -373,8 +373,8 @@ def build_team(spec, rnd, keys):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=None, help='куда положить JSON команд')
-    ap.add_argument('--html', default=None, help='сразу собрать HTML-страницу')
-    ap.add_argument('--business', default=None, help='та же страница, открытая сразу презентацией')
+    ap.add_argument('--html', default=None, help='отчёт PO (sprint-report.html)')
+    ap.add_argument('--business', default=None, help='бизнес-отчёт «ФАКТ | спринт» (навык sprint-business)')
     a = ap.parse_args()
 
     rnd = random.Random(SEED)
@@ -394,25 +394,35 @@ def main():
         print('данные:', a.out)
 
     if a.html or a.business:
-        # пример инсайдов /sprint-insights у первой команды: хеш ставим по демо-данным,
-        # дальше — тот же путь, что у runner (attach_insights проверяет совпадение)
+        # примеры агентов на демо-данных: хеш ставим по ним, дальше — тот же путь, что у
+        # runner и business.py (блок прикладывается, только если хеш совпал)
         import sys
+        import copy
         here = pathlib.Path(__file__).resolve().parent.parent
         sys.path.insert(0, str(here / 'runner'))
         import build as build_mod
-        doc = json.loads((here.parent / 'sprint-insights' / 'examples' / 'demo-insights.json')
-                         .read_text(encoding='utf-8'))
-        for t in teams:
-            if t['slug'] in doc['teams']:
-                doc['teams'][t['slug']]['dataHash'] = build_mod.team_digest(t)
-        build_mod.attach_insights(teams, doc)
-        tpl = (here / 'resources' / 'report_template.html').read_text(encoding='utf-8')
-        for path, mode in ((a.html, 'report'), (a.business, 'presentation')):
-            if not path:
-                continue
-            html = tpl.replace('{{TEAMS_JSON}}', json.dumps(teams, ensure_ascii=False)).replace('{{START_MODE}}', mode)
-            pathlib.Path(path).write_text(html, encoding='utf-8')
-            print('страница:' if mode == 'report' else 'презентация:', path, f'({len(html) // 1024} КБ)')
+
+        def example(rel):
+            doc = json.loads((here.parent / rel).read_text(encoding='utf-8'))
+            for t in teams:
+                if t['slug'] in doc['teams']:
+                    doc['teams'][t['slug']]['dataHash'] = build_mod.team_digest(t)
+            return doc
+
+        if a.html:
+            page = copy.deepcopy(teams)
+            build_mod.attach_insights(page, example('sprint-insights/examples/demo-insights.json'))
+            build_mod.write_page(page, here / 'resources' / 'report_template.html', a.html)
+            print('отчёт PO:', a.html)
+        if a.business:
+            page = copy.deepcopy(teams)
+            doc = example('sprint-business/examples/demo-business.json')
+            for t in page:
+                entry = doc['teams'].get(t['slug'])
+                if entry:
+                    t['business'] = {k: v for k, v in entry.items() if k != 'dataHash'}
+            build_mod.write_page(page, here.parent / 'sprint-business' / 'resources' / 'business_template.html', a.business)
+            print('бизнес-отчёт:', a.business)
 
     for t in teams:
         units = sum(1 + len(s['subtasks']) for e in t['epics'] for s in e['stories'])

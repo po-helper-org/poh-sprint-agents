@@ -6,10 +6,15 @@
 """
 import json
 import os
+import re
 from pathlib import Path
 
 PLACEHOLDER = '{{TEAMS_JSON}}'
-MODE_PLACEHOLDER = '{{START_MODE}}'
+# Общий движок двух отчётов — resources/shared: шаблон отчёта PO и шаблон бизнес-отчёта
+# (навык sprint-business) включают его частями: <!--#include shared/x.html--> в разметке,
+# /*#include shared/x.css*/ и /*#include shared/x.js*/ в стилях и скрипте.
+RESOURCES = Path(__file__).resolve().parent.parent / 'resources'
+INCLUDE_RE = re.compile(r'<!--#include ([\w./-]+)-->|/\*#include ([\w./-]+)\*/')
 
 
 class BuildError(Exception):
@@ -51,7 +56,7 @@ def attach_notes(teams, notes):
 
 # Поля, которые runner кладёт поверх данных сборщика: в хеш данных они не входят,
 # иначе инсайды «устаревали» бы от собственного встраивания и от правки заметок.
-OVERLAY_FIELDS = ('notes', 'insights')
+OVERLAY_FIELDS = ('notes', 'insights', 'business')
 
 
 def team_digest(team):
@@ -84,8 +89,9 @@ def attach_insights(teams, doc):
     """Инсайды в поле insights команды — только если они написаны по этим же данным.
 
     Возвращает (приложено, устарело): slug'и команд. У устаревших не показываются
-    наблюдения и бизнес-блок — они про цифры прошлого сбора; интерпретация динамики
-    команды остаётся с пометкой stale, чтобы не потеряться до новой.
+    наблюдения — они про цифры прошлого сбора; интерпретация динамики команды
+    остаётся с пометкой stale, чтобы не потеряться до новой. Бизнес-блок живёт в своём
+    файле навыка sprint-business и сюда не попадает.
     """
     attached, stale = [], []
     for team in teams:
@@ -96,7 +102,7 @@ def attach_insights(teams, doc):
         interpretation = entry.get('interpretation') if isinstance(entry.get('interpretation'), dict) else None
         if entry.get('dataHash') != team_digest(team):
             stale.append(team['slug'])
-            # Наблюдения и бизнес-блок привязаны к цифрам — их не показываем. Интерпретацию
+            # Наблюдения привязаны к цифрам — их не показываем. Интерпретацию
             # динамики команды не теряем: она остаётся с пометкой «по прошлому сбору»,
             # пока агент не напишет новую.
             if interpretation:
@@ -111,8 +117,6 @@ def attach_insights(teams, doc):
         }
         if interpretation:
             team['insights']['interpretation'] = interpretation
-        if isinstance(entry.get('business'), dict):
-            team['insights']['business'] = entry['business']
         attached.append(team['slug'])
     return attached, stale
 
@@ -140,20 +144,27 @@ def script_json(value):
     return ''.join(_SCRIPT_UNSAFE.get(ch, ch) for ch in text)
 
 
-def render(teams, template_path, mode='report'):
-    """HTML страницы. mode='presentation' — та же страница, открытая сразу слайдами:
-    файл для управляющего комитета (sprint-business.html)."""
-    tpl = Path(template_path).read_text(encoding='utf-8')
+def assemble(template_path):
+    """Шаблон страницы с подставленными частями общего движка (resources/shared)."""
+    def part(m):
+        rel = m.group(1) or m.group(2)
+        path = RESOURCES / rel
+        if not path.is_file():
+            raise BuildError(f'{template_path}: нет части общего движка {rel} ({path})')
+        return path.read_text(encoding='utf-8').rstrip('\n')
+    return INCLUDE_RE.sub(part, Path(template_path).read_text(encoding='utf-8'))
+
+
+def render(teams, template_path):
+    """HTML страницы: шаблон отчёта PO или бизнес-отчёта, данные — один и тот же TEAMS."""
+    tpl = assemble(template_path)
     if PLACEHOLDER not in tpl:
         raise BuildError(f'в шаблоне {template_path} нет плейсхолдера {PLACEHOLDER}')
-    return tpl.replace(PLACEHOLDER, script_json(teams)).replace(MODE_PLACEHOLDER, mode)
+    return tpl.replace(PLACEHOLDER, script_json(teams))
 
 
-def write_pages(teams, template_path, report_path, business_path):
-    """Отчёт PO и презентация для комитета — из одних данных, одним шаблоном."""
-    report = write_atomic(report_path, render(teams, template_path))
-    business = write_atomic(business_path, render(teams, template_path, mode='presentation'))
-    return report, business
+def write_page(teams, template_path, path):
+    return write_atomic(path, render(teams, template_path))
 
 
 def snapshot(teams):

@@ -151,65 +151,6 @@ class CheckTest(unittest.TestCase):
         errors, _ = self.check(self.doc)
         self.assertTrue(any('observations' in e or 'charts' in e for e in errors), errors)
 
-    def biz(self, slug='platform'):
-        return self.doc['teams'][slug]['business']
-
-    def test_business_streams_only_for_team_epics(self):
-        self.biz()['streams']['INIT-999'] = {'verdict': 'достигнут'}
-        errors, _ = self.check(self.doc)
-        self.assertTrue(any('эпика INIT-999 нет в спринте команды' in e for e in errors), errors)
-
-    def test_business_rows_only_for_sprint_stories(self):
-        self.biz()['rows']['INIT-101'] = {'next': 'это эпик, а не история'}
-        errors, _ = self.check(self.doc)
-        self.assertTrue(any('истории INIT-101 нет в спринте команды' in e for e in errors), errors)
-
-    def test_business_okr_and_risk_numbers_not_checked(self):
-        """Цели OKR, риски и договорённости — из документов PO: их числа с фактами спринта не сверить."""
-        self.biz()['streams']['INIT-101']['kr'] = 'KR 7.4 — +15% конверсии партнёрских заказов'
-        self.biz()['objectives']['OBJ 1'] = 'Удвоить партнёрские продажи к 2027'
-        self.biz()['risks'][0]['text'] = 'Коммитмент на 30 сентября: 15 партнёров на новом API, сдвиг на Q4.'
-        errors, warnings = self.check(self.doc)
-        self.assertEqual(([], []), (errors, warnings))
-
-    def test_business_texts_fit_the_slide(self):
-        self.biz()['rows']['INIT-132']['next'] = 'Очень длинно. ' * 20
-        errors, _ = self.check(self.doc)
-        self.assertTrue(any('business.rows.INIT-132.next: длиннее 100' in e for e in errors), errors)
-
-    def test_business_row_numbers_and_keys_checked(self):
-        self.biz()['rows']['INIT-136']['done'] = 'Готово 913.4% — выдумка про INIT-55555.'
-        errors, warnings = self.check(self.doc)
-        self.assertTrue(any('INIT-55555' in e for e in errors), errors)
-        self.assertTrue(any('числа 913.4' in w for w in warnings), warnings)
-
-    def test_business_verdict_is_fixed(self):
-        self.biz()['streams']['INIT-125']['verdict'] = 'почти'
-        errors, _ = self.check(self.doc)
-        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
-
-    def test_business_obj_must_be_named(self):
-        self.biz()['streams']['INIT-101']['obj'] = 'OBJ 9'
-        _, warnings = self.check(self.doc)
-        self.assertTrue(any('цели OBJ 9 нет в objectives' in w for w in warnings), warnings)
-
-    def test_business_old_row_format_rejected(self):
-        self.biz()['rows']['INIT-136'] = {'facts': ['старый формат']}
-        errors, _ = self.check(self.doc)
-        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
-
-    def test_business_okr_needs_source(self):
-        del self.biz()['goalsSource']
-        _, warnings = self.check(self.doc)
-        self.assertTrue(any('goalsSource' in w for w in warnings), warnings)
-
-    def test_epic_facts_for_business(self):
-        f = insights_mod.facts(self.ws.teams, 'platform')['teams'][0]
-        team = self.ws.teams[0]
-        self.assertEqual([e['epicKey'] for e in team['epics'] if e.get('epicKey')], [e['key'] for e in f['epics']])
-        for e, raw in zip(f['epics'], [e for e in team['epics'] if e.get('epicKey')]):
-            self.assertEqual(len(raw.get('scope') or []), e['scopeTotal'])
-
     def check(self, doc):
         return insights_mod.check(doc, self.ws.teams)
 
@@ -303,9 +244,7 @@ class ApplyTest(unittest.TestCase):
         self.assertNotIn('insights', teams['mobile'], 'у команды без инсайдов поля нет')
         self.assertEqual({'dynamics', 'attention', 'recommendations'}, set(ins['interpretation']),
                          'интерпретация едет на страницу')
-        self.assertEqual('OBJ 1 · KR 1.1 — заказы от партнёров без ручного ввода',
-                         ins['business']['streams']['INIT-101']['obj'] + ' · ' + ins['business']['streams']['INIT-101']['kr'],
-                         'бизнес-блок едет на страницу')
+        self.assertNotIn('business', ins, 'бизнес-блок — навык sprint-business, не инсайды')
 
     def test_apply_archives_and_next_facts_see_previous_interpretation(self):
         """Принятый файл — в архив; следующий сбор (другой хеш) видит прошлую интерпретацию."""

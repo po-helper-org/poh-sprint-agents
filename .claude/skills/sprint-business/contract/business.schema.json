@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://po-helper-org/poh-sprint-agents/sprint-business/business.schema.json",
+  "title": "Бизнес-блок отчёта «ФАКТ | спринт»",
+  "description": "Файл reports/sprint-business.json. Пишет ИИ-агент навыком sprint-business по фактам из общего снимка данных (тот же, что у отчёта PO): цели OBJ и KR эпиков — только из OKR/roadmap PO, Sprint Goal, формулировки строк «что сделано · след. шаг», изменения, демо, квартальные риски. business.py встраивает блок в sprint-business.html, только если dataHash команды совпал с её данными. Цифры отчёта здесь не хранятся.",
+  "type": "object",
+  "required": [
+    "version",
+    "generatedAt",
+    "teams"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "generatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}",
+      "description": "Когда агент написал инсайды, ISO 8601."
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Кто писал: имя агента или роли. Показывается мелким шрифтом под разделом."
+    },
+    "teams": {
+      "type": "object",
+      "description": "slug команды → её бизнес-блок.",
+      "additionalProperties": {
+        "$ref": "#/definitions/team"
+      }
+    }
+  },
+  "definitions": {
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Бизнес-блок для презентации «ФАКТ | спринт» (управляющий комитет, PO смежных департаментов, бизнес-заказчики). Колода строится от целей: слайд = OBJ, группа = KR (эпик), строка = история. «Результат» и текст строк страница считает из данных сама; здесь — цели, Sprint Goal и короткие формулировки «что сделано · след. шаг» вместо автоматических.",
+      "properties": {
+        "dataHash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Хеш данных команды из `business.py facts`: блок привязан к сбору; данные пересобрали — хеш другой, и страница блок не покажет."
+        },
+        "objectives": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 3,
+            "description": "Название цели, до 100 знаков."
+          },
+          "description": "Код цели → её название: «OBJ 1» → «Партнёрские продажи без ручного ввода». Заголовок слайда."
+        },
+        "streams": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/stream"
+          },
+          "description": "Ключ эпика → к какой цели и KR он относится, Sprint Goal."
+        },
+        "rows": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/row"
+          },
+          "description": "Ключ истории спринта → текст строки: что сделано и следующий шаг."
+        },
+        "changes": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/change"
+          },
+          "description": "Изменения договорённостей по ходу спринта: было → стало и что из этого вышло."
+        },
+        "demo": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/definitions/demo"
+          },
+          "description": "Что показываем руками на демо."
+        },
+        "risks": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/definitions/risk"
+          },
+          "description": "Квартальные риски: срыв коммитментов OKR и внешние зависимости."
+        },
+        "goalsSource": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Откуда цели и коммитменты: файл OKR/roadmap или «со слов PO, дата»."
+        }
+      },
+      "required": [
+        "dataHash"
+      ]
+    },
+    "stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "obj": {
+          "type": "string",
+          "pattern": "^OBJ \\S+$",
+          "description": "Код цели: «OBJ 1». Эпики одной цели — на одном слайде."
+        },
+        "kr": {
+          "type": "string",
+          "minLength": 3,
+          "description": "KR, которым служит эпик: «KR 1.1 — заказы от партнёров без ручного ввода», до 120 знаков. Только из OKR/roadmap PO."
+        },
+        "promise": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что обещали на спринт, до 160 знаков."
+        },
+        "shown": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что показываем по факту, до 160 знаков."
+        },
+        "verdict": {
+          "enum": [
+            "достигнут",
+            "достигнут частично",
+            "не достигнут"
+          ],
+          "description": "Sprint Goal по KR."
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "done": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что сделано — одно предложение для бизнеса, до 140 знаков."
+        },
+        "next": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Следующий шаг: действие и срок, до 100 знаков."
+        },
+        "blocker": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что блокирует и кто, до 120 знаков."
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "required": [
+        "affected",
+        "before",
+        "after"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "affected": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Что затронуто: задача или стрим, до 80 знаков."
+        },
+        "before": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Было, до 120 знаков."
+        },
+        "after": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Стало, до 120 знаков."
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что из этого вышло, до 200 знаков."
+        }
+      }
+    },
+    "demo": {
+      "type": "object",
+      "required": [
+        "what"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "what": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Что показываем, до 120 знаков."
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": [
+        "title",
+        "text"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "description": "Суть риска, до 80 знаков."
+        },
+        "text": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Что под угрозой (коммитмент OKR, дата) и почему, до 280 знаков."
+        }
+      }
+    }
+  }
+}

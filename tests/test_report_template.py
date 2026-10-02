@@ -12,14 +12,18 @@ from pathlib import Path
 
 import support
 
+import build as build_mod  # noqa: E402
+
 TEMPLATE = support.SKILL / 'resources' / 'report_template.html'
+BUSINESS_TEMPLATE = support.ROOT / '.claude' / 'skills' / 'sprint-business' / 'resources' / 'business_template.html'
 DEMO = support.SKILL / 'scripts' / 'demo_data.py'
 
 
 class TemplateTest(unittest.TestCase):
+    """Отчёт PO: шаблон в сборе с общим движком resources/shared."""
     @classmethod
     def setUpClass(cls):
-        cls.html = TEMPLATE.read_text(encoding='utf-8')
+        cls.html = build_mod.assemble(TEMPLATE)
 
     def test_no_file_notes_no_log_block(self):
         """Ни заметок файлом, ни textarea в панели, ни лога над таблицей: всё в корзине."""
@@ -85,16 +89,46 @@ class TemplateTest(unittest.TestCase):
                      "addEventListener('touchstart'", 'LONG_PRESS_MS', 'id="cpopCancel"'):
             self.assertIn(part, self.html)
 
-    def test_presentation_fact_deck(self):
-        """Кнопка «Презентация»: колода «ФАКТ | спринт» от целей — OBJ → KR (эпик) → истории."""
+    def test_business_report_is_separate(self):
+        """Колоды в отчёте PO нет: «Бизнес-отчёт» даёт промт на отдельный навык sprint-business."""
         bar = self.html[self.html.index('<div class="pb-row">'):self.html.index('<div class="notes-panel"')]
-        self.assertIn('id="presBtn"', bar)
-        self.assertIn('>Презентация<', bar)
-        for part in ("var START_MODE = '{{START_MODE}}';", 'id="deck"', 'function titleSlide(', 'function heroSlide(',
+        self.assertIn('id="bizBtn"', bar)
+        self.assertIn('>Бизнес-отчёт<', bar)
+        for gone in ('id="deck"', 'function buildDeck(', 'START_MODE', '#presentation', 'presBtn'):
+            self.assertNotIn(gone, self.html)
+        for part in ('function businessPrompt(', "'/sprint-business'", 'function openGenPrompt(', 'id="genWrap"',
+                     'function allNotesLines(', 'OKR/roadmap PO'):
+            self.assertIn(part, self.html)
+
+    def test_shared_engine_assembled(self):
+        """Части движка подставлены целиком: в странице не остаётся директив include."""
+        self.assertNotIn('#include', self.html)
+        raw = TEMPLATE.read_text(encoding='utf-8')
+        for part in ('<!--#include shared/head.html-->', '/*#include shared/core.css*/', '/*#include shared/core.js*/',
+                     '<!--#include shared/panels.html-->', '<!--#include shared/notes.html-->'):
+            self.assertIn(part, raw)
+
+    def test_priority_everywhere(self):
+        for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
+            self.assertIn(where, self.html)
+
+
+class BusinessTemplateTest(unittest.TestCase):
+    """Бизнес-отчёт (навык sprint-business): свой шаблон, тот же общий движок."""
+    @classmethod
+    def setUpClass(cls):
+        cls.html = build_mod.assemble(BUSINESS_TEMPLATE)
+
+    def test_fact_deck_from_goals(self):
+        """Колода «ФАКТ | спринт» от целей — OBJ → KR (эпик) → истории; отчёта PO на странице нет."""
+        for gone in ('id="tableBody"', 'id="metricsLink"', 'id="logsBtn"', 'START_MODE', 'id="deckClose"'):
+            self.assertNotIn(gone, self.html)
+        for part in ('id="deck"', 'id="techBtn"', '>Для техлидов<', 'function techPrompt(', "'/actual-sprint'",
+                     'function biz(t) { return t.business || {}; }', 'function titleSlide(', 'function heroSlide(',
                      'function objGroups(', 'function objSlide(', 'function krHeader(', 'function storyRow(',
                      'function autoText(', 'function opsSlide(', 'function memberTable(', 'function changesSlide(',
                      'function demoSlide(', 'function totalsSlide(', 'function risksSlide(', 'function openKr(',
-                     'function openStory(', "'Без привязки к OKR'", "'#presentation'", '@page { size: 1280px 720px',
+                     'function openStory(', "'Без привязки к OKR'", '@page { size: 1280px 720px',
                      '<th>Задачи</th><th>Комментарий</th><th>Результат</th>', 'stat-green', 'stat-yellow', 'stat-red',
                      'ROWS_PER_SLIDE = 8'):
             self.assertIn(part, self.html)
@@ -113,10 +147,12 @@ class TemplateTest(unittest.TestCase):
         self.assertNotIn('controlChart', ops, 'диаграмм управления на слайде нет')
 
     def test_deck_stage_full_screen(self):
-        """Широкий экран: один слайд на всю площадь, миниатюры слева, навигация кнопками."""
+        """Широкий экран: один слайд на всю площадь, навигация кнопками; «Слайды» — выезжающий сайдбар-список."""
         for part in ('id="deckPrev"', 'id="deckNext"', 'id="deckCount"', 'id="deckFull"', 'function fitStage(',
-                     'function renderToc(', 'thumb-box', '.deck.stage .deck-slides > .fslide.cur', 'scale(var(--k, 1))'):
+                     'function renderToc(', 'id="deckSideTab"', 'function setToc(', '.deck-toc.open',
+                     '.deck.stage .deck-slides > .fslide.cur', 'scale(var(--k, 1))'):
             self.assertIn(part, self.html)
+        self.assertNotIn('thumb-box', self.html, 'постоянной панели миниатюр нет')
         printing = self.html[self.html.index('@media print'):]
         self.assertIn('.deck .deck-slides > .fslide { display: block !important;', printing, 'в PDF — все слайды, не только текущий')
 
@@ -127,10 +163,6 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(part, self.html)
         deck = self.html[self.html.index('function storyRow('):self.html.index('function objSlide(')]
         self.assertIn('ctxAttr(r.target)', deck, 'у строки истории — правый клик для комментария')
-
-    def test_priority_everywhere(self):
-        for where in ('prioHtml(e.epicPriority)', 'prioHtml(story.priority)', 'prioHtml(sub.priority)'):
-            self.assertIn(where, self.html)
 
 
 class DemoPageTest(unittest.TestCase):

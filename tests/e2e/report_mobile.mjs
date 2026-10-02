@@ -13,8 +13,9 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const page = join(mkdtempSync(join(tmpdir(), 'report-mobile-')), 'report.html');
-execFileSync('python3', [join(ROOT, '.claude/skills/actual-sprint/scripts/demo_data.py'), '--html', page]);
+const dir = mkdtempSync(join(tmpdir(), 'report-mobile-'));
+const page = join(dir, 'report.html'), business = join(dir, 'business.html');
+execFileSync('python3', [join(ROOT, '.claude/skills/actual-sprint/scripts/demo_data.py'), '--html', page, '--business', business]);
 
 const failures = [];
 const check = (ok, what) => { console.log((ok ? '✓ ' : '✗ ') + what); if (!ok) failures.push(what); };
@@ -134,9 +135,16 @@ const fontSize = await p.locator('#nText').evaluate(el => parseFloat(getComputed
 check(fontSize >= 16, 'поле ввода 16px — iOS не увеличивает страницу при фокусе');
 check(await noSideScroll(), 'корзина без горизонтальной прокрутки');
 
-// презентация на телефоне: слайды лентой во всю ширину, без горизонтальной прокрутки
+// «Бизнес-отчёт» — окно с промтом в пределах экрана
 await p.tap('#notesToggle');
-await p.tap('#presBtn');
+await p.tap('#bizBtn');
+await p.waitForTimeout(200);
+const gen = await p.locator('.genbox').boundingBox();
+check(gen.x >= 0 && gen.x + gen.width <= 393 && await noSideScroll(), 'окно промта бизнес-отчёта помещается в экран');
+await p.tap('#genClose');
+
+// бизнес-отчёт на телефоне: слайды лентой во всю ширину, без горизонтальной прокрутки
+await p.goto(pathToFileURL(business).href);
 await p.waitForTimeout(400);
 const feed = await p.evaluate(() => {
   const f = document.getElementById('deckFeed');
@@ -153,8 +161,7 @@ await p.waitForTimeout(300);
 await longPress('#deckSlides tr.row >> nth=1');
 check(await p.isVisible('#cpop'), 'долгое нажатие на строку — комментарий');
 await p.tap('#cpopCancel');
-await p.tap('#deckClose');
-check(await p.isHidden('#deck'), 'крестик закрывает презентацию');
+check(await p.isVisible('#deck') && await p.$('#deckClose') === null, 'колода — сама страница, без крестика');
 
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();
