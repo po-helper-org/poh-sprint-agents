@@ -365,7 +365,8 @@
       "type": "object",
       "required": ["events", "days", "kinds", "authors"],
       "properties": {
-        "days": { "type": "integer", "minimum": 1 },
+        "days": { "type": "integer", "minimum": 1, "description": "Длина окна ленты в днях. По умолчанию окно — период текущего спринта (с его начала)." },
+        "since": { "type": "string", "description": "Начало окна ленты, YYYY-MM-DD (сборщик 1.5.0+): начало текущего спринта или now − activity_days." },
         "kinds": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
         "authors": {
           "type": "array",

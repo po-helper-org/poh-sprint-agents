@@ -144,8 +144,8 @@ const scope = await p.evaluate(() => {
            outside: e.scope.filter(i => !i.inSprint).length };
 });
 check((await p.textContent('.scope-sum .big')).startsWith(`Сделано ${scope.done} из ${scope.total}`), 'сводка «сделано из» по данным');
-check(await p.isVisible('#storiesBody .eb svg') && (await p.textContent('#storiesBody .eb-why')).includes('На чём прогноз'),
-      '«Весь эпик»: когда будет выполнен — прогноз, план, график и на чём прогноз, как в бизнес-отчёте');
+check(await p.isVisible('#storiesBody .eb svg') && /до закрытия|выполнен|Прогноза нет/.test(await p.textContent('#storiesBody .eb-panel')) &&
+      (await p.$('#storiesBody .eb-why')) === null, '«Весь эпик»: сгорание по неделям и панель прогноза, без пояснений словами');
 check((await p.textContent('.scope-sec[data-sec=left] .sec-head .n')).includes(String(scope.left)), 'раздел «Осталось» со счётчиком');
 check((await p.textContent('.scope-sec[data-sec=done] .sec-head .n')).includes(String(scope.done)), 'раздел «Сделано» со счётчиком');
 check((await p.$$('.scope-sec .story-row')).length === scope.total, 'в объёме все задачи эпика, не только спринта');

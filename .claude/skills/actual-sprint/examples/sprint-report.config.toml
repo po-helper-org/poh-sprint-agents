@@ -24,7 +24,7 @@ collector = "base"          # базовый сборщик плагина: то
 [teams.params]
 story_types   = ["История", "История Enabler", "Story"]
 sprints_back  = 3           # глубина метрик по спринтам
-activity_days = 14          # окно ленты активности: весь спринт — для сайдбара истории в презентации
+# activity_days = 14        # окно ленты в днях; не задано — период текущего спринта
 control_days  = 90          # окно диаграмм управления в сводном отчёте PO
 epic_link_field = "auto"    # или "customfield_10101", если автопоиск не находит
 sp_field = "auto"           # поле Story Points для выработки участников; или "customfield_10106"

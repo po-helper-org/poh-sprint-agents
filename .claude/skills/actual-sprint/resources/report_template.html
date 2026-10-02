@@ -14,7 +14,7 @@
 <div class="promptbox" id="promptbox">
   <div class="pb-row">
     <button class="pres-btn" id="bizBtn" title="Промт для генерации бизнес-отчёта «ФАКТ | спринт» для управляющего комитета">Бизнес-отчёт</button>
-    <button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
+    <button class="logs-btn" id="logsBtn" title="Кто что менял за спринт">Logs</button>
     <button class="pb-toggle" id="notesToggle" aria-expanded="false" aria-controls="notesPanel"
       title="Заметки к спринту и промт для ИИ">Комментарии (<span id="cCount">0</span>)</button>
   </div>
@@ -397,9 +397,10 @@
     scopeBtn.hidden = true;
     scopeEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
-    storiesLabel.textContent = 'Изменения за неделю';
+    storiesLabel.textContent = LOGS && LOGS.since ? 'Изменения за спринт' : 'Изменения за неделю';
     stackKey.textContent = 'Logs';
-    stackTitle.textContent = 'Кто что менял за последние ' + ((LOGS && LOGS.days) || 7) + ' дней';
+    stackTitle.textContent = LOGS && LOGS.since ? 'Кто что менял с начала спринта (' + ddmm(LOGS.since) + ')'
+      : 'Кто что менял за последние ' + ((LOGS && LOGS.days) || 7) + ' дней';
 
     logsFilter = null;
     logsKind = null;

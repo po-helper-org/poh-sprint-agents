@@ -152,10 +152,15 @@ check(mem.open && mem.tabs.join('|') === ops.sprints.join('|') && mem.first.star
 await p.click('.side-tab >> nth=0');
 await p.click('#storiesBody .mi-row >> nth=0');
 await p.waitForTimeout(200);
-check(await p.isVisible('#storiesBody .mi-back') && (await p.locator('#storiesBody .log-item').count()) > 0,
-      'клик по задаче — смены статуса и комментарии по ней');
-await p.click('#storiesBody .mi-back');
-check((await p.locator('#storiesBody .mi-row').count()) > 0, '«← Задачи участника» возвращает к списку');
+const act = await p.evaluate(() => {
+  const d = document.querySelector('#storiesBody .mi-row + .mi-detail');
+  const at = [...d.querySelectorAll('.mi-act .mi-when')].map(x => x.textContent);
+  return { n: at.length, rows: document.querySelectorAll('#storiesBody .mi-row').length,
+           sorted: at.every((x, i) => !i || x.slice(3, 5) + x.slice(0, 2) + x.slice(6) >= at[i - 1].slice(3, 5) + at[i - 1].slice(0, 2) + at[i - 1].slice(6)) };
+});
+check(act.n > 0 && act.sorted && act.rows > 1, 'клик по задаче — её смены статуса и комментарии на том же экране, по хронологии');
+await p.click('#storiesBody .mi-row >> nth=0');
+check((await p.locator('#storiesBody .mi-detail').count()) === 0, 'повторный клик сворачивает историю');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // планы на следующий спринт
@@ -195,14 +200,15 @@ await goTo('#deckSlides tr.grp.kr');
 await p.click('#deckSlides tr.grp.kr >> nth=0');
 await p.waitForTimeout(300);
 const eb = await p.evaluate(() => ({ chart: !!document.querySelector('#storiesBody .eb svg'),
-  kpis: (document.querySelector('#storiesBody .eb-kpis') || {}).textContent || '',
-  why: (document.querySelector('#storiesBody .eb-why') || {}).textContent || '',
+  bars: document.querySelectorAll('#storiesBody .eb svg rect').length,
+  panel: (document.querySelector('#storiesBody .eb-panel') || {}).textContent || '',
+  why: !!document.querySelector('#storiesBody .eb-why'),
   secs: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head')].map(h => h.textContent),
   n: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head .n')].reduce((a, x) => a + parseInt(x.textContent.replace('·', ''), 10), 0),
   scope: TEAMS[0].epics[0].scope.length }));
-check(eb.chart && /прогноз/.test(eb.kpis) && /плановая дата/.test(eb.kpis) && /осталось задач/.test(eb.kpis),
-      'клик по KR — «Когда будет выполнен»: прогноз, плановая дата, осталось, график');
-check(/На чём прогноз/.test(eb.why) && /в неделю/.test(eb.why), 'и «На чём прогноз»: темп, остаток, срок');
+check(eb.chart && eb.bars > 5 && /до закрытия|выполнен|Прогноза нет/.test(eb.panel) && /прогноз/.test(eb.panel) && /план/.test(eb.panel),
+      'клик по KR — сгорание эпика по неделям и панель: сколько недель до закрытия, прогноз, план');
+check(!eb.why, 'без пояснений словами');
 check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith('Что выполнено') && eb.n === eb.scope,
       'ниже — что осталось и что выполнено: весь объём эпика, как в отчёте PO');
 await p.keyboard.press('Escape');

@@ -115,8 +115,10 @@ class LegacyParityTest(unittest.TestCase):
         return out
 
     def test_same_as_legacy_golden(self):
-        fresh = support.collect_ok()
+        # старый сборщик считал ленту за 7 дней; с 1.5.0 по умолчанию — период спринта
+        fresh = support.collect_ok(req=support.request(params={'activity_days': 7}))
         stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap', 'output')}
+        stripped['logs'] = {k: v for k, v in stripped['logs'].items() if k != 'since'}
         stripped['epics'] = self.without_priorities(stripped['epics'])
         self.assertEqual(LEGACY, stripped)
 
@@ -245,6 +247,17 @@ class ParamsTest(unittest.TestCase):
         two = support.collect_ok(req=support.request(params={'sprints_back': 2}))
         self.assertEqual(2, len(two['metrics']['sprints']))
         self.assertEqual(3, len(support.collect_ok()['metrics']['sprints']))
+
+    def test_activity_window_is_sprint_by_default(self):
+        """1.5.0: без activity_days лента — с начала текущего спринта."""
+        data = support.collect_ok()
+        start = next(s['start'] for s in data['output']['sprints'] if s['current'])
+        self.assertEqual(start, data['logs']['since'])
+        self.assertTrue(all(e['at'][:10] >= start for e in data['logs']['events']))
+        for s in data['output']['sprints']:
+            for m in s['members']:
+                for it in m['items']:
+                    self.assertTrue(all(s['start'] <= h['at'][:10] for h in it['history']), 'история — в границах спринта')
 
     def test_activity_days_changes_window(self):
         wide = support.collect_ok(req=support.request(params={'activity_days': 30}))

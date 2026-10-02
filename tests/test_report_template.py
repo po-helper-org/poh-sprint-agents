@@ -90,11 +90,12 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(part, self.html)
 
     def test_whole_epic_has_forecast(self):
-        """«Весь эпик» в общем движке: когда будет выполнен и на чём прогноз — один вид в обоих отчётах."""
+        """«Весь эпик» в общем движке: сгорание по неделям с прогнозом — один вид в обоих отчётах."""
         scope = self.html[self.html.index('function renderScope('):self.html.index('function setScopeMode(')]
         self.assertIn('epicBurnHtml(team, epic)', scope)
-        for part in ('Когда будет выполнен', 'На чём прогноз', "'Что осталось'", "'Что выполнено'"):
+        for part in ('Сгорание эпика · задачи по неделям', 'до закрытия', 'BURN_WEEKS', "'Что осталось'", "'Что выполнено'"):
             self.assertIn(part, self.html)
+        self.assertNotIn('На чём прогноз', self.html, 'пояснений словами нет — всё на графике')
         biz = build_mod.assemble(BUSINESS_TEMPLATE)
         kr = biz[biz.index('function openKr('):]
         self.assertIn('renderScope(epic)', kr[:kr.index('\n  }\n')])

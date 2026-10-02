@@ -386,7 +386,7 @@ def build_team(spec, rnd, keys):
     for e in events:
         authors[e['author']] = authors.get(e['author'], 0) + 1
         kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
-    logs = {'events': events, 'days': 7, 'kinds': kinds,
+    logs = {'events': events, 'days': 8, 'since': start.date().isoformat(), 'kinds': kinds,
             'authors': sorted(authors.items(), key=lambda x: -x[1])}
 
     output = demo_output(slug, epics, [r['name'] for r in sprint_rows])

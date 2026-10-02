@@ -222,6 +222,17 @@
   .mi-key { color: var(--muted); font-size: 12px; }
   .mi-sp { text-align: right; font-variant-numeric: tabular-nums; color: #333; }
   .mi-empty { font-size: 12px; color: var(--muted); padding: 6px 2px; }
+  .mi-row.open { background: #f7f7f7; }
+  .mi-detail { padding: 4px 4px 12px 98px; border-bottom: 1px solid #f0f0f0; }
+  .mi-act { list-style: none; margin: 0; padding: 0; }
+  .mi-act li { display: grid; grid-template-columns: 82px 1fr 30px; gap: 8px; align-items: center; padding: 3px 0; font-size: 12.5px; }
+  .mi-act .mi-when { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mi-act .mi-what { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .mi-act .arrow { color: var(--c-zero); }
+  .mi-act .mi-c { color: #333; font-style: italic; }
+  .mi-act .mi-by { color: var(--muted); font-size: 11px; text-align: right; }
+  .mi-act-empty { font-size: 12px; color: var(--muted); padding: 4px 0; }
+  .mi-jira { display: inline-block; margin-top: 6px; font-size: 12px; color: var(--muted); }
   .mi-back { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; margin-bottom: 12px; }
   .mi-back:hover { color: var(--fg); }
   .mi-task { margin-bottom: 14px; }
@@ -678,12 +689,6 @@
       parts: [{ label: 'Готово', b: 'done', cancel: false }, { label: 'Отменено', b: 'done', cancel: true }] }
   ];
 
-  function plural(n, one, few, many) {
-    var m10 = n % 10, m100 = n % 100;
-    if (m10 === 1 && m100 !== 11) return one;
-    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
-    return many;
-  }
 
   var OUT_TIPS = [];      // расшифровки ячеек: data-tip — индекс
   var MEMBER_REFS = [];   // участник по клику: data-member — индекс
@@ -694,7 +699,6 @@
     return parts[0] + ' ' + parts.slice(1, 3).map(function (x) { return x.charAt(0).toUpperCase() + '.'; }).join(' ');
   }
 
-  function fmtNum(v) { return String(Math.round(v * 10) / 10).replace('.', ','); }
 
   // ячейка участника за спринт: группы → части → [задач, SP]; отменённое — по имени статуса
   function memberCell(m) {
@@ -1212,24 +1216,19 @@
     }).join('');
   }
 
+  // коротко и по хронологии: смены статуса и комментарии задачи за спринт
   function itemActivityHtml(it) {
-    var ev = (it.history || []).map(function (h) { return { at: h.at, by: h.by, kind: 'status', h: h }; })
-      .concat((it.comments || []).map(function (c) { return { at: c.at, by: c.by, kind: 'comment', c: c }; }))
-      .sort(function (a, b) { return a.at < b.at ? 1 : -1; });
-    if (!ev.length) return '<div class="sidebar-empty">Смен статуса и комментариев за спринт нет.</div>';
-    var html = '', last = null;
-    ev.forEach(function (e) {
-      var day = dayLabel(e.at);
-      if (day !== last) { html += '<div class="log-day">' + esc(day) + '</div>'; last = day; }
-      var body = e.kind === 'comment'
-        ? '<div class="log-move"><span class="log-verb">оставил комментарий</span></div><div class="log-quote">' + esc(e.c.body) + '</div>'
-        : '<div class="log-move"><span class="status b-open">' + esc(e.h.from || '—') + '</span><span class="arrow">→</span>' +
-          '<span class="status ' + bucketClass(e.h.to, '') + '">' + esc(e.h.to) + '</span></div>';
-      html += '<div class="log-item"><div class="log-who" title="' + esc(e.by || '') + '">' + esc(initials(e.by || '—')) + '</div>' +
-        '<div class="log-main"><div class="log-head"><span class="log-author">' + esc(e.by || '—') + '</span>' +
-        '<span class="log-time">' + esc(e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + ' ' + e.at.slice(11, 16)) + '</span></div>' + body + '</div></div>';
-    });
-    return html;
+    var ev = (it.history || []).map(function (h) { return { at: h.at, by: h.by, h: h }; })
+      .concat((it.comments || []).map(function (c) { return { at: c.at, by: c.by, c: c }; }))
+      .sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+    if (!ev.length) return '<div class="mi-act-empty">За спринт ни смен статуса, ни комментариев.</div>';
+    return '<ol class="mi-act">' + ev.map(function (e) {
+      var when = e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + ' ' + e.at.slice(11, 16);
+      var what = e.c ? '<span class="mi-c">«' + esc(e.c.body) + '»</span>'
+        : '<span class="status b-open">' + esc(e.h.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.h.to, '') + '">' + esc(e.h.to) + '</span>';
+      return '<li class="' + (e.c ? 'is-c' : 'is-s') + '"><span class="mi-when">' + when + '</span><span class="mi-what">' + what +
+        '</span><span class="mi-by" title="' + esc(e.by || '') + '">' + esc(initials(e.by || '—')) + '</span></li>';
+    }).join('') + '</ol>';
   }
 
   function openMember(ref, sprintIdx) {
@@ -1249,21 +1248,17 @@
       var mem = r.members[+id];
       var items = (mem && mem.items) || [];
       if (!items.length) { body.innerHTML = '<div class="sidebar-empty">' + (mem ? 'Список задач в данных нет: нужен сборщик 1.4.0+.' : 'В этом спринте задач нет.') + '</div>'; return; }
-      var showList = function () {
-        body.innerHTML = memberItemsHtml(items, m.sp);
-        body.querySelectorAll('.mi-row').forEach(function (b) {
-          b.addEventListener('click', function () {
-            var it = items[+b.dataset.item];
-            body.innerHTML = '<button type="button" class="mi-back">← Задачи участника</button>' +
-              '<div class="mi-task"><a class="key-link" href="' + jiraUrl(it.key) + '" target="_blank" rel="noopener">' + esc(it.key) + '</a>' +
-              '<div class="mi-task-title">' + esc(it.title) + '</div><div class="mi-task-meta"><span class="status ' + bucketClass(it.status, '') + '">' +
-              esc(it.status) + '</span>' + (m.sp ? '<span>' + fmtNum(it.sp || 0) + ' SP</span>' : '') + '</div></div>' +
-              '<div class="pane-label">Статусы и комментарии</div>' + itemActivityHtml(it);
-            body.querySelector('.mi-back').addEventListener('click', showList);
-          });
+      // клик по задаче раскрывает под ней её историю за спринт, на том же экране
+      body.innerHTML = memberItemsHtml(items, m.sp);
+      body.querySelectorAll('.mi-row').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var next = b.nextElementSibling;
+          if (next && next.classList.contains('mi-detail')) { next.remove(); b.classList.remove('open'); return; }
+          b.classList.add('open');
+          b.insertAdjacentHTML('afterend', '<div class="mi-detail">' + itemActivityHtml(items[+b.dataset.item]) +
+            '<a class="mi-jira" href="' + jiraUrl(items[+b.dataset.item].key) + '" target="_blank" rel="noopener">Открыть в JIRA ↗</a></div>');
         });
-      };
-      showList();
+      });
     });
     openPanel();
   }
@@ -1282,8 +1277,7 @@
     stackTitle.textContent = st.title;
     scopeBtn.hidden = true;
     scopeEpic = null;
-    var days = (LOGS && LOGS.days) || 7;
-    storiesLabel.textContent = 'Активность за ' + days + ' дн. · статус «' + st.status + '» с ' + ddmm(st.statusChanged);
+    storiesLabel.textContent = '';
     var feed = function (list, body, empty) {
       if (!list.length) { body.innerHTML = '<div class="sidebar-empty">' + empty + '</div>'; return; }
       var html = '', last = null;
@@ -1299,8 +1293,8 @@
     };
     sideTabs([{ id: 'story', label: 'История', n: mine.length }, { id: 'subs', label: 'Подзадачи', n: ofSubs.length }],
       'story', function (id, body) {
-        if (id === 'story') feed(mine, body, 'За ' + days + ' дн. по истории событий нет.');
-        else feed(ofSubs, body, subs.length ? 'За ' + days + ' дн. по подзадачам событий нет.' : 'Подзадач нет.');
+        if (id === 'story') feed(mine, body, 'За спринт по истории событий нет.');
+        else feed(ofSubs, body, subs.length ? 'За спринт по подзадачам событий нет.' : 'Подзадач нет.');
       });
     openPanel();
   }

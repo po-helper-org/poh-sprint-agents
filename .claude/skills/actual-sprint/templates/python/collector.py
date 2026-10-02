@@ -20,7 +20,7 @@
     epic_link_field  "auto"             или customfield_XXXXX
     epic_link_names  ["ссылка на эпик", "epic link"]  по каким именам искать поле
     sprints_back     3                  глубина метрик по спринтам
-    activity_days    7                  окно ленты активности
+    activity_days    период спринта     окно ленты активности; не задано — с начала текущего спринта
     control_days     30                 окно диаграмм управления
     categories       из status_rules.json               допустимые категории JIRA
     done_categories  ["Выполнено", "Done"]      категории «закрыто» для Lead/Cycle Time
@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.4.0'
+VERSION = '1.5.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -280,12 +280,14 @@ def value_at(issue, field, moment):
     return changes[0][1].get('fromString'), changes[0][1].get('from')
 
 
-def status_history(issue, until):
-    """Смены статуса задачи до момента until: когда, откуда, куда, кто."""
+def status_history(issue, until, since=None):
+    """Смены статуса задачи в периоде спринта [since, until]: когда, откуда, куда, кто."""
     out = []
     for h in sorted(issue.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
         if parse(h['created']) > until:
             break
+        if since and parse(h['created']) < since:
+            continue
         for it in h['items']:
             if it['field'] == 'status':
                 out.append({'at': h['created'][:16], 'from': it.get('fromString'), 'to': it.get('toString'),
@@ -320,7 +322,8 @@ class Collector:
         # TEAM RULE: что считать историей внутри эпика
         self.story_types = tuple(p.get('story_types') or ('История', 'История Enabler', 'Story'))
         self.sprints_back = int(p.get('sprints_back', 3))
-        self.activity_days = int(p.get('activity_days', 7))
+        # окно ленты: по умолчанию — период текущего спринта (с его начала), а не N дней
+        self.activity_days = int(p['activity_days']) if p.get('activity_days') else None
         self.control_days = int(p.get('control_days', 30))
         self.epic_scope = bool(p.get('epic_scope', True))
         self.epic_scope_max = int(p.get('epic_scope_max', 2000))
@@ -426,7 +429,7 @@ class Collector:
         metrics, velocity = self.build_metrics(last, per_sprint)
         burndown = self.build_burndown(active, issues)
         control = self.build_control(last, per_sprint)
-        logs = self.build_logs(last, per_sprint, with_comments)
+        logs = self.build_logs(last, per_sprint, with_comments, active)
         output = self.build_output(last, per_sprint, active, with_comments)
 
         return {
@@ -634,6 +637,7 @@ class Collector:
         for s in sprints:
             current = s['id'] == active['id']
             end = self.now if current else parse(s.get('completeDate') or s.get('endDate') or self.now.isoformat())
+            begin = parse(s['startDate']) if s.get('startDate') else None
             members, items = {}, {}
             for i in per_sprint[s['id']]:
                 f = i['fields']
@@ -653,10 +657,11 @@ class Collector:
                 # задачи участника: что пошло в зачёт и что нет, с движением статусов и комментариями
                 items.setdefault(who, []).append({
                     'key': i['key'], 'title': f.get('summary') or '', 'status': name, 'bucket': bucket,
-                    'sp': sp, 'history': status_history(i, end), 'comments': [
+                    'sp': sp, 'history': status_history(i, end, begin), 'comments': [
                         {'at': c['created'][:16], 'by': (c.get('author') or {}).get('displayName'),
                          'body': (c.get('body') or '')[:400]}
-                        for c in comments.get(i['key'], []) if parse(c['created']) <= end][-5:]})
+                        for c in comments.get(i['key'], [])
+                        if parse(c['created']) <= end and (not begin or parse(c['created']) >= begin)][-5:]})
                 lead, _, _ = lead_cycle(i, self.cats, self.rules)
                 if lead is not None:
                     leads.setdefault(who, {})[i['key']] = lead
@@ -754,8 +759,12 @@ class Collector:
         return {'stories': chart('stories'), 'subtasks': chart('subtasks'),
                 'days': self.control_days}
 
-    def build_logs(self, sprints, per_sprint, with_comments):
-        since = self.now - timedelta(days=self.activity_days)
+    def build_logs(self, sprints, per_sprint, with_comments, active=None):
+        if self.activity_days:
+            since = self.now - timedelta(days=self.activity_days)
+        else:
+            since = parse(active['startDate']) if active and active.get('startDate') else self.now - timedelta(days=14)
+        days = max(1, -(-int((self.now - since).total_seconds()) // 86400))
         events, seen = [], set()
         for s in sprints:
             for i in per_sprint[s['id']]:
@@ -803,7 +812,7 @@ class Collector:
         for e in events:
             authors[e['author']] = authors.get(e['author'], 0) + 1
             kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
-        return {'events': events, 'days': self.activity_days, 'kinds': kinds,
+        return {'events': events, 'days': days, 'since': since.date().isoformat(), 'kinds': kinds,
                 'authors': sorted(authors.items(), key=lambda x: (-x[1], x[0]))}
 
 
