@@ -198,6 +198,16 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += cycleSlide(x.t);'))
         self.assertLess(build.index('html += cycleSlide(x.t);'), build.index('html += plansSlide('))
 
+    def test_ops_member_matrix(self):
+        """Операционный слайд снизу: истории и подзадачи спринта по исполнителю — полосы по статусам,
+        «сделано/всего», застрявшие; шкала «Числа / Доли» и сортировка."""
+        for part in ('function memberMatrix(', 'function memberMatrixHtml(', "label: 'Отладка'", "'По застрявшим'",
+                     "'По готовности'", "'По списку'", "'Числа'", "'Доли'", 'Застряли', "btn('scale', 'share', 'Доли'", 'mx.dataset.mxSort',
+                     "data-mx-team="):
+            self.assertIn(part, self.html)
+        ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
+        self.assertIn('memberMatrixHtml(t)', ops)
+
     def test_cycle_slide(self):
         """«Сроки»: cycle time с полосами спринтов и скользящими средними, время в статусах по спринтам;
         клик по графику — разбор в классической диаграмме управления."""

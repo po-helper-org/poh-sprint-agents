@@ -123,13 +123,38 @@ const ops = await p.evaluate(() => {
   return { title: !!s.querySelector('.slide-title'),
            heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
            table: !!s.querySelector('table.mtab'), ctl: !!s.querySelector('[data-ctl]'),
-           big: s.querySelector('.ops-chart svg').getBoundingClientRect().height,
+           big: (r => r.width / r.height)(s.querySelector('.ops-chart svg').getBoundingClientRect()),
            legend: s.querySelector('.ops-legend').textContent };
 });
 check(!ops.title, 'у операционного слайда нет заголовка');
 check(ops.heads.length === 2 && ops.heads[0].startsWith('Производительность команды за 3 спринта') && ops.heads[1].startsWith('Сгорание спринта'),
       'два графика: производительность за 3 спринта и сгорание спринта');
-check(ops.big > 400 && !ops.ctl, 'графики крупные; диаграмма управления — на слайде «Сроки»');
+check(ops.big > 2.5 && !ops.ctl, 'графики вытянуты по ширине; диаграмма управления — на слайде «Сроки»');
+// снизу — истории и подзадачи спринта по участникам: шкала «Числа / Доли», сортировка, клик по имени — сайдбар
+const mx = async () => p.evaluate(() => {
+  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
+  const names = new Set();
+  TEAMS[0].epics.forEach(e => e.stories.forEach(st => { names.add(st.assignee || 'Не назначен'); (st.subtasks || []).forEach(x => names.add(x.assignee || 'Не назначен')); }));
+  return { rows: s.querySelectorAll('.mx-row:not(.mx-head)').length, names: names.size,
+           list: [...s.querySelectorAll('.mx-row:not(.mx-head) .mx-name')].map(n => n.textContent),
+           widths: [...s.querySelectorAll('.mx-bar > span')].map(x => x.style.width),
+           on: [...s.querySelectorAll('.mx-btn.on')].map(b => b.textContent).join('|'),
+           heads: [...s.querySelectorAll('.mx-head span')].map(x => x.textContent).filter(Boolean).join('|') };
+});
+let m1 = await mx();
+check(m1.rows === m1.names && m1.heads === 'Истории|Подзадачи|Застряли' && m1.on === 'Числа|По застрявшим',
+      'по строке на участника: истории, подзадачи, застрявшие; по умолчанию — числа, по застрявшим');
+check(m1.widths.some(w => parseFloat(w) < 100), 'шкала «Числа» — длина полосы по количеству задач');
+await p.click('#deckSlides .fslide.ops:not(.cycle) [data-mx-scale="share"]');
+await p.click('#deckSlides .fslide.ops:not(.cycle) [data-mx-sort="list"]');
+m1 = await mx();
+check(m1.widths.every(w => parseFloat(w) === 100) && m1.on === 'Доли|По списку', '«Доли» — все полосы во всю ширину');
+check(m1.list.slice(0, -1).every((n, i, a) => !i || a[i - 1] <= n), '«По списку» — по алфавиту');
+await p.click('#deckSlides .fslide.ops:not(.cycle) .mx-name .mname >> nth=0');
+await p.waitForTimeout(300);
+check((await p.textContent('#stackKey')).startsWith('Участник'), 'клик по имени — сайдбар задач участника');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
 check(ops.legend.startsWith('Не начатоВ работеВыполнено'), 'три группы статусов в легенде');
 check(!ops.table, 'выработки по участникам в бизнес-отчёте нет — она в отчёте PO');
 // «Сроки»: cycle time по спринтам со скользящими средними, время в статусах; клик — разбор
