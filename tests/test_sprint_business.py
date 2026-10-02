@@ -58,6 +58,18 @@ class CheckTest(unittest.TestCase):
     def test_example_passes_clean(self):
         self.assertEqual(([], []), self.check(self.doc))
 
+    def test_plans_checked(self):
+        """«Планы на следующий спринт»: три колонки, короткие карточки, ключи — из данных."""
+        plans = self.doc['teams']['platform']['plans']
+        plans['escalate'][0]['keys'] = ['INIT-55555']
+        plans['take'][0]['text'] = 'Очень длинно. ' * 20
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('plans.escalate #1: задачи INIT-55555' in e for e in errors), errors)
+        self.assertTrue(any('plans.take #1.text: длиннее 160' in e for e in errors), errors)
+        plans['later'] = []
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
     def test_stale_hash_rejected(self):
         self.doc['teams']['platform']['dataHash'] = 'a' * 64
         errors, _ = self.check(self.doc)

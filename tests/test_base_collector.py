@@ -103,10 +103,10 @@ class LegacyParityTest(unittest.TestCase):
 
     @staticmethod
     def without_priorities(epics):
-        """Приоритеты (1.1.0) и объём эпика (1.2.0) — новые поля; остальное как у старого сборщика."""
+        """Приоритеты (1.1.0), объём эпика (1.2.0), дедлайн эпика (1.4.0) — новые поля; остальное как у старого сборщика."""
         out = []
         for e in epics:
-            e = {k: v for k, v in e.items() if k not in ('epicPriority', 'scope')}
+            e = {k: v for k, v in e.items() if k not in ('epicPriority', 'scope', 'epicDue')}
             e['stories'] = [dict({k: v for k, v in st.items() if k != 'priority'},
                                  subtasks=[{k: v for k, v in sub.items() if k != 'priority'}
                                            for sub in st['subtasks']])
@@ -198,6 +198,32 @@ class LegacyParityTest(unittest.TestCase):
         split = members['Участник Ю']['split']
         self.assertEqual(0, split['done'][0], 'закрыта после конца спринта — не в выработке')
         self.assertEqual(1, sum(n for n, _ in split.values()))
+
+    def test_member_items_and_sprint_dates(self):
+        """1.4.0: у участника — его задачи спринта с SP, движением статусов и комментариями."""
+        data = support.collect_ok()
+        out = data['output']
+        for s in out['sprints']:
+            self.assertRegex(s['start'], r'^\d{4}-\d{2}-\d{2}$')
+            for m in s['members']:
+                self.assertEqual(sum(n for n, _ in m['split'].values()), len(m['items']))
+                self.assertEqual(m['split']['done'][1], sum(i['sp'] for i in m['items'] if i['bucket'] == 'done'))
+        items = [i for s in out['sprints'] for m in s['members'] for i in m['items']]
+        self.assertTrue(any(i['history'] for i in items))
+        self.assertTrue(any(i['comments'] for i in items), 'комментарии из второго прохода по спринту')
+        h = next(i['history'] for i in items if i['history'])[0]
+        self.assertEqual({'at', 'from', 'to', 'by'}, set(h))
+
+    def test_epic_due_and_scope_dates(self):
+        """1.4.0: дедлайн эпика и даты задач объёма — для графика сгорания эпика."""
+        data = support.collect_ok()
+        epics = {e['epicKey']: e for e in data['epics'] if e['epicKey']}
+        self.assertEqual('2026-10-15', epics['INIT-900']['epicDue'])
+        scope = [i for e in epics.values() for i in e['scope']]
+        self.assertTrue(all(i['created'] for i in scope))
+        done = [i for i in scope if i['status'] == 'Закрыт']
+        self.assertTrue(done and all(i['doneAt'] for i in done))
+        self.assertTrue(all(i['doneAt'] is None for i in scope if i['status'] == 'Бэклог'))
 
     def test_no_story_points_field_counts_tasks(self):
         data = collect_in_process(params={'sp_names': ['нет такого поля']})

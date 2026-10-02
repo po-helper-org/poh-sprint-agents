@@ -31,7 +31,8 @@ TEMPLATE_PATH = HERE / 'resources' / 'business_template.html'
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG = ins.EXIT_OK, ins.EXIT_ERROR, ins.EXIT_CONFIG
 # поле → предел длины: слайд не резиновый
 LIMITS = {'objective': 100, 'kr': 120, 'promise': 160, 'shown': 160, 'done': 140, 'next': 100, 'blocker': 120,
-          'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280}
+          'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280,
+          'plan_title': 80, 'plan_text': 160}
 
 
 class BusinessError(ins.InsightsError):
@@ -90,6 +91,13 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
     for i, r in enumerate(biz.get('risks', []), 1):
         texts += [(f'risks #{i}.title', r['title'], LIMITS['title'], False),
                   (f'risks #{i}.text', r['text'], LIMITS['text'], False)]
+    for col, cards in biz.get('plans', {}).items():
+        for i, c in enumerate(cards, 1):
+            texts += [(f'plans.{col} #{i}.title', c['title'], LIMITS['plan_title'], True)]
+            texts += [(f'plans.{col} #{i}.text', c['text'], LIMITS['plan_text'], True)] if 'text' in c else []
+            for key in c.get('keys', []):
+                if key not in keys:
+                    errors.append(f'[{slug}] plans.{col} #{i}: задачи {key} нет в данных команды')
     for where, text, limit, numbers in texts:
         where = f'[{slug}] {where}'
         if len(text) > limit:

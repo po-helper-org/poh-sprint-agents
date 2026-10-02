@@ -218,6 +218,10 @@ def epic_facts(team, tm):
             'scopeDonePct': round(100 * len(done_scope) / len(scope)) if scope else None,
             'closedStories': [{'key': st['key'], 'title': st['title']} for st in epic['stories']
                               if tm.bucket(st['status'], st.get('category', '')) == 'done'],
+            'due': epic.get('epicDue'),
+            # следующее по KR — первые открытые задачи эпика вне спринта, в порядке доски
+            'nextUp': [{'key': it['key'], 'title': it['title']} for it in scope
+                       if not it.get('inSprint') and tm.bucket(it['status'], it.get('category', '')) == 'open'][:3],
         })
     return out
 

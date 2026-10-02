@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.3.0'
+VERSION = '1.4.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -280,6 +280,19 @@ def value_at(issue, field, moment):
     return changes[0][1].get('fromString'), changes[0][1].get('from')
 
 
+def status_history(issue, until):
+    """Смены статуса задачи до момента until: когда, откуда, куда, кто."""
+    out = []
+    for h in sorted(issue.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
+        if parse(h['created']) > until:
+            break
+        for it in h['items']:
+            if it['field'] == 'status':
+                out.append({'at': h['created'][:16], 'from': it.get('fromString'), 'to': it.get('toString'),
+                            'by': (h.get('author') or {}).get('displayName')})
+    return out
+
+
 def in_progress_since(issue, cats, rules):
     """Когда задачу взяли в работу, если она до сих пор не закрыта. Иначе None."""
     if rules.is_done(cats.get(str(issue['fields']['status']['id']))):
@@ -414,7 +427,7 @@ class Collector:
         burndown = self.build_burndown(active, issues)
         control = self.build_control(last, per_sprint)
         logs = self.build_logs(last, per_sprint, with_comments)
-        output = self.build_output(last, per_sprint, active)
+        output = self.build_output(last, per_sprint, active, with_comments)
 
         return {
             'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
@@ -431,7 +444,7 @@ class Collector:
         if issues and not stories:
             self.warn(f'ни одна задача спринта не попала в story_types {list(self.story_types)} — '
                       f'таблица эпиков будет пустой')
-        groups, order, epic_cache, epic_prio = {}, [], {}, {}
+        groups, order, epic_cache, epic_prio, epic_due = {}, [], {}, {}, {}
 
         # ключи эпиков уже пришли в полях историй; названия добираем одним запросом на все
         epic_keys = sorted({st['fields'].get(epic_field) for st in stories
@@ -441,10 +454,12 @@ class Collector:
         for start in range(0, len(epic_keys), chunk):
             batch = epic_keys[start:start + chunk]
             jql = 'key in (' + ','.join(batch) + ')'
-            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary,priority',
+            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary,priority,duedate',
                                   maxResults=len(batch))['issues']
             epic_cache.update({i['key']: i['fields']['summary'] for i in found})
             epic_prio.update({i['key']: priority_name(i['fields']) for i in found})
+            # плановая дата закрытия эпика — для графика сгорания на KR
+            epic_due.update({i['key']: (i['fields'].get('duedate') or None) for i in found})
         missing = [k for k in epic_keys if k not in epic_cache]
         if missing:
             self.warn(f'{len(missing)} эпиков не отдались по ключу (нет прав или удалены): '
@@ -460,7 +475,8 @@ class Collector:
             row = groups.setdefault(gkey, {
                 'rowId': gkey, 'epicKey': ek,
                 'epicTitle': epic_cache.get(ek) if ek else 'Без эпика',
-                'epicPriority': epic_prio.get(ek) if ek else None, 'stories': []})
+                'epicPriority': epic_prio.get(ek) if ek else None,
+                'epicDue': epic_due.get(ek) if ek else None, 'stories': []})
             if gkey not in order:
                 order.append(gkey)
             row['stories'].append({
@@ -516,7 +532,7 @@ class Collector:
         # TEAM RULE: как в JQL сослаться на поле связи с эпиком
         m = re.match(r'customfield_(\d+)$', epic_field)
         field_ref = f'cf[{m.group(1)}]' if m else f'"{epic_field}"'
-        fields = f'summary,status,issuetype,assignee,priority,subtasks,{epic_field}'
+        fields = f'summary,status,issuetype,assignee,priority,subtasks,created,resolutiondate,{epic_field}'
         chunk = int(self.params.get('epic_batch', 50))
         by_epic, seen = {k: [] for k in keys}, 0
         for start in range(0, len(keys), chunk):
@@ -538,13 +554,17 @@ class Collector:
                     status = f['status']['name']
                     category = self.cats.get(str(f['status']['id'])) or \
                         f['status'].get('statusCategory', {}).get('name', '')
-                    self.bucket(status, category)
+                    bucket = self.bucket(status, category)
+                    done_at = f.get('resolutiondate') if bucket == 'done' else None
                     item = {
                         'key': i['key'], 'title': f['summary'], 'type': f['issuetype']['name'],
                         'status': status, 'category': category,
                         'assignee': (f.get('assignee') or {}).get('displayName'),
                         'priority': priority_name(f),
                         'sprint': where.get(i['key']), 'inSprint': where.get(i['key']) == active['name'],
+                        # даты — для графика сгорания эпика: когда задача появилась и когда закрыта
+                        'created': (f.get('created') or '')[:10] or None,
+                        'doneAt': done_at[:10] if done_at else None,
                         'subtasks': [],
                     }
                     for sub in f.get('subtasks') or []:
@@ -604,15 +624,17 @@ class Collector:
                'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)}
         return metrics, vel
 
-    def build_output(self, sprints, per_sprint, active):
+    def build_output(self, sprints, per_sprint, active, with_comments=None):
         """Выработка участников по спринтам: задачи и Story Points по статусу на конец
         спринта (у активного — на сейчас), по исполнителю на тот же момент. Подзадачи не
         считаются: оценка живёт на задаче. Lead Time участника — медиана его закрытых."""
         out, leads = [], {}
+        comments = {i['key']: (i['fields'].get('comment') or {}).get('comments') or []
+                    for s in sprints for i in (with_comments or {}).get(s['id'], [])}
         for s in sprints:
             current = s['id'] == active['id']
             end = self.now if current else parse(s.get('completeDate') or s.get('endDate') or self.now.isoformat())
-            members = {}
+            members, items = {}, {}
             for i in per_sprint[s['id']]:
                 f = i['fields']
                 if f['issuetype'].get('subtask'):
@@ -628,11 +650,20 @@ class Collector:
                 row = members.setdefault(who, {b: [0, 0] for b in self.rules.empty_counts()})
                 row[bucket][0] += 1
                 row[bucket][1] += sp
+                # задачи участника: что пошло в зачёт и что нет, с движением статусов и комментариями
+                items.setdefault(who, []).append({
+                    'key': i['key'], 'title': f.get('summary') or '', 'status': name, 'bucket': bucket,
+                    'sp': sp, 'history': status_history(i, end), 'comments': [
+                        {'at': c['created'][:16], 'by': (c.get('author') or {}).get('displayName'),
+                         'body': (c.get('body') or '')[:400]}
+                        for c in comments.get(i['key'], []) if parse(c['created']) <= end][-5:]})
                 lead, _, _ = lead_cycle(i, self.cats, self.rules)
                 if lead is not None:
                     leads.setdefault(who, {})[i['key']] = lead
             out.append({'name': s['name'], 'current': current,
-                        'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in row.items()}}
+                        'start': (s.get('startDate') or '')[:10] or None, 'end': (s.get('endDate') or '')[:10] or None,
+                        'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in row.items()},
+                                     'items': items.get(who, [])}
                                     for who, row in sorted(members.items())]})
         lead_by = {who: stats(list(v.values())) for who, v in leads.items()}
         return {'unit': 'SP' if self.sp_id else 'задач', 'field': self.sp_id, 'sprints': out,

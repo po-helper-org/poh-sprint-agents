@@ -74,6 +74,7 @@
         "epicKey": { "type": ["string", "null"], "description": "null → строка рендерится как псевдо-эпик «Без эпика»." },
         "epicTitle": { "type": ["string", "null"] },
         "epicPriority": { "type": ["string", "null"], "description": "priority.name эпика как вернул JIRA; null — поле не заполнено. Необязательно: свои сборщики могут не отдавать." },
+        "epicDue": { "type": ["string", "null"], "description": "Плановая дата закрытия эпика (duedate), YYYY-MM-DD; null — не задана. Для графика сгорания эпика в бизнес-отчёте." },
         "stories": { "type": "array", "items": { "$ref": "#/definitions/story" } },
         "scope": {
           "type": "array",
@@ -95,6 +96,8 @@
         "priority": { "type": ["string", "null"] },
         "sprint": { "type": ["string", "null"], "description": "Имя спринта отчёта, в котором задача была; null — вне спринтов отчёта (бэклог или давнее)." },
         "inSprint": { "type": "boolean", "description": "Задача в текущем спринте." },
+        "created": { "type": ["string", "null"], "description": "Дата создания задачи, YYYY-MM-DD — для графика сгорания эпика." },
+        "doneAt": { "type": ["string", "null"], "description": "Дата решения (resolutiondate) закрытой задачи, YYYY-MM-DD; у незакрытой — null." },
         "subtasks": {
           "type": "array",
           "items": {
@@ -309,6 +312,8 @@
             "properties": {
               "name": { "type": "string", "minLength": 1 },
               "current": { "type": "boolean" },
+              "start": { "type": ["string", "null"], "description": "Дата начала спринта, YYYY-MM-DD." },
+              "end": { "type": ["string", "null"], "description": "Плановая дата конца спринта, YYYY-MM-DD." },
               "members": {
                 "type": "array",
                 "items": {
@@ -316,6 +321,20 @@
                   "required": ["name", "split"],
                   "properties": {
                     "name": { "type": "string", "minLength": 1, "description": "displayName исполнителя на конец спринта; «Не назначен» — без исполнителя." },
+                    "items": {
+                      "type": "array",
+                      "description": "Задачи участника в спринте (без подзадач): статус и бакет на конец спринта, SP, смены статуса и до пяти комментариев до конца спринта.",
+                      "items": {
+                        "type": "object",
+                        "required": ["key", "title", "status", "bucket", "sp"],
+                        "properties": {
+                          "key": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "string" },
+                          "bucket": { "$ref": "#/definitions/bucket" }, "sp": { "type": "number", "minimum": 0 },
+                          "history": { "type": "array", "items": { "type": "object", "required": ["at", "to"] } },
+                          "comments": { "type": "array", "items": { "type": "object", "required": ["at", "body"] } }
+                        }
+                      }
+                    },
                     "split": {
                       "type": "object",
                       "description": "Бакет → [задач, SP] на конец спринта. done — выработка, остальное — застрявшее.",

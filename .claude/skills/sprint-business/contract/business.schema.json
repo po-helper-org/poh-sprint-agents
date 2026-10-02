@@ -94,6 +94,37 @@
           "type": "string",
           "minLength": 3,
           "description": "Откуда цели и коммитменты: файл OKR/roadmap или «со слов PO, дата»."
+        },
+        "plans": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Слайд «Планы на следующий спринт»: до четырёх карточек в колонке. Нет колонки — страница возьмёт её из данных (открытый объём KR, незакрытое в спринте, заблокированное).",
+          "properties": {
+            "take": {
+              "type": "array",
+              "maxItems": 4,
+              "items": {
+                "$ref": "#/definitions/planCard"
+              },
+              "description": "Взять в работу: что команда берёт в следующий спринт."
+            },
+            "finish": {
+              "type": "array",
+              "maxItems": 4,
+              "items": {
+                "$ref": "#/definitions/planCard"
+              },
+              "description": "Доделать: что переносится из этого спринта."
+            },
+            "escalate": {
+              "type": "array",
+              "maxItems": 4,
+              "items": {
+                "$ref": "#/definitions/planCard"
+              },
+              "description": "Эскалировать: где нужна помощь руководства или смежников."
+            }
+          }
         }
       },
       "required": [
@@ -222,6 +253,31 @@
           "type": "string",
           "minLength": 10,
           "description": "Что под угрозой (коммитмент OKR, дата) и почему, до 280 знаков."
+        }
+      }
+    },
+    "planCard": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Суть карточки, до 80 знаков."
+        },
+        "text": {
+          "type": "string",
+          "description": "Одно предложение: зачем, что мешает или кто нужен, до 160 знаков."
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*-\\d+$"
+          }
         }
       }
     }

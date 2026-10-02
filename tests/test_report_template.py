@@ -136,15 +136,31 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
 
     def test_ops_slide_member_output(self):
-        """Операционный отчёт: производительность команды и выработка участников в SP, таблица за 3 спринта."""
-        for part in ('Общая производительность команды', 'Выработка каждого участника', 'Lead time',
-                     "label: 'Не начато'", "label: 'В блоке'", "label: 'Ревью'", "label: 'Отладка'",
-                     'function tipHtml(', 'Готово — выработка', 'function teamOutputChart(', 'function memberChart('):
+        """Операционный отчёт без заголовка: производительность, диаграмма управления за 3 спринта
+        (истории и подзадачи), участники тремя группами с раскрытием по наведению и сайдбаром."""
+        for part in ('Общая производительность команды', 'Диаграмма управления за 3 спринта', 'function controlOverview(',
+                     'Lead time', 'function tipHtml(', 'function teamOutputChart(', 'function openMember(',
+                     'function itemActivityHtml(', "label: 'Backlog / To Do'", "label: 'Отменено'", 'CANCEL_RE'):
             self.assertIn(part, self.html)
-        ops = self.html[self.html.index('var OUT_ORDER = ['):self.html.index('function changesSlide(')]
-        order = [ops.index("id: '" + b + "'") for b in ('open', 'blocked', 'progress', 'review', 'testing', 'done')]
-        self.assertEqual(sorted(order), order, 'порядок статусов: не начато / в блоке / в работе / ревью / отладка / готово')
-        self.assertNotIn('controlChart', ops, 'диаграмм управления на слайде нет')
+        ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function changesSlide(')]
+        order = [ops.index("label: '" + g + "'") for g in ('Не начато', 'В работе', 'Выполнено')]
+        self.assertEqual(sorted(order), order, 'три группы: не начато / в работе / выполнено')
+        slide = ops[ops.index('function opsSlide('):]
+        self.assertNotIn('slide-title', slide[:slide.index('function plansSlide(')], 'заголовка у операционного слайда нет')
+        self.assertNotIn('function memberChart(', self.html, 'графика выработки по участникам больше нет')
+
+    def test_title_team_and_plans_slides(self):
+        """Титул и слайд команды — со сводкой; после операционного — «Планы на следующий спринт»."""
+        for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function plansSlide(', "'Взять в работу'",
+                     "'Доделать'", "'Эскалировать'", 'html += plansSlide(x.t, x.streams);'):
+            self.assertIn(part, self.html)
+        for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '"):
+            self.assertNotIn(gone, self.html)
+
+    def test_kr_epic_burndown(self):
+        """Клик по KR: сгорание эпика — объём, осталось, план (duedate) и прогноз по темпу спринта."""
+        for part in ('function epicBurn(', 'function epicBurnChart(', 'epic.epicDue', 'прогноз', 'epicBurnHtml(ref.team, epic)'):
+            self.assertIn(part, self.html)
 
     def test_deck_stage_full_screen(self):
         """Широкий экран: один слайд на всю площадь, навигация кнопками; «Слайды» — выезжающий сайдбар-список."""

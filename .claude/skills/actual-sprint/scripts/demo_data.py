@@ -117,9 +117,11 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
     всю остальную демо-картинку и скриншоты в документации.
     """
     r = random.Random(ekey)
+    day = lambda d: (NOW - timedelta(days=d)).date().isoformat()  # noqa: E731
     scope = [{'key': st['key'], 'title': st['title'], 'type': 'История', 'status': st['status'],
               'category': st['category'], 'assignee': st['assignee'], 'priority': st['priority'],
-              'sprint': sprint_name, 'inSprint': True,
+              'sprint': sprint_name, 'inSprint': True, 'created': day(r.randint(8, 30)),
+              'doneAt': st['statusChanged'][:10] if st['category'] == 'Выполнено' else None,
               'subtasks': [{k: sub[k] for k in ('key', 'summary', 'status', 'category', 'priority')}
                            for sub in st['subtasks']]} for st in stories]
     plan = [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 2}')] * r.randint(3, 6) + \
@@ -133,41 +135,74 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
             sub_key = f'INIT-{next(SCOPE_KEYS)}'
             subs.append({'key': sub_key, 'summary': name, 'status': status, 'category': cat,
                          'priority': priority(sub_key)})
+        # закрытые раньше — в своём спринте: N-2 — 4–5 недель назад, N-1 — 1–3 недели назад
+        done_ago = {f'Спринт {sprint_no - 2}': r.randint(22, 35), f'Спринт {sprint_no - 1}': r.randint(8, 21)}.get(sprint)
         scope.append({'key': key, 'title': r.choice(STORIES), 'type': r.choice(['История', 'История', 'Задача']),
                       'status': status, 'category': cat, 'assignee': r.choice(PEOPLE),
-                      'priority': priority(key), 'sprint': sprint, 'inSprint': False, 'subtasks': subs})
+                      'priority': priority(key), 'sprint': sprint, 'inSprint': False,
+                      'created': day((done_ago or 0) + r.randint(5, 25)),
+                      'doneAt': day(done_ago) if done_ago and cat == 'Выполнено' else None, 'subtasks': subs})
     return scope
 
 
 def demo_output(slug, epics, sprint_names):
-    """Выработка участников: задачи и SP по статусу на конец спринта (как у сборщика 1.3.0).
-    Свой генератор от slug — остальные демо-числа от него не сдвигаются."""
+    """Выработка участников: задачи и SP по статусу на конец спринта, с движением статусов
+    и комментариями (как у сборщика 1.4.0). Свой генератор от slug — остальные демо-числа
+    от него не сдвигаются."""
     r = random.Random('output:' + slug)
     order = ('open', 'blocked', 'progress', 'testing', 'review', 'done')
+    by_bucket = {b: [st for st, cat in STATUSES if bucket(st, cat) == b] for b in order}
+    by_bucket['done'] = ['Закрыт', 'Закрыт', 'Закрыт', 'Отменён']
     sp_of = lambda: r.choice([1, 2, 3, 3, 5, 5, 8, 13])  # noqa: E731
     stories = [st for e in epics for st in e['stories']]
     people = sorted({st['assignee'] for st in stories if st.get('assignee')})
+    cur_start = (NOW - timedelta(days=7)).date()
+    n = len(sprint_names)
+    keyno = iter(range(8000 + 300 * (sum(map(ord, slug)) % 7), 10 ** 6))
+
+    def history(status, end):
+        path = ['Бэклог', 'В работе'] + ([] if status in ('В работе', 'Бэклог') else [status])
+        out, at = [], end - timedelta(days=r.randint(6, 12))
+        for a, b in zip(path, path[1:]):
+            at += timedelta(days=r.randint(1, 3), hours=r.randint(1, 8))
+            out.append({'at': min(at, end).strftime('%Y-%m-%dT%H:%M'), 'from': a, 'to': b, 'by': r.choice(PEOPLE)})
+        return out
+
+    def comments(end):
+        return [{'at': (end - timedelta(days=r.randint(0, 6), hours=r.randint(1, 9))).strftime('%Y-%m-%dT%H:%M'),
+                 'by': r.choice(PEOPLE), 'body': r.choice(COMMENTS)} for _ in range(r.choice([0, 0, 1, 2]))]
+
     sprints, leads = [], {}
     for i, name in enumerate(sprint_names):
-        current = i == len(sprint_names) - 1
+        current = i == n - 1
+        s_start = cur_start - timedelta(days=14 * (n - 1 - i))
+        s_end = s_start + timedelta(days=14)
+        end_dt = NOW if current else datetime.combine(s_end, datetime.min.time(), NOW.tzinfo)
         members = {}
         if current:
             for st in stories:
-                row = members.setdefault(st.get('assignee') or 'Не назначен', {b: [0, 0] for b in order})
-                cell = row[bucket(st['status'], st['category'])]
-                cell[0] += 1
-                cell[1] += sp_of()
+                b = bucket(st['status'], st['category'])
+                members.setdefault(st.get('assignee') or 'Не назначен', []).append(
+                    {'key': st['key'], 'title': st['title'], 'status': st['status'], 'bucket': b, 'sp': sp_of(),
+                     'history': history(st['status'], end_dt), 'comments': comments(end_dt)})
         else:
             for who in people:
-                row = members.setdefault(who, {b: [0, 0] for b in order})
                 for _ in range(r.randint(2, 6)):
                     b = r.choices(order, [1, 1, 1, 1, 1, 12])[0]
-                    row[b][0] += 1
-                    row[b][1] += sp_of()
-        for who, row in members.items():
-            leads.setdefault(who, []).extend(round(r.uniform(2, 22), 1) for _ in range(row['done'][0]))
-        sprints.append({'name': name, 'current': current,
-                        'members': [{'name': w, 'split': row} for w, row in sorted(members.items())]})
+                    status = r.choice(by_bucket[b])
+                    members.setdefault(who, []).append(
+                        {'key': f'INIT-{next(keyno)}', 'title': r.choice(STORIES), 'status': status, 'bucket': b,
+                         'sp': sp_of(), 'history': history(status, end_dt), 'comments': comments(end_dt)})
+        out = []
+        for who, items in sorted(members.items()):
+            split = {b: [0, 0] for b in order}
+            for it in items:
+                split[it['bucket']][0] += 1
+                split[it['bucket']][1] += it['sp']
+            leads.setdefault(who, []).extend(round(r.uniform(2, 22), 1) for _ in range(split['done'][0]))
+            out.append({'name': who, 'split': split, 'items': items})
+        sprints.append({'name': name, 'current': current, 'start': s_start.isoformat(), 'end': s_end.isoformat(),
+                        'members': out})
     lead = {w: {'median': round(statistics.median(v), 1), 'count': len(v)} for w, v in leads.items() if v}
     return {'unit': 'SP', 'field': 'customfield_10106', 'sprints': sprints, 'lead': lead}
 
@@ -207,8 +242,11 @@ def build_team(spec, rnd, keys):
             all_units.append(story)
             all_units.extend(story['subtasks'])
         sprint_no = int(spec['sprint'].split()[-1])
+        # плановая дата эпика — у двух из трёх, детерминированно от ключа
+        due_n = int(ekey.split('-')[1])
         epics.append({'rowId': ekey, 'epicKey': ekey, 'epicTitle': title,
                       'epicPriority': priority(ekey), 'stories': stories,
+                      'epicDue': (NOW + timedelta(days=6 + due_n % 40)).date().isoformat() if due_n % 3 else None,
                       'scope': epic_scope(ekey, stories, spec['sprint'], sprint_no)})
 
     # истории без эпика — псевдо-эпик

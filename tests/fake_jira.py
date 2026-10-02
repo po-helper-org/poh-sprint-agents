@@ -153,6 +153,10 @@ class Dataset:
             SP_FIELD: None if subtask else (1, 2, 3, 5, 8)[int(key.split('-')[1]) % 5],
             'comment': {'comments': comments or []},
         }
+        # дата решения — момент перехода в закрытый статус (для графика сгорания эпика)
+        closes = [h['created'] for h in (histories or []) if h['items'][0]['field'] == 'status'
+                  and BY_NAME.get(h['items'][0]['toString'], (None, ''))[1] == 'Выполнено']
+        fields['resolutiondate'] = closes[-1] if closes and BY_NAME[status_name][1] == 'Выполнено' else None
         return {'key': key, 'fields': fields, 'parent': parent,
                 'changelog': {'histories': histories or []}}
 
@@ -272,6 +276,8 @@ def epic_scope(ds):
                 'issuetype': {'name': 'История', 'subtask': False},
                 'assignee': {'displayName': PEOPLE[n % len(PEOPLE)]},
                 'priority': priority_obj(key), EPIC_FIELD: ekey,
+                'created': iso(NOW - timedelta(days=80 + j * 5)),
+                'resolutiondate': iso(NOW - timedelta(days=60)) if status == 'Закрыт' else None,
                 'subtasks': [{'key': sub_key, 'fields': {'summary': 'Проверка на стенде',
                                                          'status': status_obj(status),
                                                          'priority': priority_obj(sub_key)}}],
@@ -328,7 +334,9 @@ def make_api(dataset=None):
             want = params.get('fields', 'summary').split(',')
             return {'issues': [{'key': k, 'fields': {f: v for f, v in
                                                      (('summary', titles.get(k, 'Эпик ' + k)),
-                                                      ('priority', priority_obj(k))) if f in want}}
+                                                      ('priority', priority_obj(k)),
+                                                      ('duedate', '2026-10-15' if k == EPICS[0][0] else None))
+                                                     if f in want}}
                                for k in keys if k in titles],
                     'total': len(keys)}
         raise AssertionError(f'синтетическая JIRA не знает ручку {path}')
