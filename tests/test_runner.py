@@ -91,6 +91,31 @@ class RunnerTest(unittest.TestCase):
 
     # ------------------------------------------------------------- счастливый путь
 
+    def test_check_full_example(self):
+        """check: готовый JSON без сборщика и сети — схема, инварианты, покрытие экранов."""
+        full = support.SKILL / 'examples' / 'example_team_full.json'
+        proc = self.p.run('check', str(full), '--all')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        self.assertIn('инварианты     14/14 ✓', proc.stdout)
+        self.assertIn('покрытие экранов 27/27 ✓', proc.stdout)
+        self.assertIn('✓ презентация: «Сроки»: время в статусах', proc.stdout)
+
+    def test_check_names_missing_fields(self):
+        """check: без необязательной секции экран помечен и назван пропавшим полем; битый — код 1."""
+        data = json.loads((support.SKILL / 'examples' / 'example_team_full.json').read_text(encoding='utf-8'))
+        for s in data['output']['sprints']:
+            s.pop('timeInStatus')
+        path = self.p.dir / 'team.json'
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
+        proc = self.p.run('check', str(path))
+        self.assertEqual(0, proc.returncode, proc.stdout)
+        self.assertIn('✗ презентация: «Сроки»: время в статусах — нет output.sprints[].timeInStatus', proc.stdout)
+        del data['burndown']
+        path.write_text(json.dumps([data], ensure_ascii=False), encoding='utf-8')
+        proc = self.p.run('check', str(path))
+        self.assertEqual(1, proc.returncode, proc.stdout)
+        self.assertIn('burndown', proc.stdout)
+
     def test_two_teams_one_page(self):
         """Критерий приёмки: base с params и свой сборщик дают один HTML с двумя вкладками."""
         self.p.lock_all()
@@ -102,7 +127,7 @@ class RunnerTest(unittest.TestCase):
         self.assertIn('"team-a"', html)
         self.assertIn('"team-b"', html)
         self.assertIn('доска «Scrum Board Платформа» (#101)', proc.stdout)
-        self.assertIn('инварианты 24/24', proc.stdout)
+        self.assertIn('инварианты 28/28', proc.stdout)
         self.assertIn('→', proc.stdout)
 
     def test_summary_names_every_team(self):
@@ -271,7 +296,7 @@ class RunnerTest(unittest.TestCase):
         proc = self.p.run('validate', 'team-a', '--sample', '4')
         self.assertEqual(0, proc.returncode, proc.stdout)
         self.assertIn('схема          ✓', proc.stdout)
-        self.assertIn('инварианты     12/12 ✓', proc.stdout)
+        self.assertIn('инварианты     14/14 ✓', proc.stdout)
         self.assertIn('выборка для сверки с JIRA', proc.stdout)
         self.assertEqual(4, proc.stdout.count('status=«'))
         again = self.p.run('validate', 'team-a', '--sample', '4').stdout

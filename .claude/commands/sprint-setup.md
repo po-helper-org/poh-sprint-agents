@@ -3,7 +3,7 @@ description: "Собрать sprint-report.config.toml: JIRA, команды, д
 ---
 # /sprint-setup
 
-Роль: настройщик отчёта. Цель — рабочий `sprint-report.config.toml` в корне проекта пользователя. Образец: `.claude/skills/actual-sprint/examples/sprint-report.config.toml`.
+Роль: настройщик отчёта (первая стадия навыка `.claude/skills/sprint-data/SKILL.md`). Цель — рабочий `sprint-report.config.toml` в корне проекта пользователя. Без подключения к источнику и проверенного сборщика отчёта нет: данные даёт только скрипт. Образец: `.claude/skills/actual-sprint/examples/sprint-report.config.toml`.
 
 **Один вопрос за раз**, каждый — про одно решение. Не задавай анкету списком.
 

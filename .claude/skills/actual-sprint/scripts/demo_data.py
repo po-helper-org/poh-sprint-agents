@@ -123,7 +123,7 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
               'sprint': sprint_name, 'inSprint': True, 'created': day(r.randint(8, 30)),
               'doneAt': st['statusChanged'][:10] if st['category'] == 'Выполнено' else None,
               'sp': r.choice([1, 2, 3, 5, 5, 8, 13, None]),
-              'subtasks': [{k: sub[k] for k in ('key', 'summary', 'status', 'category', 'priority')}
+              'subtasks': [{k: sub[k] for k in ('key', 'summary', 'status', 'category', 'priority', 'assignee')}
                            for sub in st['subtasks']]} for st in stories]
     plan = [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 2}')] * r.randint(3, 6) + \
            [('Закрыт', 'Выполнено', f'Спринт {sprint_no - 1}')] * r.randint(2, 5) + \
@@ -144,8 +144,9 @@ def epic_scope(ekey, stories, sprint_name, sprint_no):
         subs = []
         for name in r.sample(SUBTASKS, r.randint(0, 3)):
             sub_key = f'INIT-{next(SCOPE_KEYS)}'
+            # исполнитель — от ключа, а не из r: иначе сдвинулась бы вся демо-картинка
             subs.append({'key': sub_key, 'summary': name, 'status': status, 'category': cat,
-                         'priority': priority(sub_key)})
+                         'priority': priority(sub_key), 'assignee': PEOPLE[int(sub_key.split('-')[1]) % len(PEOPLE)]})
         # закрытые раньше — в своём спринте: N-2 — 4–5 недель назад, N-1 — 1–3 недели назад
         done_ago = {f'Спринт {sprint_no - 2}': r.randint(22, 35), f'Спринт {sprint_no - 1}': r.randint(8, 21)}.get(sprint)
         scope.append({'key': key, 'title': r.choice(STORIES), 'type': r.choice(['История', 'История', 'Задача']),
@@ -459,11 +460,72 @@ def build_team(spec, rnd, keys):
             'notes': {}}
 
 
+def example_team(team):
+    """Полный образец ОДНОЙ команды для examples/example_team_full.json: те же демо-данные,
+    укороченные до читаемого размера, но с каждым полем контракта. Производные числа
+    (статистики диаграмм, счётчики ленты, карта статусов) пересчитаны по оставшемуся,
+    поэтому образец проходит и схему, и инварианты runner'а."""
+    import copy
+    t = copy.deepcopy(team)
+    t.pop('notes', None)
+    keep = [e for e in t['epics'] if e['epicKey']][:2] + [e for e in t['epics'] if not e['epicKey']][:1]
+    for e in keep:
+        e['stories'] = e['stories'][:2]
+        for st in e['stories']:
+            st['subtasks'] = st['subtasks'][:2]
+            mine = {st['key']} | {x['key'] for x in st['subtasks']}
+            st['events'] = [ev for ev in st.get('events', []) if ev['key'] in mine][:6]
+        if 'scope' in e:
+            inside = [x for x in e['scope'] if x['inSprint']][:2]
+            done = [x for x in e['scope'] if x['doneAt']][:2]
+            rest = [x for x in e['scope'] if not x['inSprint'] and not x['doneAt']][:1]
+            e['scope'] = sorted({x['key']: x for x in inside + done + rest}.values(), key=lambda x: x['key'])
+            for x in e['scope']:
+                x['subtasks'] = x['subtasks'][:2]
+    t['epics'] = keep
+    for grp in ('stories', 'subtasks'):
+        c = t['control'][grp]
+        c['points'] = c['points'][-6:]
+        if c['points']:
+            vals = [p['cycle'] for p in c['points']]
+            mean, sd = statistics.mean(vals), statistics.pstdev(vals)
+            c.update(mean=round(mean, 1), median=round(statistics.median(vals), 1), sd=round(sd, 1),
+                     limit=round(mean + sd, 2))
+            for p in c['points']:
+                p['outlier'] = p['cycle'] > c['limit']
+            c['outliers'] = sum(1 for p in c['points'] if p['outlier'])
+            c['risks'] = [r for r in c['risks'] if r['elapsed'] > c['median']][:2]
+    for s in t['output']['sprints']:
+        # двое с самым коротким списком: задачи участника не режем — split и items сходятся
+        s['members'] = sorted(s['members'], key=lambda m: (len(m['items']), m['name']))[:2]
+        for m in s['members']:
+            for it in m['items']:
+                it['history'] = it['history'][:2]
+                it['comments'] = it['comments'][:1]
+    names = {m['name'] for s in t['output']['sprints'] for m in s['members']}
+    t['output']['lead'] = {k: v for k, v in t['output']['lead'].items() if k in names}
+    ev = [x for kind in ('status', 'comment', 'created') for x in [e for e in t['logs']['events'] if e['kind'] == kind][:2]]
+    ev.sort(key=lambda e: (e['at'], e['key'], e['kind']), reverse=True)
+    kinds, authors = {}, {}
+    for x in ev:
+        kinds[x['kind']] = kinds.get(x['kind'], 0) + 1
+        authors[x['author']] = authors.get(x['author'], 0) + 1
+    t['logs'].update(events=ev, kinds=kinds, authors=sorted(authors.items(), key=lambda a: (-a[1], a[0])))
+    seen = {u['status'] for e in keep for st in e['stories'] for u in [st] + st['subtasks']}
+    t['statusMap'] = {k: v for k, v in t['statusMap'].items() if k in seen}
+    t['_comment'] = ('Полный образец ОДНОГО элемента массива TEAMS: каждое поле контракта '
+                     '(contract/team.schema.json, описание — sprint-data/reference/fields.md) хотя бы раз. '
+                     'Демо-команда, укороченная до читаемого размера; производные числа пересчитаны, '
+                     'образец проходит схему и инварианты. Генерируется: scripts/demo_data.py --example.')
+    return t
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--out', default=None, help='куда положить JSON команд')
     ap.add_argument('--html', default=None, help='отчёт PO (sprint-report.html)')
     ap.add_argument('--business', default=None, help='бизнес-отчёт «ФАКТ | спринт» (навык sprint-business)')
+    ap.add_argument('--example', default=None, help='полный образец одной команды (examples/example_team_full.json)')
     a = ap.parse_args()
 
     rnd = random.Random(SEED)
@@ -481,6 +543,11 @@ def main():
     if a.out:
         pathlib.Path(a.out).write_text(json.dumps(teams, ensure_ascii=False), encoding='utf-8')
         print('данные:', a.out)
+
+    if a.example:
+        pathlib.Path(a.example).write_text(
+            json.dumps(example_team(teams[0]), ensure_ascii=False, indent=1, sort_keys=True) + '\n', encoding='utf-8')
+        print('образец:', a.example)
 
     if a.html or a.business:
         # примеры агентов на демо-данных: хеш ставим по ним, дальше — тот же путь, что у

@@ -115,8 +115,9 @@ class LegacyParityTest(unittest.TestCase):
         return out
 
     def test_same_as_legacy_golden(self):
-        # старый сборщик считал ленту за 7 дней; с 1.5.0 по умолчанию — период спринта
-        fresh = support.collect_ok(req=support.request(params={'activity_days': 7}))
+        # старый сборщик считал ленту за 7 дней, диаграммы — за 30; с 1.5.0 и 1.9.0 по
+        # умолчанию — период спринта и спринты отчёта
+        fresh = support.collect_ok(req=support.request(params={'activity_days': 7, 'control_days': 30}))
         stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap', 'output')}
         stripped['logs'] = {k: v for k, v in stripped['logs'].items() if k != 'since'}
         stripped['epics'] = self.without_priorities(stripped['epics'])
@@ -261,6 +262,27 @@ class ParamsTest(unittest.TestCase):
             self.assertTrue(set(tis) <= {'blocked', 'progress', 'review', 'testing'})
             self.assertTrue(all(0 < v <= 15 for v in tis.values()), tis)
         self.assertTrue(any('progress' in s['timeInStatus'] for s in data['output']['sprints']))
+
+    def test_control_window_covers_report_sprints(self):
+        """1.9.0: окно диаграмм по умолчанию — с начала первого спринта отчёта (слайд «Сроки»
+        показывает их все); явный control_days по-прежнему задаёт его в днях."""
+        from datetime import datetime
+        data = support.collect_ok()
+        first = data['output']['sprints'][0]['start']
+        now = datetime.fromisoformat(data['_meta']['collectedAt'][:10])
+        self.assertGreaterEqual(data['control']['days'], (now - datetime.fromisoformat(first)).days)
+        self.assertTrue(all(p['doneAt'] >= first for g in ('stories', 'subtasks')
+                            for p in data['control'][g]['points']))
+        narrow = support.collect_ok(req=support.request(params={'control_days': 10}))
+        self.assertEqual(10, narrow['control']['days'])
+        self.assertLessEqual(len(narrow['control']['stories']['points']), len(data['control']['stories']['points']))
+
+    def test_scope_subtask_assignees(self):
+        """1.9.0: у подзадач объёма эпика — исполнитель (пакетный поиск по родителям)."""
+        data = support.collect_ok()
+        subs = [s for e in data['epics'] for it in e.get('scope', []) for s in it['subtasks']]
+        self.assertTrue(subs and all('assignee' in s for s in subs))
+        self.assertTrue(any(s['assignee'] for s in subs))
 
     def test_story_events_all_time(self):
         """1.7.0: у истории — хронология за всё время: она и её подзадачи, по времени."""

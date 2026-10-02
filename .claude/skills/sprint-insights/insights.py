@@ -97,8 +97,6 @@ def team_keys(team):
         chart = team['control'].get(group) or {}
         keys.update(p['key'] for p in chart.get('points', []))
         keys.update(r['key'] for r in chart.get('risks', []))
-    for sprint in team['metrics'].get('sprints', []):
-        keys.update(p['key'] for p in sprint.get('points', []) if isinstance(p, dict) and p.get('key'))
     return keys
 
 

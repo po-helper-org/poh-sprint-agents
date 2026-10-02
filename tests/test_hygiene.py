@@ -74,7 +74,7 @@ class SkillTest(unittest.TestCase):
 
     def test_commands_exist(self):
         commands = support.ROOT / '.claude' / 'commands'
-        for name in ('actual-sprint', 'sprint-setup', 'collector-new', 'collector-validate'):
+        for name in ('actual-sprint', 'sprint-setup', 'collector-new', 'collector-validate', 'sprint-data'):
             self.assertTrue((commands / f'{name}.md').is_file(), f'нет команды /{name}')
 
 
@@ -84,10 +84,21 @@ class ContractDocsTest(unittest.TestCase):
         for fragment in ('stdin', 'stdout', 'stderr', '`0`', '`2`', '`3`', 'now'):
             self.assertIn(fragment, text)
 
-    def test_data_shape_points_at_schema(self):
-        """ФТ-1: схема — источник истины, в data_shape.md остаются пояснения «почему»."""
-        text = (SKILL / 'resources' / 'data_shape.md').read_text(encoding='utf-8')
+    def test_fields_reference_points_at_schema(self):
+        """ФТ-1: схема — источник истины по форме, справочник полей навыка sprint-data — по смыслу."""
+        text = (support.ROOT / '.claude' / 'skills' / 'sprint-data' / 'reference' / 'fields.md').read_text(encoding='utf-8')
         self.assertIn('team.schema.json', text)
+
+    def test_data_skill_states_the_rule(self):
+        """Навык данных называет правило: JSON — только скрипт, подключённый к источнику."""
+        text = (support.ROOT / '.claude' / 'skills' / 'sprint-data' / 'SKILL.md').read_text(encoding='utf-8')
+        for fragment in ('только из скрипта', 'Модель — не источник данных', 'run.py check',
+                         'reference/fields.md', 'reference/render.md', 'guides/jira.md', 'templates/python/collector.py'):
+            self.assertIn(fragment, text)
+        for name in ('fields.md', 'render.md'):
+            self.assertTrue((support.ROOT / '.claude' / 'skills' / 'sprint-data' / 'reference' / name).is_file())
+        for name in ('jira.md', 'other-sources.md'):
+            self.assertTrue((support.ROOT / '.claude' / 'skills' / 'sprint-data' / 'guides' / name).is_file())
 
     def test_example_config_parses(self):
         import config as config_mod  # tomllib на 3.11+, мини-парсер на 3.9–3.10

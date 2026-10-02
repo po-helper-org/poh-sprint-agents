@@ -8,6 +8,7 @@
     run.py run       [--config sprint-report.config.toml] [--only team-a,team-b]
     run.py render    [--data снимок.json] [--output страница.html]
     run.py validate  <slug> [--sample 5] [--seed N]
+    run.py check     <файл.json> [--all]   схема, инварианты и покрытие экранов готового JSON
     run.py lock      <slug>
     run.py new       <slug> [--lang python]
 
@@ -299,6 +300,10 @@ def cmd_run(args):
             sidecar = write_sidecar(cfg, team, data)
             print(f'[{team.slug}] сайдкар → {os.path.relpath(sidecar, cfg.root)}')
             print(team_line(team, data, elapsed))
+            gaps = [r for r in validate_mod.coverage(data) if r[2] != 'есть']
+            if gaps:
+                print(f'[{team.slug}] без данных или частично: {len(gaps)} экранов '
+                      f'({", ".join(r[1] for r in gaps[:3])}{"…" if len(gaps) > 3 else ""}) — run.py check <снимок>')
         except RunFailure as exc:
             print(f'[{team.slug}] ✗ {exc}')
             failures.append((team.slug, str(exc)))
@@ -469,6 +474,8 @@ def cmd_validate(args):
     if not report.ok:
         print(f'\n✗ команда «{team.slug}» не прошла валидацию. Поправьте сборщик и повторите.')
         return EXIT_ERROR
+    for line in validate_mod.coverage_lines(data):
+        print(line)
 
     rows, seed = validate_mod.sample(data, args.sample, args.seed)
     print(f'выборка для сверки с JIRA (seed {seed}):')
@@ -478,6 +485,40 @@ def cmd_validate(args):
     print('\nСверьте эти задачи в JIRA поле за полем. Совпало и PO подтвердил → '
           f'python3 {Path(__file__).name} lock {team.slug}')
     return EXIT_OK
+
+
+def cmd_check(args):
+    """Проверить готовый JSON без сборщика и без JIRA: объект команды или снимок-массив.
+
+    Нужен автору своего сборщика (выход на любом языке) и для вопроса «почему слайд
+    пустой»: схема и инварианты — как при сборе, плюс покрытие экранов данными.
+    """
+    path = Path(args.file).resolve()
+    if not path.is_file():
+        raise RunFailure(f'нет файла {path}', code=EXIT_CONFIG)
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as exc:
+        raise RunFailure(f'{path} не разбирается как JSON ({exc})') from exc
+    teams = doc if isinstance(doc, list) else [doc]
+    ok = True
+    for team in teams:
+        if not isinstance(team, dict):
+            print('✗ элемент не объект команды')
+            ok = False
+            continue
+        core = {k: v for k, v in team.items() if k not in build.OVERLAY_FIELDS and k != '_comment'}
+        report = validate_mod.check(core)
+        print(f'[{core.get("slug", "?")}] {core.get("team", "")}')
+        for line in report.lines():
+            print(line)
+        if report.ok:
+            for line in validate_mod.coverage_lines(core, full=args.all):
+                print(line)
+        ok = ok and report.ok
+        print()
+    print('✓ форма и инварианты в порядке' if ok else '✗ JSON не проходит контракт: поправьте сборщик, не файл')
+    return EXIT_OK if ok else EXIT_ERROR
 
 
 def cmd_lock(args):
@@ -556,6 +597,10 @@ def main(argv=None):
     p_val.add_argument('--sample', type=int, default=5)
     p_val.add_argument('--seed', type=int, default=None)
 
+    p_check = sub.add_parser('check', help='проверить готовый JSON: схема, инварианты, покрытие экранов')
+    p_check.add_argument('file', help='объект команды или снимок-массив (reports/sprint-report.data.json)')
+    p_check.add_argument('--all', action='store_true', help='показать все экраны, не только пробелы')
+
     p_lock = sub.add_parser('lock', help='записать хеш проверенного сборщика')
     p_lock.add_argument('slug')
 
@@ -564,7 +609,7 @@ def main(argv=None):
     p_new.add_argument('--lang', default='python')
 
     args = ap.parse_args(argv)
-    handlers = {'run': cmd_run, 'merge': cmd_merge, 'render': cmd_render, 'validate': cmd_validate,
+    handlers = {'run': cmd_run, 'merge': cmd_merge, 'render': cmd_render, 'validate': cmd_validate, 'check': cmd_check,
                 'lock': cmd_lock, 'new': cmd_new, 'doctor': cmd_doctor}
     if not args.cmd:
         args.cmd = 'run'

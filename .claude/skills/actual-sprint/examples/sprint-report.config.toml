@@ -5,8 +5,9 @@ version = 1
 output = "./reports/sprint-report.html"          # одна страница на все команды
 notes  = "./reports/sprint-report-notes.json"    # заметки прошлой версии страницы, если остались: переедут в корзину
 data   = "./reports/sprint-report.data.json"     # снимок данных для PDF /sprint-status
-insights = "./reports/sprint-insights.json"     # наблюдения ИИ для PO и бизнес-блок презентации (/sprint-insights)
-business = "./reports/sprint-business.html"     # тот же отчёт, открытый сразу презентацией для комитета
+insights = "./reports/sprint-insights.json"     # наблюдения и интерпретация ИИ для отчёта PO (/sprint-insights)
+business = "./reports/sprint-business.html"     # презентация «ФАКТ | спринт» на тех же данных (/sprint-business)
+business_data = "./reports/sprint-business.json" # бизнес-блок презентации: цели, KR, формулировки (пишет агент)
 strict = true                                    # непроверенный или изменённый сборщик не запускается
 
 [jira]
@@ -25,7 +26,7 @@ collector = "base"          # базовый сборщик плагина: то
 story_types   = ["История", "История Enabler", "Story"]
 sprints_back  = 3           # глубина метрик по спринтам
 # activity_days = 14        # окно ленты в днях; не задано — период текущего спринта
-control_days  = 90          # окно диаграмм управления в сводном отчёте PO
+# control_days = 90         # окно диаграмм управления в днях; не задано — спринты отчёта (нужно слайду «Сроки»)
 epic_link_field = "auto"    # или "customfield_10101", если автопоиск не находит
 sp_field = "auto"           # поле Story Points для выработки участников; или "customfield_10106"
 

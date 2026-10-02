@@ -4,9 +4,11 @@
   // графики; своё у каждой страницы — в её шаблоне.
   // -------------------------------------------------------------------
   // TEAMS: по одному объекту на команду — то, что отдаёт сборщик команды
-  // (contract/team.schema.json). Каждый — { slug, team, boardName, boardUrl,
-  //            jiraBase, sprintName, epics, metrics, burndown, control,
-  //            velocity, logs, statusMap?, notes?, _meta }.
+  // (contract/team.schema.json; каждое поле и экран, где оно видно, —
+  // sprint-data/reference/fields.md и render.md). Каждый — { slug, team, boardName,
+  //            boardUrl, jiraBase, sprintName, epics, metrics, burndown, control,
+  //            velocity, output?, logs, statusMap?, _meta } + наложения notes?,
+  //            insights? (отчёт PO), business? (презентация).
   // Одна страница обслуживает все команды: переключатель в шапке.
   var TEAMS = {{TEAMS_JSON}};
 
@@ -103,9 +105,15 @@
   // Больше STALE_DAYS дней без движения — подсвечиваем красным.
   var STALE_DAYS = 3;
 
+  // Момент из данных → Date. JIRA пишет пояс без двоеточия («+0300»): V8 такое понимает,
+  // Safari (iPhone, PWA) — нет, поэтому двоеточие вставляем сами.
+  function parseTs(iso) {
+    return new Date(String(iso).replace(/([+-]\d{2})(\d{2})$/, '$1:$2'));
+  }
+
   function statusAge(iso) {
     if (!iso) return null;
-    var then = new Date(iso);
+    var then = parseTs(iso);
     if (isNaN(then.getTime())) return null;
     var days = Math.floor((Date.now() - then.getTime()) / 86400000);
     if (days < 0) days = 0;
@@ -296,7 +304,7 @@
   }
 
   function stamp(iso, withYear) {
-    var d = new Date(iso);
+    var d = parseTs(iso);
     var two = function (n) { return ('0' + n).slice(-2); };
     return two(d.getDate()) + '.' + two(d.getMonth() + 1) + (withYear ? '.' + d.getFullYear() : '') +
       ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
@@ -1287,15 +1295,15 @@
 
   // ------------------ лента: общие помощники (отчёт PO и сайдбар истории в колоде) ------------------
   function relTime(iso) {
-    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    var diff = (Date.now() - parseTs(iso).getTime()) / 1000;
     if (diff < 3600) return Math.max(1, Math.round(diff / 60)) + ' мин назад';
     if (diff < 86400) return Math.round(diff / 3600) + ' ч назад';
-    var d = new Date(iso);
+    var d = parseTs(iso);
     return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
   }
 
   function dayLabel(iso) {
-    var d = new Date(iso), today = new Date();
+    var d = parseTs(iso), today = new Date();
     var same = function (a, b) { return a.toDateString() === b.toDateString(); };
     var yest = new Date(today.getTime() - 86400000);
     if (same(d, today)) return 'Сегодня';

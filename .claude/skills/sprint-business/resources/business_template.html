@@ -926,13 +926,20 @@
   var MX_STATE = {};   // команда → { scale: 'num' | 'share', sort }
 
   // по исполнителю: его истории спринта и его подзадачи (кто бы ни вёл историю);
-  // застряли — не готово, не в бэклоге и статус не менялся дольше STALE_DAYS
+  // застряли — не готово, не в бэклоге и статус не менялся дольше STALE_DAYS на момент
+  // сбора (_meta.collectedAt): слайд — снимок, одинаковый в любой день открытия
+  function ageAtCollect(t, iso) {
+    if (!iso) return null;
+    var at = t._meta && t._meta.collectedAt ? parseTs(t._meta.collectedAt).getTime() : Date.now(), then = parseTs(iso).getTime();
+    return isNaN(then) ? null : Math.max(0, Math.floor((at - then) / 86400000));
+  }
+
   function memberMatrix(t) {
     var by = {};
     var add = function (who, kind, it) {
       who = who || 'Не назначен';
       var r = by[who] || (by[who] = { name: who, stories: [], subtasks: [], stuck: [] });
-      var bucket = classifyBucket(it.status, it.category), age = statusAge(it.statusChanged);
+      var bucket = classifyBucket(it.status, it.category), age = ageAtCollect(t, it.statusChanged);
       r[kind].push({ key: it.key, title: it.title || it.summary, bucket: bucket });
       if (bucket !== 'done' && bucket !== 'open' && age !== null && age > STALE_DAYS) r.stuck.push({ key: it.key, age: age, status: it.status });
     };
@@ -991,7 +998,7 @@
         mxBar(r.subtasks, maxT) + '<span class="mx-n">' + r.done('subtasks') + '/' + r.subtasks.length + '</span>' + stuck + '</div>';
     }).join('');
     return ctrl + '<div class="mx-grid' + (rows.length > 11 ? ' tight' : '') + '"><div class="mx-row mx-head"><span></span><span>Истории</span><span></span><span>Подзадачи</span><span></span>' +
-      '<span title="Не готово, не в бэклоге и статус не менялся дольше ' + STALE_DAYS + ' дн.: сколько · самое долгое">Застряли</span></div>' + body + '</div>';
+      '<span title="Не готово, не в бэклоге и статус не менялся дольше ' + STALE_DAYS + ' дн. на момент сбора: сколько · самое долгое">Застряли</span></div>' + body + '</div>';
   }
 
   function opsSlide(t) {

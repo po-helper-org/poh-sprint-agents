@@ -6,10 +6,10 @@
  "592da7df21f64d94": "/rest/agile/1.0/sprint/5001/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101%2Ccustomfield_10106&maxResults=200&startAt=0",
  "5aed2f342df7cc82": "/rest/api/2/search?fields=summary%2Cpriority%2Cduedate&jql=key+in+%28INIT-900%2CINIT-901%2CINIT-902%29&maxResults=3",
  "7fc178921b1f42a2": "/rest/agile/1.0/sprint/5001/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",
- "a63a250775599a7a": "/rest/api/2/search?fields=status%2Ccreated%2Cresolutiondate&jql=parent+in+%28INIT-1024%2CINIT-1047%2CINIT-1052%2CINIT-1058%2CINIT-1077%2CINIT-1089%2CINIT-3000%2CINIT-3001%2CINIT-1003%2CINIT-1011%2CINIT-1014%2CINIT-1019%2CINIT-1028%2CINIT-1054%2CINIT-1060%2CINIT-1064%2CINIT-1082%2CINIT-3020%2CINIT-3021%2CINIT-1008%2CINIT-1030%2CINIT-1039%2CINIT-1067%2CINIT-1075%2CINIT-3010%2CINIT-3011%29&maxResults=100&startAt=0",
  "af0c4a508c7fa14a": "/rest/agile/1.0/board/101/sprint?maxResults=50&startAt=0&state=closed%2Cactive",
  "b72fb11ef43abbd5": "/rest/agile/1.0/sprint/5002/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",
  "bf23551c8ceb2c97": "/rest/api/2/field?",
  "e212feb9c77b327b": "/rest/agile/1.0/sprint/5000/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",
- "e4bbd35799698992": "/rest/agile/1.0/sprint/5000/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101%2Ccustomfield_10106&maxResults=200&startAt=0"
+ "e4bbd35799698992": "/rest/agile/1.0/sprint/5000/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101%2Ccustomfield_10106&maxResults=200&startAt=0",
+ "ed5ff4737adefdf2": "/rest/api/2/search?fields=status%2Ccreated%2Cresolutiondate%2Cassignee&jql=parent+in+%28INIT-1024%2CINIT-1047%2CINIT-1052%2CINIT-1058%2CINIT-1077%2CINIT-1089%2CINIT-3000%2CINIT-3001%2CINIT-1003%2CINIT-1011%2CINIT-1014%2CINIT-1019%2CINIT-1028%2CINIT-1054%2CINIT-1060%2CINIT-1064%2CINIT-1082%2CINIT-3020%2CINIT-3021%2CINIT-1008%2CINIT-1030%2CINIT-1039%2CINIT-1067%2CINIT-1075%2CINIT-3010%2CINIT-3011%29&maxResults=100&startAt=0"
 }

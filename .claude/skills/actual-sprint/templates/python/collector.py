@@ -21,7 +21,8 @@
     epic_link_names  ["ссылка на эпик", "epic link"]  по каким именам искать поле
     sprints_back     3                  глубина метрик по спринтам
     activity_days    период спринта     окно ленты активности; не задано — с начала текущего спринта
-    control_days     30                 окно диаграмм управления
+    control_days     спринты отчёта     окно диаграмм управления в днях; не задано — с начала первого
+                                        из sprints_back спринтов (слайд «Сроки» показывает их все)
     categories       из status_rules.json               допустимые категории JIRA
     done_categories  ["Выполнено", "Done"]      категории «закрыто» для Lead/Cycle Time
     progress_categories ["В работе", "In Progress"]   категории «взято в работу"
@@ -48,7 +49,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.8.0'
+VERSION = '1.9.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -344,7 +345,8 @@ class Collector:
         self.sprints_back = int(p.get('sprints_back', 3))
         # окно ленты: по умолчанию — период текущего спринта (с его начала), а не N дней
         self.activity_days = int(p['activity_days']) if p.get('activity_days') else None
-        self.control_days = int(p.get('control_days', 30))
+        # окно диаграмм: по умолчанию — все спринты отчёта (с начала первого), а не N дней
+        self.control_days = int(p['control_days']) if p.get('control_days') else None
         self.epic_scope = bool(p.get('epic_scope', True))
         self.epic_scope_max = int(p.get('epic_scope_max', 2000))
         self.sp_id = None   # поле Story Points; находится в collect()
@@ -530,7 +532,8 @@ class Collector:
                 orphans += 1
             row = groups.setdefault(gkey, {
                 'rowId': gkey, 'epicKey': ek,
-                'epicTitle': epic_cache.get(ek) if ek else 'Без эпика',
+                # эпик не отдался по ключу (права, удалён) — имя по ключу, а не пустая строка
+                'epicTitle': (epic_cache.get(ek) or ek) if ek else 'Без эпика',
                 'epicPriority': epic_prio.get(ek) if ek else None,
                 'epicDue': epic_due.get(ek) if ek else None, 'stories': []})
             if gkey not in order:
@@ -648,7 +651,8 @@ class Collector:
                 e['scope'] = by_epic.get(e['epicKey'], [])
 
     def scope_subtask_dates(self, items):
-        """Даты подзадач объёма эпиков: пакетный поиск по родителям, без запроса на подзадачу."""
+        """Даты и исполнители подзадач объёма эпиков: пакетный поиск по родителям, без
+        запроса на подзадачу (в заглушке подзадачи у задачи исполнителя нет)."""
         parents = [it['key'] for it in items if it['subtasks']]
         chunk = int(self.params.get('epic_batch', 50))
         dates = {}
@@ -657,20 +661,21 @@ class Collector:
             jql = 'parent in (' + ','.join(batch) + ')'
             at = 0
             while True:
-                page = self.jira.api('/rest/api/2/search', jql=jql, fields='status,created,resolutiondate',
+                page = self.jira.api('/rest/api/2/search', jql=jql, fields='status,created,resolutiondate,assignee',
                                      startAt=at, maxResults=100)
                 found = page.get('issues', [])
                 for i in found:
                     f = i['fields']
                     cat = self.cats.get(str(f['status']['id'])) or f['status'].get('statusCategory', {}).get('name', '')
                     done = self.bucket(f['status']['name'], cat) == 'done' and f.get('resolutiondate')
-                    dates[i['key']] = ((f.get('created') or '')[:10] or None, done[:10] if done else None)
+                    dates[i['key']] = ((f.get('created') or '')[:10] or None, done[:10] if done else None,
+                                       (f.get('assignee') or {}).get('displayName'))
                 at += len(found)
                 if not found or at >= page.get('total', 0):
                     break
         for it in items:
             for sub in it['subtasks']:
-                sub['created'], sub['doneAt'] = dates.get(sub['key'], (None, None))
+                sub['created'], sub['doneAt'], sub['assignee'] = dates.get(sub['key'], (None, None, None))
 
     def build_metrics(self, sprints, per_sprint):
         sprint_rows, all_closed, velocity = [], [], []
@@ -805,9 +810,14 @@ class Collector:
                 'end': end.date().isoformat(), 'days': days}
 
     def build_control(self, sprints, per_sprint):
-        """Точки — закрытые за control_days (Cycle Time). Зона риска — НЕзакрытые задачи,
-        которые идут дольше медианы своей группы."""
-        since = self.now - timedelta(days=self.control_days)
+        """Точки — закрытые за окно (control_days или спринты отчёта), с Cycle Time. Зона риска —
+        НЕзакрытые задачи, которые идут дольше медианы своей группы."""
+        if self.control_days:
+            since = self.now - timedelta(days=self.control_days)
+        else:
+            first = next((s for s in sprints if s.get('startDate')), None)
+            since = parse(first['startDate']) if first else self.now - timedelta(days=30)
+        days = max(1, -(-int((self.now - since).total_seconds()) // 86400))
         closed_by_group = {'stories': {}, 'subtasks': {}}
         open_by_group = {'stories': [], 'subtasks': []}
 
@@ -834,7 +844,7 @@ class Collector:
         def chart(group):
             points = sorted(closed_by_group[group].values(), key=lambda p: p['doneAt'])
             if not points:
-                return {'points': [], 'risks': [], 'days': self.control_days}
+                return {'points': [], 'risks': [], 'days': days}
             vals = [p['cycle'] for p in points]
             mean, median = statistics.mean(vals), statistics.median(vals)
             sd = statistics.pstdev(vals)
@@ -846,13 +856,12 @@ class Collector:
                 if r['elapsed'] > median and r['key'] not in seen_risk:
                     seen_risk[r['key']] = r
             risks = sorted(seen_risk.values(), key=lambda r: (-r['elapsed'], r['key']))
-            return {'points': points, 'risks': risks, 'days': self.control_days,
+            return {'points': points, 'risks': risks, 'days': days,
                     'mean': round(mean, 1), 'median': round(median, 1), 'sd': round(sd, 1),
                     'limit': limit, 'outliers': sum(1 for p in points if p['outlier']),
                     'today': self.now.date().isoformat()}
 
-        return {'stories': chart('stories'), 'subtasks': chart('subtasks'),
-                'days': self.control_days}
+        return {'stories': chart('stories'), 'subtasks': chart('subtasks'), 'days': days}
 
     def build_logs(self, sprints, per_sprint, with_comments, active=None):
         if self.activity_days:

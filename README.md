@@ -35,6 +35,8 @@ export JIRA_URL=https://jira.example.com   # хост вашего инстан�
 
 `/sprint-setup` → `/collector-new {slug}` (если нужно) → `/collector-validate {slug}` → `/actual-sprint {команда?}`
 
+Всё про данные — навык `/sprint-data`: структура JSON команды, как он детерминированно превращается в отчёт и презентацию, справочник каждого поля, руководство и пример кода сборщика для JIRA, проверка «каким экранам не хватает данных» (`run.py check`). Правило: JSON делает только скрипт, подключённый к источнику.
+
 `/actual-sprint` запускает runner и показывает сводку; страница одна на все команды — переключатель вкладок в шапке. Первые три команды — настройка, они нужны один раз на команду.
 
 Что на странице:
@@ -56,9 +58,9 @@ export JIRA_URL=https://jira.example.com   # хост вашего инстан�
 python3 .claude/skills/actual-sprint/runner/run.py run --config sprint-report.config.toml
 ```
 
-- **Контракт** — `contract/team.schema.json` (форма данных) и `contract/PROTOCOL.md` (как запускается сборщик, что на stdin/stdout, коды выхода).
+- **Контракт** — `contract/team.schema.json` (форма данных) и `contract/PROTOCOL.md` (как запускается сборщик, что на stdin/stdout, коды выхода); смысл каждого поля и экран, где оно видно, — `sprint-data/reference/fields.md` и `render.md`.
 - **Сборщик** — программа на команду. Базовый шаблон на Python покрывает большинство случаев: все правила команды вынесены в `params` конфига (типы задач, статусы, поле эпика, глубина по спринтам).
-- **Runner** — читает конфиг, запускает сборщики, валидирует результат схемой и 12 инвариантами, переносит заметки, собирает HTML.
+- **Runner** — читает конфиг, запускает сборщики, валидирует результат схемой и 14 инвариантами, переносит заметки, собирает HTML.
 - **Проверка** — `/collector-validate` сверяет выборку задач с JIRA и фиксирует хеш сборщика в `sprint-report.lock.json`. Изменённый сборщик не запускается, пока проверку не пройдут заново.
 
 Если хотя бы одна команда не собралась, HTML не пишется: прошлый отчёт остаётся целым, а полуправды на странице не появляется. Чем и когда собрана каждая команда, runner печатает в сводке; то же лежит в `_meta` данных и в подвале PDF `/sprint-status`.
@@ -167,10 +169,14 @@ python3 .claude/skills/sprint-insights/insights.py apply   # проверка + 
   - `contract/team.schema.json` — форма объекта команды (источник истины)
   - `contract/PROTOCOL.md` — протокол сборщика
   - `contract/status_rules.json` — правила бакетов данными
-  - `runner/run.py` — `run | validate | lock | new`
+  - `runner/run.py` — `run | validate | check | lock | new`
   - `templates/python/collector.py` — базовый сборщик, правила в `params`
   - `resources/metrics.md` — что именно считается и почему
   - `resources/status_mapping.md` — раскладка статусов JIRA по шести бакетам
-  - `resources/data_collection.md` — алгоритм запросов, документация для авторов сборщиков
-  - `resources/data_shape.md` — почему форма данных такая
+- Данные отчётов — навык `/sprint-data`, всё в `.claude/skills/sprint-data/`:
+  - `SKILL.md` — правило «данные только из скрипта», конвейер, стадии подключения
+  - `reference/fields.md` — каждое поле JSON команды: тип, смысл, откуда, на каком экране
+  - `reference/render.md` — экран за экраном: какие поля и что с ними делает страница
+  - `guides/jira.md` — сбор из JIRA по секциям (пример кода — базовый сборщик), `guides/other-sources.md` — другая система и MCP
+  - образцы JSON: `actual-sprint/examples/example_team_full.json` (все поля), `example_team.json` (старый минимальный)
   - `scripts/demo_data.py` — демо-страница без похода в трекер

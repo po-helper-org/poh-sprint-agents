@@ -37,7 +37,11 @@
     },
     "insights": {
       "type": "object",
-      "description": "Интерпретация графиков от ИИ-агента (/sprint-insights): {generatedAt, author, charts: {burndown, velocity, controlStories, controlSubtasks}}. Подставляет runner из файла insights, только если dataHash совпал с этими данными; форма записи — contract/insights.schema.json. Сборщик это поле не заполняет."
+      "description": "Наложение навыка sprint-insights: {generatedAt, author, observations[], interpretation?, stale?}. Подставляет runner из reports/sprint-insights.json, наблюдения — только если dataHash совпал с этими данными; форма записи — contract/insights.schema.json. Сборщик это поле не заполняет."
+    },
+    "business": {
+      "type": "object",
+      "description": "Наложение навыка sprint-business: цели, KR, формулировки строк, планы, изменения, демо, риски. Кладёт business.py только в данные презентации и только при совпавшем dataHash; форма — sprint-business/contract/business.schema.json. Сборщик это поле не заполняет."
     },
     "statusMap": {
       "type": "object",
@@ -59,7 +63,7 @@
         "collector": { "type": "string", "minLength": 1, "description": "Имя сборщика: base или slug команды." },
         "version": { "type": "string", "minLength": 1 },
         "protocol": { "type": "integer", "minimum": 1 },
-        "collectedAt": { "type": "string", "minLength": 10, "description": "ISO-дата: время из запроса (now), не системные часы." },
+        "collectedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2}(\\.\\d+)?)?(Z|[+-]\\d{2}:?\\d{2})$", "description": "Момент сбора с часовым поясом: now из запроса, не системные часы. «Сегодня» всех расчётов страниц." },
         "requests": { "type": "integer", "minimum": 0, "description": "Сколько запросов к JIRA сделал сборщик." },
         "durationMs": { "type": "integer", "minimum": 0 },
         "warnings": { "type": "array", "items": { "type": "string" } },
@@ -74,7 +78,7 @@
         "epicKey": { "type": ["string", "null"], "description": "null → строка рендерится как псевдо-эпик «Без эпика»." },
         "epicTitle": { "type": ["string", "null"] },
         "epicPriority": { "type": ["string", "null"], "description": "priority.name эпика как вернул JIRA; null — поле не заполнено. Необязательно: свои сборщики могут не отдавать." },
-        "epicDue": { "type": ["string", "null"], "description": "Плановая дата закрытия эпика (duedate), YYYY-MM-DD; null — не задана. Для графика сгорания эпика в бизнес-отчёте." },
+        "epicDue": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Плановая дата закрытия эпика (duedate), YYYY-MM-DD; null — не задана. Линия «план» и итог на сгорании эпика." },
         "stories": { "type": "array", "items": { "$ref": "#/definitions/story" } },
         "scope": {
           "type": "array",
@@ -96,8 +100,8 @@
         "priority": { "type": ["string", "null"] },
         "sprint": { "type": ["string", "null"], "description": "Имя спринта отчёта, в котором задача была; null — вне спринтов отчёта (бэклог или давнее)." },
         "inSprint": { "type": "boolean", "description": "Задача в текущем спринте." },
-        "created": { "type": ["string", "null"], "description": "Дата создания задачи, YYYY-MM-DD — для графика сгорания эпика." },
-        "doneAt": { "type": ["string", "null"], "description": "Дата решения (resolutiondate) закрытой задачи, YYYY-MM-DD; у незакрытой — null." },
+        "created": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Дата создания задачи, YYYY-MM-DD — для графика сгорания эпика." },
+        "doneAt": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Дата решения (resolutiondate) закрытой задачи, YYYY-MM-DD; у незакрытой — null." },
         "sp": { "type": ["number", "null"], "description": "Story Points задачи (сборщик 1.6.0+); null — без оценки. Для сгорания эпика в SP." },
         "subtasks": {
           "type": "array",
@@ -110,8 +114,9 @@
               "status": { "type": "string", "minLength": 1 },
               "category": { "type": "string" },
               "priority": { "type": ["string", "null"] },
-              "created": { "type": ["string", "null"], "description": "Дата создания подзадачи, YYYY-MM-DD (сборщик 1.6.0+) — для сгорания эпика по подзадачам." },
-              "doneAt": { "type": ["string", "null"], "description": "Дата решения подзадачи, YYYY-MM-DD; у незакрытой — null." }
+              "created": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Дата создания подзадачи, YYYY-MM-DD (сборщик 1.6.0+) — для сгорания эпика по подзадачам." },
+              "doneAt": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Дата решения подзадачи, YYYY-MM-DD; у незакрытой — null." },
+              "assignee": { "type": ["string", "null"], "description": "displayName исполнителя подзадачи (сборщик 1.9.0+); null — не назначен." }
             }
           }
         }
@@ -125,15 +130,27 @@
         "title": { "type": "string" },
         "status": { "type": "string", "minLength": 1, "description": "status.name как вернул JIRA. Бакеты в данных не считаются — они в statusMap." },
         "category": { "type": "string", "description": "statusCategory.name как вернул JIRA." },
-        "statusChanged": { "type": ["string", "null"], "description": "ISO-дата последней смены статуса из changelog." },
+        "statusChanged": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}", "description": "Момент последней смены статуса из changelog (ISO 8601, пояс со двоеточием или без); смен не было — создание задачи." },
         "assignee": { "type": ["string", "null"], "description": "displayName исполнителя; null — не назначен." },
         "priority": { "type": ["string", "null"], "description": "priority.name как вернул JIRA; null — не заполнен. Уровень (высокий/низкий) страница выводит из имени сама." },
         "subtasks": { "type": "array", "items": { "$ref": "#/definitions/subtask" } },
         "events": {
           "type": "array",
-          "description": "Хронология истории за всё время (сборщик 1.7.0+): создание, смены статуса и комментарии истории и её подзадач, по времени. kind: created | status | comment; у status — from, to и done (переход в закрытый статус), у comment — body.",
-          "items": { "type": "object", "required": ["at", "kind", "key"], "properties": {
-            "at": { "type": "string" }, "kind": { "enum": ["created", "status", "comment"] }, "key": { "type": "string" } } }
+          "description": "Хронология истории за всё время (сборщик 1.7.0+): создание, смены статуса и комментарии самой истории и её подзадач, по возрастанию at. Календарь активности и лента в сайдбаре истории в презентации; нет поля — сайдбар берёт события из ленты спринта (logs).",
+          "items": {
+            "type": "object",
+            "required": ["at", "kind", "key"],
+            "properties": {
+              "at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}", "description": "Когда, до минуты: YYYY-MM-DDTHH:MM, время JIRA без пояса." },
+              "kind": { "enum": ["created", "status", "comment"], "description": "created — задача создана, status — смена статуса, comment — комментарий." },
+              "key": { "type": "string", "minLength": 1, "description": "Ключ задачи события: сама история или её подзадача." },
+              "by": { "type": ["string", "null"], "description": "displayName автора: создателя, сменившего статус, комментатора." },
+              "from": { "type": ["string", "null"], "description": "status: статус до смены." },
+              "to": { "type": ["string", "null"], "description": "status: статус после смены." },
+              "done": { "type": "boolean", "description": "status: новый статус в категории «закрыто» — на календаре это закрытие." },
+              "body": { "type": "string", "description": "comment: текст, до 400 знаков." }
+            }
+          }
         }
       }
     },
@@ -145,7 +162,7 @@
         "summary": { "type": "string" },
         "status": { "type": "string", "minLength": 1 },
         "category": { "type": "string" },
-        "statusChanged": { "type": ["string", "null"] },
+        "statusChanged": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}", "description": "Как у истории." },
         "assignee": { "type": ["string", "null"] },
         "priority": { "type": ["string", "null"] }
       }
@@ -321,9 +338,11 @@
             "properties": {
               "name": { "type": "string", "minLength": 1 },
               "current": { "type": "boolean" },
-              "start": { "type": ["string", "null"], "description": "Дата начала спринта, YYYY-MM-DD." },
-              "end": { "type": ["string", "null"], "description": "Плановая дата конца спринта, YYYY-MM-DD." },
-              "timeInStatus": { "type": "object", "description": "Среднее время задачи спринта в статусе, дней (сборщик 1.8.0+): blocked, progress, review, testing — по задачам и подзадачам, побывавшим в статусе, в границах спринта.", "additionalProperties": { "type": "number", "minimum": 0 } },
+              "start": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Дата начала спринта, YYYY-MM-DD." },
+              "end": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Плановая дата конца спринта, YYYY-MM-DD." },
+              "timeInStatus": { "type": "object", "description": "Среднее время задачи спринта в статусе, дней (сборщик 1.8.0+): по задачам и подзадачам, побывавшим в бакете, в границах спринта. Слайд «Сроки».", "additionalProperties": { "type": "number", "minimum": 0 },
+                "properties": { "blocked": { "type": "number", "minimum": 0 }, "progress": { "type": "number", "minimum": 0 },
+                                "review": { "type": "number", "minimum": 0 }, "testing": { "type": "number", "minimum": 0 } } },
               "members": {
                 "type": "array",
                 "items": {
@@ -340,8 +359,22 @@
                         "properties": {
                           "key": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "string" },
                           "bucket": { "$ref": "#/definitions/bucket" }, "sp": { "type": "number", "minimum": 0 },
-                          "history": { "type": "array", "items": { "type": "object", "required": ["at", "to"] } },
-                          "comments": { "type": "array", "items": { "type": "object", "required": ["at", "body"] } }
+                          "history": {
+                            "type": "array",
+                            "description": "Смены статуса задачи в границах спринта, по времени.",
+                            "items": { "type": "object", "required": ["at", "to"], "properties": {
+                              "at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}", "description": "YYYY-MM-DDTHH:MM." },
+                              "from": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] },
+                              "by": { "type": ["string", "null"], "description": "displayName сменившего статус." } } }
+                          },
+                          "comments": {
+                            "type": "array",
+                            "description": "До пяти последних комментариев к задаче в границах спринта.",
+                            "items": { "type": "object", "required": ["at", "body"], "properties": {
+                              "at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}" },
+                              "by": { "type": ["string", "null"] },
+                              "body": { "type": "string", "description": "Текст, до 400 знаков." } } }
+                          }
                         }
                       }
                     },
@@ -376,7 +409,7 @@
       "required": ["events", "days", "kinds", "authors"],
       "properties": {
         "days": { "type": "integer", "minimum": 1, "description": "Длина окна ленты в днях. По умолчанию окно — период текущего спринта (с его начала)." },
-        "since": { "type": "string", "description": "Начало окна ленты, YYYY-MM-DD (сборщик 1.5.0+): начало текущего спринта или now − activity_days." },
+        "since": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Начало окна ленты, YYYY-MM-DD (сборщик 1.5.0+): начало текущего спринта или now − activity_days." },
         "kinds": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
         "authors": {
           "type": "array",
@@ -394,7 +427,7 @@
               "key": { "type": "string", "minLength": 1 },
               "title": { "type": "string" },
               "author": { "type": "string" },
-              "at": { "type": "string", "minLength": 10 },
+              "at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}", "description": "Момент события, ISO 8601 с поясом." },
               "from": { "type": "string" },
               "to": { "type": "string" },
               "toCat": { "type": "string" },
