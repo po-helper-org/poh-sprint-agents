@@ -892,7 +892,8 @@ class Collector:
             return out
         by = {}
         for i in found:
-            if i['key'] in sprint_keys:
+            typ = ((i['fields'].get('issuetype') or {}).get('name') or '').lower()
+            if i['key'] in sprint_keys or typ in ('эпик', 'epic'):   # эпики — контейнеры, не работа
                 continue
             f = i['fields']
             who = (f.get('assignee') or {}).get('displayName') or 'Не назначен'

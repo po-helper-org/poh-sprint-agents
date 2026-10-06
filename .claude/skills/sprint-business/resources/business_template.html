@@ -1020,6 +1020,16 @@
   // почему — по смене статусов и комментариям задач участников (output.sprints[].items)
   function blockedEpisodes(t) {
     var m = outputModel(t), out = [];
+    // комментарии задачи за всё время — из хронологии историй спринта: причина блока часто
+    // записана до начала спринта, а items.comments — только в его границах
+    var talk = {};
+    (t.epics || []).forEach(function (e) {
+      (e.stories || []).forEach(function (st) {
+        (st.events || []).forEach(function (ev) {
+          if (ev.kind === 'comment' && ev.body) (talk[ev.key] = talk[ev.key] || []).push({ at: ev.at, by: ev.by, body: ev.body });
+        });
+      });
+    });
     var at = (t._meta && t._meta.collectedAt) || new Date().toISOString();
     withTeam(t, function () {
       (m ? m.sprints : []).forEach(function (sp) {
@@ -1037,7 +1047,7 @@
             list.forEach(function (iv) {
               var end = iv.to || (sp.current ? at : (sp.end || at));
               var days = iv.from ? Math.max(0, (parseTs(end).getTime() - parseTs(iv.from).getTime()) / 86400000) : null;
-              out.push({ sprint: sp, who: mem.name, it: it, iv: iv, days: days, now: !iv.to && sp.current });
+              out.push({ sprint: sp, who: mem.name, it: it, iv: iv, days: days, now: !iv.to && sp.current, talk: talk[it.key] || [] });
             });
           });
         });
@@ -1063,8 +1073,11 @@
     });
     storiesBody.innerHTML = eps.length ? bySprint.map(function (g) {
       return '<div class="pane-label">' + esc(g.sp.name) + (g.sp.current ? ' · идёт' : '') + ' · ' + g.list.length + '</div>' + g.list.map(function (x) {
-        var com = (x.it.comments || []).filter(function (c) { return !x.iv.from || c.at >= x.iv.from.slice(0, 10); });
-        com = (com.length ? com : (x.it.comments || [])).slice(-3);
+        var all = (x.it.comments || []).concat(x.talk.filter(function (c) {
+          return !(x.it.comments || []).some(function (o) { return o.at === c.at && o.body === c.body; });
+        })).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+        var com = all.filter(function (c) { return !x.iv.from || c.at >= x.iv.from.slice(0, 10); });
+        com = (com.length ? com : all).slice(-3);
         return '<div class="bl-card' + (x.now ? ' now' : '') + '"><div class="es-top"><span class="es-title">' + esc(x.it.title) + '</span>' +
           '<span class="es-pct">' + (x.days !== null ? fmtNum(Math.round(x.days * 10) / 10) + ' дн.' : '') + '</span></div>' +
           '<div class="es-meta">' + keyLink(x.it.key) + ' · ' + esc(shortName(x.who)) + ' · «' + esc(x.iv.status || x.it.status) + '»' +
@@ -1161,7 +1174,8 @@
   function memberRows(t) {
     var m = outputModel(t), cur = m && m.sprints[m.sprints.length - 1];
     var off = (t.output && t.output.offboard) || null, offBy = {};
-    (off ? off.members : []).forEach(function (x) { offBy[x.name] = x.items || []; });
+    var notEpic = function (it) { return ['эпик', 'epic'].indexOf(String(it.type || '').toLowerCase()) === -1; };
+    (off ? off.members : []).forEach(function (x) { offBy[x.name] = (x.items || []).filter(notEpic); });
     var by = {}, get = function (n) { return by[n] || (by[n] = { name: n, items: [], subs: [], split: null, epics: true }); };
     if (cur) cur.members.forEach(function (mem) {
       by[mem.name] = { name: mem.name, items: mem.items || [], subs: mem.subtasks || null, split: mem.split, epics: false,
@@ -1243,14 +1257,16 @@
         '<span class="mx-n">' + planFact(r.items, r.lt.items) + '</span>' +
         (anySubs ? '<span class="mx-n">' + planFact(r.subs, r.lt.subs) + '</span>' : '') + '</div>';
     };
-    var team = rows.filter(function (r) { return !r.ext; }), ext = rows.filter(function (r) { return r.ext; });
+    var none = rows.filter(function (r) { return r.name === 'Не назначен'; });
+    var team = rows.filter(function (r) { return !r.ext && r.name !== 'Не назначен'; }), ext = rows.filter(function (r) { return r.ext; });
     return '<div class="mx-grid' + (anySubs ? '' : ' nosubs') + (rows.length > 11 ? ' tight' : '') + '">' +
       '<div class="mx-row mx-head"><span></span><span>Задачи спринта' + (hasOff ? ' · под ними — вне доски' : '') + '</span>' +
         '<span title="Story Points текущего спринта: взято / сделано">SP план / факт</span>' +
         '<span title="Задачи спринта участника (истории, задачи, ошибки): взято / закрыто · медиана lead time закрытых">Задачи план / факт · LT</span>' +
         (anySubs ? '<span title="Подзадачи участника: взято / закрыто · медиана lead time закрытых">Подзадачи план / факт · LT</span>' : '') + '</div>' +
       team.map(line).join('') +
-      (ext.length ? '<div class="mx-sep">[EXT] — на доске, но не в составе команды</div>' + ext.map(line).join('') : '') + '</div>';
+      (ext.length ? '<div class="mx-sep">[EXT] — на доске, но не в составе команды</div>' + ext.map(line).join('') : '') +
+      none.map(line).join('') + '</div>';
   }
 
   // Задачи участника вне доски: другие проекты за период спринта, с активностью
@@ -1447,7 +1463,7 @@
       [['take', false], ['maybe', true]].forEach(function (c) {
         var list = nextOf(s, c[1]);
         list.slice(0, PLAN_TAKE).forEach(function (it, i) {
-          auto[c[0]].push({ title: it.title, text: it.priority ? 'Приоритет: ' + it.priority : '', keys: [it.key], group: streamName(s),
+          auto[c[0]].push({ title: it.title, text: '', keys: [it.key], group: streamName(s),
                             rest: i === 0 ? Math.max(0, list.length - PLAN_TAKE) : 0 });
         });
       });
@@ -1669,6 +1685,7 @@
     if (PANEL_CUR && open && !(id && PANEL_CUR.id === id)) PANEL_HIST.push(PANEL_CUR);
     if (!open) PANEL_HIST = [];
     PANEL_CUR = { render: render, id: id || null };
+    kmenu.hidden = true;
     render();
     panelBack.hidden = !PANEL_HIST.length;
   }
@@ -1989,6 +2006,7 @@
     }
     stageIdx = i;
     if (deckTip) deckTip.hidden = true;
+    if (typeof kmenu !== 'undefined') kmenu.hidden = true;
     list.forEach(function (s, j) { s.classList.toggle('cur', j === i); });
     list[i].scrollTop = 0;
     document.querySelectorAll('#deckTocList a').forEach(function (a, j) { a.classList.toggle('cur', j === i); });
