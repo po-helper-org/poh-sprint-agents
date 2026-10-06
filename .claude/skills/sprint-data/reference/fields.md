@@ -66,7 +66,7 @@
 | `epics[].scope` | массив | нет → нет «Весь эпик» | весь объём эпика, не только спринт | «Весь эпик», сгорание эпика, клик по KR, «Взять в работу» в «Планах» |
 
 ## Истории спринта — `epics[].stories[]`
-История — задача типа из `params.story_types`. Задачи и баги сюда не входят (они есть в метриках).
+История — задача типа из `params.report_types` (по умолчанию — `story_types`). `report_types = "*"` — в эпики отчёта идут все задачи спринта, кроме подзадач и эпиков: истории, задачи, ошибки (иначе работы типа «Задача»/«Ошибка» в отчёте не видны, хотя есть в метриках).
 
 | Поле | Тип | | Смысл и источник | Где видно |
 |---|---|---|---|---|
@@ -180,6 +180,11 @@ stats — `{ "mean": число, "median": число, "count": целое }`, �
 | `burndown.days[].storyClosed` | целое | необяз. | из них закрыто к концу дня; только парой со `storyScope`, `storyClosed ≤ storyScope ≤ scope` |
 | `burndown.days[].weekend` | булево | обяз. | выходной — затеняется, не входит в рабочие дни |
 | `burndown.days[].future` | булево | обяз. | день позже `now` — линия факта обрывается |
+| `burndown.items[]` | массив | | из чего сложилось сгорание (сборщик 1.10.0+): задача спринта и её даты |
+| `burndown.items[].key` / `.title` | строка | `key` обяз. | задача |
+| `burndown.items[].subtask` | булево | обяз. | подзадача — входит только в сгорание «с подзадачами» |
+| `burndown.items[].entered` | дата | обяз. | вошла в спринт (не раньше его начала) |
+| `burndown.items[].left` / `.doneAt` | дата \| `null` | | вышла из спринта / закрыта |
 
 Где видно: burndown в метриках отчёта PO, два сгорания на операционном слайде презентации («истории и задачи» — по `storyScope/storyClosed`, «с подзадачами» — по `scope/closed`), темп «день N из M», KPI и burndown в PDF.
 
@@ -223,6 +228,8 @@ stats — `{ "mean": число, "median": число, "count": целое }`, �
 | `output.sprints[].members[].items[].key` / `.title` / `.status` | строка | обяз. | задача, статус на конец спринта |
 | `output.sprints[].members[].items[].bucket` | бакет | обяз. | бакет того статуса |
 | `output.sprints[].members[].items[].sp` | число ≥ 0 | обяз. | SP; без оценки — 0 |
+| `output.sprints[].members[].items[].type` | строка | | тип задачи JIRA (сборщик 1.10.0+) |
+| `output.sprints[].members[].items[].lead` | число \| `null` | | Lead Time закрытой задачи, дней (сборщик 1.10.0+) |
 | `output.sprints[].members[].items[].history[]` | массив | | смены статуса в границах спринта: `at`, `from`, `to`, `by` |
 | `output.sprints[].members[].items[].history[].at` | момент до минуты | обяз. | |
 | `output.sprints[].members[].items[].history[].from` / `.to` / `.by` | строка \| `null` | | |
@@ -230,7 +237,23 @@ stats — `{ "mean": число, "median": число, "count": целое }`, �
 | `output.sprints[].members[].items[].comments[].at` | момент до минуты | обяз. | |
 | `output.sprints[].members[].items[].comments[].by` | строка \| `null` | | |
 | `output.sprints[].members[].items[].comments[].body` | строка ≤ 400 | обяз. | |
+| `output.sprints[].members[].subtasks[]` | массив | | подзадачи участника в спринте (сборщик 1.10.0+): план/факт и lead time подзадач |
+| `output.sprints[].members[].subtasks[].key` / `.title` / `.status` | строка | `key`, `status` обяз. | подзадача и статус на конец спринта |
+| `output.sprints[].members[].subtasks[].bucket` | бакет | обяз. | |
+| `output.sprints[].members[].subtasks[].lead` | число \| `null` | | Lead Time закрытой подзадачи, дней |
 | `output.lead` | объект имя → `{median, count}` | обяз. | медиана Lead Time закрытых участником задач за спринты отчёта |
+| `output.offboard` | объект | | задачи участников вне доски за период текущего спринта (сборщик 1.10.0+, `params.offboard`): JQL по исполнителям спринта за период, минус задачи спринта (по ключу) |
+| `output.offboard.since` | дата | обяз. | начало окна — старт текущего спринта |
+| `output.offboard.projects` | массив строк | обяз. | проекты задач спринта (префиксы ключей) — для подписи; «вне доски» — по ключу, задача не из спринта |
+| `output.offboard.members[]` | массив | обяз. | участник и его задачи вне доски |
+| `output.offboard.members[].name` | строка | обяз. | `displayName` — тот же, что в `assignee` задач спринта |
+| `output.offboard.members[].items[].key` / `.title` / `.project` / `.type` / `.status` / `.updated` | строка | `key`, `status` обяз. | задача вне доски |
+| `output.offboard.members[].items[].bucket` | бакет | обяз. | |
+| `output.offboard.members[].items[].doneAt` | дата \| `null` | | закрыта в окне |
+| `output.offboard.members[].items[].history[]` | массив | | смены статуса в окне |
+| `output.offboard.members[].items[].history[].at` / `.from` / `.to` / `.by` | строка \| `null` | `at` обяз. | |
+| `output.offboard.members[].items[].comments[]` | массив | | до пяти комментариев в окне |
+| `output.offboard.members[].items[].comments[].at` / `.by` / `.body` | строка \| `null` | `at`, `body` обяз. | |
 
 Где видно: «Команда: N участников» и сайдбар участника в отчёте PO; «Производительность команды за 3 спринта» (в SP), SP на слайде команды, «Сроки» (полосы спринтов, время в статусах) в презентации. Нет поля — нет таблицы команды, производительность — по `velocity` в задачах, «Сроки» без времени в статусах.
 

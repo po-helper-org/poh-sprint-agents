@@ -253,7 +253,37 @@ def demo_output(slug, epics, sprint_names):
                         'timeInStatus': {'blocked': round(r.uniform(0.8, 4.5), 1), 'progress': round(r.uniform(2, 5), 1),
                                          'review': round(r.uniform(0.6, 2.5), 1), 'testing': round(r.uniform(0.8, 3), 1)}})
     lead = {w: {'median': round(statistics.median(v), 1), 'count': len(v)} for w, v in leads.items() if v}
-    return {'unit': 'SP', 'field': 'customfield_10106', 'sprints': sprints, 'lead': lead}
+    # сборщик 1.10.0: тип и lead time задачи, подзадачи участника, задачи вне доски —
+    # свой генератор, чтобы прежние демо-числа не сдвинулись
+    r2 = random.Random('output-1.10:' + slug)
+    subs_by = {}
+    for st in stories:
+        for sub in st['subtasks']:
+            subs_by.setdefault(sub.get('assignee') or 'Не назначен', []).append(sub)
+    for s in sprints:
+        for m in s['members']:
+            for it in m['items']:
+                it['type'] = r2.choice(['История', 'История', 'Задача', 'Ошибка'])
+                it['lead'] = round(r2.uniform(1.5, 24), 1) if it['bucket'] == 'done' else None
+            m['subtasks'] = [{'key': sub['key'], 'title': sub['summary'], 'status': sub['status'],
+                              'bucket': bucket(sub['status'], sub['category']),
+                              'lead': round(r2.uniform(0.5, 9), 1) if bucket(sub['status'], sub['category']) == 'done' else None}
+                             for sub in (subs_by.get(m['name'], []) if s['current'] else [])]
+    off = {}
+    for who in people:
+        for _ in range(r2.choice([0, 1, 2, 3])):
+            b = r2.choice(['done', 'done', 'progress', 'review'])
+            status = 'Закрыт' if b == 'done' else r2.choice(by_bucket[b])
+            proj = r2.choice(['OPS', 'MRS', 'SUP'])
+            off.setdefault(who, []).append({
+                'key': f'{proj}-{r2.randint(100, 999)}', 'title': r2.choice(STORIES), 'project': proj,
+                'type': r2.choice(['Задача', 'Ошибка']), 'status': status, 'bucket': b,
+                'doneAt': (cur_start + timedelta(days=r2.randint(0, 6))).isoformat() if b == 'done' else None,
+                'updated': (NOW - timedelta(days=r2.randint(0, 6))).strftime('%Y-%m-%dT%H:%M'),
+                'history': history(status, NOW)[-2:], 'comments': comments(NOW)[:1]})
+    offboard = {'since': cur_start.isoformat(), 'projects': ['INIT'],
+                'members': [{'name': w, 'items': v} for w, v in sorted(off.items())]}
+    return {'unit': 'SP', 'field': 'customfield_10106', 'sprints': sprints, 'lead': lead, 'offboard': offboard}
 
 
 def build_team(spec, rnd, keys):
@@ -381,8 +411,17 @@ def build_team(spec, rnd, keys):
                      'remaining': scope - closed_n, 'closed': closed_n,
                      'storyScope': top_scope, 'storyClosed': top_closed,
                      'weekend': day.weekday() >= 5, 'future': day.date() > NOW.date()})
+    # состав сгорания (сборщик 1.10.0): задачи спринта с датами входа и закрытия — без rnd
+    bitems = []
+    for e in epics:
+        for st in e['stories']:
+            for u, sub in [(st, False)] + [(x, True) for x in st['subtasks']]:
+                done = bucket(u['status'], u['category']) == 'done'
+                bitems.append({'key': u['key'], 'title': u.get('title') or u.get('summary') or '', 'subtask': sub,
+                               'entered': start.date().isoformat(), 'left': None,
+                               'doneAt': (u.get('statusChanged') or '')[:10] or None if done else None})
     burndown = {'sprintName': spec['sprint'], 'start': start.date().isoformat(),
-                'end': end.date().isoformat(), 'days': days}
+                'end': end.date().isoformat(), 'days': days, 'items': bitems}
 
     # диаграммы управления: закрытые за 30 дней + незакрытые в зоне риска
     def chart(unit_pool, n_points):
@@ -508,6 +547,12 @@ def example_team(team):
                 it['comments'] = it['comments'][:1]
     names = {m['name'] for s in t['output']['sprints'] for m in s['members']}
     t['output']['lead'] = {k: v for k, v in t['output']['lead'].items() if k in names}
+    for m in t['output']['sprints'][-1]['members']:
+        m['subtasks'] = m.get('subtasks', [])[:1]
+    off = t['output'].get('offboard')
+    if off:
+        off['members'] = [dict(m, items=m['items'][:1]) for m in off['members'][:1]]
+    t['burndown']['items'] = t['burndown'].get('items', [])[:3]
     ev = [x for kind in ('status', 'comment', 'created') for x in [e for e in t['logs']['events'] if e['kind'] == kind][:2]]
     ev.sort(key=lambda e: (e['at'], e['key'], e['kind']), reverse=True)
     kinds, authors = {}, {}
@@ -581,6 +626,8 @@ def main():
                 entry = doc['teams'].get(t['slug'])
                 if entry:
                     t['business'] = {k: v for k, v in entry.items() if k != 'dataHash'}
+                    if doc.get('jiraNative'):
+                        t['business']['jiraNative'] = doc['jiraNative']
             build_mod.write_page(page, here.parent / 'sprint-business' / 'resources' / 'business_template.html', a.business)
             print('бизнес-отчёт:', a.business)
 

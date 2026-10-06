@@ -100,7 +100,7 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(part, self.html)
         self.assertNotIn('На чём прогноз', self.html, 'пояснений словами нет — всё на графике')
         biz = build_mod.assemble(BUSINESS_TEMPLATE)
-        kr = biz[biz.index('function openEpic('):]
+        kr = biz[biz.index('function renderEpic('):]
         self.assertIn('renderScope(epic)', kr[:kr.index('\n  }\n')])
 
     def test_team_link_instead_of_sprint(self):
@@ -180,13 +180,14 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_title_team_and_plans_slides(self):
         """Титул и слайд команды — «заблокированы» отдельно от «не успели по объёму»; после
         «Сроков» — «Планы на следующий спринт» в четыре колонки по направлениям."""
-        for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-panels', 'h-blk', 'h-behind', 'function behindLabel(',
-                     "'Не успели по объёму'", "'Пока не закрыто'", 'Заблокированы · ',
-                     'function plansSlide(', 'function planColumn(', "'Взять в работу'", "'Доделать'", "'Возможно войдёт'",
+        for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function behindLabel(',
+                     'blk-badge', '🛑 блокаторы: ', 'function openBlockers(', 'Эскалирует:', "'эпик завершён'",
+                     'function plansSlide(', 'function openPlans(', 'data-plancol', 'function planColumn(', "'Взять в работу'", "'Доделать'", "'Возможно войдёт'",
                      "'Эскалировать'", 'function lowPriority(', 'html += plansSlide(x.t, x.streams);',
                      'PLAN_LINES = 15', 'PLAN_TAKE = 3', 'class="prow"', 'class="pg-head"', 'pr-more'):
             self.assertIn(part, self.html)
-        for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '", 'PLAN_ROWS', 'class="pr-key"'):
+        for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '", 'PLAN_ROWS', 'class="pr-key"',
+                     'class="h-panels"', 'Заблокированы · ', '⏳ не закрыто '):
             self.assertNotIn(gone, self.html)
 
     def test_story_calendar_and_feed(self):
@@ -198,9 +199,10 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_ops_three_charts(self):
         """Операционный слайд: крупно производительность и сгорание спринта; следом слайд «Сроки»."""
         ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
-        self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index("burn('story'"))
-        self.assertLess(ops.index("burn('story'"), ops.index("burn('all'"), 'сгорание: без подзадач, затем с подзадачами')
-        self.assertIn('function bizBurnChart(', self.html)
+        self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index('bizBurnChart(t, part, box)'))
+        self.assertEqual(1, ops.count('bizBurnChart(t, part, box)'), 'сгорание на слайде одно; второй вариант — в расшифровке')
+        for part in ('function bizBurnChart(', 'function openBurn(', 'data-burn=', "'Без подзадач'", "'С подзадачами'", 'burn-tab'):
+            self.assertIn(part, self.html)
         self.assertIn('нужна версия 1.10.0', self.html)
         self.assertNotIn('controlChart', ops, 'диаграмма управления — на слайде «Сроки» и в его разборе')
         self.assertNotIn('function controlOverview(', self.html)
@@ -211,10 +213,12 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_ops_member_matrix(self):
         """Операционный слайд снизу: истории и подзадачи спринта по исполнителю — полосы по статусам,
         «сделано/всего», застрявшие; шкала «Числа / Доли» и сортировка."""
-        for part in ('function memberMatrix(', 'function memberMatrixHtml(', "label: 'Отладка'", "'По застрявшим'",
-                     "'По готовности'", "'По списку'", "'Числа'", "'Доли'", 'Застряли', "btn('scale', 'share', 'Доли'", 'mx.dataset.mxSort',
+        for part in ('function memberRows(', 'function memberMatrixHtml(', "label: 'Отладка'", 'SP план / факт',
+                     'Задачи план / факт · LT', 'Подзадачи план / факт · LT', '[EXT]', 'mx-bar off', 'function openOffboard(',
                      "data-mx-team="):
             self.assertIn(part, self.html)
+        for gone in ("'По застрявшим'", "'Доли'", 'Застряли', 'mx-btn', 'mx-legend'):
+            self.assertNotIn(gone, self.html, 'без сортировок, шкал, легенды и «Застряли»')
         ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
         self.assertIn('memberMatrixHtml(t)', ops)
 

@@ -122,8 +122,9 @@ class LegacyParityTest(unittest.TestCase):
         stripped['logs'] = {k: v for k, v in stripped['logs'].items() if k != 'since'}
         stripped['epics'] = self.without_priorities(stripped['epics'])
         # с 1.10.0 — сгорание без подзадач (storyScope/storyClosed): у старого сборщика его не было
-        stripped['burndown'] = dict(stripped['burndown'], days=[
-            {k: v for k, v in d.items() if k not in ('storyScope', 'storyClosed')} for d in stripped['burndown']['days']])
+        stripped['burndown'] = {k: v for k, v in stripped['burndown'].items() if k != 'items'}  # состав — с 1.10.0
+        stripped['burndown']['days'] = [
+            {k: v for k, v in d.items() if k not in ('storyScope', 'storyClosed')} for d in stripped['burndown']['days']]
         self.assertEqual(LEGACY, stripped)
 
     def test_epic_scope_beyond_sprint(self):
@@ -401,3 +402,71 @@ class TokenSafetyTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Collector110Test(unittest.TestCase):
+    """Сборщик 1.10.0: все типы задач в эпиках отчёта, задачи участников вне доски."""
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = support.load_module(support.BASE_COLLECTOR, 'base_collector_110')
+
+    def collector(self, params=None, api=None):
+        class StubJira:
+            base = 'https://jira.example'
+            calls = []
+
+            def api(self, path, **p):
+                self.calls.append((path, p))
+                return api(path, **p) if api else {'issues': [], 'total': 0}
+        req = {'team': {'slug': 't', 'name': 'T', 'board': 1}, 'params': params or {}, 'now': '2026-10-06T10:00:00+03:00'}
+        c = self.mod.Collector(StubJira(), req, self.mod.load_rules(params or {}))
+        c.cats = {'1': 'Выполнено', '2': 'В работе'}
+        return c
+
+    @staticmethod
+    def issue(key, typ, sub=False, login=None, name=None):
+        return {'key': key, 'fields': {'issuetype': {'name': typ, 'subtask': sub}, 'summary': key,
+                                       'status': {'name': 'В работе', 'id': '2'},
+                                       'assignee': {'name': login, 'displayName': name} if login else None}}
+
+    def test_report_types_star_takes_tasks_and_bugs_not_subtasks(self):
+        c = self.collector({'report_types': '*'})
+        got = [i['key'] for i in [self.issue('A-1', 'История'), self.issue('A-2', 'Задача'), self.issue('A-3', 'Ошибка'),
+                                  self.issue('A-4', 'Подзадача', sub=True), self.issue('A-5', 'Эпик')] if c.in_report(i)]
+        self.assertEqual(['A-1', 'A-2', 'A-3'], got)
+        plain = self.collector({})
+        self.assertFalse(plain.in_report(self.issue('A-2', 'Задача')), 'по умолчанию — как story_types')
+
+    def test_offboard_is_period_activity_minus_sprint(self):
+        def api(path, **p):
+            return {'total': 2, 'issues': [{'key': 'GDS-1', 'fields': {
+                'summary': 'задача спринта', 'issuetype': {'name': 'История'}, 'status': {'name': 'В работе', 'id': '2'},
+                'assignee': {'name': 'ivanov', 'displayName': 'Иванов Иван'}, 'updated': '2026-10-02T12:00:00.000+0300'},
+                'changelog': {'histories': []}}, {'key': 'MRS-7', 'fields': {
+                'summary': 'Помощь смежникам', 'issuetype': {'name': 'Задача'}, 'status': {'name': 'Закрыт', 'id': '1'},
+                'assignee': {'name': 'ivanov', 'displayName': 'Иванов Иван'}, 'resolutiondate': '2026-10-02T12:00:00.000+0300',
+                'updated': '2026-10-02T12:00:00.000+0300', 'comment': {'comments': [
+                    {'created': '2026-10-01T09:00:00.000+0300', 'author': {'displayName': 'Иванов Иван'}, 'body': 'сделал'}]}},
+                'changelog': {'histories': []}}]}
+        c = self.collector(api=api)
+        out = c.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'},
+                               [self.issue('GDS-1', 'История', login='ivanov', name='Иванов Иван'), self.issue('GDS-2', 'Задача')])
+        path, params = c.jira.calls[0]
+        self.assertEqual('/rest/api/2/search', path)
+        self.assertIn('assignee in ("ivanov")', params['jql'])
+        self.assertNotIn('project', params['jql'], 'вычитается спринт, а не проекты: чужие проекты бывают и в спринте')
+        self.assertIn('updated >= "2026-09-23"', params['jql'])
+        self.assertEqual(['GDS'], out['projects'])
+        self.assertEqual([{'name': 'Иванов Иван', 'keys': ['MRS-7']}],   # GDS-1 — задача спринта, вычтена
+                         [{'name': m['name'], 'keys': [i['key'] for i in m['items']]} for m in out['members']])
+        item = out['members'][0]['items'][0]
+        self.assertEqual(('MRS', 'done', '2026-10-02', 1), (item['project'], item['bucket'], item['doneAt'], len(item['comments'])))
+
+    def test_offboard_failure_is_a_warning_not_a_crash(self):
+        def api(path, **p):
+            raise self.mod.JiraProblem('JIRA вернула HTTP 400')
+        c = self.collector(api=api)
+        out = c.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'}, [self.issue('GDS-1', 'История', login='ivanov', name='И')])
+        self.assertEqual([], out['members'])
+        self.assertTrue(any('вне доски' in w for w in c.warnings))
+        self.assertIsNone(self.collector({'offboard': False}).build_offboard({}, []), 'выключается params.offboard')

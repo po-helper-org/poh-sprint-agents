@@ -33,7 +33,7 @@ EXIT_OK, EXIT_ERROR, EXIT_CONFIG = ins.EXIT_OK, ins.EXIT_ERROR, ins.EXIT_CONFIG
 LIMITS = {'objective': 100, 'kr': 120, 'promise': 160, 'shown': 160, 'done': 140, 'next': 100, 'blocker': 120,
           'stream_done': 180, 'stream_next': 100, 'stream_blocker': 140,
           'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280,
-          'plan_title': 80, 'plan_text': 160}
+          'plan_title': 80, 'plan_text': 160, 'escalate': 60, 'escalation': 60}
 # ключ строки «Вне эпиков» в streams: истории спринта без эпика (как в шаблоне страницы)
 NO_EPIC = 'no-epic'
 
@@ -95,6 +95,11 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
         if key not in stories:
             errors.append(f'[{slug}] rows: истории {key} нет в спринте команды')
         texts += [(f'rows.{key}.{f}', row[f], LIMITS[f], True) for f in ('done', 'next', 'blocker') if f in row]
+        texts += [(f'rows.{key}.escalate', row['escalate'], LIMITS['escalate'], False)] if 'escalate' in row else []
+    for key in biz.get('hide', []):
+        if key not in stories:
+            errors.append(f'[{slug}] hide: задачи {key} нет в спринте команды')
+    texts += [('escalation', biz['escalation'], LIMITS['escalation'], False)] if 'escalation' in biz else []
     for i, c in enumerate(biz.get('changes', []), 1):
         texts += [(f'changes #{i}.{f}', c[f], LIMITS[f], False) for f in ('affected', 'before', 'after', 'outcome') if f in c]
     texts += [(f'demo #{i}', d['what'], LIMITS['what'], False) for i, d in enumerate(biz.get('demo', []), 1)]
@@ -153,6 +158,8 @@ def attach(teams, doc):
             stale.append(team['slug'])
             continue
         team['business'] = {k: v for k, v in entry.items() if k != 'dataHash'}
+        if (doc or {}).get('jiraNative'):
+            team['business']['jiraNative'] = doc['jiraNative']
         attached.append(team['slug'])
     return attached, stale
 

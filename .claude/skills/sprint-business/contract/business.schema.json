@@ -24,6 +24,11 @@
       "minLength": 1,
       "description": "Кто писал: имя агента или роли. Показывается мелким шрифтом под разделом."
     },
+    "jiraNative": {
+      "type": "string",
+      "pattern": "\\{key\\}",
+      "description": "Адрес задачи в JIRA-native (виджет JIRA) с подстановкой {key}: ключи на слайдах дают выбор «JIRA — в браузере» / «JIRA-native — виджет». Нет — только JIRA в браузере."
+    },
     "teams": {
       "type": "object",
       "description": "slug команды → её бизнес-блок.",
@@ -89,6 +94,21 @@
             "$ref": "#/definitions/risk"
           },
           "description": "Квартальные риски: срыв коммитментов OKR и внешние зависимости."
+        },
+        "members": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Состав команды (прямое подчинение), ФИО как в JIRA — из кэша целей (PO-агент команды). Остальные исполнители на доске — [EXT] на операционном слайде."
+        },
+        "escalation": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Кто по умолчанию эскалирует блокеры команды (сайдбар «блокаторы»), до 60 знаков. Нет — «PO команды»."
+        },
+        "hide": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*-\\d+$" },
+          "description": "Ключи задач спринта, которые PO убрал из отчёта (закрыты по решению PO, служебные). Не видны на слайдах и не считаются в итогах."
         },
         "goalsSource": {
           "type": "string",
@@ -206,6 +226,11 @@
           "type": "string",
           "minLength": 5,
           "description": "Что блокирует и кто, до 120 знаков."
+        },
+        "escalate": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Кто эскалирует этот блокер, до 60 знаков (по умолчанию — escalation команды)."
         }
       }
     },

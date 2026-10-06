@@ -69,18 +69,16 @@ const heads = await p.evaluate(() => ({
   hero: document.querySelector('.hero-slide h1').textContent,
   kpis: document.querySelector('.hero-slide').querySelectorAll('.h-kpis > div').length,
   goals: document.querySelector('.hero-slide').querySelectorAll('.h-goal').length,
-  panels: [...document.querySelector('.hero-slide').querySelectorAll('.h-panel h3')].map(h => h.textContent),
-  blkItems: document.querySelector('.hero-slide').querySelectorAll('.h-blk li:not(.h-none):not(.h-more)').length,
-  blocked: TEAMS[0].epics.reduce((n, e) => n + e.stories.filter(st => classifyBucket(st.status, st.category) === 'blocked').length, 0),
+  panels: document.querySelectorAll('.hero-slide .h-panel').length,
+  sub: [...document.querySelectorAll('#deckSlides .fslide .slide-sub')].some(x => /строка — направление/.test(x.textContent)),
   centered: getComputedStyle(document.querySelector('.hero-slide')).textAlign,
   note: document.body.textContent.includes('ИИ-агент PO по данным'),
   krTail: [...document.querySelectorAll('#deckSlides tr.erow td.task')].some(td => /Sprint Goal|· эпик «/.test(td.textContent)) }));
 check(heads.cards === TEAMS_N(deckInfo) && /^\d+%$/.test(heads.big), 'титул: по карточке на команду с долей закрытых историй');
-check(heads.hero === deckInfo.teams.split('|')[0] && heads.kpis === 4 && heads.goals >= 1 && heads.centered === 'center',
-      'слайд команды: имя, четыре числа (в т. ч. заблокировано и не закрыто), цели плашками');
-check(heads.panels.length === 2 && heads.panels[0].startsWith('🛑 Заблокированы · ' + heads.blocked) && /^⏳ (Не успели по объёму|Пока не закрыто) · \d+/.test(heads.panels[1]),
-      'две панели: «Заблокированы» отдельно от «Не успели по объёму»');
-check(heads.blkItems === Math.min(heads.blocked, 6), 'в панели блокеров — заблокированные истории команды');
+check(heads.hero === deckInfo.teams.split('|')[0] && heads.kpis === 2 && heads.goals >= 1 && heads.centered === 'center',
+      'слайд команды: имя, задачи и SP, цели карточками');
+check(heads.panels === 0, 'на слайде команды нет панелей «заблокированы / не успели»');
+check(!heads.sub, 'на слайдах направлений нет подписи «строка — направление, истории — по клику»');
 check(!heads.note && !heads.krTail, 'нет подписи про агента и «эпик · Sprint Goal» в строках');
 
 // сцена: один слайд на всю площадь, навигация кнопками; «Слайды» — выезжающий сайдбар
@@ -136,36 +134,42 @@ const ops = await p.evaluate(() => {
            legend: s.querySelector('.ops-legend').textContent };
 });
 check(!ops.title, 'у операционного слайда нет заголовка');
-check(ops.heads.length === 3 && ops.heads[0].startsWith('Производительность за 3 спринта') &&
-      ops.heads[1].startsWith('Сгорание: истории и задачи') && ops.heads[2].startsWith('Сгорание: с подзадачами'),
-      'три графика: производительность за 3 спринта и сгорание — без подзадач и с ними');
-check(ops.big > 1.8 && !ops.ctl, 'графики вытянуты по ширине; диаграмма управления — на слайде «Сроки»');
-const burn = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.ops:not(.cycle)')][0]
-  .querySelectorAll('.ops-chart svg').length);
-check(burn === 3, 'оба сгорания нарисованы (сборщик 1.10.0: storyScope/storyClosed)');
-// снизу — истории и подзадачи спринта по участникам: шкала «Числа / Доли», сортировка, клик по имени — сайдбар
-const mx = async () => p.evaluate(() => {
+check(ops.heads.length === 2 && ops.heads[0].startsWith('Производительность за 3 спринта') && ops.heads[1].startsWith('Сгорание спринта'),
+      'два графика: производительность за 3 спринта и одно сгорание');
+check(ops.big > 2.2 && !ops.ctl, 'графики вытянуты по ширине; диаграмма управления — на слайде «Сроки»');
+// снизу — участники: график задач (под ним — вне доски), SP, задачи и подзадачи план/факт/LT; без сортировок и «Застряли»
+const mx = await p.evaluate(() => {
   const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
-  const names = new Set();
-  TEAMS[0].epics.forEach(e => e.stories.forEach(st => { names.add(st.assignee || 'Не назначен'); (st.subtasks || []).forEach(x => names.add(x.assignee || 'Не назначен')); }));
-  return { rows: s.querySelectorAll('.mx-row:not(.mx-head)').length, names: names.size,
-           list: [...s.querySelectorAll('.mx-row:not(.mx-head) .mx-name')].map(n => n.textContent),
-           widths: [...s.querySelectorAll('.mx-bar > span')].map(x => x.style.width),
-           on: [...s.querySelectorAll('.mx-btn.on')].map(b => b.textContent).join('|'),
-           heads: [...s.querySelectorAll('.mx-head span')].map(x => x.textContent).filter(Boolean).join('|') };
+  return { rows: [...s.querySelectorAll('.mx-row:not(.mx-head)')].map(r => r.querySelector('.mx-name').textContent),
+           heads: [...s.querySelectorAll('.mx-head span')].map(x => x.textContent).filter(Boolean).join('|'),
+           ctrl: s.querySelectorAll('.mx-btn, .mx-legend, .mx-stuck').length, off: s.querySelectorAll('.mx-bar.off').length,
+           sep: (s.querySelector('.mx-sep') || {}).textContent || '', ext: [...s.querySelectorAll('.mx-name')].filter(n => n.textContent.startsWith('[EXT]')).length,
+           pf: (s.querySelector('.mx-row:not(.mx-head) .mx-n:nth-child(4)') || {}).textContent || '' };
 });
-let m1 = await mx();
-check(m1.rows === m1.names && m1.heads === 'Истории|Подзадачи|SP|Застряли' && m1.on === 'Числа|По застрявшим',
-      'по строке на участника: истории, подзадачи, SP, застрявшие; по умолчанию — числа, по застрявшим');
-check(m1.widths.some(w => parseFloat(w) < 100), 'шкала «Числа» — длина полосы по количеству задач');
-await p.click('#deckSlides .fslide.ops:not(.cycle) [data-mx-scale="share"]');
-await p.click('#deckSlides .fslide.ops:not(.cycle) [data-mx-sort="list"]');
-m1 = await mx();
-check(m1.widths.every(w => parseFloat(w) === 100) && m1.on === 'Доли|По списку', '«Доли» — все полосы во всю ширину');
-check(m1.list.slice(0, -1).every((n, i, a) => !i || a[i - 1] <= n), '«По списку» — по алфавиту');
+check(mx.heads === 'Задачи спринта · под ними — вне доски|SP план / факт|Задачи план / факт · LT|Подзадачи план / факт · LT',
+      'столбцы: график, SP план/факт, задачи и подзадачи план/факт/lead time');
+check(mx.ctrl === 0 && !mx.heads.includes('Застряли'), 'нет сортировки, шкалы, легенды и «Застряли»');
+check(mx.off === mx.rows.length, 'под полосой задач спринта — полоса задач вне доски');
+check(mx.ext > 0 && mx.sep.startsWith('[EXT]'), 'участники вне состава команды — отдельно, с меткой [EXT]');
 await p.click('#deckSlides .fslide.ops:not(.cycle) .mx-name .mname >> nth=0');
 await p.waitForTimeout(300);
 check((await p.textContent('#stackKey')).startsWith('Участник'), 'клик по имени — сайдбар задач участника');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+await p.click('#deckSlides .fslide.ops:not(.cycle) .mx-bar.off:has(.mx-o) >> nth=0');
+await p.waitForTimeout(300);
+check((await p.textContent('#stackKey')).startsWith('Вне доски') && await p.locator('#storiesBody .es-row').count() > 0,
+      'клик по полосе «вне доски» — сайдбар задач в других проектах с активностью');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+await p.click('#deckSlides .fslide.ops:not(.cycle) [data-burn]');
+await p.waitForTimeout(300);
+const burnSide = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent,
+  days: document.querySelectorAll('#storiesBody table.burn-tab tbody tr').length, n: TEAMS[0].burndown.days.length,
+  lists: [...document.querySelectorAll('#storiesBody .pane-label')].map(x => x.textContent).join('|'),
+  tabs: [...document.querySelectorAll('.side-tab')].map(t => t.textContent.split(' · ')[0]).join('|') }));
+check(burnSide.key.startsWith('Сгорание спринта') && burnSide.days === burnSide.n && /Закрыто|Не закрыто/.test(burnSide.lists) &&
+      burnSide.tabs === 'Без подзадач|С подзадачами', 'клик по сгоранию — из чего построено: по дням и по задачам, с подзадачами и без');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 check(ops.legend.startsWith('Не начатоВ работеВыполнено'), 'три группы статусов в легенде');
@@ -180,7 +184,7 @@ const cyc = await p.evaluate(() => {
            bandsSigma: svg.querySelectorAll('path.cyc-band').length,
            bands: [...svg.querySelectorAll('text')].map(t => t.textContent).filter(t => /^С\d+/.test(t)).length,
            ends: [...svg.querySelectorAll('text')].map(t => t.textContent).filter(t => t === 'Истории' || t === 'Подзадачи').length,
-           tis: [...s.querySelectorAll('.tis-h')].map(h => h.textContent).join('|'),
+           tis: [...s.querySelectorAll('.tis-h')].map(h => h.childNodes[0].textContent.trim()).join('|'),
            big: [...s.querySelectorAll('.tis-big')].every(b => /\d,\d/.test(b.textContent)),
            bars: s.querySelectorAll('.tis svg rect').length };
 });
@@ -195,17 +199,24 @@ const ctl = await p.evaluate(() => ({ key: document.getElementById('stackKey').t
   tabs: [...document.querySelectorAll('.side-tab')].map(t => t.textContent),
   kpis: document.querySelectorAll('#storiesBody .ck').length,
   chart: !!document.querySelector('#storiesBody .cbig svg'), rows: document.querySelectorAll('#storiesBody table.ctab tbody tr').length }));
-check(ctl.key.startsWith('Диаграмма управления') && ctl.tabs.length === 2 && ctl.tabs[0].startsWith('Истории') && ctl.kpis === 7 && ctl.chart && ctl.rows === 3,
-      'клик по cycle time — сайдбар: показатели, диаграмма управления, разбивка по спринтам');
-await p.click('.side-tab >> nth=1');
+check(ctl.key.startsWith('Диаграмма управления') && ctl.tabs.length === 3 && ctl.tabs[0].startsWith('Все') && ctl.kpis === 7 && ctl.chart && ctl.rows === 3,
+      'клик по cycle time — сайдбар: «Все / Истории / Подзадачи», показатели, диаграмма управления, разбивка по спринтам');
+await p.click('.side-tab >> nth=2');
 check(await p.isVisible('#storiesBody .cbig svg'), 'вкладка «Подзадачи» — своя диаграмма');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+await p.click('#deckSlides .fslide.cycle [data-tis="blocked"]');
+await p.waitForTimeout(300);
+const blkSide = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent, cards: document.querySelectorAll('#storiesBody .bl-card').length,
+  label: document.getElementById('storiesLabel').textContent }));
+check(blkSide.key.startsWith('Заблокировано') && /почему/.test(blkSide.label), 'клик по «Заблокировано» — разбор: кто, с какого числа, почему, комментарии');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // планы на следующий спринт
 await goTo('#deckSlides .fslide.plans');
 const plans = await p.evaluate(() => [...document.querySelector('#deckSlides .fslide.plans').querySelectorAll('.pcol')]
   .map(c => [c.querySelector('.pc-head b').textContent, c.querySelectorAll('.prow').length,
-              Math.max(0, ...[...c.querySelectorAll('.prow')].map(r => r.getBoundingClientRect().height)), +c.querySelector('.pc-head span').textContent,
+              Math.max(0, ...[...c.querySelectorAll('.prow')].map(r => r.getBoundingClientRect().height)), c.querySelector('.pc-head span').textContent,
               c.querySelector('.pr-more') ? +c.querySelector('.pr-more').textContent.replace(/\D/g, '') : 0]));
 check(plans.map(x => x[0]).join('|') === 'Взять в работу|Доделать|Возможно войдёт|Эскалировать' && plans.every(x => x[1] <= 15) && plans.some(x => x[1]),
       '«Планы на следующий спринт»: четыре колонки, в т. ч. «Возможно войдёт»');
@@ -213,14 +224,22 @@ const pg = await p.evaluate(() => { const s = document.querySelector('#deckSlide
   return { heads: s.querySelectorAll('.pg-head').length, keys: s.querySelectorAll('.pr-key').length,
            tip: (s.querySelector('.prow') || {}).title || '' }; });
 check(pg.heads > 0 && pg.keys === 0 && /^[A-Z]+-\d+/.test(pg.tip), 'внутри колонок — по направлениям; ключей на слайде нет, ключ — в подсказке');
-check(plans.every(x => x[2] < 70 && x[1] + x[4] === x[3]), 'строка на задачу (у «Эскалировать» — с пояснением); что не влезло — «ещё N», счётчик колонки — всё');
+check(plans.every(x => x[2] < 70 && x[1] + x[4] === parseInt(x[3], 10)), 'строка на задачу (у «Эскалировать» — с пояснением); что не влезло — «ещё N», счётчик колонки — всё');
+await p.click('#deckSlides .fslide.plans .pc-head[data-plancol="take"]');
+await p.waitForTimeout(300);
+const planSide = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent, rows: document.querySelectorAll('#storiesBody table.plan-tab tr').length,
+  keys: document.querySelectorAll('#storiesBody .klink').length, tabs: document.querySelectorAll('.side-tab').length }));
+check(planSide.key.startsWith('Планы на следующий спринт') && planSide.rows > 0 && planSide.keys === planSide.rows && planSide.tabs === 4,
+      'клик по колонке «Планов» — читаемый список: ключ, суть, приоритет, статус, пояснение');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
 await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
 const rowCheck = await p.evaluate(() => {
   const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]');
   const auto = document.querySelector('#deckSlides tr.erow[data-key="INIT-111"]');
   return { cls: tr.className, res: tr.querySelector('.result > span').textContent.trim(), how: tr.querySelector('.result > span').title,
            sub: tr.querySelector('.res-sub').textContent, bar: tr.querySelectorAll('.res-bar i').length,
-           tags: [...tr.querySelectorAll('.tag')].map(t => t.textContent).join('|'),
+           tags: tr.querySelectorAll('.tag').length, badge: (tr.querySelector('.blk-badge') || {}).textContent || '',
            done: tr.querySelector('[data-edit="sdone:platform:INIT-125"]').textContent,
            blk: (tr.querySelector('[data-edit="sblk:platform:INIT-125"]') || {}).textContent,
            next: (tr.querySelector('[data-edit="snext:platform:INIT-125"]') || {}).textContent,
@@ -235,32 +254,65 @@ check(rowCheck.done.startsWith('Метрики загрузчика собран
 check(/^(Закрыто|В работе): .+\.$|^Работа не начата\.$/.test(rowCheck.autoDone), 'без агента сводка — из данных: закрытые истории или что в работе');
 check(rowCheck.kr === 'KR 3.1 — платформа выдерживает пиковый сезон', 'строка — KR');
 check(rowCheck.noEpic, 'истории без эпика — строка «Вне эпиков»');
-check(/не закрыто \d+/.test(rowCheck.tags) || rowCheck.cls.includes('stat-green'), 'незакрытое — меткой «⏳ не закрыто N»');
+check(rowCheck.tags === 0, 'в комментарии нет меток «не закрыто N» — это видно по результату');
+const badge = await p.evaluate(() => { const b = document.querySelector('#deckSlides tr.erow .blk-badge');
+  const tr = b && b.closest('tr'); return b ? { text: b.textContent, key: tr.dataset.key || '' } : null; });
+check(!!badge && /^🛑 блокаторы: \d+$/.test(badge.text), 'в «Результате» — метка «блокаторы: N»');
+check(!!rowCheck.next && await p.evaluate(() => [...document.querySelectorAll('#deckSlides tr.erow')].every(tr => tr.querySelector('.next'))),
+      'следующий шаг есть всегда, у каждой строки');
+await goTo('#deckSlides tr.erow .blk-badge');
+await p.click('#deckSlides tr.erow .blk-badge >> nth=0');
+await p.waitForTimeout(300);
+const bl = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent, text: document.getElementById('storiesBody').textContent,
+  cards: document.querySelectorAll('#storiesBody .bl-card').length }));
+check(bl.key.startsWith('Блокаторы') && bl.cards > 0 && bl.text.includes('Исполнитель:') && bl.text.includes('Эскалирует:'),
+      'клик по «блокаторы» — сайдбар: блокер, исполнитель, кто эскалирует');
+await p.click('#storiesBody .bl-open >> nth=0');
+await p.waitForTimeout(300);
+check(await p.isVisible('.panel-back') && (await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]).join('|'))) === 'Все|История|Подзадачи',
+      'из блокатора — активность истории, в шапке «← Назад»');
+await p.click('.panel-back');
+await p.waitForTimeout(300);
+check((await p.textContent('#stackKey')).startsWith('Блокаторы') && !(await p.isVisible('.panel-back')), '«← Назад» возвращает на прошлый экран');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+// ключ задачи: при наведении — JIRA в браузере или JIRA-native (виджет)
+await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
+await p.hover('#deckSlides tr.erow[data-key="INIT-125"] .klink');
+await p.waitForTimeout(150);
+const km = await p.evaluate(() => [...document.querySelectorAll('.kmenu a')].map(a => a.textContent + '=' + a.getAttribute('href')));
+check(km.length === 2 && km[0].startsWith('JIRA — в браузере=') && /\/browse\/INIT-125$/.test(km[0]) && km[1].startsWith('JIRA-native — виджет=') && km[1].includes('INIT-125'),
+      'ключ эпика при наведении: «JIRA — в браузере» и «JIRA-native — виджет»');
+await p.mouse.move(5, 5);
 // клик по строке — активность истории
 await goTo('#deckSlides tr.erow[data-key="INIT-111"]');
 await p.click('#deckSlides tr.erow[data-key="INIT-111"] td.task');
 await p.waitForTimeout(300);
 const epicTabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]).join('|'));
-const esRows = await p.$$eval('#storiesBody .es-row', r => r.length);
-check(epicTabs === 'Истории спринта|Весь эпик' && esRows === 2, 'клик по строке — сайдбар: истории спринта эпика и «Весь эпик»');
-check((await p.textContent('#storiesBody')).includes('Агрегация каталога собрана и ждёт приёмки PO.'), 'у истории в сайдбаре — её текст из бизнес-блока');
-await p.click('#storiesBody .es-row:has-text("Агрегация каталога и доступности")');
+const es = await p.evaluate(() => ({ rows: document.querySelectorAll('#storiesBody .es-row').length,
+  chips: [...document.querySelectorAll('#storiesBody .es-chip')].map(c => c.textContent.split(' · ')[0]),
+  open: document.querySelectorAll('#storiesBody .es-row.open .es-detail .sc svg').length }));
+check(epicTabs === 'Задачи спринта|Весь эпик' && es.rows === 2, 'клик по строке — сайдбар: задачи спринта эпика и «Весь эпик»');
+check(es.chips[0] === 'Все' && es.chips.length > 1, 'задачи можно быстро разделить по статусам');
+check(es.open === 1, 'активность первой незакрытой задачи — сразу на том же экране');
+check((await p.textContent('#storiesBody')).includes('Агрегация каталога собрана и ждёт приёмки PO.'), 'у задачи в сайдбаре — её текст из бизнес-блока');
+await p.click('#storiesBody .es-chip >> nth=1');
+await p.waitForTimeout(200);
+const flt = await p.evaluate(() => ({ on: document.querySelector('#storiesBody .es-chip.on').textContent, rows: document.querySelectorAll('#storiesBody .es-row').length }));
+check(!flt.on.startsWith('Все') && flt.rows === +flt.on.split(' · ')[1], 'фильтр по статусу оставляет только задачи этого статуса');
+await p.click('#storiesBody .es-chip >> nth=0');
+await p.waitForTimeout(200);
+if (!(await p.locator('#storiesBody .es-row.open:has-text("Агрегация каталога и доступности")').count()))
+  await p.click('#storiesBody .es-row:has-text("Агрегация каталога и доступности") .es-head');
 await p.waitForTimeout(300);
-const tabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent));
-check(await p.isVisible('#panelStack.open') && (await p.textContent('#stackTitle')) === 'Агрегация каталога и доступности' &&
-      tabs.map(x => x.split(' · ')[0]).join('|') === 'Все|История|Подзадачи', 'клик по истории — сайдбар: все события, фильтры «История» и «Подзадачи»');
 const story = await p.evaluate(() => {
   const st = TEAMS.flatMap(t => t.epics).flatMap(e => e.stories).find(x => x.key === 'INIT-112');
-  const at = [...document.querySelectorAll('#storiesBody .sf-item .sf-time')].length;
-  return { cal: !!document.querySelector('#storiesBody .sc svg'), band: document.querySelectorAll('#storiesBody .sc svg rect').length,
-           items: document.querySelectorAll('#storiesBody .sf-item').length, events: st.events.length, label: document.getElementById('storiesLabel').textContent,
+  const box = [...document.querySelectorAll('#storiesBody .es-row.open')].find(r => r.textContent.includes('Агрегация каталога и доступности'));
+  return { cal: !!(box && box.querySelector('.sc svg')), items: box ? box.querySelectorAll('.sf-item').length : 0, events: st.events.length,
            first: st.events[0].at < (TEAMS[0].logs.since || '9') };
 });
-check(story.cal && story.band > 0, 'сверху — календарь активности истории: статус по времени, подзадачи, комментарии');
-check(story.items === story.events && story.first, 'лента — вся хронология истории и подзадач, с её создания, а не только за спринт');
-check(story.label === '', 'без подписи «Активность за N дн.»');
-await p.click('.side-tab >> nth=2');
-check((await p.locator('#storiesBody .sf-sub').count()) === (await p.locator('#storiesBody .sf-item').count()), 'фильтр «Подзадачи» — только события подзадач');
+check(story.cal, 'клик по задаче — её календарь активности тут же, без перехода');
+check(story.items === story.events && story.first, 'лента — вся хронология задачи и подзадач, с её создания, а не только за спринт');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 check(await p.isVisible('#deck') && !(await p.isVisible('#panelStack.open')), 'Esc закрывает сайдбар, колода остаётся');

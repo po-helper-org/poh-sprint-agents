@@ -240,6 +240,15 @@
               "future": { "type": "boolean" }
             }
           }
+        },
+        "items": {
+          "type": "array",
+          "description": "Из чего сложилось сгорание (сборщик 1.10.0+): каждая задача спринта — когда вошла в спринт, вышла и закрыта. Сайдбар «как построено сгорание» в презентации.",
+          "items": { "type": "object", "required": ["key", "subtask", "entered"], "properties": {
+            "key": { "type": "string" }, "title": { "type": "string" }, "subtask": { "type": "boolean" },
+            "entered": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "left": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+            "doneAt": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" } } }
         }
       }
     },
@@ -361,6 +370,8 @@
                         "properties": {
                           "key": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "string" },
                           "bucket": { "$ref": "#/definitions/bucket" }, "sp": { "type": "number", "minimum": 0 },
+                          "type": { "type": "string", "description": "Тип задачи JIRA (сборщик 1.10.0+)." },
+                          "lead": { "type": ["number", "null"], "minimum": 0, "description": "Lead Time закрытой задачи, дней (сборщик 1.10.0+); не закрыта — null." },
                           "history": {
                             "type": "array",
                             "description": "Смены статуса задачи в границах спринта, по времени.",
@@ -379,6 +390,13 @@
                           }
                         }
                       }
+                    },
+                    "subtasks": {
+                      "type": "array",
+                      "description": "Подзадачи участника в спринте (сборщик 1.10.0+): статус и бакет на конец спринта, Lead Time закрытых. План/факт и lead time подзадач на операционном слайде.",
+                      "items": { "type": "object", "required": ["key", "status", "bucket"], "properties": {
+                        "key": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "string" },
+                        "bucket": { "$ref": "#/definitions/bucket" }, "lead": { "type": ["number", "null"], "minimum": 0 } } }
                     },
                     "split": {
                       "type": "object",
@@ -402,6 +420,29 @@
             "type": "object",
             "required": ["median", "count"],
             "properties": { "median": { "type": "number" }, "count": { "type": "integer", "minimum": 1 } }
+          }
+        },
+        "offboard": {
+          "type": "object",
+          "description": "Задачи участников вне доски за период текущего спринта (сборщик 1.10.0+): всё, что человек двигал в JIRA с начала спринта (TLND, MRS, бэклог…), минус задачи самого спринта. Полоса «вне доски» и сайдбар на операционном слайде.",
+          "required": ["since", "projects", "members"],
+          "properties": {
+            "since": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Начало окна — старт текущего спринта." },
+            "projects": { "type": "array", "items": { "type": "string" }, "description": "Проекты задач спринта (префиксы ключей) — для подписи; «вне доски» определяется по ключу: задача не из спринта." },
+            "members": {
+              "type": "array",
+              "description": "Участник → его задачи вне доски: статус, закрыта ли в окне, смены статуса и до пяти комментариев в окне.",
+              "items": { "type": "object", "required": ["name", "items"], "properties": {
+                "name": { "type": "string", "minLength": 1, "description": "displayName — тот же, что в assignee задач спринта." },
+                "items": { "type": "array", "items": { "type": "object", "required": ["key", "status", "bucket"], "properties": {
+                "key": { "type": "string" }, "title": { "type": "string" }, "project": { "type": "string" }, "type": { "type": "string" },
+                "status": { "type": "string" }, "bucket": { "$ref": "#/definitions/bucket" },
+                "doneAt": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }, "updated": { "type": "string" },
+                "history": { "type": "array", "items": { "type": "object", "required": ["at", "to"], "properties": {
+                  "at": { "type": "string" }, "from": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "by": { "type": ["string", "null"] } } } },
+                "comments": { "type": "array", "items": { "type": "object", "required": ["at", "body"], "properties": {
+                  "at": { "type": "string" }, "by": { "type": ["string", "null"] }, "body": { "type": "string" } } } } } } } } }
+            }
           }
         }
       }
