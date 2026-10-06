@@ -59,16 +59,42 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(([], []), self.check(self.doc))
 
     def test_plans_checked(self):
-        """«Планы на следующий спринт»: три колонки, короткие карточки, ключи — из данных."""
+        """«Планы на следующий спринт»: четыре колонки, короткие карточки, ключи — из данных."""
         plans = self.doc['teams']['platform']['plans']
+        self.assertEqual(['take', 'finish', 'maybe', 'escalate'], list(plans))
         plans['escalate'][0]['keys'] = ['INIT-55555']
         plans['take'][0]['text'] = 'Очень длинно. ' * 20
+        plans['maybe'][0]['keys'] = ['INIT-66666']
         errors, _ = self.check(self.doc)
         self.assertTrue(any('plans.escalate #1: задачи INIT-55555' in e for e in errors), errors)
         self.assertTrue(any('plans.take #1.text: длиннее 160' in e for e in errors), errors)
+        self.assertTrue(any('plans.maybe #1: задачи INIT-66666' in e for e in errors), errors)
         plans['later'] = []
         errors, _ = self.check(self.doc)
         self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
+    def test_stream_summary_checked(self):
+        """Строка = эпик: сводка «итог · блокер · след. шаг» — под длину слайда, ключи из данных."""
+        s = self.biz()['streams']['INIT-125']
+        s['done'] = 'Очень длинно. ' * 20
+        s['blocker'] = 'Ждём INIT-55555 у смежников.'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('streams.INIT-125.done: длиннее 180' in e for e in errors), errors)
+        self.assertTrue(any('streams.INIT-125.blocker' in e and 'INIT-55555' in e for e in errors), errors)
+
+    def test_no_epic_row(self):
+        """«Вне эпиков» — своя строка со сводкой, но без цели и KR."""
+        self.biz()['streams']['no-epic'] = {'done': 'Вне эпиков: мелкие доработки закрыты.', 'next': 'разобрать на планировании'}
+        self.assertEqual(([], []), self.check(self.doc))
+        self.biz()['streams']['no-epic']['kr'] = 'KR 1.1 — заказы от партнёров без ручного ввода'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('у строки «Вне эпиков» нет цели и KR' in e for e in errors), errors)
+
+    def test_changes_and_demo_still_accepted(self):
+        """Слайды «Изменения» и «Демо» убраны, но старые блоки с этими полями проходят проверку."""
+        self.biz()['changes'] = [{'affected': 'Нагрузочный прогон', 'before': 'в этом спринте', 'after': 'ждёт стенд'}]
+        self.biz()['demo'] = [{'what': 'Дашборд метрик загрузчика'}]
+        self.assertEqual(([], []), self.check(self.doc))
 
     def test_stale_hash_rejected(self):
         self.doc['teams']['platform']['dataHash'] = 'a' * 64

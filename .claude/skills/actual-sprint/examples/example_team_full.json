@@ -22,6 +22,8 @@
     "future": false,
     "remaining": 45,
     "scope": 45,
+    "storyClosed": 0,
+    "storyScope": 18,
     "weekend": false
    },
    {
@@ -30,6 +32,8 @@
     "future": false,
     "remaining": 44,
     "scope": 45,
+    "storyClosed": 0,
+    "storyScope": 18,
     "weekend": false
    },
    {
@@ -38,6 +42,8 @@
     "future": false,
     "remaining": 43,
     "scope": 45,
+    "storyClosed": 0,
+    "storyScope": 18,
     "weekend": false
    },
    {
@@ -46,6 +52,8 @@
     "future": false,
     "remaining": 46,
     "scope": 48,
+    "storyClosed": 0,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -54,6 +62,8 @@
     "future": false,
     "remaining": 44,
     "scope": 48,
+    "storyClosed": 1,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -62,6 +72,8 @@
     "future": false,
     "remaining": 44,
     "scope": 48,
+    "storyClosed": 1,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -70,6 +82,8 @@
     "future": false,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -78,6 +92,8 @@
     "future": false,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -86,6 +102,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -94,6 +112,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -102,6 +122,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -110,6 +132,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -118,6 +142,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -126,6 +152,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -134,10 +162,38 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    }
   ],
   "end": "2026-09-22",
+  "items": [
+   {
+    "doneAt": null,
+    "entered": "2026-09-08",
+    "key": "INIT-102",
+    "left": null,
+    "subtask": false,
+    "title": "Переезд на новое хранилище"
+   },
+   {
+    "doneAt": null,
+    "entered": "2026-09-08",
+    "key": "INIT-103",
+    "left": null,
+    "subtask": true,
+    "title": "Покрытие тестами"
+   },
+   {
+    "doneAt": null,
+    "entered": "2026-09-08",
+    "key": "INIT-104",
+    "left": null,
+    "subtask": true,
+    "title": "Обновление контракта"
+   }
+  ],
   "sprintName": "Спринт 74",
   "start": "2026-09-08"
  },
@@ -1349,6 +1405,50 @@
     "median": 17.5
    }
   },
+  "offboard": {
+   "members": [
+    {
+     "items": [
+      {
+       "bucket": "progress",
+       "comments": [
+        {
+         "at": "2026-09-12T10:00",
+         "body": "Согласовал контракт со смежной командой, приступаю к реализации.",
+         "by": "Участник К"
+        }
+       ],
+       "doneAt": null,
+       "history": [
+        {
+         "at": "2026-09-08T21:00",
+         "by": "Участник Б",
+         "from": "Бэклог",
+         "to": "В работе"
+        },
+        {
+         "at": "2026-09-10T00:00",
+         "by": "Участник А",
+         "from": "В работе",
+         "to": "Дизайн"
+        }
+       ],
+       "key": "MRS-237",
+       "project": "MRS",
+       "status": "Дизайн",
+       "title": "Агрегация каталога и доступности",
+       "type": "Ошибка",
+       "updated": "2026-09-14T17:00"
+      }
+     ],
+     "name": "Участник Б"
+    }
+   ],
+   "projects": [
+    "INIT"
+   ],
+   "since": "2026-09-08"
+  },
   "sprints": [
    {
     "current": false,
@@ -1380,9 +1480,11 @@
          }
         ],
         "key": "INIT-8300",
+        "lead": 4.7,
         "sp": 3,
         "status": "Закрыт",
-        "title": "Ранжирование выдачи"
+        "title": "Ранжирование выдачи",
+        "type": "Задача"
        },
        {
         "bucket": "blocked",
@@ -1408,9 +1510,11 @@
          }
         ],
         "key": "INIT-8301",
+        "lead": null,
         "sp": 5,
         "status": "В ожидании",
-        "title": "Поиск по синонимам"
+        "title": "Поиск по синонимам",
+        "type": "Ошибка"
        }
       ],
       "name": "Участник Б",
@@ -1439,7 +1543,8 @@
         0,
         0
        ]
-      }
+      },
+      "subtasks": []
      },
      {
       "items": [
@@ -1467,9 +1572,11 @@
          }
         ],
         "key": "INIT-8324",
+        "lead": 2.3,
         "sp": 13,
         "status": "Отменён",
-        "title": "Локальное хранилище"
+        "title": "Локальное хранилище",
+        "type": "История"
        },
        {
         "bucket": "review",
@@ -1489,9 +1596,11 @@
          }
         ],
         "key": "INIT-8325",
+        "lead": null,
         "sp": 2,
         "status": "Ревью",
-        "title": "Очередь модерации"
+        "title": "Очередь модерации",
+        "type": "Ошибка"
        }
       ],
       "name": "Участник И",
@@ -1520,7 +1629,8 @@
         0,
         0
        ]
-      }
+      },
+      "subtasks": []
      }
     ],
     "name": "Спринт 72",
@@ -1562,9 +1672,11 @@
          }
         ],
         "key": "INIT-8326",
+        "lead": 5.3,
         "sp": 1,
         "status": "Закрыт",
-        "title": "География и города"
+        "title": "География и города",
+        "type": "История"
        },
        {
         "bucket": "done",
@@ -1590,9 +1702,11 @@
          }
         ],
         "key": "INIT-8327",
+        "lead": 2.4,
         "sp": 13,
         "status": "Закрыт",
-        "title": "Чтение событий отмены"
+        "title": "Чтение событий отмены",
+        "type": "История"
        },
        {
         "bucket": "done",
@@ -1612,9 +1726,11 @@
          }
         ],
         "key": "INIT-8328",
+        "lead": 8.0,
         "sp": 13,
         "status": "Закрыт",
-        "title": "Дедупликация по типам объектов"
+        "title": "Дедупликация по типам объектов",
+        "type": "Задача"
        },
        {
         "bucket": "done",
@@ -1634,9 +1750,11 @@
          }
         ],
         "key": "INIT-8329",
+        "lead": 19.8,
         "sp": 5,
         "status": "Отменён",
-        "title": "Кэш карточек позиции"
+        "title": "Кэш карточек позиции",
+        "type": "История"
        }
       ],
       "name": "Участник Б",
@@ -1665,7 +1783,8 @@
         0,
         0
        ]
-      }
+      },
+      "subtasks": []
      },
      {
       "items": [
@@ -1687,9 +1806,11 @@
          }
         ],
         "key": "INIT-8352",
+        "lead": 15.9,
         "sp": 13,
         "status": "Закрыт",
-        "title": "Метрики загрузчика"
+        "title": "Метрики загрузчика",
+        "type": "Задача"
        },
        {
         "bucket": "done",
@@ -1709,9 +1830,11 @@
          }
         ],
         "key": "INIT-8353",
+        "lead": 9.6,
         "sp": 5,
         "status": "Закрыт",
-        "title": "Экран онбординга"
+        "title": "Экран онбординга",
+        "type": "Задача"
        },
        {
         "bucket": "done",
@@ -1731,9 +1854,11 @@
          }
         ],
         "key": "INIT-8354",
+        "lead": 15.3,
         "sp": 13,
         "status": "Закрыт",
-        "title": "Чтение событий создания"
+        "title": "Чтение событий создания",
+        "type": "Ошибка"
        },
        {
         "bucket": "done",
@@ -1753,9 +1878,11 @@
          }
         ],
         "key": "INIT-8355",
+        "lead": 19.5,
         "sp": 8,
         "status": "Закрыт",
-        "title": "Переезд на новое хранилище"
+        "title": "Переезд на новое хранилище",
+        "type": "История"
        }
       ],
       "name": "Участник З",
@@ -1784,7 +1911,8 @@
         0,
         0
        ]
-      }
+      },
+      "subtasks": []
      }
     ],
     "name": "Спринт 73",
@@ -1814,9 +1942,11 @@
          }
         ],
         "key": "INIT-121",
+        "lead": null,
         "sp": 8,
         "status": "В работе",
-        "title": "Поиск по синонимам"
+        "title": "Поиск по синонимам",
+        "type": "История"
        }
       ],
       "name": "Участник В",
@@ -1845,7 +1975,16 @@
         0,
         0
        ]
-      }
+      },
+      "subtasks": [
+       {
+        "bucket": "review",
+        "key": "INIT-108",
+        "lead": null,
+        "status": "Ревью",
+        "title": "Схема БД"
+       }
+      ]
      },
      {
       "items": [
@@ -1873,9 +2012,11 @@
          }
         ],
         "key": "INIT-112",
+        "lead": null,
         "sp": 5,
         "status": "Готово к проверке",
-        "title": "Агрегация каталога и доступности"
+        "title": "Агрегация каталога и доступности",
+        "type": "История"
        }
       ],
       "name": "Участник И",
@@ -1904,7 +2045,16 @@
         0,
         0
        ]
-      }
+      },
+      "subtasks": [
+       {
+        "bucket": "progress",
+        "key": "INIT-110",
+        "lead": null,
+        "status": "Анализ",
+        "title": "Документация"
+       }
+      ]
      }
     ],
     "name": "Спринт 74",

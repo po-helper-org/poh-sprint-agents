@@ -172,19 +172,111 @@
   // можно поправить или удалить, наружу они уходят готовым промтом для ИИ.
   // У заметки необязательная привязка к сущности (эпик, история, подзадача или
   // любой ключ вне отчёта) — чтобы LLM сразу понимала, о чём речь.
-  // Хранение — localStorage браузера, своя корзина у каждой команды и спринта.
-  function commentsKey() { return 'actual-sprint:' + REPORT_ID + ':comments:' + team.sprintName; }
+  // Хранение — браузер, своя корзина у каждой команды. Комментарий не пропадает,
+  // пока PO не удалит его сам:
+  //   • ключ без имени спринта — смена спринта или версии файла корзину не обнуляет
+  //     (спринт записан в самом комментарии); корзины старого формата
+  //     «…:comments:<спринт>» один раз вливаются и не удаляются;
+  //   • битая запись не затирается: сырое значение уходит в «…:corrupt:<время>»;
+  //   • перед каждой записью прошлое значение — в «…:backup»;
+  //   • копия в IndexedDB: localStorage очищен — корзина восстанавливается из неё;
+  //   • navigator.storage.persist() — просим браузер не вытеснять хранилище.
+  function commentsKey() { return 'actual-sprint:' + REPORT_ID + ':comments'; }
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } }
+
+  function parseList(raw) {
+    if (raw === null || raw === undefined || raw === '') return [];
+    var list = JSON.parse(raw);                       // бросает на битой записи
+    if (!Array.isArray(list)) throw new Error('не список');
+    return list;
+  }
+
+  function legacyKeys(key) {
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(key + ':') === 0 && !/:(backup|corrupt|merged)/.test(k.slice(key.length))) out.push(k);
+      }
+    } catch (e) { /* без хранилища — нечего вливать */ }
+    return out.sort();
+  }
 
   function loadComments() {
-    try {
-      var list = JSON.parse(localStorage.getItem(commentsKey()) || '[]');
-      return Array.isArray(list) ? list : [];
-    } catch (e) { return []; }
+    var key = commentsKey(), list;
+    var raw = lsGet(key);
+    try { list = parseList(raw); }
+    catch (e) {
+      // битую запись не выбрасываем: откладываем как есть и идём дальше с копии
+      lsSet(key + ':corrupt:' + Date.now(), raw);
+      try { list = parseList(lsGet(key + ':backup')); } catch (e2) { list = []; }
+      lsSet(key, JSON.stringify(list));
+    }
+    // корзины прошлых спринтов (старый формат ключа) — один раз влить, не удаляя
+    var legacy = legacyKeys(key).filter(function (k) { return !lsGet(key + ':merged:' + k.slice(key.length + 1)); });
+    if (legacy.length) {
+      var seen = {};
+      list.forEach(function (c) { seen[c.id] = true; });
+      legacy.forEach(function (k) {
+        var sprint = k.slice(key.length + 1), old;
+        try { old = parseList(lsGet(k)); } catch (e) { old = []; }
+        old.forEach(function (c) {
+          if (c && c.id && !seen[c.id]) { seen[c.id] = true; list.push(Object.assign({ sprint: sprint }, c)); }
+        });
+        lsSet(key + ':merged:' + sprint, '1');
+      });
+      list.sort(function (a, b) { return (a.at || '') < (b.at || '') ? -1 : 1; });
+      writeComments(list);
+    }
+    return list;
   }
 
-  function saveComments(list) {
-    try { localStorage.setItem(commentsKey(), JSON.stringify(list)); } catch (e) {}
+  function writeComments(list) {
+    var key = commentsKey(), prev = lsGet(key), text = JSON.stringify(list);
+    if (prev && prev !== text) lsSet(key + ':backup', prev);
+    lsSet(key, text);
+    idbPut(key, text);
   }
+
+  function saveComments(list) { writeComments(list); }
+
+  // --- копия корзины в IndexedDB: переживает очистку localStorage
+  var IDB_NAME = 'actual-sprint-comments';
+  function idbOpen(fn) {
+    try {
+      if (!window.indexedDB) return;
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
+      req.onsuccess = function () { fn(req.result); };
+    } catch (e) { /* приватный режим — живём без копии */ }
+  }
+  function idbPut(key, text) {
+    idbOpen(function (db) {
+      try { db.transaction('kv', 'readwrite').objectStore('kv').put({ text: text, at: Date.now() }, key); } catch (e) {}
+    });
+  }
+  // при старте: у команды пусто в localStorage, а в IndexedDB есть корзина — вернуть
+  function restoreComments(done) {
+    idbOpen(function (db) {
+      var slugs = TEAMS.map(function (t) { return t.slug; }), left = slugs.length, restored = false;
+      slugs.forEach(function (slug) {
+        var key = 'actual-sprint:' + slug + ':comments';
+        try {
+          var get = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+          get.onsuccess = function () {
+            var rec = get.result, cur = lsGet(key);
+            if (rec && rec.text && rec.text !== '[]' && (cur === null || cur === '[]')) { lsSet(key, rec.text); restored = true; }
+            else if (cur && (!rec || rec.text !== cur)) idbPut(key, cur);   // копия отстала — догнать
+            if (--left === 0 && done) done(restored);
+          };
+          get.onerror = function () { if (--left === 0 && done) done(restored); };
+        } catch (e) { if (--left === 0 && done) done(restored); }
+      });
+    });
+  }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
 
   function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -192,7 +284,7 @@
     text = String(text || '').trim();
     if (!text) return false;
     var list = loadComments();
-    list.push({ id: newId(), at: new Date().toISOString(), target: target, text: text });
+    list.push({ id: newId(), at: new Date().toISOString(), sprint: team.sprintName, target: target, text: text });
     saveComments(list);
     refreshComments();
     return true;
@@ -370,40 +462,66 @@
     return '<span class="nref-line" title="' + esc(targetLine(t)) + '">' + esc(text) + '</span>';
   }
 
-  function noteItemHtml(c) {
+  // корзина показывает все команды: заметку правим и удаляем в её команде
+  function inTeam(slug, fn) {
+    var prev = team.slug;
+    if (slug && slug !== prev) useTeam(slug);
+    try { return fn(); } finally { if (team.slug !== prev) useTeam(prev); }
+  }
+
+  function noteItemHtml(c, slug, sprintNow) {
+    var dt = ' data-team="' + esc(slug || team.slug) + '"';
     if (c.id === editingId) {
-      return '<div class="nrow editing" data-id="' + esc(c.id) + '">' +
+      return '<div class="nrow editing" data-id="' + esc(c.id) + '"' + dt + '>' +
         '<textarea class="nedit-text" title="Enter — сохранить, Esc — отмена">' + esc(c.text) + '</textarea>' +
         '<input class="nref nedit-ref" list="refList" autocomplete="off" value="' + esc(refValue(c.target)) + '"' +
         ' placeholder="К чему — ключ эпика или задачи, необязательно"></div>';
     }
     var tip = 'Добавлено ' + stamp(c.at, true) + (c.editedAt ? ', изменено ' + stamp(c.editedAt, true) : '') +
-      (c.migrated ? ' · перенесено из заметки' : '');
-    return '<div class="nrow" data-id="' + esc(c.id) + '" title="' + esc(tip) + '">' +
-      '<div class="ntext">' + esc(c.text) + refLineHtml(c.target) + '</div>' +
+      (c.migrated ? ' · перенесено из заметки' : '') + (c.sprint ? ' · спринт ' + c.sprint : '');
+    var past = c.sprint && sprintNow && c.sprint !== sprintNow ? '<span class="nref-line nsprint">спринт ' + esc(c.sprint) + '</span>' : '';
+    return '<div class="nrow" data-id="' + esc(c.id) + '"' + dt + ' title="' + esc(tip) + '">' +
+      '<div class="ntext">' + esc(c.text) + refLineHtml(c.target) + past + '</div>' +
       '<div class="nacts">' + icoBtn('pencil', 'Редактировать', 'data-edit') +
         icoBtn('trash', 'Удалить', 'data-del', 'danger') + '</div></div>';
   }
 
+  // Корзина — все команды страницы (текущая первой): после перезагрузки страница
+  // открывается на первой команде, и заметки остальных не должны «пропадать».
   function renderNotes() {
-    var list = loadComments();
-    document.getElementById('cCount').textContent = list.length;
+    var cur = team.slug, groups = [];
+    TEAMS.forEach(function (t) {
+      inTeam(t.slug, function () {
+        var l = loadComments();
+        groups.push({ t: t, list: l, prompt: buildPrompt(l) });
+      });
+    });
+    groups.sort(function (a, b) { return (b.t.slug === cur) - (a.t.slug === cur); });
+    var total = groups.reduce(function (a, g) { return a + g.list.length; }, 0);
+    var multi = groups.filter(function (g) { return g.list.length; }).length > 1 || (TEAMS.length > 1 && total);
+    document.getElementById('cCount').textContent = total;
     var box = document.getElementById('itemsList');
-    box.innerHTML = list.map(noteItemHtml).join('');
+    box.innerHTML = groups.filter(function (g) { return g.list.length; }).map(function (g) {
+      return (multi ? '<div class="nteam">' + esc(g.t.team) + ' · ' + g.list.length + '</div>' : '') +
+        g.list.map(function (c) { return noteItemHtml(c, g.t.slug, g.t.sprintName); }).join('');
+    }).join('');
     var empty = document.getElementById('nEmpty');
-    if (!list.length && !empty) {
+    if (!total && !empty) {
       box.insertAdjacentHTML('beforebegin', '<p class="nempty" id="nEmpty">Заметок пока нет. Правый клик по строке отчёта — заметка к ней.</p>');
-    } else if (list.length && empty) {
+    } else if (total && empty) {
       empty.remove();
     }
-    var prompt = buildPrompt(list);
+    var prompt = groups.map(function (g) { return g.prompt; }).filter(Boolean).join('\n\n');
     document.getElementById('promptOut').value = prompt;
     document.getElementById('copyBtn').disabled = !prompt;
 
     box.querySelectorAll('.nrow').forEach(function (item) {
-      var id = item.dataset.id;
+      var id = item.dataset.id, slug = item.dataset.team;
       var q = function (sel) { return item.querySelector(sel); };
-      if (q('[data-del]')) q('[data-del]').addEventListener('click', function () { removeComment(id); });
+      if (q('[data-del]')) q('[data-del]').addEventListener('click', function () {
+        inTeam(slug, function () { saveComments(loadComments().filter(function (c) { return c.id !== id; })); });
+        refreshComments();
+      });
       if (q('[data-edit]')) q('[data-edit]').addEventListener('click', function () {
         editingId = id; renderNotes();
         var ta = box.querySelector('.nedit-text');
@@ -412,11 +530,18 @@
       if (item.classList.contains('editing')) {
         var save = function () {
           // ключ не трогали — оставляем снимок сущности как был, а не пересобираем его
-          var old = loadComments().find(function (c) { return c.id === id; });
-          var ref = q('.nedit-ref').value.trim();
-          var target = old && ref === refValue(old.target) ? old.target : resolveRef(ref);
-          if (updateComment(id, q('.nedit-text').value, target)) editingId = null;
-          renderNotes();
+          var text = String(q('.nedit-text').value || '').trim(), ref = q('.nedit-ref').value.trim();
+          if (text) {
+            inTeam(slug, function () {
+              var list = loadComments(), old = list.find(function (c) { return c.id === id; });
+              var target = old && ref === refValue(old.target) ? old.target : resolveRef(ref);
+              saveComments(list.map(function (c) {
+                return c.id === id ? Object.assign({}, c, { text: text, target: target, editedAt: new Date().toISOString() }) : c;
+              }));
+            });
+            editingId = null;
+          }
+          refreshComments();
         };
         var cancel = function () { editingId = null; renderNotes(); };
         [q('.nedit-text'), q('.nedit-ref')].forEach(function (el) {
@@ -447,6 +572,9 @@
   }
 
   function cmarkHtml(n) { return n ? '<span class="cmark" title="Заметок: ' + n + '">' + n + '</span>' : ''; }
+
+  // копия в IndexedDB догоняет localStorage, а очищенный localStorage — восстанавливается из неё
+  restoreComments(function (restored) { if (restored) refreshComments(); });
 
   function refreshComments() {
     renderNotes();

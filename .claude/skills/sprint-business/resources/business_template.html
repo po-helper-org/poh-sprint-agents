@@ -64,6 +64,81 @@
   table.rep tr.grp.kr:hover b { text-decoration: underline; text-underline-offset: 3px; }
   table.rep .kr-open { float: right; color: #888; font-size: 16px; line-height: 1; }
   table.rep .blk { margin-top: 4px; }
+  /* строка = направление: метки «в блоке» / «не закрыто», результат с полосой историй */
+  table.rep.epics col.c1 { width: 27%; } table.rep.epics col.c2 { width: 57%; } table.rep.epics col.c3 { width: 16%; }
+  table.rep.epics td { font-size: 13px; }
+  table.rep.epics td.task b { font-size: 14px; }
+  table.rep.epics td.task .role { margin-top: 4px; }
+  table.rep tr.has-blk td:first-child { box-shadow: inset 4px 0 0 var(--c-blocked); }
+  table.rep .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 5px; }
+  table.rep .tag { font-size: 11.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  table.rep .t-blk { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  table.rep .t-behind { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+  table.rep .blk { color: #991b1b; }
+  table.rep td.result .res-sub { font-size: 11.5px; font-weight: 400; color: #555; margin-top: 3px; }
+  table.rep td.result .res-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; cursor: help; }
+  table.rep td.result .res-bar i { display: block; height: 100%; border-right: 1px solid #fff; }
+  table.rep td.result .res-bar i:last-child { border-right: 0; }
+  /* «Сроки»: «Заблокировано» кликабельно — разбор */
+  .tis-click { cursor: pointer; border-radius: 6px; }
+  .tis-click:hover { background: #fdf2f2; box-shadow: 0 0 0 6px #fdf2f2; }
+  .tis-h small { text-transform: none; letter-spacing: 0; color: #aaa; }
+  /* блокаторы в «Результате» */
+  table.rep .blk-badge { display: inline-block; margin-top: 7px; font: inherit; font-size: 11.5px; font-weight: 700; color: #b91c1c;
+                         background: #fee2e2; border: 1px solid #fca5a5; border-radius: 999px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
+  table.rep .blk-badge:hover { background: #fecaca; }
+  /* ключ задачи: меню JIRA / JIRA-native */
+  .klink { border-bottom: 1px dotted currentColor; cursor: pointer; }
+  .kmenu { position: fixed; z-index: 70; background: #fff; border: 1px solid #d0d0d0; border-radius: 8px; box-shadow: 0 6px 22px rgba(0,0,0,.16);
+           padding: 6px; min-width: 210px; font: 13px/1.3 Arial, sans-serif; }
+  .kmenu[hidden] { display: none; }
+  .kmenu .km-key { font-size: 11px; color: #888; padding: 2px 8px 4px; }
+  .kmenu a, .kmenu .km-off { display: block; padding: 6px 8px; border-radius: 5px; color: #111; text-decoration: none; }
+  .kmenu a:hover { background: #f2f2f2; }
+  .kmenu .km-off { color: #aaa; }
+  /* «← Назад» в шапке сайдбара */
+  .panel-back { font: inherit; font-size: 12px; background: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+                color: var(--muted); cursor: pointer; margin: 0 0 8px; }
+  .panel-back:hover { color: var(--fg); border-color: var(--fg); }
+  .panel-back[hidden] { display: none; }
+  /* карточка блокера / эпизода блокировки */
+  .bl-card { border: 1px solid var(--line); border-left: 4px solid #f59e0b; border-radius: 6px; padding: 9px 11px; margin-bottom: 9px; }
+  .bl-card.now { border-left-color: #dc2626; }
+  .bl-why { font-size: 12.5px; color: #991b1b; margin: 4px 0; }
+  .bl-who { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: #333; }
+  .bl-com { margin-top: 6px; font-size: 12px; line-height: 1.45; color: #333; border-left: 2px solid #eee; padding-left: 8px; }
+  .bl-com span { color: var(--muted); }
+  .bl-com.empty { color: var(--muted); font-style: italic; }
+  .bl-open { margin-top: 6px; font: inherit; font-size: 12px; background: none; border: 0; color: #2563eb; cursor: pointer; padding: 0; }
+  /* расшифровка сгорания и планы списком */
+  .burn-how { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0 0 10px; }
+  table.burn-tab tr.wk td { color: #aaa; } table.burn-tab tr.fut td { color: #ccc; }
+  .burn-list { font-size: 12.5px; line-height: 1.6; margin-bottom: 8px; }
+  .burn-list small { color: var(--muted); }
+  table.plan-tab td { vertical-align: top; text-align: left !important; }
+  table.plan-tab td.pk { white-space: nowrap; width: 86px; font-size: 12px; }
+  table.plan-tab .pt { font-size: 13px; } table.plan-tab .px { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  table.plan-tab td.pm { font-size: 11.5px; color: var(--muted); width: 120px; }
+  .pc-head[data-plancol] { cursor: pointer; } .pc-head[data-plancol]:hover b { text-decoration: underline; text-underline-offset: 3px; }
+  /* задачи вне доски */
+  .of-h, .of-c { font-size: 12px; line-height: 1.45; } .of-c span, .of-h { color: var(--muted); } .of-h b { color: var(--fg); }
+  /* сайдбар направления: фильтр по статусам, активность — тут же */
+  .es-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .es-chip { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+  .es-chip.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .es-chip.b-blocked { border-color: #fca5a5; } .es-chip.b-done { border-color: #86efac; }
+  .es-row.open { background: #fcfcfc; }
+  .es-head { cursor: pointer; }
+  .es-detail { margin-top: 8px; border-top: 1px dashed var(--line); padding-top: 8px; cursor: default; }
+  /* сайдбар направления: истории спринта */
+  .es-row { border: 1px solid var(--line); border-left: 4px solid #ccc; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+  .es-head:hover .es-title { text-decoration: underline; text-underline-offset: 3px; }
+  .es-row.stat-green { border-left-color: #16a34a; } .es-row.stat-yellow { border-left-color: #eab308; } .es-row.stat-red { border-left-color: #dc2626; }
+  .es-top { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; font-size: 13.5px; }
+  .es-pct { white-space: nowrap; }
+  .es-meta { font-size: 11.5px; color: var(--muted); margin: 2px 0 4px; }
+  .es-text { font-size: 12.5px; line-height: 1.45; }
+  .es-blk { color: #991b1b; }
   table.rep .next .ed, table.rep .blk .ed { font-weight: 400; }
   table.rep td > div.ed { font-weight: 400; }
   .fslide .outliers { display: none; }
@@ -103,7 +178,6 @@
   .fslide .sort-note { font-size: 11px; color: #888; margin: 6px 0 0; font-style: italic; }
   .fslide .ai-note { font-size: 11px; color: #888; margin: 4px 0 0; }
 
-
   /* титул: что за отчёт, ход спринта, карточки команд */
   .title-slide { display: flex; flex-direction: column; padding: 56px 72px 40px; }
   .t-head { display: flex; justify-content: space-between; align-items: center; }
@@ -128,22 +202,24 @@
   .t-kpis { display: flex; gap: 18px; font-size: 12px; color: #666; }
   .t-kpis b { display: block; font-size: 17px; color: #111; font-variant-numeric: tabular-nums; }
   .t-kpis .bad b { color: var(--c-blocked); }
+  .t-kpis .warn b { color: #b45309; }
   .t-foot { display: flex; justify-content: space-between; font-size: 13px; color: #888; border-top: 1px solid #e5e5e5; padding-top: 14px; }
 
-  /* слайд команды: всё по центру */
-  .hero-slide { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 48px 80px; }
+  /* слайд команды: итог с одного взгляда — числа, цели, «заблокированы» и «не успели» */
+  .hero-slide { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 64px; }
   .h-kicker { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #777; }
-  .hero-slide h1 { font-size: 72px; font-weight: 700; letter-spacing: -.02em; margin: 14px 0 0; line-height: 1.05; }
-  .h-line { width: 72px; height: 4px; background: #111; margin: 22px auto 30px; }
-  .h-kpis { display: flex; justify-content: center; gap: 0; margin-bottom: 38px; }
-  .h-kpis > div { padding: 0 38px; border-left: 1px solid #e3e3e3; }
+  .hero-slide h1 { font-size: 64px; font-weight: 700; letter-spacing: -.02em; margin: 10px 0 0; line-height: 1.05; }
+  .h-line { width: 64px; height: 4px; background: #111; margin: 14px auto 18px; }
+  .h-kpis { display: flex; justify-content: center; gap: 0; margin-bottom: 18px; }
+  .h-kpis > div { padding: 0 32px; border-left: 1px solid #e3e3e3; }
   .h-kpis > div:first-child { border-left: 0; }
-  .h-kpis b { display: block; font-size: 40px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .h-kpis b small { font-size: 20px; color: #888; font-weight: 400; }
+  .h-kpis b { display: block; font-size: 38px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .h-kpis b small { font-size: 19px; color: #888; font-weight: 400; }
   .h-kpis span { font-size: 13px; color: #666; }
   .h-kpis .bad b { color: var(--c-blocked); }
-  .h-goals-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #999; margin-bottom: 12px; }
-  .h-goals { display: grid; gap: 16px; width: 100%; max-width: 1060px; }
+  .h-kpis .warn b { color: #b45309; }
+  .h-goals-title { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #999; margin: 10px 0 12px; }
+  .h-goals { display: grid; gap: 16px; width: 100%; max-width: 1080px; }
   .h-goals.n1 { grid-template-columns: minmax(0, 420px); justify-content: center; } .h-goals.n2 { grid-template-columns: repeat(2, 1fr); }
   .h-goals.n3 { grid-template-columns: repeat(3, 1fr); } .h-goals.n4 { grid-template-columns: repeat(4, 1fr); }
   .h-goal { border: 1px solid #ddd; border-top: 4px solid #111; border-radius: 6px; padding: 16px 18px; text-align: left; background: #fff; }
@@ -154,31 +230,39 @@
   /* операционный: метка вместо заголовка, участники — три группы */
   .ops-tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   .fslide.ops .ops2 { margin-top: 0; }
-  .ops3 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 36px; margin-top: 4px; }
+
+  .ops2b { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 36px; margin-top: 4px; }
+  .burn-click { cursor: pointer; border-radius: 6px; }
+  .burn-click:hover { background: #f7f7f7; box-shadow: 0 0 0 6px #f7f7f7; }
+  .ops-legend .l-scope { width: 16px; height: 0; border-top: 2px dashed #6b7280; border-radius: 0; }
+  .ops-legend .l-none { color: #999; }
   /* распределение по участникам: истории и подзадачи спринта */
   .mx { margin-top: 14px; border-top: 1px solid #e5e5e5; padding-top: 10px; }
-  .mx-ctrl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 6px; }
-  .mx-lbl { color: #888; margin: 0 2px 0 10px; } .mx-lbl:first-child { margin-left: 0; }
-  .mx-btn { font: inherit; font-size: 12px; padding: 3px 10px; border: 1px solid #ddd; border-radius: 6px; background: #fff; color: #333; cursor: pointer; }
-  .mx-btn.on { background: #111; border-color: #111; color: #fff; }
-  .mx-legend { margin-left: auto; display: flex; gap: 10px; color: #666; font-size: 11.5px; }
-  .mx-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-  .mx-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) 46px minmax(0, 1fr) 46px 86px; column-gap: 10px; align-items: center; height: 24px; }
-  .mx-grid.tight .mx-row { height: 19px; }
-  .mx-head { height: 18px !important; font-size: 11.5px; color: #888; }
-  .mx-head span:last-child { text-align: right; }
-  .mx-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .mx-name .mname { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
-  .mx-name .mname:hover { text-decoration: underline; }
-  .mx-bar { height: 15px; }
-  .mx-grid.tight .mx-bar { height: 12px; }
+
+  .mx-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) 90px 150px 150px; column-gap: 14px; align-items: center; min-height: 30px; }
+  .mx-grid.nosubs .mx-row { grid-template-columns: 170px minmax(0, 1fr) 90px 150px; }
+  .mx-grid .mx-row + .mx-row { border-top: 1px solid #f1f1f1; }
+  .mx-graph { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .mx-bar { display: block; height: 13px; }
+  .mx-bar.off { height: 7px; cursor: pointer; }
   .mx-bar > span { display: flex; height: 100%; border-radius: 4px; overflow: hidden; }
   .mx-bar i { display: block; height: 100%; min-width: 3px; border-right: 2px solid #fff; }
   .mx-bar i:last-child { border-right: 0; }
+  .mx-o .od { background: #7c3aed; } .mx-o .oo { background: #c4b5fd; }
+  .mx-n b { color: #111; font-weight: 700; }
+  .mx-n small { color: #888; }
+  .mx-sep { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: #888; padding: 10px 0 4px; border-top: 1px solid #e5e5e5; margin-top: 4px; }
+  .ext { font-size: 10.5px; font-weight: 700; color: #7c3aed; letter-spacing: .02em; }
+  .mx-grid.tight .mx-row { min-height: 24px; }
+  .mx-head { min-height: 18px !important; font-size: 11.5px; color: #888; }
+  .mx-head span:nth-child(n+3), .mx-n { text-align: right; }
+  .mx-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mx-name .mname { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
+  .mx-name .mname:hover { text-decoration: underline; }
   .mx-n { font-size: 12px; color: #555; text-align: right; font-variant-numeric: tabular-nums; }
-  .mx-stuck { font-size: 12.5px; color: var(--c-blocked); text-align: right; font-variant-numeric: tabular-nums; cursor: help; }
+
   .mx-none { color: #bbb; text-align: right; }
-  @media print { .mx-btn { display: none; } .mx-lbl { display: none; } }
+
   /* «Сроки»: cycle time с полосами спринтов и время в статусах */
   .cyc { cursor: pointer; border-radius: 6px; }
   .cyc:hover { box-shadow: 0 0 0 6px #f7f7f7; background: #f7f7f7; }
@@ -235,34 +319,26 @@
   .sf-done { font-size: 11.5px; font-weight: 700; color: var(--c-done); }
   .sf-by { color: var(--muted); font-size: 11px; text-align: right; padding-top: 2px; }
   /* «Планы на следующий спринт» */
-  .plans-team { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: #888; margin: 2px 0 14px; }
-  .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .plans-team { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #888; margin: 2px 0 14px; }
+  .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   .pcol { border-top: 4px solid #999; padding-top: 8px; min-width: 0; }
-  .pc-take { border-top-color: var(--c-progress); } .pc-finish { border-top-color: var(--c-testing); } .pc-escalate { border-top-color: var(--c-blocked); }
+  .pc-take { border-top-color: var(--c-progress); } .pc-finish { border-top-color: var(--c-testing); }
+  .pc-maybe { border-top-color: #9ca3af; } .pc-escalate { border-top-color: var(--c-blocked); }
   .pc-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 16px; }
   .pc-head span { font-size: 13px; color: #888; font-variant-numeric: tabular-nums; }
-  .pc-hint { font-size: 11.5px; color: #999; margin: 0 0 6px; }
-  /* плотный список: строка на задачу — ключ, суть, пояснение одной строкой */
-  .prow { display: grid; grid-template-columns: 74px minmax(0, 1fr); column-gap: 8px; padding: 5px 0; border-bottom: 1px solid #eee; line-height: 1.3; }
-  .pr-key { font-size: 11px; color: #888; font-variant-numeric: tabular-nums; padding-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pr-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pr-text { grid-column: 2; font-size: 11.5px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .fslide.plans.dense .pr-text { display: none; }
-  .fslide.plans.dense .prow { padding: 4px 0; }
+  .pc-hint { font-size: 11.5px; color: #999; margin: 0 0 8px; }
+  /* внутри колонки — по направлениям: шапка направления, строка на задачу без ключа */
+  .pg-head { display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; font-weight: 700; color: #555;
+             text-transform: uppercase; letter-spacing: .03em; padding: 8px 0 3px; border-bottom: 1px solid #ddd; }
+  .pg-head span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pg-head b { color: #999; font-variant-numeric: tabular-nums; }
+  .prow { padding: 4px 0 4px 8px; border-bottom: 1px solid #f0f0f0; line-height: 1.3; display: flex; flex-direction: column; cursor: help; }
+  .pr-title { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-text { font-size: 11.5px; color: #991b1b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .pc-maybe .pr-title { color: #666; }
   .pr-more { font-size: 12px; color: #888; padding: 6px 0 0; cursor: help; }
   .deck.editing .pr-title, .deck.editing .pr-text { white-space: normal; }
   .pc-empty { font-size: 13px; color: #aaa; padding: 8px 2px; }
-
-
-  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
-  .fkpi { border: 1px solid var(--gray-border); border-radius: 4px; padding: 18px; text-align: center; }
-  .fkpi .n { font-size: 34px; font-weight: 700; }
-  .fkpi.green { background: var(--green-fill); } .fkpi.yellow { background: var(--yellow-fill); } .fkpi.red { background: var(--red-fill); }
-  .fkpi .label { font-size: 12px; color: #333; margin-top: 4px; }
-  .frisks { margin-top: 26px; }
-  .frisks h2 { font-size: 16px; margin: 0 0 10px; }
-  .frisks ul { font-size: 13px; line-height: 1.7; padding-left: 20px; margin: 0; }
-  .frisks .more { color: #888; }
 
   .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 14px; }
   .metric-card { border: 1px solid var(--gray-border); border-radius: 4px; padding: 14px; }
@@ -275,15 +351,6 @@
   .risk-block { border: 1px solid var(--gray-border); border-left: 4px solid var(--red-pill); border-radius: 2px; padding: 12px 16px; background: var(--red-fill); }
   .risk-block h3 { font-size: 14px; font-weight: 700; margin: 0 0 6px; }
   .risk-block p { font-size: 13px; line-height: 1.55; margin: 0; color: #222; }
-
-  .change { border: 1px solid var(--gray-border); border-radius: 4px; padding: 12px 14px; margin-bottom: 10px; }
-  .change .who { font-size: 12px; color: var(--gray-dark); margin-bottom: 8px; width: auto; font-weight: 400; letter-spacing: 0; }
-  .change .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
-  .change .ba div { border: 1px solid #e3e3e3; padding: 7px 12px; font-size: 12.5px; }
-  .change .ba b { display: block; font-size: 11px; color: #888; font-weight: 700; margin-bottom: 3px; }
-  .change .out { border-left: 3px solid #111; padding-left: 10px; font-size: 12.5px; margin: 0; }
-  ul.demo { font-size: 13px; line-height: 1.7; padding-left: 20px; margin: 14px 0 0; }
-  ul.demo .cap { color: #666; }
 
   /* «Слайды» — выезжающий сайдбар слева: кратко, для быстрой навигации */
   .deck-toc { position: absolute; left: 0; top: 0; bottom: 0; width: min(340px, 86vw); background: #fff;
@@ -311,8 +378,12 @@
   .deck.stage .deck-feed { position: relative; overflow: hidden; }
   .deck.stage .deck-slides { display: block; height: 100%; padding: 0; position: relative; }
   .deck.stage .deck-slides > .fslide { display: none; position: absolute; left: 50%; top: calc(50% - 22px);
-                                       width: 1280px; height: 720px; min-height: 720px; max-width: none; overflow: hidden;
+                                       width: 1280px; height: 720px; min-height: 720px; max-width: none;
+                                       overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
                                        transform: translate(-50%, -50%) scale(var(--k, 1)); }
+  .deck-nav .more-hint { width: auto; padding: 0 12px; font-size: 12px; background: #111; color: #fff; }
+  .deck-nav .more-hint:hover:not(:disabled) { background: #333; }
+  .deck-nav .more-hint[hidden] { display: none; }
   .deck.stage .deck-slides > .fslide.cur { display: block; }
   .deck.stage .deck-slides > .fslide.cur.title-slide, .deck.stage .deck-slides > .fslide.cur.hero-slide { display: flex; }
   .deck.stage .deck-nav { display: flex; position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
@@ -334,6 +405,7 @@
     .deck-slides { padding: 16px 12px 60px; gap: 16px; }
     .fslide { width: 100%; max-width: 1280px; min-height: 0; aspect-ratio: auto; }
   }
+  @media (max-width: 1000px) { .plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 700px) {
     .fslide { padding: 20px 16px 28px; }
     .title-slide, .hero-slide { padding: 24px 18px; min-height: 60vh; }
@@ -341,9 +413,19 @@
     .t-cards[class*="n"], .h-goals[class*="n"], .plans { grid-template-columns: 1fr; }
     .h-kpis > div { padding: 0 14px; } .h-kpis b { font-size: 26px; }
     .fslide h1.slide-title { font-size: 22px; }
-    table.rep col.c1 { width: 32%; } table.rep col.c2 { width: 46%; } table.rep col.c3 { width: 22%; }
+    table.rep col.c1, table.rep.epics col.c1 { width: 32%; } table.rep col.c2, table.rep.epics col.c2 { width: 46%; }
+    table.rep col.c3, table.rep.epics col.c3 { width: 22%; }
+    table.rep td { overflow-wrap: anywhere; }
+    table.rep .tag { white-space: normal; }
+    table.rep .blk-badge { white-space: normal; max-width: 100%; }
+    .mx-row { grid-template-columns: 74px minmax(0, 1fr) 46px 62px 62px; column-gap: 5px; }
+    .mx-grid.nosubs .mx-row { grid-template-columns: 74px minmax(0, 1fr) 46px 62px; }
+    .mx-n small { display: block; }
+    .mx-name { font-size: 12px; } .mx-n, .mx-stuck { font-size: 11px; }
+
     table.rep td { padding: 8px; font-size: 12px; }
-    .summary-grid, .metrics-grid, .change .ba { grid-template-columns: 1fr; }
+    .metrics-grid, .ops2b { grid-template-columns: 1fr; }
+    .h-kpis { flex-wrap: wrap; row-gap: 10px; }
     .ops2 { grid-template-columns: 1fr; gap: 14px; }
     .ops-tab { overflow-x: auto; }
     table.mtab { min-width: 560px; }
@@ -403,6 +485,7 @@
         <button id="deckPrev" aria-label="Предыдущий слайд" title="Предыдущий (←)">‹</button>
         <span class="count" id="deckCount">1 / 1</span>
         <button id="deckNext" aria-label="Следующий слайд" title="Следующий (→)">›</button>
+        <button id="deckMore" class="more-hint" hidden title="Слайд не поместился — прокрутить (↓, колесо)">↓ ещё ниже</button>
       </div>
     </div>
   </div>
@@ -416,11 +499,12 @@
   // Навык sprint-business: колода для управляющего комитета, PO смежных департаментов
   // и бизнес-заказчиков — по эталону отчётной колоды спринта PO. Данные те же, что у
   // отчёта PO (общий снимок), страница и генерация — свои.
-  // Отчёт строится от целей: слайд = OBJ, группа в таблице = KR (эпик), строка =
-  // история спринта. «Результат» и текст строки «что сделано · след. шаг» считаются
-  // из данных; цели, Sprint Goal и формулировки агента — бизнес-блок
-  // reports/sprint-business.json (business.py). PO правит любой текст на слайде сам
-  // («Редактировать текст»), ПКМ — комментарий.
+  // Отчёт верхнеуровневый: слайд = цель OBJ, строка = KR (эпик) со сводкой историй
+  // спринта — что сделано, где заблокированы, что не успели по объёму, след. шаг.
+  // Истории по отдельности — по клику на строку (сайдбар), подробности — в отчёте PO
+  // для техлидов. «Результат» и сводка считаются из данных; цели, KR и формулировки
+  // агента — бизнес-блок reports/sprint-business.json (business.py). PO правит любой
+  // текст на слайде сам («Редактировать текст»), ПКМ — комментарий.
   var deck = document.getElementById('deck');
   var deckSlides = document.getElementById('deckSlides');
   var deckFeed = document.getElementById('deckFeed');
@@ -511,21 +595,78 @@
 
   function biz(t) { return t.business || {}; }
 
-  // все строки команды: KR (эпик) → истории спринта
+  // ключ строки «Вне эпиков» в бизнес-блоке (streams) — у историй спринта без эпика
+  var NO_EPIC = 'no-epic';
+  // название направления для бизнеса: KR из OKR, иначе эпик без служебных меток «[PaaS]»
+  function cleanTitle(s) { return String(s || '').replace(/^(\s*(\[[^\]]*\]|\([^)]*\))\s*)+/, '').trim() || String(s || ''); }
+  function streamName(s) { return s.ai.kr || (s.epic.epicKey ? cleanTitle(s.epic.epicTitle) : 'Вне эпиков'); }
+  function clip(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : s; }
+  function titlesOf(rows, n) {
+    var t = rows.map(function (r) { return clip(cleanTitle(r.st.title), 60); });
+    return t.slice(0, n).join('; ') + (t.length > n ? ' и ещё ' + (t.length - n) : '');
+  }
+
+  // Последний день спринта или спринт закрыт — незакрытое уже «не успели по объёму»;
+  // раньше — «пока не закрыто»: середина спринта ещё не провал.
+  function behindLabel(t) {
+    var p = teamPace(t);
+    var late = !sprintRunning() || (p && p.workdays - p.workday <= 1);
+    return late ? 'Не успели по объёму' : 'Пока не закрыто';
+  }
+
+  // Строка = эпик (KR) со сводкой историй спринта. Три корзины видны сразу: закрыто,
+  // заблокировано (ждём кого-то) и не закрыто по объёму (не успели сами).
+  function epicSummary(t, s) {
+    var rows = s.rows;
+    var of = function (f) { return rows.filter(f); };
+    var done = of(function (r) { return r.r.bucket === 'done'; });
+    var blocked = of(function (r) { return r.r.bucket === 'blocked'; });
+    var behind = of(function (r) { return r.r.bucket !== 'done' && r.r.bucket !== 'blocked'; });
+    var active = behind.filter(function (r) { return r.r.bucket !== 'open'; });
+    s.done = done; s.blocked = blocked; s.behind = behind; s.active = active;
+    s.pct = rows.length ? Math.round(rows.reduce(function (a, r) { return a + r.r.pct; }, 0) / rows.length) : 0;
+    s.how = 'среднее «Результата» историй спринта: закрыто ' + done.length + ' из ' + rows.length +
+      (blocked.length ? ', в блоке ' + blocked.length : '') + (behind.length ? ', не закрыто ' + behind.length : '');
+    s.cls = s.pct >= 100 ? 'stat-green' : s.pct >= 50 ? 'stat-yellow' : 'stat-red';
+    var autoDone = done.length ? 'Закрыто: ' + titlesOf(done, 2) + '.'
+      : active.length ? 'В работе: ' + titlesOf(active, 2) + '.' : 'Работа не начата.';
+    var autoBlk = blocked.map(function (r) {
+      return clip(cleanTitle(r.st.title), 50) + ' — ' + (r.blocker || '«' + r.st.status + '» с ' + ddmm(r.st.statusChanged));
+    }).slice(0, 2).join('; ') + (blocked.length > 2 ? ' и ещё ' + (blocked.length - 2) : '');
+    var nextRow = active.filter(function (r) { return r.next; })[0] || behind.filter(function (r) { return r.next; })[0];
+    // следующий шаг есть всегда: незакрытая история → её шаг; все закрыты → следующее по
+    // эпику вне спринта; объёма не осталось — «эпик завершён»
+    var openScope = (s.epic.scope || []).filter(function (it) {
+      return !it.inSprint && classifyBucket(it.status, it.category) !== 'done';
+    });
+    var autoNext = nextRow ? nextRow.next
+      : blocked.length ? 'снять блокеры'
+      : !s.epic.epicKey ? 'работы вне эпиков закрыты'
+      : !s.epic.scope ? 'истории спринта закрыты — взять следующие по эпику'
+      : openScope.length ? 'дальше по эпику: ' + clip(cleanTitle(openScope[0].title), 70)
+      : 'эпик завершён';
+    s.text = { done: s.ai.done || autoDone, blocker: s.ai.blocker || autoBlk, next: s.ai.next || autoNext };
+    return s;
+  }
+
+  // все строки команды: эпик (KR) → истории спринта со сводкой
   function teamStreams(t) {
     return withTeam(t, function () {
-      return (t.epics || []).filter(function (e) { return (e.stories || []).length; }).map(function (e) {
-        var rows = e.stories.map(function (st) {
+      var hide = biz(t).hide || [];
+      var visible = function (e) { return (e.stories || []).filter(function (st) { return hide.indexOf(st.key) === -1; }); };
+      return (t.epics || []).filter(function (e) { return visible(e).length; }).map(function (e) {
+        var rows = visible(e).map(function (st) {
           var r = storyResult(st), auto = autoText(st, r), ai = (biz(t).rows || {})[st.key] || {};
           return { st: st, r: r, target: itemTarget('story', st, e),
                    done: ai.done || auto.done, next: ai.next || auto.next, blocker: ai.blocker || '', ai: !!(ai.done || ai.next) };
         }).sort(function (a, b) { return b.r.pct - a.r.pct; });
-        return { epic: e, rows: rows, ai: e.epicKey ? (biz(t).streams || {})[e.epicKey] || {} : {} };
-      });
+        return epicSummary(t, { epic: e, rows: rows, ai: (biz(t).streams || {})[e.epicKey || NO_EPIC] || {} });
+      }).sort(function (a, b) { return (!a.epic.epicKey) - (!b.epic.epicKey) || b.pct - a.pct; });
     });
   }
 
-  // слайд = цель (OBJ). Эпики без цели — «Без привязки к OKR».
+  // слайд = цель (OBJ). Целей нет совсем — «Направления спринта»; есть, но эпик к
+  // цели не привязан — «Без привязки к OKR».
   function objGroups(t, streams) {
     var by = {}, order = [];
     streams.forEach(function (s) {
@@ -535,21 +676,18 @@
     });
     order.sort(function (a, b) { return !a ? 1 : !b ? -1 : a.localeCompare(b, 'ru', { numeric: true }); });
     var names = biz(t).objectives || {};
+    var anyGoal = order.some(Boolean);
     return order.map(function (k) {
-      return { obj: k, title: k ? (names[k] ? k + ': ' + names[k] : k) : 'Без привязки к OKR', streams: by[k] };
+      return { obj: k, title: k ? (names[k] ? k + ': ' + names[k] : k) : (anyGoal ? 'Без привязки к OKR' : 'Направления спринта'), streams: by[k] };
     });
   }
 
-  // До восьми строк на слайд; шапка KR — тоже строка: слайд остаётся 1280×720.
-  var ROWS_PER_SLIDE = 8;
+  // До шести строк-эпиков на слайд, поровну (8 → 4 + 4, не 6 + 2); что не влезло по
+  // высоте — прокрутка внутри слайда.
+  var ROWS_PER_SLIDE = 6;
   function packStreams(streams) {
-    var pages = [], cur = [], n = 0;
-    streams.forEach(function (s) {
-      var need = s.rows.length + 1;
-      if (cur.length && n + need > ROWS_PER_SLIDE) { pages.push(cur); cur = []; n = 0; }
-      cur.push(s); n += need;
-    });
-    if (cur.length) pages.push(cur);
+    var n = Math.ceil(streams.length / ROWS_PER_SLIDE), per = Math.ceil(streams.length / Math.max(1, n)), pages = [];
+    for (var i = 0; i < streams.length; i += per) pages.push(streams.slice(i, i + per));
     return pages;
   }
 
@@ -584,7 +722,7 @@
   // Сводка команды для титула и слайда команды: из тех же строк, что на слайдах целей,
   // и из выработки участников (SP) текущего спринта.
   function teamStats(t, streams) {
-    var rows = streams.reduce(function (a, s) { return a.concat(s.rows); }, []);
+    var rows = streams.reduce(function (a, s) { return a.concat(s.rows); }, []);   // без скрытых PO
     var by = function (f) { return rows.filter(f).length; };
     var out = t.output && t.output.sprints && t.output.sprints[t.output.sprints.length - 1];
     var sp = { done: 0, all: 0 };
@@ -596,6 +734,7 @@
     return { stories: rows.length, done: by(function (r) { return r.r.pct >= 100; }),
              work: by(function (r) { return r.r.pct < 100 && r.r.bucket !== 'open' && r.r.bucket !== 'blocked'; }),
              blocked: by(function (r) { return r.r.bucket === 'blocked'; }), objectives: Object.keys(objs).length,
+             behind: by(function (r) { return r.r.bucket !== 'done' && r.r.bucket !== 'blocked'; }),
              spDone: Math.round(sp.done), spAll: Math.round(sp.all), epics: streams.filter(function (s) { return s.epic.epicKey; }).length };
   }
 
@@ -615,8 +754,8 @@
         '<div class="t-big">' + pc + '<small>%</small></div><div class="t-cap">историй закрыто · ' + st.done + ' из ' + st.stories + '</div>' +
         '<div class="t-bar"><i style="width:' + pc + '%"></i></div>' +
         '<div class="t-kpis"><span><b>' + (st.spAll ? st.spDone + '/' + st.spAll : '—') + '</b>SP сделано</span>' +
-        '<span><b>' + st.objectives + '</b>' + plural(st.objectives, 'цель', 'цели', 'целей') + '</span>' +
-        '<span class="' + (st.blocked ? 'bad' : '') + '"><b>' + st.blocked + '</b>в блоке</span></div></div>';
+        '<span class="' + (st.blocked ? 'bad' : '') + '"><b>' + st.blocked + '</b>🛑 в блоке</span>' +
+        '<span class="' + (st.behind ? 'warn' : '') + '"><b>' + st.behind + '</b>⏳ не закрыто</span></div></div>';
     }).join('');
     return slide('title-slide',
       '<div class="t-head"><div class="t-kicker">' + ed('title:kicker', 'Отчёт о продвижении за спринт') + '</div>' +
@@ -628,64 +767,66 @@
       '<div class="t-foot"><span>' + ed('title:author', 'PO') + '</span><span>Данные JIRA на ' + ddmmhhmm(at) + '</span></div>');
   }
 
-  // Слайд команды: всё по центру — имя, спринт, три числа и цели спринта карточками.
+  // Слайд команды — итог с одного взгляда: числа, цели (если есть) и две панели —
+  // «Заблокированы» (ждём других: нужна помощь) и «Не успели по объёму» (не закрыли
+  // сами) по направлениям. Блокер — из бизнес-блока (rows.*.blocker), иначе статус и дата.
   function heroSlide(t, groups, streams) {
     var st = teamStats(t, streams), p = teamPace(t);
     var goals = groups.filter(function (g) { return g.obj; });
     var cards = (goals.length ? goals : groups).slice(0, 4).map(function (g) {
       var name = g.obj ? g.title.replace(g.obj + ': ', '') : g.title;
-      var stories = g.streams.reduce(function (a, s) { return a + s.rows.length; }, 0);
-      var done = g.streams.reduce(function (a, s) { return a + s.rows.filter(function (r) { return r.r.pct >= 100; }).length; }, 0);
-      return '<div class="h-goal"><div class="h-obj">' + esc(g.obj || 'Вне OKR') + '</div>' +
+      var stories = g.streams.reduce(function (a, x) { return a + x.rows.length; }, 0);
+      var done = g.streams.reduce(function (a, x) { return a + x.done.length; }, 0);
+      return '<div class="h-goal"><div class="h-obj">' + esc(g.obj || 'Вне целей') + '</div>' +
         '<div class="h-name">' + ed('hero:' + t.slug + ':' + (g.obj || '-'), name) + '</div>' +
-        '<div class="h-meta">' + g.streams.length + ' KR · закрыто ' + done + ' из ' + stories + '</div></div>';
+        '<div class="h-meta">' + g.streams.length + ' ' + plural(g.streams.length, 'направление', 'направления', 'направлений') +
+        ' · закрыто ' + done + ' из ' + stories + '</div></div>';
     }).join('');
     return slide('hero-slide',
       '<div class="h-kicker">Команда · ' + esc(t.sprintName) + (p ? ' · ' + dayMonth(p.start) + ' — ' + dayMonth(p.end) : '') + '</div>' +
       '<h1>' + esc(t.team) + '</h1><div class="h-line"></div>' +
-      '<div class="h-kpis"><div><b>' + st.done + '<small>/' + st.stories + '</small></b><span>историй закрыто</span></div>' +
-        '<div><b>' + (st.spAll ? st.spDone + '<small>/' + st.spAll + '</small>' : '—') + '</b><span>SP сделано</span></div>' +
-        '<div class="' + (st.blocked ? 'bad' : '') + '"><b>' + st.blocked + '</b><span>в блоке</span></div></div>' +
-      '<div class="h-goals-title">' + (goals.length ? 'Цели спринта' : 'Направления спринта') + '</div>' +
-      '<div class="h-goals n' + Math.min(Math.max(goals.length || groups.length, 1), 4) + '">' + cards + '</div>',
-      ' data-kind="команда" data-team="' + esc(t.slug) + '"');
+      '<div class="h-kpis"><div><b>' + st.done + '<small>/' + st.stories + '</small></b><span>задач закрыто</span></div>' +
+        '<div><b>' + (st.spAll ? st.spDone + '<small>/' + st.spAll + '</small>' : '—') + '</b><span>SP сделано</span></div></div>' +
+      '<div class="h-goals-title">' + (goals.length ? 'Цели квартала в спринте' : 'Направления спринта') + '</div>' +
+      '<div class="h-goals n' + Math.min(Math.max((goals.length || groups.length), 1), 4) + '">' + cards + '</div>',
+      ' data-kind="команда" data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Команда · ' + t.team }));
   }
 
-  // Шапка группы — только KR (нет цели — название эпика); клик открывает KR.
-  function krHeader(t, s) {
-    var e = s.epic, ai = s.ai;
-    var id = 'k' + Object.keys(deckRefs).length;
-    deckRefs[id] = { team: t, epic: e };
-    var head = ai.kr ? ed('kr:' + (e.epicKey || e.rowId), ai.kr, 'b')
-                     : '<b>' + esc(e.epicKey ? e.epicTitle : 'Без эпика') + '</b>';
-    return '<tr class="grp' + (e.epicKey ? ' kr' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
-      ctxAttr(e.epicKey ? epicTarget(e) : { kind: 'general', title: 'Без эпика' }) +
-      (e.epicKey ? ' title="Открыть KR: сгорание эпика и что осталось"' : '') + '><td colspan="3">' +
-      head + (e.epicKey ? '<span class="kr-open">›</span>' : '') + '</td></tr>';
-  }
-
-  function storyRow(t, s, r) {
-    var id = 'r' + Object.keys(deckRefs).length;
-    deckRefs[id] = { team: t, epic: s.epic, story: r.st };
-    var k = r.st.key;
-    return '<tr class="row ' + r.r.cls + '" data-ref="' + id + '" data-key="' + esc(k) + '" data-team="' + esc(t.slug) + '"' +
-      ctxAttr(r.target) + ' title="Открыть активность по истории">' +
-      '<td class="task">' + esc(r.st.title) + '<span class="role">' + esc(k) + '</span></td>' +
-      '<td>' + ed('done:' + k, r.done, 'div') +
-        (r.blocker ? '<div class="blk"><b>Блокер:</b> ' + ed('blocker:' + k, r.blocker) + '</div>' : '') +
-        (r.next ? '<div class="next">След. шаг: ' + ed('next:' + k, r.next, 'span') + '</div>' : '') + '</td>' +
-      '<td class="result"><span title="' + esc(r.r.how) + '">' + r.r.flag + r.r.pct + '%</span></td></tr>';
+  // Строка = направление (эпик/KR): что сделано одним предложением, блокер, что не
+  // закрыто, след. шаг; справа — результат и полоса историй по статусам.
+  var RES_SEGS = [
+    { id: 'done', color: 'var(--c-done)', label: 'закрыто' },
+    { id: 'work', color: 'var(--c-progress)', label: 'в работе' },
+    { id: 'blocked', color: 'var(--c-blocked)', label: 'в блоке' },
+    { id: 'open', color: '#d1d5db', label: 'не начато' }
+  ];
+  function epicRow(t, s) {
+    var e = s.epic, key = e.epicKey || NO_EPIC, id = 'e' + Object.keys(deckRefs).length;
+    deckRefs[id] = { team: t, epic: e, stream: s };
+    var n = { done: s.done.length, work: s.active.length, blocked: s.blocked.length, open: s.behind.length - s.active.length };
+    var bar = RES_SEGS.map(function (g) { return n[g.id] ? '<i style="flex:' + n[g.id] + ';background:' + g.color + '"></i>' : ''; }).join('');
+    var tip = RES_SEGS.filter(function (g) { return n[g.id]; }).map(function (g) { return g.label + ' ' + n[g.id]; }).join(' · ');
+    var name = s.ai.kr ? ed('kr:' + t.slug + ':' + key, s.ai.kr, 'b') : '<b>' + esc(streamName(s)) + '</b>';
+    return '<tr class="row erow ' + s.cls + (s.blocked.length ? ' has-blk' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
+      (e.epicKey ? ' data-key="' + esc(e.epicKey) + '"' : '') +
+      ctxAttr(e.epicKey ? epicTarget(e) : { kind: 'general', title: 'Вне эпиков' }) + ' title="Истории спринта и весь эпик">' +
+      '<td class="task">' + name + '<span class="role">' + (e.epicKey ? keyLink(e.epicKey) + ' · ' : '') + s.rows.length + ' ' +
+        plural(s.rows.length, 'задача', 'задачи', 'задач') + ' в спринте</span></td>' +
+      '<td>' + ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
+        (s.text.blocker ? '<div class="blk"><b>Блокер:</b> ' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') +
+        (s.text.next ? '<div class="next">След. шаг: ' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') + '</td>' +
+      '<td class="result"><span title="' + esc(s.how) + '">' + s.pct + '%</span><div class="res-sub">закрыто ' + s.done.length + ' из ' + s.rows.length + '</div>' +
+        '<div class="res-bar" title="' + esc(tip) + '">' + bar + '</div>' +
+        (s.blocked.length ? '<button type="button" class="blk-badge" data-blk="' + id + '" title="' +
+          esc(s.blocked.map(function (r) { return r.st.key + ' · ' + r.st.title + (r.blocker ? ' — ' + r.blocker : ''); }).join('\n')) +
+          '">🛑 блокаторы: ' + s.blocked.length + '</button>' : '') + '</td></tr>';
   }
 
   function objSlide(t, g, page, part, parts) {
-    var rows = '';
-    page.forEach(function (s) {
-      rows += krHeader(t, s);
-      rows += s.rows.map(function (r) { return storyRow(t, s, r); }).join('');
-    });
     return slide('', '<h1 class="slide-title">' + ed('obj:' + t.slug + ':' + (g.obj || '-') + ':' + part, g.title + (parts > 1 ? ' · ' + (part + 1) + '/' + parts : '')) + '</h1>' +
-      '<table class="rep"><colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>' +
-      '<thead><tr><th>Задачи</th><th>Комментарий</th><th>Результат</th></tr></thead><tbody>' + rows + '</tbody></table>',
+      '<table class="rep epics"><colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>' +
+      '<thead><tr><th>Направление</th><th>Итог спринта</th><th>Результат</th></tr></thead><tbody>' +
+      page.map(function (s) { return epicRow(t, s); }).join('') + '</tbody></table>',
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: t.team + ' · ' + g.title }));
   }
 
@@ -821,12 +962,16 @@
       parts.push('<text x="' + (W - padR + 12) + '" y="' + (ly + 16).toFixed(1) + '" font-size="17" font-weight="700" fill="' + e.st.color + '">' +
         d1(e.val) + ' дн.</text>');
     });
-    var legend = '<div class="ops-legend">' + streams.map(function (st) {
+    // поток без закрытых задач (команда не ведёт подзадачи) — не «0» в легенде, а пояснение
+    var shown = streams.filter(function (st) { return st.pts.length; });
+    var empty = streams.filter(function (st) { return !st.pts.length; });
+    var legend = '<div class="ops-legend">' + shown.map(function (st) {
       return '<span><i class="l-pt" style="background:' + st.color + '"></i>' + st.label + ' · ' + st.pts.length + '</span>';
-    }).join('') + streams.map(function (st) {
+    }).join('') + shown.map(function (st) {
       return '<span><i class="l-line" style="border-top:2.5px ' + (st.dash ? 'dashed' : 'solid') + ' ' + st.color + '"></i>' +
         st.label.toLowerCase() + ': среднее по ' + CYCLE_ROLL + ' последним</span>';
-    }).join('') + '<span><i class="l-band"></i>коридор ± σ</span></div>';
+    }).join('') + '<span><i class="l-band"></i>коридор ± σ</span>' +
+      empty.map(function (st) { return '<span class="l-none">' + st.label + ': за 3 спринта закрытых нет</span>'; }).join('') + '</div>';
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' + legend;
   }
 
@@ -855,7 +1000,8 @@
         '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" font-size="11" text-anchor="middle" fill="' + (isCur ? '#111' : '#999') + '"' +
         (isCur ? ' font-weight="700"' : '') + '>' + esc(sprintShort(s.name)) + '</text>';
     }).join('');
-    return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-big" style="color:' + st.color + '">' + d1(cur) +
+    return '<div class="tis' + (st.id === 'blocked' ? ' tis-click" data-tis="blocked' : '') + '"' + (st.id === 'blocked' ? ' title="Кто, почему и с какого числа был заблокирован"' : '') +
+      '><div class="tis-h">' + st.label + (st.id === 'blocked' ? ' <small>· клик — разбор</small>' : '') + '</div><div class="tis-big" style="color:' + st.color + '">' + d1(cur) +
       ' <small>дн.</small></div><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + bars + '</svg></div>';
   }
 
@@ -864,10 +1010,84 @@
     var chart = '<div class="cyc" data-ctl="' + esc(t.slug) + '" title="Подробный разбор: диаграмма управления">' +
       cycleChart(t, m, { W: 1184, H: 360 }) + '</div>';
     var tis = m && m.sprints.some(function (s) { return s.timeInStatus; })
-      ? '<div class="tis-row">' + TIS.map(function (st) { return statusTimePanel(m, st); }).join('') + '</div>'
+      ? '<div class="tis-row" data-team="' + esc(t.slug) + '">' + TIS.map(function (st) { return statusTimePanel(m, st); }).join('') + '</div>'
       : '<div class="ops-empty">Сборщик не отдал время в статусах (нужна версия 1.8.0).</div>';
     return slide('ops cycle', '<div class="ops-tag">' + esc(t.team) + ' · сроки</div>' + chart + tis,
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Сроки · ' + t.team }));
+  }
+
+  // Разбор «Заблокировано»: кто и когда стоял в блоке за спринты отчёта, сколько,
+  // почему — по смене статусов и комментариям задач участников (output.sprints[].items)
+  function blockedEpisodes(t) {
+    var m = outputModel(t), out = [];
+    // комментарии задачи за всё время — из хронологии историй спринта: причина блока часто
+    // записана до начала спринта, а items.comments — только в его границах
+    var talk = {};
+    (t.epics || []).forEach(function (e) {
+      (e.stories || []).forEach(function (st) {
+        (st.events || []).forEach(function (ev) {
+          if (ev.kind === 'comment' && ev.body) (talk[ev.key] = talk[ev.key] || []).push({ at: ev.at, by: ev.by, body: ev.body });
+        });
+      });
+    });
+    var at = (t._meta && t._meta.collectedAt) || new Date().toISOString();
+    withTeam(t, function () {
+      (m ? m.sprints : []).forEach(function (sp) {
+        sp.members.forEach(function (mem) {
+          (mem.items || []).forEach(function (it) {
+            var hist = (it.history || []).slice().sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+            var open = null, list = [];
+            hist.forEach(function (h) {
+              var blk = classifyBucket(h.to || '', '') === 'blocked';
+              if (blk && !open) open = { from: h.at, status: h.to, by: h.by };
+              else if (!blk && open) { open.to = h.at; open.next = h.to; list.push(open); open = null; }
+            });
+            if (open) list.push(open);
+            if (!list.length && it.bucket === 'blocked') list.push({ from: null, status: it.status });
+            list.forEach(function (iv) {
+              var end = iv.to || (sp.current ? at : (sp.end || at));
+              var days = iv.from ? Math.max(0, (parseTs(end).getTime() - parseTs(iv.from).getTime()) / 86400000) : null;
+              out.push({ sprint: sp, who: mem.name, it: it, iv: iv, days: days, now: !iv.to && sp.current, talk: talk[it.key] || [] });
+            });
+          });
+        });
+      });
+    });
+    return out.sort(function (a, b) { return (b.sprint.current - a.sprint.current) || (b.now - a.now) || ((b.days || 0) - (a.days || 0)); });
+  }
+
+  function openBlocked(t) { showPanel(function () { renderBlocked(t); }); }
+  function renderBlocked(t) {
+    if (team.slug !== t.slug) switchTeam(t.slug);
+    var eps = blockedEpisodes(t);
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Заблокировано · ' + t.team;
+    stackTitle.textContent = eps.filter(function (x) { return x.now; }).length + ' в блоке сейчас · ' + eps.length + ' эпизодов за 3 спринта';
+    scopeBtn.hidden = true; scopeEpic = null;
+    storiesLabel.textContent = 'По смене статусов и комментариям: кто, с какого числа, почему, что нужно для разблокировки';
+    var bySprint = [];
+    eps.forEach(function (x) {
+      var g = bySprint.find(function (y) { return y.sp === x.sprint; });
+      if (!g) bySprint.push(g = { sp: x.sprint, list: [] });
+      g.list.push(x);
+    });
+    storiesBody.innerHTML = eps.length ? bySprint.map(function (g) {
+      return '<div class="pane-label">' + esc(g.sp.name) + (g.sp.current ? ' · идёт' : '') + ' · ' + g.list.length + '</div>' + g.list.map(function (x) {
+        var all = (x.it.comments || []).concat(x.talk.filter(function (c) {
+          return !(x.it.comments || []).some(function (o) { return o.at === c.at && o.body === c.body; });
+        })).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+        var com = all.filter(function (c) { return !x.iv.from || c.at >= x.iv.from.slice(0, 10); });
+        com = (com.length ? com : all).slice(-3);
+        return '<div class="bl-card' + (x.now ? ' now' : '') + '"><div class="es-top"><span class="es-title">' + esc(x.it.title) + '</span>' +
+          '<span class="es-pct">' + (x.days !== null ? fmtNum(Math.round(x.days * 10) / 10) + ' дн.' : '') + '</span></div>' +
+          '<div class="es-meta">' + keyLink(x.it.key) + ' · ' + esc(shortName(x.who)) + ' · «' + esc(x.iv.status || x.it.status) + '»' +
+            (x.iv.from ? ' с ' + ddmm(x.iv.from) : '') + (x.iv.to ? ' по ' + ddmm(x.iv.to) + (x.iv.next ? ' → ' + esc(x.iv.next) : '') : x.now ? ' · <b>в блоке сейчас</b>' : '') +
+            (x.iv.by ? ' · перевёл ' + esc(shortName(x.iv.by)) : '') + '</div>' +
+          (com.length ? '<div class="bl-com">' + com.map(function (c) { return '<div><span>' + ddmm(c.at) + (c.by ? ' · ' + esc(shortName(c.by)) : '') + '</span> ' + esc(clip(c.body, 280)) + '</div>'; }).join('') + '</div>'
+                      : '<div class="bl-com empty">Комментариев о причине нет — спросить исполнителя.</div>') + '</div>';
+      }).join('');
+    }).join('') : '<div class="sidebar-empty">За 3 спринта задачи в блок не переходили.</div>';
+    openPanel();
   }
 
   // начало окна «за 3 спринта»: старт первого из трёх спринтов выработки, иначе −6 недель
@@ -879,7 +1099,8 @@
 
   // Детальный разбор диаграммы управления: по потоку — показатели, диаграмма со
   // списками выбросов и зоны риска, разбивка по спринтам.
-  function openControl(t) {
+  function openControl(t) { showPanel(function () { renderControl(t); }); }
+  function renderControl(t) {
     if (team.slug !== t.slug) switchTeam(t.slug);
     var m = outputModel(t), from = opsFrom(t, m);
     stackTitle.parentNode.removeAttribute('data-ctx');
@@ -888,17 +1109,26 @@
     scopeBtn.hidden = true;
     scopeEpic = null;
     storiesLabel.textContent = '';
-    var data = { stories: controlWindow((t.control || {}).stories, from), subtasks: controlWindow((t.control || {}).subtasks, from) };
+    var ctl = t.control || {};
+    // «Все» — обе выборки вместе, по дате закрытия: как поток задач команды целиком
+    var both = function () {
+      var a = (ctl.stories || {}), b = (ctl.subtasks || {});
+      return { days: a.days || b.days, points: (a.points || []).concat(b.points || []).sort(function (x, y) { return x.doneAt < y.doneAt ? -1 : 1; }),
+               risks: (a.risks || []).concat(b.risks || []) };
+    };
+    var src = { all: both(), stories: ctl.stories, subtasks: ctl.subtasks };
+    var data = { all: controlWindow(src.all, from), stories: controlWindow(ctl.stories, from), subtasks: controlWindow(ctl.subtasks, from) };
     var sprints = m ? m.sprints : [];
-    sideTabs([{ id: 'stories', label: 'Истории', n: data.stories.points.length },
-              { id: 'subtasks', label: 'Подзадачи', n: data.subtasks.points.length }], 'stories', function (id, body) {
-      var c = data[id], gen = id === 'stories' ? 'историй' : 'подзадач';
+    sideTabs([{ id: 'all', label: 'Все', n: data.all.points.length },
+              { id: 'stories', label: 'Истории', n: data.stories.points.length },
+              { id: 'subtasks', label: 'Подзадачи', n: data.subtasks.points.length }], 'all', function (id, body) {
+      var c = data[id], gen = id === 'stories' ? 'историй' : id === 'subtasks' ? 'подзадач' : 'задач';
       if (!c.points.length) { body.innerHTML = '<div class="sidebar-empty">Закрытых ' + gen + ' за 3 спринта нет.</div>'; return; }
       var kpi = function (v, l, tip) { return '<div class="ck"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><b>' + v + '</b><span>' + l + '</span></div>'; };
       var pct = Math.round(100 * c.outliers / c.points.length);
       var rows = sprints.map(function (s, i) {
         var next = sprints[i + 1];
-        var w = controlWindow((t.control || {})[id], s.start, next && next.start ? addDays(next.start, -1) : null);
+        var w = controlWindow(src[id], s.start, next && next.start ? addDays(next.start, -1) : null);
         return '<tr><td>' + esc(s.name) + (s.current ? ' <small>идёт</small>' : '') + '</td><td>' + w.points.length + '</td><td>' +
           (w.points.length ? fmt(w.median) : '—') + '</td><td>' + (w.points.length ? fmt(w.mean) : '—') + '</td><td>' +
           (w.points.length ? w.outliers : '—') + '</td></tr>';
@@ -907,13 +1137,17 @@
         kpi(fmt(c.mean) + ' <small>дн.</small>', 'среднее') + kpi(fmt(c.sd) + ' <small>дн.</small>', 'σ', 'Разброс: σ не меньше среднего — сроки непредсказуемы') +
         kpi(fmt(c.limit) + ' <small>дн.</small>', 'порог выброса', 'среднее + σ') +
         kpi(c.outliers + ' <small>· ' + pct + '%</small>', 'выбросов') + kpi(c.risks.length, 'в зоне риска', 'не закрыты и идут дольше медианы') + '</div>' +
-        '<div class="cbig">' + withTeam(t, function () { return withChartBox({ W: 760, H: 280 }, function () { return controlChart(c, gen, id === 'stories' ? 'story' : 'subtask'); }); }) + '</div>' +
+        '<div class="cbig">' + withTeam(t, function () { return withChartBox({ W: 760, H: 280 }, function () { return controlChart(c, gen, id === 'subtasks' ? 'subtask' : 'story'); }); }) + '</div>' +
         (rows ? '<div class="pane-label">По спринтам</div><table class="ctab"><thead><tr><th>Спринт</th><th>закрыто</th><th>медиана, дн.</th><th>среднее, дн.</th><th>выбросов</th></tr></thead><tbody>' + rows + '</tbody></table>' : '');
     });
     openPanel();
   }
 
-  // ---------- распределение по участникам: истории и подзадачи текущего спринта ----------
+  // ---------- участники: выработка текущего спринта ----------
+  // Строка на участника: график (задачи спринта по статусам, под ними — задачи вне
+  // доски), SP план/факт, задачи и подзадачи план/факт/lead time. Состав команды —
+  // business.members (кэш от PO-агента); остальные на доске — [EXT]. Без сортировок,
+  // шкал и легенд: слайд читается сразу.
   var MX_BUCKETS = [
     { id: 'done', label: 'Готово', color: 'var(--c-done)' },
     { id: 'progress', label: 'В работе', color: 'var(--c-progress)' },
@@ -922,226 +1156,396 @@
     { id: 'blocked', label: 'Заблокировано', color: 'var(--c-blocked)' },
     { id: 'open', label: 'Не начато', color: '#d1d5db' }
   ];
-  var MX_SORTS = [{ id: 'stuck', label: 'По застрявшим' }, { id: 'ready', label: 'По готовности' }, { id: 'list', label: 'По списку' }];
-  var MX_STATE = {};   // команда → { scale: 'num' | 'share', sort }
 
-  // по исполнителю: его истории спринта и его подзадачи (кто бы ни вёл историю);
-  // застряли — не готово, не в бэклоге и статус не менялся дольше STALE_DAYS на момент
-  // сбора (_meta.collectedAt): слайд — снимок, одинаковый в любой день открытия
+  // на момент сбора (_meta.collectedAt): слайд — снимок, одинаковый в любой день открытия
   function ageAtCollect(t, iso) {
     if (!iso) return null;
     var at = t._meta && t._meta.collectedAt ? parseTs(t._meta.collectedAt).getTime() : Date.now(), then = parseTs(iso).getTime();
     return isNaN(then) ? null : Math.max(0, Math.floor((at - then) / 86400000));
   }
 
-  function memberMatrix(t) {
-    var by = {};
-    var add = function (who, kind, it) {
-      who = who || 'Не назначен';
-      var r = by[who] || (by[who] = { name: who, stories: [], subtasks: [], stuck: [] });
-      var bucket = classifyBucket(it.status, it.category), age = ageAtCollect(t, it.statusChanged);
-      r[kind].push({ key: it.key, title: it.title || it.summary, bucket: bucket });
-      if (bucket !== 'done' && bucket !== 'open' && age !== null && age > STALE_DAYS) r.stuck.push({ key: it.key, age: age, status: it.status });
-    };
-    (t.epics || []).forEach(function (e) {
-      (e.stories || []).forEach(function (st) {
-        add(st.assignee, 'stories', st);
-        (st.subtasks || []).forEach(function (sub) { add(sub.assignee, 'subtasks', sub); });
-      });
+  function median(xs) {
+    xs = xs.filter(function (v) { return typeof v === 'number'; }).sort(function (a, b) { return a - b; });
+    if (!xs.length) return null;
+    var m = Math.floor(xs.length / 2);
+    return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2;
+  }
+
+  function memberRows(t) {
+    var m = outputModel(t), cur = m && m.sprints[m.sprints.length - 1];
+    var off = (t.output && t.output.offboard) || null, offBy = {};
+    var notEpic = function (it) { return ['эпик', 'epic'].indexOf(String(it.type || '').toLowerCase()) === -1; };
+    (off ? off.members : []).forEach(function (x) { offBy[x.name] = (x.items || []).filter(notEpic); });
+    var by = {}, get = function (n) { return by[n] || (by[n] = { name: n, items: [], subs: [], split: null, epics: true }); };
+    if (cur) cur.members.forEach(function (mem) {
+      by[mem.name] = { name: mem.name, items: mem.items || [], subs: mem.subtasks || null, split: mem.split, epics: false,
+                       row: m.rows.find(function (x) { return x.name === mem.name; }) };
     });
-    return Object.keys(by).map(function (k) {
-      var r = by[k];
-      r.done = function (kind) { return r[kind].filter(function (x) { return x.bucket === 'done'; }).length; };
-      r.maxAge = r.stuck.reduce(function (a, x) { return Math.max(a, x.age); }, 0);
-      return r;
-    });
-  }
-
-  function mxBar(items, scaleMax) {
-    if (!items.length) return '<div class="mx-bar"></div>';
-    var segs = MX_BUCKETS.map(function (b) {
-      var xs = items.filter(function (x) { return x.bucket === b.id; });
-      if (!xs.length) return '';
-      return '<i style="flex:' + xs.length + ';background:' + b.color + '" title="' + esc(b.label + ': ' + xs.length + '\n' +
-        xs.map(function (x) { return x.key + ' ' + x.title; }).join('\n')) + '"></i>';
-    }).join('');
-    return '<div class="mx-bar"><span style="width:' + (scaleMax ? 100 * items.length / scaleMax : 100).toFixed(1) + '%">' + segs + '</span></div>';
-  }
-
-  function memberMatrixHtml(t) {
-    var st = MX_STATE[t.slug] || (MX_STATE[t.slug] = { scale: 'num', sort: 'stuck' });
-    var rows = memberMatrix(t);
-    if (!rows.length) return '<div class="ops-empty">В спринте нет задач.</div>';
-    var share = function (r) { var n = r.stories.length + r.subtasks.length; return n ? (r.done('stories') + r.done('subtasks')) / n : 0; };
-    rows.sort(function (a, b) {
-      if ((a.name === 'Не назначен') !== (b.name === 'Не назначен')) return a.name === 'Не назначен' ? 1 : -1;
-      if (st.sort === 'stuck') return b.stuck.length - a.stuck.length || b.maxAge - a.maxAge || share(a) - share(b) || (a.name < b.name ? -1 : 1);
-      if (st.sort === 'ready') return share(b) - share(a) || (a.name < b.name ? -1 : 1);
-      return a.name < b.name ? -1 : 1;
-    });
-    var maxS = st.scale === 'num' ? Math.max.apply(null, rows.map(function (r) { return r.stories.length; })) : 0;
-    var maxT = st.scale === 'num' ? Math.max.apply(null, rows.map(function (r) { return r.subtasks.length; })) : 0;
-    var m = outputModel(t);
-    var btn = function (attr, id, label, on) {
-      return '<button type="button" class="mx-btn' + (on ? ' on' : '') + '" data-mx="' + esc(t.slug) + '" data-mx-' + attr + '="' + id + '">' + label + '</button>';
-    };
-    var ctrl = '<div class="mx-ctrl"><span class="mx-lbl">Шкала</span>' + btn('scale', 'num', 'Числа', st.scale === 'num') + btn('scale', 'share', 'Доли', st.scale === 'share') +
-      '<span class="mx-lbl">Сортировка</span>' + MX_SORTS.map(function (x) { return btn('sort', x.id, x.label, st.sort === x.id); }).join('') +
-      '<span class="mx-legend">' + MX_BUCKETS.map(function (b) { return '<span><i style="background:' + b.color + '"></i>' + b.label + '</span>'; }).join('') + '</span></div>';
-    var body = rows.map(function (r) {
-      var row = m && m.rows.find(function (x) { return x.name === r.name; });
-      var name = esc(r.name === 'Не назначен' ? r.name : shortName(r.name));
-      if (row) { MEMBER_REFS.push({ team: t, row: row, m: m }); name = '<button type="button" class="mname" data-member="' + (MEMBER_REFS.length - 1) + '" title="' + esc(r.name) + ' — задачи за спринт">' + name + '</button>'; }
-      var stuck = r.stuck.length ? '<span class="mx-stuck" title="' + esc(r.stuck.sort(function (a, b) { return b.age - a.age; })
-        .map(function (x) { return x.key + ' · «' + x.status + '» ' + x.age + ' дн.'; }).join('\n')) + '">' + r.stuck.length + ' · ' + r.maxAge + ' дн.</span>' : '<span class="mx-none">—</span>';
-      return '<div class="mx-row"><span class="mx-name">' + name + '</span>' + mxBar(r.stories, maxS) + '<span class="mx-n">' + r.done('stories') + '/' + r.stories.length + '</span>' +
-        mxBar(r.subtasks, maxT) + '<span class="mx-n">' + r.done('subtasks') + '/' + r.subtasks.length + '</span>' + stuck + '</div>';
-    }).join('');
-    return ctrl + '<div class="mx-grid' + (rows.length > 11 ? ' tight' : '') + '"><div class="mx-row mx-head"><span></span><span>Истории</span><span></span><span>Подзадачи</span><span></span>' +
-      '<span title="Не готово, не в бэклоге и статус не менялся дольше ' + STALE_DAYS + ' дн. на момент сбора: сколько · самое долгое">Застряли</span></div>' + body + '</div>';
-  }
-
-  function opsSlide(t) {
-    var m = outputModel(t);
-    var box = { W: 560, H: 190 };
-    var legend = '<div class="ops-legend">' + OUT_GROUPS.map(function (g) {
-      return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
-    }).join('') + '<span><i class="l-avg"></i>среднее выполненное</span></div>';
-    // сверху — производительность за 3 спринта и сгорание спринта, снизу — распределение
-    // историй и подзадач спринта по участникам. Выработка по спринтам — в отчёте PO.
-    var perf = '<div><div class="ops-h">Производительность команды за 3 спринта <small>· ' + (m && m.sp ? 'SP' : 'задач') + '</small></div>' +
-      '<div class="ops-chart">' + (m ? teamOutputChart(m, box) : withTeam(t, function () { return withChartBox(box, velocityChart); })) + '</div>' + legend + '</div>';
-    var p = teamPace(t);
-    var burn = '<div><div class="ops-h">Сгорание спринта <small>· ' + esc(t.sprintName) + (p ? ', день ' + p.workday + ' из ' + p.workdays : '') + '</small></div>' +
-      '<div class="ops-chart">' + withTeam(t, function () { return withChartBox(box, burndownChart); }) + '</div>' +
-      '<div class="ops-legend"><span><i class="l-ideal"></i>идеальная линия</span><span><i class="l-fact"></i>осталось задач</span><span><i class="l-wknd"></i>выходные</span></div></div>';
-    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops3">' + perf + burn + '</div>' +
-      '<div class="mx" data-mx-team="' + esc(t.slug) + '">' + memberMatrixHtml(t) + '</div>',
-      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Операционный отчёт · ' + t.team }));
-  }
-
-  // «Планы на следующий спринт»: взять в работу / доделать / эскалировать. Агент
-  // (plans в бизнес-блоке) задаёт суть; без него — из данных: открытый объём KR,
-  // незакрытое в спринте, заблокированное. Список плотный: у команды из 10 человек это
-  // десятки задач. До 10 в колонке — строка с пояснением; больше — слайд уплотняется до
-  // строки на задачу (пояснение в подсказке), до 19 строк; остальное — «ещё N».
-  var PLAN_ROWS = { full: 10, dense: 19 };
-  var PLAN_COLS = [
-    { id: 'take', label: 'Взять в работу', hint: 'следующее по KR' },
-    { id: 'finish', label: 'Доделать', hint: 'перенос из спринта' },
-    { id: 'escalate', label: 'Эскалировать', hint: 'нужна помощь извне' }
-  ];
-
-  function planCards(t, streams) {
-    var ai = biz(t).plans || {};
-    var rows = streams.reduce(function (a, s) { return a.concat(s.rows.map(function (r) { return { r: r, s: s }; })); }, []);
-    var auto = {
-      finish: rows.filter(function (x) { return x.r.r.pct < 100 && x.r.r.bucket !== 'blocked'; })
-        .sort(function (a, b) { return b.r.r.pct - a.r.r.pct; })
-        .map(function (x) { return { title: x.r.st.title, text: x.r.next ? 'След. шаг: ' + x.r.next : x.r.r.pct + '% · ' + x.r.st.status, keys: [x.r.st.key] }; }),
-      escalate: rows.filter(function (x) { return x.r.r.bucket === 'blocked'; })
-        .map(function (x) { return { title: x.r.st.title, text: x.r.blocker || ('«' + x.r.st.status + '» с ' + ddmm(x.r.st.statusChanged)), keys: [x.r.st.key] }; }),
-      take: streams.filter(function (s) { return s.epic.epicKey && s.epic.scope; }).reduce(function (a, s) {
-        return a.concat(s.epic.scope.filter(function (it) { return !it.inSprint && classifyBucket(it.status, it.category) === 'open'; })
-          .map(function (it) { return { title: it.title, text: (s.ai.kr || 'Эпик «' + s.epic.epicTitle + '»'), keys: [it.key] }; }));
-      }, [])
-    };
-    var out = {};
-    PLAN_COLS.forEach(function (c) { out[c.id] = (ai[c.id] && ai[c.id].length ? ai[c.id] : auto[c.id]); });
-    return out;
-  }
-
-  function plansSlide(t, streams) {
-    var cards = planCards(t, streams);
-    var dense = PLAN_COLS.some(function (c) { return cards[c.id].length > PLAN_ROWS.full; });
-    var cap = dense ? PLAN_ROWS.dense : PLAN_ROWS.full;
-    return slide('plans' + (dense ? ' dense' : ''), '<h1 class="slide-title">' + ed('plans:' + t.slug, 'Планы на следующий спринт') + '</h1>' +
-      '<div class="plans-team">' + esc(t.team) + '</div><div class="plans">' + PLAN_COLS.map(function (c) {
-        var list = cards[c.id], shown = list.length > cap ? list.slice(0, cap - 1) : list, rest = list.slice(shown.length);
-        return '<div class="pcol pc-' + c.id + '"><div class="pc-head"><b>' + c.label + '</b><span>' + list.length + '</span></div>' +
-          '<div class="pc-hint">' + c.hint + '</div>' + (list.length ? shown.map(function (x, i) {
-            var id = 'plan:' + t.slug + ':' + c.id + ':' + i, keys = x.keys || [];
-            return '<div class="prow"' + ctxAttr({ kind: 'general', title: c.label + ': ' + x.title }) + ' title="' + esc(x.title + (x.text ? '\n' + x.text : '')) + '">' +
-              '<span class="pr-key"' + (keys.length > 1 ? ' title="' + esc(keys.join(', ')) + '"' : '') + '>' + esc(keys[0] || '') + (keys.length > 1 ? ' +' + (keys.length - 1) : '') + '</span>' +
-              '<span class="pr-title">' + ed(id + ':t', x.title) + '</span>' +
-              (x.text ? '<span class="pr-text">' + ed(id + ':x', x.text) + '</span>' : '') + '</div>';
-          }).join('') + (rest.length ? '<div class="pr-more" title="' + esc(rest.map(function (x) { return ((x.keys || [])[0] || '') + ' ' + x.title; }).join('\n')) +
-            '">ещё ' + rest.length + '</div>' : '') : '<div class="pc-empty">Нет</div>') + '</div>';
-      }).join('') + '</div>',
-      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Планы на следующий спринт · ' + t.team }));
-  }
-
-  function changesSlide() {
-    var cards = [], moved = [];
-    TEAMS.forEach(function (t) {
-      var p = teamPace(t);
-      if (p && p.scope !== p.scopeStart) moved.push({ t: t, p: p });
-    });
-    if (moved.length) {
-      cards.push({ id: 'scope', who: 'объём спринта · ' + moved.map(function (m) { return m.t.team; }).join(', '),
-        before: moved.map(function (m) { return m.t.team + ' — ' + m.p.scopeStart; }).join(' · ') + ' задач на старте',
-        after: moved.map(function (m) { return m.t.team + ' — ' + m.p.scope; }).join(' · ') + ' задач сейчас',
-        out: moved.map(function (m) { var d = m.p.scope - m.p.scopeStart; return m.t.team + ' ' + (d > 0 ? '+' : '−') + Math.abs(d); }).join(', ') +
-             ' после старта. Ёмкость под это не резервировалась.' });
-    }
-    TEAMS.forEach(function (t) {
-      (biz(t).changes || []).forEach(function (c, i) {
-        cards.push({ id: t.slug + i, who: t.team + ' · ' + c.affected, before: c.before, after: c.after, out: c.outcome });
-      });
-    });
-    if (!cards.length) return '';
-    return slide('', '<h1 class="slide-title">Изменения в процессе спринта</h1>' +
-      cards.map(function (c) {
-        return '<div class="change"><div class="who">Затронуто: ' + esc(c.who) + '</div><div class="ba"><div><b>Было</b>' +
-          ed('chg:' + c.id + ':b', c.before || '—') + '</div><div><b>Стало</b>' + ed('chg:' + c.id + ':a', c.after || '—') + '</div></div>' +
-          (c.out ? '<p class="out">' + ed('chg:' + c.id + ':o', c.out) + '</p>' : '') + '</div>';
-      }).join(''), ctxAttr({ kind: 'slide', title: 'Изменения в процессе спринта' }));
-  }
-
-  function demoSlide() {
-    var items = [];
-    TEAMS.forEach(function (t) { (biz(t).demo || []).forEach(function (d, i) { items.push({ id: t.slug + i, team: t.team, d: d }); }); });
-    if (!items.length) return '';
-    return slide('', '<h1 class="slide-title">Демо</h1><ul class="demo">' +
-      items.map(function (x) {
-        return '<li>' + ed('demo:' + x.id, x.d.what) + '<span class="cap"> — ' + esc(x.team) + (x.d.minutes ? ', ' + x.d.minutes + ' мин' : '') + '</span></li>';
-      }).join('') + '</ul>', ctxAttr({ kind: 'slide', title: 'Демо' }));
-  }
-
-  function totalsSlide(all) {
-    var rows = [];
-    all.forEach(function (x) { x.streams.forEach(function (s) { s.rows.forEach(function (r) { rows.push({ t: x.t, r: r }); }); }); });
-    var g = rows.filter(function (x) { return x.r.r.pct >= 100; }).length;
-    var y = rows.filter(function (x) { return x.r.r.pct >= 50 && x.r.r.pct < 100; }).length;
-    var blocked = [];
-    all.forEach(function (x) {
-      var at = x.t._meta && x.t._meta.collectedAt;
-      withTeam(x.t, function () {
-        (x.t.epics || []).forEach(function (e) {
-          (e.stories || []).forEach(function (st) {
-            [st].concat(st.subtasks || []).forEach(function (it) {
-              if (classifyBucket(it.status, it.category) === 'blocked') {
-                blocked.push({ title: it.title || it.summary, key: it.key, since: it.statusChanged, at: at, team: x.t.team });
-              }
-            });
+    withTeam(t, function () {
+      var hide = biz(t).hide || [];
+      (t.epics || []).forEach(function (e) {
+        (e.stories || []).forEach(function (st) {
+          if (hide.indexOf(st.key) !== -1) return;
+          var r = get(st.assignee || 'Не назначен');
+          if (r.epics) r.items.push({ key: st.key, title: st.title, status: st.status, bucket: classifyBucket(st.status, st.category), sp: 0, lead: null });
+          (st.subtasks || []).forEach(function (sub) {
+            var rs = get(sub.assignee || 'Не назначен');
+            if (!rs.subs || rs.epics || rs.subsFromEpics) {
+              rs.subs = rs.subs || [];
+              rs.subsFromEpics = true;
+              rs.subs.push({ key: sub.key, title: sub.summary || sub.title, status: sub.status, bucket: classifyBucket(sub.status, sub.category), lead: null });
+            }
           });
         });
       });
     });
-    blocked.sort(function (a, b) { return (a.since || '') < (b.since || '') ? -1 : 1; });
-    var carry = rows.filter(function (x) { return x.r.r.pct < 100; }).sort(function (a, b) { return b.r.r.pct - a.r.r.pct; });
-    var more = function (n, max) { return n > max ? '<li class="more">и ещё ' + (n - max) + '</li>' : ''; };
-    return slide('', '<h1 class="slide-title">Итоги спринта ' + esc(sprintLabel()) + '</h1>' +
-      '<div class="slide-sub">' + rows.length + ' историй · ' + TEAMS.map(function (t) { return esc(t.team); }).join(' + ') + '</div>' +
-      '<div class="summary-grid"><div class="fkpi green"><div class="n">' + g + '</div><div class="label">завершено на 100%</div></div>' +
-      '<div class="fkpi yellow"><div class="n">' + y + '</div><div class="label">в работе, 50–99%</div></div>' +
-      '<div class="fkpi red"><div class="n">' + (rows.length - g - y) + '</div><div class="label">до 50% / заблокировано</div></div></div>' +
-      '<div class="frisks"><h2>Ключевые блокеры</h2><ul>' + (blocked.length ? blocked.slice(0, 5).map(function (b) {
-        return '<li><b>' + esc(b.title) + ' 🛑</b> — стоит с ' + ddmm(b.since) + ' · ' + esc(b.key) + ' · ' + esc(b.team) + '</li>';
-      }).join('') + more(blocked.length, 5) : '<li>Блокеров нет</li>') + '</ul></div>' +
-      '<div class="frisks"><h2>' + (sprintRunning() ? 'Не закрыто на сегодня — кандидаты на перенос' : 'Переносим в следующий спринт') + '</h2><ul>' + (carry.length ? carry.slice(0, 6).map(function (x) {
-        return '<li><b>' + esc(x.r.st.title) + '</b> — ' + x.r.r.flag + x.r.r.pct + '%' + (x.r.next ? ', след. шаг: ' + esc(x.r.next) : '') + '</li>';
-      }).join('') + more(carry.length, 6) : '<li>Всё закрыто</li>') + '</ul></div>', ctxAttr({ kind: 'slide', title: 'Итоги спринта' }));
+    Object.keys(offBy).forEach(function (n) { get(n); });
+    var team = biz(t).members || null;
+    return Object.keys(by).map(function (n) {
+      var r = by[n];
+      r.subs = r.subs || [];
+      r.off = offBy[n] || [];
+      var sp = { plan: 0, fact: 0 };
+      if (r.split) Object.keys(r.split).forEach(function (b) { sp.plan += r.split[b][1]; if (b === 'done') sp.fact += r.split[b][1]; });
+      r.sp = r.split ? sp : null;
+      r.done = function (list) { return list.filter(function (x) { return x.bucket === 'done'; }); };
+      r.lt = { items: median(r.done(r.items).map(function (x) { return x.lead; })), subs: median(r.done(r.subs).map(function (x) { return x.lead; })) };
+      r.ext = !!team && team.indexOf(n) === -1 && n !== 'Не назначен';
+      return r;
+    }).filter(function (r) { return r.items.length || r.subs.length || r.off.length; })
+      .sort(function (a, b) {
+        if ((a.name === 'Не назначен') !== (b.name === 'Не назначен')) return a.name === 'Не назначен' ? 1 : -1;
+        return ((b.sp || {}).fact || 0) - ((a.sp || {}).fact || 0) || b.done(b.items).length - a.done(a.items).length || (a.name < b.name ? -1 : 1);
+      });
+  }
+
+  var OFF_REFS = [];
+  function mxBar(items, scaleMax, cls) {
+    var segs = MX_BUCKETS.map(function (b) {
+      var xs = items.filter(function (x) { return x.bucket === b.id; });
+      return xs.length ? '<i style="flex:' + xs.length + ';background:' + b.color + '"></i>' : '';
+    }).join('');
+    return '<span class="' + cls + '" style="width:' + (scaleMax ? Math.max(4, 100 * items.length / scaleMax) : 0).toFixed(1) + '%">' + segs + '</span>';
+  }
+  function tipList(title, items) {
+    return title + ': ' + items.length + (items.length ? '\n' + items.slice(0, 14).map(function (x) {
+      return (x.key || '') + ' · ' + (x.status || '') + ' · ' + (x.title || '');
+    }).join('\n') + (items.length > 14 ? '\nи ещё ' + (items.length - 14) : '') : '');
+  }
+  function planFact(list, lt) {
+    var done = list.filter(function (x) { return x.bucket === 'done'; }).length;
+    return list.length ? '<b>' + list.length + '</b> / <b>' + done + '</b>' + (lt !== null ? '<small> · ' + fmtNum(lt) + ' дн.</small>' : '') : '<span class="mx-none">—</span>';
+  }
+
+  function memberMatrixHtml(t) {
+    var rows = memberRows(t);
+    if (!rows.length) return '<div class="ops-empty">В спринте нет задач.</div>';
+    var max = Math.max.apply(null, rows.map(function (r) { return Math.max(r.items.length, r.off.length); })) || 1;
+    var anySubs = rows.some(function (r) { return r.subs.length; });
+    var hasOff = !!(t.output && t.output.offboard);
+    var line = function (r) {
+      var name = esc(r.name === 'Не назначен' ? r.name : shortName(r.name));
+      if (r.row) { MEMBER_REFS.push({ team: t, row: r.row, m: outputModel(t) }); name = '<button type="button" class="mname" data-member="' + (MEMBER_REFS.length - 1) + '" title="' + esc(r.name) + ' — задачи за спринт">' + name + '</button>'; }
+      var offIdx = OFF_REFS.push({ team: t, name: r.name, items: r.off }) - 1;
+      var offDone = r.off.filter(function (x) { return x.bucket === 'done'; });
+      return '<div class="mx-row"><span class="mx-name">' + (r.ext ? '<span class="ext">[EXT]</span> ' : '') + name + '</span>' +
+        '<span class="mx-graph"><span class="mx-bar" title="' + esc(tipList('Задачи спринта', r.items)) + '">' + mxBar(r.items, max, 'mx-b') + '</span>' +
+          (hasOff ? '<span class="mx-bar off" data-off="' + offIdx + '" title="' + esc(tipList('Вне доски — закрыто ' + offDone.length + ', всего', r.off) + (r.off.length ? '\n\nклик — задачи и активность' : '')) + '">' +
+            (r.off.length ? '<span class="mx-o" style="width:' + Math.max(4, 100 * r.off.length / max).toFixed(1) + '%"><i style="flex:' + (offDone.length || 0) + '" class="od"></i><i style="flex:' + (r.off.length - offDone.length) + '" class="oo"></i></span>' : '') + '</span>' : '') +
+        '</span>' +
+        '<span class="mx-n">' + (r.sp ? '<b>' + fmtNum(r.sp.plan) + '</b> / <b>' + fmtNum(r.sp.fact) + '</b>' : '<span class="mx-none">—</span>') + '</span>' +
+        '<span class="mx-n">' + planFact(r.items, r.lt.items) + '</span>' +
+        (anySubs ? '<span class="mx-n">' + planFact(r.subs, r.lt.subs) + '</span>' : '') + '</div>';
+    };
+    var none = rows.filter(function (r) { return r.name === 'Не назначен'; });
+    var team = rows.filter(function (r) { return !r.ext && r.name !== 'Не назначен'; }), ext = rows.filter(function (r) { return r.ext; });
+    return '<div class="mx-grid' + (anySubs ? '' : ' nosubs') + (rows.length > 11 ? ' tight' : '') + '">' +
+      '<div class="mx-row mx-head"><span></span><span>Задачи спринта' + (hasOff ? ' · под ними — вне доски' : '') + '</span>' +
+        '<span title="Story Points текущего спринта: взято / сделано">SP план / факт</span>' +
+        '<span title="Задачи спринта участника (истории, задачи, ошибки): взято / закрыто · медиана lead time закрытых">Задачи план / факт · LT</span>' +
+        (anySubs ? '<span title="Подзадачи участника: взято / закрыто · медиана lead time закрытых">Подзадачи план / факт · LT</span>' : '') + '</div>' +
+      team.map(line).join('') +
+      (ext.length ? '<div class="mx-sep">[EXT] — на доске, но не в составе команды</div>' + ext.map(line).join('') : '') +
+      none.map(line).join('') + '</div>';
+  }
+
+  // Задачи участника вне доски: другие проекты за период спринта, с активностью
+  function openOffboard(ref) { showPanel(function () { renderOffboard(ref); }); }
+  function renderOffboard(ref) {
+    var t = ref.team, off = (t.output || {}).offboard || {};
+    if (team.slug !== t.slug) switchTeam(t.slug);
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Вне доски · ' + t.team + ' · с ' + ddmm(off.since);
+    stackTitle.textContent = ref.name;
+    scopeBtn.hidden = true; scopeEpic = null;
+    storiesLabel.textContent = 'Что человек двигал в JIRA с начала спринта, кроме задач спринта';
+    storiesBody.innerHTML = ref.items.length ? ref.items.map(function (it) {
+      var hist = (it.history || []).map(function (h) { return '<div class="of-h">' + ddmm(h.at) + ' ' + esc(h.from || '—') + ' → <b>' + esc(h.to || '—') + '</b>' + (h.by ? ' · ' + esc(shortName(h.by)) : '') + '</div>'; }).join('');
+      var com = (it.comments || []).map(function (c) { return '<div class="of-c"><span>' + ddmm(c.at) + (c.by ? ' · ' + esc(shortName(c.by)) : '') + '</span> ' + esc(clip(c.body, 260)) + '</div>'; }).join('');
+      return '<div class="es-row ' + (it.bucket === 'done' ? 'stat-green' : 'stat-yellow') + '"><div class="es-top"><span class="es-title">' + esc(it.title) + '</span>' +
+        '<span class="es-pct">' + (it.doneAt ? 'закрыта ' + ddmm(it.doneAt) : esc(it.status)) + '</span></div>' +
+        '<div class="es-meta">' + keyLink(it.key) + ' · ' + esc(it.project || '') + (it.type ? ' · ' + esc(it.type) : '') + '</div>' + hist + com + '</div>';
+    }).join('') : '<div class="sidebar-empty">Задач вне доски за период нет.</div>';
+    openPanel();
+  }
+
+  // Сгорание спринта для бизнеса: идеальная линия идёт только по рабочим дням (в
+  // выходные — полка), пунктир — объём спринта (видно, сколько добавили по ходу),
+  // красная — сколько осталось, вертикаль — день сбора, справа — итог крупно.
+  // part: 'all' — все задачи; 'story' — без подзадач (поля storyScope/storyClosed).
+  function bizBurnChart(t, part, box) {
+    var b = t.burndown || {}, days = b.days || [];
+    if (!days.length) return '<div class="ops-empty">Нет данных по спринту.</div>';
+    if (part === 'story' && !days.some(function (d) { return typeof d.storyScope === 'number'; })) {
+      return '<div class="ops-empty">Сборщик не отдал сгорание без подзадач (нужна версия 1.10.0) — пересоберите данные.</div>';
+    }
+    var get = function (d) {
+      return part === 'story' ? { scope: d.storyScope || 0, closed: d.storyClosed || 0 } : { scope: d.scope, closed: d.closed };
+    };
+    var W = box.W, H = box.H, padL = 30, padR = 64, padT = 12, padB = 22;
+    var vals = days.map(get);
+    var maxY = Math.max.apply(null, vals.map(function (v) { return v.scope; })) || 1;
+    var xOf = function (i) { return padL + (W - padL - padR) * (days.length > 1 ? i / (days.length - 1) : 0); };
+    var yOf = function (v) { return padT + (H - padT - padB) * (1 - v / maxY); };
+    var parts = [], step = (W - padL - padR) / Math.max(1, days.length - 1);
+    days.forEach(function (d, i) {
+      if (d.weekend) parts.push('<rect x="' + (xOf(i) - step / 2).toFixed(1) + '" y="' + padT + '" width="' + step.toFixed(1) + '" height="' + (H - padT - padB) + '" fill="#f1f1f1"/>');
+    });
+    [0, Math.round(maxY / 2), maxY].forEach(function (v) {
+      parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(v).toFixed(1) + '" y2="' + yOf(v).toFixed(1) + '" stroke="#e5e7eb"/>' +
+        '<text x="' + (padL - 5) + '" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="11" fill="#888" text-anchor="end">' + v + '</text>');
+    });
+    // идеальная: от объёма на старте до нуля, убывает только в рабочие дни
+    var work = days.filter(function (d) { return !d.weekend; }).length || 1, start = vals[0].scope, passed = 0;
+    var ideal = days.map(function (d, i) {
+      if (!d.weekend && i > 0) passed++;
+      return [xOf(i), yOf(Math.max(0, start * (1 - passed / Math.max(1, work - 1))))];
+    });
+    parts.push('<path d="' + ideal.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ') +
+      '" fill="none" stroke="#9ca3af" stroke-width="2"/>');
+    var past = days.map(function (d, i) { return i; }).filter(function (i) { return !days[i].future; });
+    if (past.length) {
+      var line = function (f, attrs) {
+        return '<path d="' + past.map(function (i, j) { return (j ? 'L' : 'M') + xOf(i).toFixed(1) + ' ' + yOf(f(vals[i])).toFixed(1); }).join(' ') + '" fill="none" ' + attrs + '/>';
+      };
+      parts.push(line(function (v) { return v.scope; }, 'stroke="#6b7280" stroke-width="1.5" stroke-dasharray="4 3"'));
+      parts.push(line(function (v) { return v.scope - v.closed; }, 'stroke="#dc2626" stroke-width="2.4"'));
+      past.forEach(function (i) {
+        var v = vals[i];
+        parts.push('<circle cx="' + xOf(i).toFixed(1) + '" cy="' + yOf(v.scope - v.closed).toFixed(1) + '" r="2.6" fill="#dc2626"><title>' +
+          esc(ddmm(days[i].date) + ': осталось ' + (v.scope - v.closed) + ' из ' + v.scope + ', закрыто ' + v.closed) + '</title></circle>');
+      });
+      var li = past[past.length - 1], lv = vals[li];
+      parts.push('<line x1="' + xOf(li).toFixed(1) + '" x2="' + xOf(li).toFixed(1) + '" y1="' + padT + '" y2="' + (H - padB) + '" stroke="#111" stroke-dasharray="2 3" stroke-opacity=".5"/>');
+      parts.push('<text x="' + (W - padR + 8) + '" y="' + (yOf(lv.scope - lv.closed) + 2).toFixed(1) + '" font-size="18" font-weight="700" fill="#dc2626">' + (lv.scope - lv.closed) + '</text>' +
+        '<text x="' + (W - padR + 8) + '" y="' + (yOf(lv.scope - lv.closed) + 16).toFixed(1) + '" font-size="10.5" fill="#666">из ' + lv.scope + '</text>');
+    }
+    parts.push('<text x="' + padL + '" y="' + (H - 6) + '" font-size="11" fill="#888">' + ddmm(b.start) + '</text>' +
+      '<text x="' + (W - padR) + '" y="' + (H - 6) + '" font-size="11" fill="#888" text-anchor="end">' + ddmm(b.end) + '</text>');
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>';
+  }
+
+  function opsSlide(t) {
+    var m = outputModel(t);
+    var box = { W: 560, H: 200 };
+    var legend = '<div class="ops-legend">' + OUT_GROUPS.map(function (g) {
+      return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
+    }).join('') + '<span><i class="l-avg"></i>среднее</span></div>';
+    // сверху — производительность за 3 спринта и одно сгорание (клик — из чего построено),
+    // снизу — выработка участников текущего спринта
+    var perf = '<div><div class="ops-h">Производительность за 3 спринта <small>· ' + (m && m.sp ? 'SP' : 'задач') + '</small></div>' +
+      '<div class="ops-chart">' + (m ? teamOutputChart(m, box) : withTeam(t, function () { return withChartBox(box, velocityChart); })) + '</div>' + legend + '</div>';
+    var p = teamPace(t), part = burnPart(t);
+    var burn = '<div class="burn-click" data-burn="' + esc(t.slug) + '" title="Из чего построено сгорание: по дням и по задачам">' +
+      '<div class="ops-h">Сгорание спринта <small>· ' + (part === 'story' ? 'без подзадач' : 'все задачи') + (p ? ' · день ' + p.workday + ' из ' + p.workdays : '') + ' · клик — расшифровка</small></div>' +
+      '<div class="ops-chart">' + bizBurnChart(t, part, box) + '</div>' +
+      '<div class="ops-legend"><span><i class="l-fact"></i>осталось</span><span><i class="l-ideal"></i>идеальная</span>' +
+      '<span><i class="l-scope"></i>объём</span><span><i class="l-wknd"></i>выходные</span></div></div>';
+    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops2b">' + perf + burn + '</div>' +
+      '<div class="mx" data-mx-team="' + esc(t.slug) + '">' + memberMatrixHtml(t) + '</div>',
+      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Операционный отчёт · ' + t.team }));
+  }
+
+  // одно сгорание на слайде: без подзадач, если сборщик их разделил, иначе — все задачи
+  function burnPart(t) {
+    return ((t.burndown || {}).days || []).some(function (d) { return typeof d.storyScope === 'number'; }) ? 'story' : 'all';
+  }
+
+  // Расшифровка сгорания: по дням (объём, закрыто, осталось, идеал, изменение объёма)
+  // и по задачам (закрыто, добавлено после старта, вынесено, не закрыто)
+  function openBurn(t) { showPanel(function () { renderBurn(t); }); }
+  function renderBurn(t) {
+    if (team.slug !== t.slug) switchTeam(t.slug);
+    var b = t.burndown || {}, days = b.days || [], items = b.items || null;
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Сгорание спринта · ' + t.team;
+    stackTitle.textContent = t.sprintName + ' · ' + ddmm(b.start) + '–' + ddmm(b.end);
+    scopeBtn.hidden = true; scopeEpic = null; storiesLabel.textContent = '';
+    var parts = [{ id: 'story', label: 'Без подзадач' }, { id: 'all', label: 'С подзадачами' }].filter(function (x) { return x.id === 'all' || burnPart(t) === 'story'; });
+    sideTabs(parts.map(function (x) { return { id: x.id, label: x.label, n: (items || []).filter(function (it) { return x.id === 'all' || !it.subtask; }).length || days.length }; }),
+      burnPart(t), function (id, body) {
+        var get = function (d) { return id === 'story' ? { scope: d.storyScope || 0, closed: d.storyClosed || 0 } : { scope: d.scope, closed: d.closed }; };
+        var work = days.filter(function (d) { return !d.weekend; }).length || 1, start = days.length ? get(days[0]).scope : 0, passed = 0, prev = null;
+        var trs = days.map(function (d, i) {
+          if (!d.weekend && i > 0) passed++;
+          var v = get(d), ideal = Math.max(0, start * (1 - passed / Math.max(1, work - 1)));
+          var delta = prev === null ? '' : v.scope - prev; prev = v.scope;
+          return '<tr class="' + (d.weekend ? 'wk' : '') + (d.future ? ' fut' : '') + '"><td>' + ddmm(d.date) + '</td><td>' + v.scope + '</td><td>' +
+            (delta ? (delta > 0 ? '+' : '−') + Math.abs(delta) : '') + '</td><td>' + (d.future ? '' : v.closed) + '</td><td>' + (d.future ? '' : v.scope - v.closed) +
+            '</td><td>' + fmtNum(ideal) + '</td></tr>';
+        }).join('');
+        var chart = '<div class="cbig">' + bizBurnChart(t, id, { W: 760, H: 260 }) + '</div>';
+        var how = '<p class="burn-how">Объём на день — задачи, которые в этот день были в спринте (по истории поля «Спринт»: внесённые после старта — ступенькой вверх, вынесенные — вниз). Закрыто — категория статуса «выполнено» к концу дня. Идеальная линия — от объёма первого дня до нуля, только по рабочим дням.' +
+          (id === 'story' ? ' Подзадачи не считаются.' : ' Считаются все задачи спринта, включая подзадачи.') + '</p>';
+        var table = '<table class="ctab burn-tab"><thead><tr><th>день</th><th>объём</th><th>±</th><th>закрыто</th><th>осталось</th><th>идеал</th></tr></thead><tbody>' + trs + '</tbody></table>';
+        var lists = '';
+        if (items) {
+          var mine = items.filter(function (it) { return id === 'all' || !it.subtask; });
+          var sec = function (title, list, line) {
+            return list.length ? '<div class="pane-label">' + title + ' · ' + list.length + '</div><div class="burn-list">' + list.map(line).join('') + '</div>' : '';
+          };
+          var row = function (it, tail) { return '<div>' + keyLink(it.key) + ' ' + esc(clip(it.title, 80)) + (it.subtask ? ' <small>подзадача</small>' : '') + ' <small>' + tail + '</small></div>'; };
+          lists = sec('Закрыто', mine.filter(function (it) { return it.doneAt && !it.left; }).sort(function (a, c) { return a.doneAt < c.doneAt ? -1 : 1; }),
+                      function (it) { return row(it, ddmm(it.doneAt)); }) +
+            sec('Добавлено после старта', mine.filter(function (it) { return it.entered > b.start; }), function (it) { return row(it, 'с ' + ddmm(it.entered)); }) +
+            sec('Вынесено из спринта', mine.filter(function (it) { return it.left; }), function (it) { return row(it, ddmm(it.left)); }) +
+            sec('Не закрыто', mine.filter(function (it) { return !it.doneAt && !it.left; }), function (it) { return row(it, ''); });
+        } else {
+          lists = '<div class="sidebar-empty">Список задач сгорания появится после пересборки данных (сборщик 1.10.0).</div>';
+        }
+        body.innerHTML = chart + how + table + lists;
+      });
+    openPanel();
+  }
+
+  // «Планы на следующий спринт» — рабочий слайд для техлидов: четыре колонки, внутри —
+  // по направлениям (эпикам), строка — суть задачи, ключ и пояснение — в подсказке
+  // (у «Эскалировать» пояснение видно: это и есть просьба). Агент (plans в бизнес-
+  // блоке) задаёт суть; без него — из данных:
+  //   взять — до трёх следующих открытых задач эпика вне спринта (не низкий приоритет);
+  //   доделать — незакрытое в спринте, кроме заблокированного;
+  //   возможно войдёт — открытые задачи эпика с низким приоритетом: если появится окно;
+  //   эскалировать — заблокированное, с блокером.
+  var PLAN_LINES = 15;               // строк в колонке вместе с шапками направлений
+  var PLAN_TAKE = 3;                 // следующих задач на эпик
+  var PLAN_COLS = [
+    { id: 'take', label: 'Взять в работу', hint: 'следующее по направлениям' },
+    { id: 'finish', label: 'Доделать', hint: 'перенос из спринта' },
+    { id: 'maybe', label: 'Возможно войдёт', hint: 'низкий приоритет — если будет окно' },
+    { id: 'escalate', label: 'Эскалировать', hint: 'нужна помощь извне' }
+  ];
+  var LOW_PRIORITY = ['low', 'lowest', 'minor', 'trivial', 'низкий', 'низкая', 'незначительный', 'незначительная'];
+  function lowPriority(p) { return LOW_PRIORITY.indexOf(String(p || '').trim().toLowerCase()) !== -1; }
+
+  function planCards(t, streams) {
+    var ai = biz(t).plans || {};
+    var groupOf = {};                 // ключ задачи → направление: для карточек агента
+    streams.forEach(function (s) {
+      var name = streamName(s);
+      s.rows.forEach(function (r) { groupOf[r.st.key] = name; });
+      (s.epic.scope || []).forEach(function (it) { groupOf[it.key] = name; });
+    });
+    var rows = streams.reduce(function (a, s) { return a.concat(s.rows.map(function (r) { return { r: r, s: s }; })); }, []);
+    var nextOf = function (s, low) {
+      return (s.epic.scope || []).filter(function (it) {
+        return !it.inSprint && classifyBucket(it.status, it.category) === 'open' && lowPriority(it.priority) === low;
+      });
+    };
+    var auto = {
+      finish: rows.filter(function (x) { return x.r.r.bucket !== 'done' && x.r.r.bucket !== 'blocked'; })
+        .map(function (x) { return { title: x.r.st.title, text: x.r.next ? 'След. шаг: ' + x.r.next : x.r.st.status, keys: [x.r.st.key], group: streamName(x.s) }; }),
+      escalate: rows.filter(function (x) { return x.r.r.bucket === 'blocked'; })
+        .map(function (x) { return { title: x.r.st.title, text: x.r.blocker || ('«' + x.r.st.status + '» с ' + ddmm(x.r.st.statusChanged)), keys: [x.r.st.key], group: streamName(x.s) }; }),
+      take: [], maybe: []
+    };
+    streams.forEach(function (s) {
+      if (!s.epic.epicKey) return;
+      [['take', false], ['maybe', true]].forEach(function (c) {
+        var list = nextOf(s, c[1]);
+        list.slice(0, PLAN_TAKE).forEach(function (it, i) {
+          auto[c[0]].push({ title: it.title, text: '', keys: [it.key], group: streamName(s),
+                            rest: i === 0 ? Math.max(0, list.length - PLAN_TAKE) : 0 });
+        });
+      });
+    });
+    var out = {};
+    PLAN_COLS.forEach(function (c) {
+      out[c.id] = (ai[c.id] && ai[c.id].length ? ai[c.id].map(function (x) {
+        return Object.assign({ group: groupOf[(x.keys || [])[0]] || 'Прочее' }, x);
+      }) : auto[c.id]);
+    });
+    return out;
+  }
+
+  function planColumn(t, c, list) {
+    var groups = [], by = {};
+    list.forEach(function (x) {
+      if (!by[x.group]) { by[x.group] = []; groups.push(x.group); }
+      by[x.group].push(x);
+    });
+    var lines = 0, html = '', hidden = [], idx = 0;
+    groups.forEach(function (g) {
+      var items = by[g], rest = items.reduce(function (a, x) { return a + (x.rest || 0); }, 0);
+      if (lines + 2 > PLAN_LINES) { hidden = hidden.concat(items); return; }
+      html += '<div class="pg-head" title="' + esc(g) + '"><span>' + esc(clip(g, 52)) + '</span><b>' + items.length + (rest ? ' +' + rest : '') + '</b></div>';
+      lines++;
+      items.forEach(function (x) {
+        var i = idx++;
+        if (lines >= PLAN_LINES) { hidden.push(x); return; }
+        var id = 'plan:' + t.slug + ':' + c.id + ':' + i, keys = x.keys || [];
+        html += '<div class="prow"' + ctxAttr({ kind: 'general', title: c.label + ': ' + x.title }) +
+          ' title="' + esc(keys.join(', ') + (keys.length ? ' · ' : '') + x.title + (x.text ? '\n' + x.text : '')) + '">' +
+          '<span class="pr-title">' + ed(id + ':t', x.title) + '</span>' +
+          (c.id === 'escalate' && x.text ? '<span class="pr-text">' + ed(id + ':x', x.text) + '</span>' : '') + '</div>';
+        lines += c.id === 'escalate' && x.text ? 2 : 1;
+      });
+    });
+    if (hidden.length) {
+      html += '<div class="pr-more" title="' + esc(hidden.map(function (x) { return ((x.keys || [])[0] || '') + ' ' + x.title; }).join('\n')) +
+        '">ещё ' + hidden.length + ' — в подсказке</div>';
+    }
+    return '<div class="pcol pc-' + c.id + '"><div class="pc-head" data-plancol="' + c.id + '" data-team="' + esc(t.slug) + '" title="Открыть списком: ключ, суть, приоритет, статус, пояснение">' +
+      '<b>' + c.label + '</b><span>' + list.length + ' ›</span></div>' +
+      '<div class="pc-hint">' + c.hint + '</div>' + (list.length ? html : '<div class="pc-empty">Нет</div>') + '</div>';
+  }
+
+  // колонка «Планов» списком: по направлениям, у каждой задачи — ключ (JIRA / JIRA-native),
+  // суть, приоритет, статус, исполнитель и пояснение
+  function openPlans(t, colId) { showPanel(function () { renderPlans(t, colId); }); }
+  function renderPlans(t, colId) {
+    if (team.slug !== t.slug) switchTeam(t.slug);
+    var streams = teamStreams(t), cards = planCards(t, streams);
+    var info = {};
+    streams.forEach(function (s) {
+      s.rows.forEach(function (r) { info[r.st.key] = { status: r.st.status, priority: r.st.priority, assignee: r.st.assignee }; });
+      (s.epic.scope || []).forEach(function (it) { info[it.key] = info[it.key] || { status: it.status, priority: it.priority, assignee: it.assignee }; });
+    });
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Планы на следующий спринт · ' + t.team;
+    scopeBtn.hidden = true; scopeEpic = null; storiesLabel.textContent = '';
+    stackTitle.textContent = PLAN_COLS.find(function (c) { return c.id === colId; }).label;
+    sideTabs(PLAN_COLS.map(function (c) { return { id: c.id, label: c.label, n: cards[c.id].length }; }), colId, function (id, body) {
+      var list = cards[id], groups = [], by = {};
+      stackTitle.textContent = PLAN_COLS.find(function (c) { return c.id === id; }).label;
+      list.forEach(function (x) { if (!by[x.group]) { by[x.group] = []; groups.push(x.group); } by[x.group].push(x); });
+      body.innerHTML = list.length ? groups.map(function (g) {
+        return '<div class="pane-label">' + esc(g) + ' · ' + by[g].length + '</div><table class="ctab plan-tab"><tbody>' + by[g].map(function (x) {
+          var k = (x.keys || [])[0], i = info[k] || {};
+          return '<tr><td class="pk">' + (k ? keyLink(k) : '') + '</td><td><div class="pt">' + esc(x.title) + '</div>' +
+            (x.text ? '<div class="px">' + esc(x.text) + '</div>' : '') + '</td><td class="pm">' +
+            [i.priority, i.status, i.assignee ? shortName(i.assignee) : ''].filter(Boolean).map(esc).join('<br>') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+      }).join('') : '<div class="sidebar-empty">Пусто.</div>';
+    });
+    openPanel();
+  }
+
+  function plansSlide(t, streams) {
+    var cards = planCards(t, streams);
+    return slide('plans', '<h1 class="slide-title">' + ed('plans:' + t.slug, 'Планы на следующий спринт') + '</h1>' +
+      '<div class="plans-team">' + esc(t.team) + ' · по направлениям; ключ задачи и пояснение — по наведению</div><div class="plans">' +
+      PLAN_COLS.map(function (c) { return planColumn(t, c, cards[c.id]); }).join('') + '</div>',
+      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Планы на следующий спринт · ' + t.team }));
   }
 
   function risksSlide() {
@@ -1160,6 +1564,7 @@
     OUT_TIPS = [];
     MEMBER_REFS = [];
     deckRefs = {};
+    OFF_REFS = [];
     var all = TEAMS.map(function (t) { return { t: t, streams: teamStreams(t) }; });
     var html = titleSlide(all);
     all.forEach(function (x) {
@@ -1173,7 +1578,8 @@
       html += cycleSlide(x.t);
       html += plansSlide(x.t, x.streams);
     });
-    html += changesSlide() + demoSlide() + totalsSlide(all) + risksSlide();
+    // итоги — на слайде команды (блокеры и «не успели»); изменения и демо — в отчёте PO
+    html += risksSlide();
     deckSlides.innerHTML = html;
     applyEdits();
     setEditing(deckEditing);
@@ -1266,16 +1672,157 @@
 
   // KR: тот же «Весь эпик», что в отчёте PO — когда будет выполнен, на чём прогноз,
   // что сделано и что осталось
-  function openKr(ref) {
+  // Клик по строке-направлению: «Истории спринта» — каждая со статусом, «что сделано»
+  // и след. шагом (клик — активность истории); «Весь эпик» — сгорание и объём эпика.
+  // ---------- навигация сайдбаров: «← Назад» к прошлому экрану ----------
+  var PANEL_HIST = [], PANEL_CUR = null;
+  var panelBack = document.createElement('button');
+  panelBack.type = 'button'; panelBack.className = 'panel-back'; panelBack.textContent = '← Назад'; panelBack.hidden = true;
+  document.querySelector('#panelStack .stack-head').insertBefore(panelBack, document.getElementById('stackKey'));
+  // id — экран того же вида (вкладки участника) заменяет текущий, а не копится в истории
+  function showPanel(render, id) {
+    var open = panelStack.classList.contains('open');
+    if (PANEL_CUR && open && !(id && PANEL_CUR.id === id)) PANEL_HIST.push(PANEL_CUR);
+    if (!open) PANEL_HIST = [];
+    PANEL_CUR = { render: render, id: id || null };
+    kmenu.hidden = true;
+    render();
+    panelBack.hidden = !PANEL_HIST.length;
+  }
+  panelBack.addEventListener('click', function () {
+    if (!PANEL_HIST.length) return;
+    PANEL_CUR = PANEL_HIST.pop();
+    PANEL_CUR.render();
+    panelBack.hidden = !PANEL_HIST.length;
+  });
+  var closePanelsBase = closePanels;
+  closePanels = function () { PANEL_HIST = []; PANEL_CUR = null; panelBack.hidden = true; closePanelsBase(); };
+  var openMemberBase = openMember;
+  openMember = function (ref, idx) { showPanel(function () { openMemberBase(ref, idx); }, 'member:' + ref.row.name); };
+
+  // ---------- ключ задачи: JIRA в браузере или JIRA-native (виджет) ----------
+  function nativeUrl(key) {
+    var tpl = biz(team).jiraNative || TEAMS.map(function (t) { return biz(t).jiraNative; }).filter(Boolean)[0];
+    return tpl ? tpl.replace('{key}', encodeURIComponent(key)) : '';
+  }
+  function keyLink(key) { return '<span class="klink" data-klink="' + esc(key) + '" tabindex="0">' + esc(key) + '</span>'; }
+  var kmenu = document.createElement('div');
+  kmenu.className = 'kmenu'; kmenu.hidden = true;
+  document.body.appendChild(kmenu);
+  var kmenuTimer = null;
+  function showKmenu(el) {
+    var key = el.dataset.klink, nat = nativeUrl(key), r = el.getBoundingClientRect();
+    kmenu.innerHTML = '<div class="km-key">' + esc(key) + '</div><a href="' + esc(jiraUrl(key)) + '" target="_blank" rel="noopener">JIRA — в браузере</a>' +
+      (nat ? '<a href="' + esc(nat) + '" target="_blank" rel="noopener">JIRA-native — виджет</a>'
+           : '<span class="km-off" title="Адрес виджета не задан: jiraNative в бизнес-блоке">JIRA-native — не настроен</span>');
+    kmenu.style.left = Math.max(4, Math.min(innerWidth - 230, r.left)) + 'px';
+    kmenu.style.top = Math.min(innerHeight - 90, r.bottom + 4) + 'px';
+    kmenu.hidden = false;
+  }
+  document.addEventListener('mouseover', function (e) {
+    var el = e.target.closest && e.target.closest('[data-klink]');
+    clearTimeout(kmenuTimer);
+    if (el) { showKmenu(el); return; }
+    if (!(e.target.closest && e.target.closest('.kmenu'))) kmenuTimer = setTimeout(function () { kmenu.hidden = true; }, 400);
+  });
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-klink]');
+    if (el) { e.preventDefault(); e.stopPropagation(); showKmenu(el); return; }
+    if (!(e.target.closest && e.target.closest('.kmenu'))) kmenu.hidden = true;
+  }, true);
+
+  // ---------- блокаторы направления: что блокирует, исполнитель, кто эскалирует ----------
+  function openBlockers(ref) { showPanel(function () { renderBlockers(ref); }); }
+  function renderBlockers(ref) {
+    var t = ref.team, s = ref.stream;
+    if (team.slug !== t.slug) switchTeam(t.slug);
+    setStackHead(s.epic);
+    stackKey.textContent = 'Блокаторы · ' + streamName(s);
+    stackTitle.textContent = s.blocked.length + ' ' + plural(s.blocked.length, 'задача заблокирована', 'задачи заблокированы', 'задач заблокировано');
+    scopeBtn.hidden = true; scopeEpic = null; storiesLabel.textContent = '';
+    var owner = biz(t).escalation || 'PO команды';
+    storiesBody.innerHTML = s.blocked.map(function (r, i) {
+      var ai = (biz(t).rows || {})[r.st.key] || {}, age = ageAtCollect(t, r.st.statusChanged);
+      var com = storyEvents(r.st).filter(function (e) { return e.kind === 'comment' && e.body; }).slice(-2);
+      return '<div class="bl-card now"><div class="es-top"><span class="es-title">' + esc(r.st.title) + '</span>' +
+        '<span class="es-pct">' + (age !== null ? age + ' дн.' : '') + '</span></div>' +
+        '<div class="es-meta">' + keyLink(r.st.key) + ' · «' + esc(r.st.status) + '» с ' + ddmm(r.st.statusChanged) + '</div>' +
+        '<div class="bl-why"><b>Блокер:</b> ' + esc(r.blocker || 'причина не записана — см. комментарии') + '</div>' +
+        '<div class="bl-who"><span><b>Исполнитель:</b> ' + esc(r.st.assignee ? shortName(r.st.assignee) : 'не назначен') + '</span>' +
+          '<span><b>Эскалирует:</b> ' + esc(ai.escalate || owner) + '</span></div>' +
+        (com.length ? '<div class="bl-com">' + com.map(function (e) { return '<div><span>' + ddmm(e.at) + (e.by ? ' · ' + esc(shortName(e.by)) : '') + '</span> ' + esc(clip(e.body, 240)) + '</div>'; }).join('') + '</div>' : '') +
+        '<button type="button" class="bl-open" data-i="' + i + '">Активность ›</button></div>';
+    }).join('');
+    storiesBody.querySelectorAll('.bl-open').forEach(function (b) {
+      b.addEventListener('click', function () { openStory({ team: t, epic: s.epic, story: s.blocked[+b.dataset.i].st }); });
+    });
+    openPanel();
+  }
+
+  // ---------- направление: задачи спринта по статусам, активность — на том же экране ----------
+  var ES_ORDER = ['blocked', 'progress', 'review', 'testing', 'open', 'done'];
+  function openEpic(ref) {
+    var state = { filter: 'all', open: null };
+    showPanel(function () { renderEpic(ref, state); });
+  }
+  function renderEpic(ref, state) {
     if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
-    var epic = ref.epic;
+    var epic = ref.epic, s = ref.stream;
     setStackHead(epic);
-    scopeEpic = epic;
+    if (epic.epicKey) stackKey.innerHTML = keyLink(epic.epicKey);
+    scopeEpic = epic.epicKey ? epic : null;
     scopeBtn.hidden = true;
-    var kr = (biz(ref.team).streams || {})[epic.epicKey] || {};
-    storiesLabel.textContent = kr.kr ? kr.kr : 'Весь эпик';
-    if (epic.scope) renderScope(epic);
-    else storiesBody.innerHTML = '<div class="sidebar-empty">Объёма эпика в данных нет (params.epic_scope).</div>';
+    storiesLabel.textContent = streamName(s);
+    var tabs = [{ id: 'sprint', label: 'Задачи спринта', n: s.rows.length }];
+    if (epic.epicKey) tabs.push({ id: 'scope', label: 'Весь эпик', n: (epic.scope || []).length });
+    sideTabs(tabs, state.tab || 'sprint', function (id, body) {
+      state.tab = id;
+      if (id === 'scope') {
+        if (!epic.scope) { body.innerHTML = '<div class="sidebar-empty">Объёма эпика в данных нет (params.epic_scope).</div>'; return; }
+        var keep = storiesBody;            // renderScope рисует в storiesBody — подменяем на вкладку
+        storiesBody = body;
+        try { renderScope(epic); } finally { storiesBody = keep; }
+        return;
+      }
+      var label = {};
+      BUCKETS.forEach(function (b) { label[b.id] = b.label; });
+      var count = {};
+      s.rows.forEach(function (r) { count[r.r.bucket] = (count[r.r.bucket] || 0) + 1; });
+      var chips = [{ id: 'all', label: 'Все', n: s.rows.length }].concat(ES_ORDER.filter(function (b) { return count[b]; })
+        .map(function (b) { return { id: b, label: label[b] || b, n: count[b] }; }));
+      var rows = s.rows.map(function (r, i) { return { r: r, i: i }; })
+        .filter(function (x) { return state.filter === 'all' || x.r.r.bucket === state.filter; })
+        .sort(function (a, b) { return ES_ORDER.indexOf(a.r.r.bucket) - ES_ORDER.indexOf(b.r.r.bucket); });
+      if (state.open === null) {
+        var first = rows.find(function (x) { return x.r.r.bucket !== 'done'; }) || rows[0];
+        state.open = first ? first.r.st.key : '';
+      }
+      body.innerHTML = '<div class="es-filter">' + chips.map(function (c) {
+          return '<button type="button" class="es-chip b-' + c.id + (state.filter === c.id ? ' on' : '') + '" data-f="' + c.id + '">' + esc(c.label) + ' · ' + c.n + '</button>';
+        }).join('') + '</div>' +
+        rows.map(function (x) {
+          var r = x.r, isOpen = state.open === r.st.key;
+          return '<div class="es-row ' + r.r.cls + (isOpen ? ' open' : '') + '" data-i="' + x.i + '">' +
+            '<div class="es-head" title="' + (isOpen ? 'Свернуть' : 'Активность — здесь же') + '"><div class="es-top"><span class="es-title">' + esc(r.st.title) + '</span><span class="es-pct">' + r.r.flag + r.r.pct + '%</span></div>' +
+            '<div class="es-meta">' + keyLink(r.st.key) + ' · ' + esc(r.st.status) + (r.st.assignee ? ' · ' + esc(shortName(r.st.assignee)) : '') + '</div>' +
+            '<div class="es-text">' + esc(r.done) + '</div>' +
+            (r.blocker ? '<div class="es-text es-blk"><b>Блокер:</b> ' + esc(r.blocker) + '</div>' : '') +
+            (r.next ? '<div class="es-text"><b>След. шаг:</b> ' + esc(r.next) + '</div>' : '') + '</div>' +
+            (isOpen ? '<div class="es-detail">' + withTeam(ref.team, function () { var ev = storyEvents(r.st); return storyCalendar(r.st, ev) + storyFeedHtml(r.st, ev); }) + '</div>' : '') + '</div>';
+        }).join('') + (rows.length ? '' : '<div class="sidebar-empty">Нет задач в этом статусе.</div>');
+      body.querySelectorAll('.es-chip').forEach(function (c) {
+        c.addEventListener('click', function () { state.filter = c.dataset.f; state.open = null; renderEpic(ref, state); });
+      });
+      body.querySelectorAll('.es-head').forEach(function (h) {
+        h.addEventListener('click', function () {
+          var k = s.rows[+h.parentNode.dataset.i].st.key;
+          state.open = state.open === k ? '' : k;
+          renderEpic(ref, state);
+          var el = storiesBody.querySelector('.es-row.open');
+          if (el) el.scrollIntoView({ block: 'nearest' });
+        });
+      });
+    });
     openPanel();
   }
 
@@ -1375,13 +1922,13 @@
     return html + '</ol>';
   }
 
-  function openStory(ref) {
+  function openStory(ref) { showPanel(function () { renderStory(ref); }); }
+  function renderStory(ref) {
     if (team.slug !== ref.team.slug) switchTeam(ref.team.slug);
     var st = ref.story;
     var events = storyEvents(st);
     stackTitle.parentNode.setAttribute('data-ctx', ctxId(itemTarget('story', st, ref.epic)));
-    stackKey.innerHTML = '<a class="key-link" href="' + jiraUrl(st.key) + '" target="_blank" rel="noopener" title="Открыть в JIRA">' +
-      esc(st.key) + '</a>';
+    stackKey.innerHTML = keyLink(st.key);
     stackTitle.textContent = st.title;
     scopeBtn.hidden = true;
     scopeEpic = null;
@@ -1397,20 +1944,23 @@
 
   deckSlides.addEventListener('click', function (e) {
     if (deckEditing || e.target.closest('a')) return;
-    var mx = e.target.closest('[data-mx]');
-    if (mx) {
-      var mt = TEAMS.find(function (x) { return x.slug === mx.dataset.mx; }), ms = MX_STATE[mt.slug];
-      if (mx.dataset.mxScale) ms.scale = mx.dataset.mxScale;
-      if (mx.dataset.mxSort) ms.sort = mx.dataset.mxSort;
-      mx.closest('.mx').innerHTML = memberMatrixHtml(mt);
-      return;
-    }
+    var byTeam = function (slug) { return TEAMS.find(function (x) { return x.slug === slug; }); };
+    var blk = e.target.closest('[data-blk]');
+    if (blk) { e.stopPropagation(); openBlockers(deckRefs[blk.dataset.blk]); return; }
+    var off = e.target.closest('[data-off]');
+    if (off && OFF_REFS[+off.dataset.off] && OFF_REFS[+off.dataset.off].items.length) { openOffboard(OFF_REFS[+off.dataset.off]); return; }
+    var burn = e.target.closest('[data-burn]');
+    if (burn) { openBurn(byTeam(burn.dataset.burn)); return; }
+    var tis = e.target.closest('[data-tis]');
+    if (tis) { openBlocked(byTeam(tis.closest('[data-team]').dataset.team)); return; }
+    var pcol = e.target.closest('[data-plancol]');
+    if (pcol) { openPlans(byTeam(pcol.dataset.team), pcol.dataset.plancol); return; }
     var ctl = e.target.closest('[data-ctl]');
     if (ctl) { openControl(TEAMS.find(function (x) { return x.slug === ctl.dataset.ctl; })); return; }
     var el = e.target.closest('[data-ref]');
     var ref = el && deckRefs[el.dataset.ref];
     if (!ref) return;
-    if (ref.story) openStory(ref); else if (ref.epic && ref.epic.epicKey) openKr(ref);
+    if (ref.story) openStory(ref); else if (ref.stream) openEpic(ref);
   });
 
   function openDeck() {
@@ -1456,12 +2006,34 @@
     }
     stageIdx = i;
     if (deckTip) deckTip.hidden = true;
+    if (typeof kmenu !== 'undefined') kmenu.hidden = true;
     list.forEach(function (s, j) { s.classList.toggle('cur', j === i); });
+    list[i].scrollTop = 0;
     document.querySelectorAll('#deckTocList a').forEach(function (a, j) { a.classList.toggle('cur', j === i); });
     document.getElementById('deckCount').textContent = (i + 1) + ' / ' + list.length;
     document.getElementById('deckPrev').disabled = i === 0;
     document.getElementById('deckNext').disabled = i === list.length - 1;
+    updateScrollHint();
   }
+
+  // Слайд выше 720 (много строк, правка текста) прокручивается внутри: колесом, ↓/пробелом
+  // (сначала докрутить, потом листать) или кликом по «↓ ещё ниже» внизу сцены.
+  function curSlideEl() { return isStage() ? deckSlides.querySelectorAll(':scope > .fslide')[stageIdx] || null : null; }
+  function scrollInside(dir) {
+    var el = curSlideEl();
+    if (!el) return false;
+    var max = el.scrollHeight - el.clientHeight;
+    if (max <= 4) return false;
+    if ((dir > 0 && el.scrollTop >= max - 4) || (dir < 0 && el.scrollTop <= 4)) return false;
+    el.scrollBy({ top: dir * el.clientHeight * 0.8, behavior: 'smooth' });
+    return true;
+  }
+  function updateScrollHint() {
+    var el = curSlideEl(), hint = document.getElementById('deckMore');
+    hint.hidden = !(el && el.scrollHeight - el.clientHeight - el.scrollTop > 4);
+  }
+  deckSlides.addEventListener('scroll', updateScrollHint, true);
+  document.getElementById('deckMore').addEventListener('click', function () { scrollInside(1); });
 
   function setStage() {
     var on = STAGE_MQ.matches && !document.body.classList.contains('printing');
@@ -1529,8 +2101,12 @@
       return;
     }
     if (typing || panelStack.classList.contains('open')) return;
-    if (e.key === 'ArrowRight' || e.key === 'PageDown' || (isStage() && (e.key === 'ArrowDown' || e.key === ' '))) { e.preventDefault(); goSlide(currentSlide() + 1); }
-    else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || (isStage() && e.key === 'ArrowUp')) { e.preventDefault(); goSlide(currentSlide() - 1); }
+    // ↓, пробел, PageDown на высоком слайде сначала докручивают его, потом листают; ←/→ — всегда листают
+    var down = e.key === 'PageDown' || (isStage() && (e.key === 'ArrowDown' || e.key === ' '));
+    var up = e.key === 'PageUp' || (isStage() && e.key === 'ArrowUp');
+    if ((down && scrollInside(1)) || (up && scrollInside(-1))) { e.preventDefault(); return; }
+    if (e.key === 'ArrowRight' || down) { e.preventDefault(); goSlide(currentSlide() + 1); }
+    else if (e.key === 'ArrowLeft' || up) { e.preventDefault(); goSlide(currentSlide() - 1); }
     else if (isStage() && e.key === 'Home') { e.preventDefault(); goSlide(0); }
     else if (isStage() && e.key === 'End') { e.preventDefault(); goSlide(1e6); }
     else if (isStage() && (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А')) { e.preventDefault(); document.getElementById('deckFull').click(); }
@@ -1575,6 +2151,9 @@
   fillRefList();
   document.title = 'ФАКТ | ' + sprintLabel();
   openDeck();
+  // корзина и метки — сразу при открытии: без этого после перезагрузки на кнопке
+  // «Комментарии (0)», хотя всё сохранено (выглядело как сброс комментариев)
+  refreshComments();
 </script>
 
 </body>

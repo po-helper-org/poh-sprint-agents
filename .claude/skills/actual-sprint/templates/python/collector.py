@@ -14,7 +14,11 @@
 
 Все правила команды — в params, дефолты равны поведению до вынесения:
 
-    story_types      ["История", "История Enabler", "Story"]  что считать историей
+    story_types      ["История", "История Enabler", "Story"]  что считать историей (метрики «истории / задачи»)
+    report_types     story_types        какие задачи спринта показывать в эпиках отчёта; "*" — все,
+                                        кроме подзадач и эпиков (задачи, ошибки, истории)
+    offboard         true               задачи участников вне доски за период спринта (другие проекты)
+    offboard_max     300                сколько таких задач забирать максимум
     done_statuses    doneExact из status_rules.json            что считать закрытым по имени
     status_buckets   {}                 «у нас "Ожидает релиза" на самом деле ревью»
     epic_link_field  "auto"             или customfield_XXXXX
@@ -49,7 +53,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.9.0'
+VERSION = '1.10.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -342,6 +346,9 @@ class Collector:
         p = self.params
         # TEAM RULE: что считать историей внутри эпика
         self.story_types = tuple(p.get('story_types') or ('История', 'История Enabler', 'Story'))
+        # TEAM RULE: какие задачи спринта видны в эпиках отчёта; «*» — все, кроме подзадач и эпиков
+        rt = p.get('report_types')
+        self.report_types = '*' if rt in ('*', ['*']) else tuple(rt or self.story_types)
         self.sprints_back = int(p.get('sprints_back', 3))
         # окно ленты: по умолчанию — период текущего спринта (с его начала), а не N дней
         self.activity_days = int(p['activity_days']) if p.get('activity_days') else None
@@ -454,6 +461,9 @@ class Collector:
         control = self.build_control(last, per_sprint)
         logs = self.build_logs(last, per_sprint, with_comments, active)
         output = self.build_output(last, per_sprint, active, with_comments)
+        offboard = self.build_offboard(active, issues)
+        if offboard is not None:
+            output['offboard'] = offboard
 
         return {
             'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
@@ -497,10 +507,16 @@ class Collector:
                     ev += events(sub['key'])
                 st['events'] = sorted(ev, key=lambda x: x['at'])
 
+    def in_report(self, issue):
+        t = issue['fields']['issuetype']
+        if self.report_types == '*':
+            return not t.get('subtask') and (t.get('name') or '').lower() not in ('эпик', 'epic')
+        return t.get('name') in self.report_types
+
     def build_epics(self, issues, epic_field):
-        stories = [i for i in issues if i['fields']['issuetype']['name'] in self.story_types]
+        stories = [i for i in issues if self.in_report(i)]
         if issues and not stories:
-            self.warn(f'ни одна задача спринта не попала в story_types {list(self.story_types)} — '
+            self.warn(f'ни одна задача спринта не попала в report_types {self.report_types} — '
                       f'таблица эпиков будет пустой')
         groups, order, epic_cache, epic_prio, epic_due = {}, [], {}, {}, {}
 
@@ -726,11 +742,21 @@ class Collector:
             current = s['id'] == active['id']
             end = self.now if current else parse(s.get('completeDate') or s.get('endDate') or self.now.isoformat())
             begin = parse(s['startDate']) if s.get('startDate') else None
-            members, items = {}, {}
+            members, items, subs = {}, {}, {}
             spent = {}            # бакет → [дней по задачам]: среднее время в статусе за спринт
             for i in per_sprint[s['id']]:
                 f = i['fields']
                 if f['issuetype'].get('subtask'):
+                    # подзадачи участника — отдельным списком: план/факт и lead time по ним
+                    st = value_at(i, 'status', end) if not current else None
+                    name, sid = st if st and st[0] else (f['status']['name'], f['status']['id'])
+                    who = value_at(i, 'assignee', end) if not current else None
+                    who = (who[0] if who else (f.get('assignee') or {}).get('displayName')) or 'Не назначен'
+                    lead, _, _ = lead_cycle(i, self.cats, self.rules)
+                    subs.setdefault(who, []).append({
+                        'key': i['key'], 'title': f.get('summary') or '', 'status': name,
+                        'bucket': self.bucket(name, self.cats.get(str(sid)) or ''),
+                        'lead': round(lead, 1) if lead is not None else None})
                     continue
                 st = value_at(i, 'status', end) if not current else None
                 name, sid = st if st and st[0] else (f['status']['name'], f['status']['id'])
@@ -744,14 +770,16 @@ class Collector:
                 row[bucket][0] += 1
                 row[bucket][1] += sp
                 # задачи участника: что пошло в зачёт и что нет, с движением статусов и комментариями
+                lead, _, _ = lead_cycle(i, self.cats, self.rules)
                 items.setdefault(who, []).append({
                     'key': i['key'], 'title': f.get('summary') or '', 'status': name, 'bucket': bucket,
-                    'sp': sp, 'history': status_history(i, end, begin), 'comments': [
+                    'sp': sp, 'type': f['issuetype'].get('name') or '',
+                    'lead': round(lead, 1) if lead is not None else None,
+                    'history': status_history(i, end, begin), 'comments': [
                         {'at': c['created'][:16], 'by': (c.get('author') or {}).get('displayName'),
                          'body': (c.get('body') or '')[:400]}
                         for c in comments.get(i['key'], [])
                         if parse(c['created']) <= end and (not begin or parse(c['created']) >= begin)][-5:]})
-                lead, _, _ = lead_cycle(i, self.cats, self.rules)
                 if lead is not None:
                     leads.setdefault(who, {})[i['key']] = lead
             # время в статусах — по всем задачам спринта, включая подзадачи, в границах спринта
@@ -767,9 +795,10 @@ class Collector:
                         'start': (s.get('startDate') or '')[:10] or None, 'end': (s.get('endDate') or '')[:10] or None,
                         'timeInStatus': {bk: round(sum(v) / len(v), 1) for bk, v in sorted(spent.items())
                                          if bk in ('blocked', 'progress', 'review', 'testing')},
-                        'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in row.items()},
-                                     'items': items.get(who, [])}
-                                    for who, row in sorted(members.items())]})
+                        'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in
+                                                            (members.get(who) or {b: [0, 0] for b in self.rules.empty_counts()}).items()},
+                                     'items': items.get(who, []), 'subtasks': subs.get(who, [])}
+                                    for who in sorted(set(members) | set(subs))]})
         lead_by = {who: stats(list(v.values())) for who, v in leads.items()}
         return {'unit': 'SP' if self.sp_id else 'задач', 'field': self.sp_id, 'sprints': out,
                 'lead': {who: {'median': st['median'], 'count': st['count']} for who, st in lead_by.items() if st}}
@@ -790,24 +819,99 @@ class Collector:
                     if was and not now_in:
                         left = parse(h['created'])
             _, _, done_at = lead_cycle(i, self.cats, self.rules)
-            members.append({'entered': entered or start, 'left': left, 'doneAt': done_at})
+            sub = bool(((i.get('fields') or {}).get('issuetype') or {}).get('subtask'))
+            members.append({'entered': entered or start, 'left': left, 'doneAt': done_at, 'subtask': sub,
+                            'key': i['key'], 'title': (i.get('fields') or {}).get('summary') or ''})
 
+        # scope/closed — все задачи спринта; storyScope/storyClosed — без подзадач
+        # (истории, задачи, баги): бизнес-отчёт рисует сгорание в двух вариантах
         days, cur = [], start
         today = self.now.date().isoformat()
         while cur <= end:
-            scope = closed_n = 0
+            scope = closed_n = top_scope = top_closed = 0
             for m in members:
                 if m['entered'] > cur or (m['left'] and m['left'] <= cur):
                     continue
+                done = bool(m['doneAt'] and m['doneAt'] <= cur)
                 scope += 1
-                if m['doneAt'] and m['doneAt'] <= cur:
-                    closed_n += 1
+                closed_n += done
+                if not m['subtask']:
+                    top_scope += 1
+                    top_closed += done
             days.append({'date': cur.date().isoformat(), 'scope': scope,
                          'remaining': scope - closed_n, 'closed': closed_n,
+                         'storyScope': top_scope, 'storyClosed': top_closed,
                          'weekend': cur.weekday() >= 5, 'future': cur.date().isoformat() > today})
             cur += timedelta(days=1)
+        day = lambda d: d.date().isoformat() if d else None  # noqa: E731
+        # из чего сложилось сгорание: каждая задача — когда вошла в спринт, вышла и закрыта
+        items = [{'key': m['key'], 'title': m['title'], 'subtask': m['subtask'],
+                  'entered': day(max(m['entered'], start)), 'left': day(m['left']),
+                  'doneAt': day(m['doneAt']) if m['doneAt'] and m['doneAt'] <= end + timedelta(days=1) else None}
+                 for m in members]
         return {'sprintName': active['name'], 'start': start.date().isoformat(),
-                'end': end.date().isoformat(), 'days': days}
+                'end': end.date().isoformat(), 'days': days, 'items': items}
+
+    def build_offboard(self, active, issues):
+        """Задачи участников спринта вне доски за период спринта: всё, что человек двигал в
+        JIRA с начала спринта (TLND, MRS, бэклог…), минус задачи самого спринта — чем люди
+        занимались помимо отчётности команды. Логины — из исполнителей задач спринта (у JIRA
+        Server — name); projects — проекты задач спринта, для подписи. Не получилось — пусто
+        и предупреждение: отчёт без этой полосы, а не провал сбора."""
+        if not self.params.get('offboard', True):
+            return None
+        start = parse(active['startDate']) if active.get('startDate') else self.now - timedelta(days=14)
+        projects = sorted({i['key'].split('-')[0] for i in issues})
+        people = {}
+        for i in issues:
+            a = (i.get('fields') or {}).get('assignee') or {}
+            login = a.get('name') or a.get('key')
+            if login:
+                people[login] = a.get('displayName') or login
+        out = {'since': start.date().isoformat(), 'projects': projects, 'members': []}
+        if not people:
+            return out
+        # задачи спринта вычитаем по ключу, а не по проекту: у доски бывают чужие проекты
+        # (TLND в спринте GDS), а работа человека в тех же проектах вне спринта — и есть «вне доски»
+        sprint_keys = {i['key'] for i in issues}
+        jql = ('assignee in (' + ','.join('"' + u.replace('"', '') + '"' for u in sorted(people)) + ')'
+               f' AND updated >= "{start.date().isoformat()}" ORDER BY updated DESC')
+        limit, found, at = int(self.params.get('offboard_max', 300)), [], 0
+        try:
+            while at < limit:
+                page = self.jira.api('/rest/api/2/search', jql=jql, startAt=at, maxResults=min(100, limit - at),
+                                     fields='summary,status,issuetype,assignee,project,resolutiondate,updated,comment',
+                                     expand='changelog')
+                batch = page.get('issues') or []
+                found += batch
+                at += len(batch)
+                if not batch or at >= int(page.get('total') or 0):
+                    break
+        except JiraProblem as exc:
+            self.warn(f'задачи вне доски не собраны: {exc}')
+            return out
+        by = {}
+        for i in found:
+            typ = ((i['fields'].get('issuetype') or {}).get('name') or '').lower()
+            if i['key'] in sprint_keys or typ in ('эпик', 'epic'):   # эпики — контейнеры, не работа
+                continue
+            f = i['fields']
+            who = (f.get('assignee') or {}).get('displayName') or 'Не назначен'
+            name, sid = f['status']['name'], f['status'].get('id')
+            done = f.get('resolutiondate')
+            by.setdefault(who, []).append({
+                'key': i['key'], 'title': f.get('summary') or '', 'project': i['key'].split('-')[0],
+                'type': (f.get('issuetype') or {}).get('name') or '', 'status': name,
+                'bucket': self.bucket(name, self.cats.get(str(sid)) or (f['status'].get('statusCategory') or {}).get('name') or ''),
+                'doneAt': done[:10] if done and parse(done) >= start else None,
+                'updated': (f.get('updated') or '')[:16],
+                'history': status_history(i, self.now, start),
+                'comments': [{'at': c['created'][:16], 'by': (c.get('author') or {}).get('displayName'),
+                              'body': (c.get('body') or '')[:400]}
+                             for c in ((f.get('comment') or {}).get('comments') or [])
+                             if parse(c['created']) >= start][-5:]})
+        out['members'] = [{'name': who, 'items': items} for who, items in sorted(by.items())]
+        return out
 
     def build_control(self, sprints, per_sprint):
         """Точки — закрытые за окно (control_days или спринты отчёта), с Cycle Time. Зона риска —

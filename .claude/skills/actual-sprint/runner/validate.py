@@ -255,6 +255,12 @@ def _inv_burndown(team, collected):
         if d['remaining'] != d['scope'] - d['closed']:
             out.append(f'{d["date"]}: remaining {d["remaining"]} ≠ scope − closed '
                        f'({d["scope"]} − {d["closed"]})')
+        if ('storyScope' in d) != ('storyClosed' in d):
+            out.append(f'{d["date"]}: storyScope и storyClosed отдаются только парой')
+        elif 'storyScope' in d and not (d['storyClosed'] <= d['storyScope'] <= d['scope']
+                                        and d['storyClosed'] <= d['closed']):
+            out.append(f'{d["date"]}: без подзадач {d["storyClosed"]}/{d["storyScope"]} не укладывается '
+                       f'во все задачи {d["closed"]}/{d["scope"]}')
         if collected:
             want_future = d['date'] > collected.date().isoformat()
             if bool(d['future']) != want_future:
@@ -526,19 +532,20 @@ COVERAGE = (
     ('отчёт PO', 'плановая дата эпика', ('epics[].epicDue',), 'нет красной линии «план» и итога в днях'),
     ('презентация', 'титул и слайд команды', ('epics[].stories[]', 'burndown.days[]'), 'нет сводки'),
     ('презентация', 'слайд команды: SP за спринт', ('output.field', 'output.sprints[].members[]'), 'без SP'),
-    ('презентация', 'слайды целей: строки историй', ('epics[].stories[]', 'epics[].stories[].statusChanged'), 'нет строк / дат «с …»'),
-    ('презентация', 'клик по KR: сгорание эпика', ('epics[].scope[]', 'epics[].epicDue'), 'только задачи спринта'),
+    ('презентация', 'слайды целей: строки-направления', ('epics[].stories[]', 'epics[].stories[].statusChanged'), 'нет строк'),
+    ('презентация', 'клик по строке: задачи спринта и весь эпик', ('epics[].scope[]', 'epics[].epicDue'), 'только истории спринта'),
     ('презентация', 'клик по истории: календарь и хронология', ('epics[].stories[].events[]',), 'события только из ленты спринта'),
     ('презентация', 'операционный: производительность', ('output.sprints[].members[]',), 'velocity в задачах вместо SP'),
-    ('презентация', 'операционный: сгорание спринта', ('burndown.days[]',), 'график пуст'),
-    ('презентация', 'операционный: истории и подзадачи по участникам',
-     ('epics[].stories[].assignee', 'epics[].stories[].subtasks[].assignee', 'epics[].stories[].subtasks[].statusChanged'),
-     'всё у «Не назначен», застрявших нет'),
+    ('презентация', 'операционный: сгорание спринта', ('burndown.days[]', 'burndown.days[].storyScope'),
+     'без storyScope — «нужна версия 1.10.0»'),
+    ('презентация', 'операционный: участники',
+     ('output.sprints[].members[].subtasks[]', 'output.offboard', 'epics[].stories[].assignee'),
+     'без output — из задач спринта, без SP и LT'),
     ('презентация', '«Сроки»: cycle time по спринтам', ('control.stories.points[]', 'control.subtasks.points[]',
                                                        'output.sprints[].start'), 'нет точек / полос спринтов'),
     ('презентация', '«Сроки»: время в статусах', ('output.sprints[].timeInStatus',), '«нужна версия 1.8.0»'),
     ('презентация', '«Сроки»: разбор, зона риска', ('control.stories.risks[]', 'control.subtasks.risks[]'), 'зона риска пуста'),
-    ('презентация', '«Планы»: взять в работу', ('epics[].scope[]',), 'колонка из бизнес-блока или пуста'),
+    ('презентация', '«Планы на следующий спринт»', ('epics[].scope[]', 'epics[].scope[].priority'), 'колонка из бизнес-блока или пуста'),
     ('PDF-статус', 'KPI, burndown, «Внимание»', ('burndown.days[]', 'epics[].stories[].statusChanged',
                                                   'control.stories.risks[]'), 'без темпа и «без движения»'),
 )
