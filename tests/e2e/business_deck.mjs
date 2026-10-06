@@ -26,7 +26,7 @@ await p.goto(pathToFileURL(page).href);
 await p.waitForTimeout(400);
 const TEAMS_N = (info) => info.teams.split('|').length;
 
-// колода «ФАКТ | спринт»: от целей — OBJ → KR (эпик) → истории спринта
+// колода «ФАКТ | спринт»: верхнеуровневая — OBJ → строка = эпик (KR) со сводкой историй
 const deckInfo = await p.evaluate(() => ({
   open: !document.getElementById('deck').hidden, hash: location.hash,
   // на сцене виден один слайд: высоту содержимого меряем, показывая каждый по очереди
@@ -41,7 +41,8 @@ const deckInfo = await p.evaluate(() => ({
   heroes: [...document.querySelectorAll('#deckSlides .hero-slide h1')].map(h => h.textContent).join('|'),
   teams: TEAMS.map(t => t.team).join('|'),
   rows: document.querySelectorAll('#deckSlides tr.row').length,
-  stories: TEAMS.reduce((n, t) => n + t.epics.reduce((m, e) => m + e.stories.length, 0), 0),
+  storyRows: document.querySelectorAll('#deckSlides tr.grp').length,
+  epics: TEAMS.reduce((n, t) => n + t.epics.filter(e => e.stories.length).length, 0),
   legend: !!document.querySelector('#deckSlides .legend'),
 }));
 check(deckInfo.open, 'страница открывается сразу колодой');
@@ -51,8 +52,10 @@ check(deckInfo.heroes === deckInfo.teams, 'у каждой команды — р
 check(deckInfo.slides.some(s => s.title.startsWith('OBJ 1: Партнёрские заказы')), 'слайд — цель: «OBJ 1: название»');
 check(deckInfo.slides.some(s => s.title.startsWith('Без привязки к OKR')), 'эпики без цели — «Без привязки к OKR»');
 check(!deckInfo.slides.some(s => s.title.startsWith('Стримы')) && !deckInfo.legend, 'нет «Стримы: команда» и пояснения цветов');
-check(deckInfo.rows === deckInfo.stories, 'в таблицах — все истории спринта, по строке на историю');
-check(deckInfo.slides.every(s => s.h === 720), 'каждый слайд — 1280×720, содержимое не вылезает');
+check(deckInfo.rows === deckInfo.epics && deckInfo.storyRows === 0, 'строка — эпик (и «Вне эпиков»), историй построчно на слайдах нет');
+check(!deckInfo.slides.some(s => /^(Изменения в процессе спринта|Демо|Итоги спринта)/.test(s.title)), 'слайдов «Изменения», «Демо», «Итоги» нет');
+check(deckInfo.slides.filter(s => !/^(OBJ|Без привязки|Направления)/.test(s.title)).every(s => s.h === 720),
+      'титул, команда, операционный, «Сроки», «Планы» — ровно 1280×720');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
 const kinds = await p.evaluate(() => [...document.querySelectorAll('#deckSlides > .fslide')].map(s => s.className));
 const isOps = c => c.includes(' ops') && !c.includes(' cycle');
@@ -66,13 +69,19 @@ const heads = await p.evaluate(() => ({
   hero: document.querySelector('.hero-slide h1').textContent,
   kpis: document.querySelector('.hero-slide').querySelectorAll('.h-kpis > div').length,
   goals: document.querySelector('.hero-slide').querySelectorAll('.h-goal').length,
+  panels: [...document.querySelector('.hero-slide').querySelectorAll('.h-panel h3')].map(h => h.textContent),
+  blkItems: document.querySelector('.hero-slide').querySelectorAll('.h-blk li:not(.h-none):not(.h-more)').length,
+  blocked: TEAMS[0].epics.reduce((n, e) => n + e.stories.filter(st => classifyBucket(st.status, st.category) === 'blocked').length, 0),
   centered: getComputedStyle(document.querySelector('.hero-slide')).textAlign,
   note: document.body.textContent.includes('ИИ-агент PO по данным'),
-  krTail: [...document.querySelectorAll('#deckSlides tr.grp td')].some(td => /Sprint Goal|· эпик «/.test(td.textContent)) }));
+  krTail: [...document.querySelectorAll('#deckSlides tr.erow td.task')].some(td => /Sprint Goal|· эпик «/.test(td.textContent)) }));
 check(heads.cards === TEAMS_N(deckInfo) && /^\d+%$/.test(heads.big), 'титул: по карточке на команду с долей закрытых историй');
-check(heads.hero === deckInfo.teams.split('|')[0] && heads.kpis === 3 && heads.goals >= 1 && heads.centered === 'center',
-      'слайд команды по центру: имя, три числа, цели карточками');
-check(!heads.note && !heads.krTail, 'нет подписи про агента и «эпик · Sprint Goal» в шапках KR');
+check(heads.hero === deckInfo.teams.split('|')[0] && heads.kpis === 4 && heads.goals >= 1 && heads.centered === 'center',
+      'слайд команды: имя, четыре числа (в т. ч. заблокировано и не закрыто), цели плашками');
+check(heads.panels.length === 2 && heads.panels[0].startsWith('🛑 Заблокированы · ' + heads.blocked) && /^⏳ (Не успели по объёму|Пока не закрыто) · \d+/.test(heads.panels[1]),
+      'две панели: «Заблокированы» отдельно от «Не успели по объёму»');
+check(heads.blkItems === Math.min(heads.blocked, 6), 'в панели блокеров — заблокированные истории команды');
+check(!heads.note && !heads.krTail, 'нет подписи про агента и «эпик · Sprint Goal» в строках');
 
 // сцена: один слайд на всю площадь, навигация кнопками; «Слайды» — выезжающий сайдбар
 const stage = await p.evaluate(() => {
@@ -127,9 +136,13 @@ const ops = await p.evaluate(() => {
            legend: s.querySelector('.ops-legend').textContent };
 });
 check(!ops.title, 'у операционного слайда нет заголовка');
-check(ops.heads.length === 2 && ops.heads[0].startsWith('Производительность команды за 3 спринта') && ops.heads[1].startsWith('Сгорание спринта'),
-      'два графика: производительность за 3 спринта и сгорание спринта');
-check(ops.big > 2.5 && !ops.ctl, 'графики вытянуты по ширине; диаграмма управления — на слайде «Сроки»');
+check(ops.heads.length === 3 && ops.heads[0].startsWith('Производительность за 3 спринта') &&
+      ops.heads[1].startsWith('Сгорание: истории и задачи') && ops.heads[2].startsWith('Сгорание: с подзадачами'),
+      'три графика: производительность за 3 спринта и сгорание — без подзадач и с ними');
+check(ops.big > 1.8 && !ops.ctl, 'графики вытянуты по ширине; диаграмма управления — на слайде «Сроки»');
+const burn = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.ops:not(.cycle)')][0]
+  .querySelectorAll('.ops-chart svg').length);
+check(burn === 3, 'оба сгорания нарисованы (сборщик 1.10.0: storyScope/storyClosed)');
 // снизу — истории и подзадачи спринта по участникам: шкала «Числа / Доли», сортировка, клик по имени — сайдбар
 const mx = async () => p.evaluate(() => {
   const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
@@ -142,8 +155,8 @@ const mx = async () => p.evaluate(() => {
            heads: [...s.querySelectorAll('.mx-head span')].map(x => x.textContent).filter(Boolean).join('|') };
 });
 let m1 = await mx();
-check(m1.rows === m1.names && m1.heads === 'Истории|Подзадачи|Застряли' && m1.on === 'Числа|По застрявшим',
-      'по строке на участника: истории, подзадачи, застрявшие; по умолчанию — числа, по застрявшим');
+check(m1.rows === m1.names && m1.heads === 'Истории|Подзадачи|SP|Застряли' && m1.on === 'Числа|По застрявшим',
+      'по строке на участника: истории, подзадачи, SP, застрявшие; по умолчанию — числа, по застрявшим');
 check(m1.widths.some(w => parseFloat(w) < 100), 'шкала «Числа» — длина полосы по количеству задач');
 await p.click('#deckSlides .fslide.ops:not(.cycle) [data-mx-scale="share"]');
 await p.click('#deckSlides .fslide.ops:not(.cycle) [data-mx-sort="list"]');
@@ -194,31 +207,48 @@ const plans = await p.evaluate(() => [...document.querySelector('#deckSlides .fs
   .map(c => [c.querySelector('.pc-head b').textContent, c.querySelectorAll('.prow').length,
               Math.max(0, ...[...c.querySelectorAll('.prow')].map(r => r.getBoundingClientRect().height)), +c.querySelector('.pc-head span').textContent,
               c.querySelector('.pr-more') ? +c.querySelector('.pr-more').textContent.replace(/\D/g, '') : 0]));
-check(plans.map(x => x[0]).join('|') === 'Взять в работу|Доделать|Эскалировать' && plans.every(x => x[1] <= 19) && plans.some(x => x[1]),
-      '«Планы на следующий спринт»: три колонки плотного списка');
-check(plans.every(x => x[2] < 60 && x[1] + x[4] === x[3]), 'строка на задачу; что не влезло — «ещё N», счётчик колонки — всё');
-await goTo('#deckSlides tr.row[data-key="INIT-136"]');
+check(plans.map(x => x[0]).join('|') === 'Взять в работу|Доделать|Возможно войдёт|Эскалировать' && plans.every(x => x[1] <= 15) && plans.some(x => x[1]),
+      '«Планы на следующий спринт»: четыре колонки, в т. ч. «Возможно войдёт»');
+const pg = await p.evaluate(() => { const s = document.querySelector('#deckSlides .fslide.plans');
+  return { heads: s.querySelectorAll('.pg-head').length, keys: s.querySelectorAll('.pr-key').length,
+           tip: (s.querySelector('.prow') || {}).title || '' }; });
+check(pg.heads > 0 && pg.keys === 0 && /^[A-Z]+-\d+/.test(pg.tip), 'внутри колонок — по направлениям; ключей на слайде нет, ключ — в подсказке');
+check(plans.every(x => x[2] < 70 && x[1] + x[4] === x[3]), 'строка на задачу (у «Эскалировать» — с пояснением); что не влезло — «ещё N», счётчик колонки — всё');
+await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
 const rowCheck = await p.evaluate(() => {
-  const tr = document.querySelector('#deckSlides tr.row[data-key="INIT-136"]');
-  const auto = document.querySelector('#deckSlides tr.row[data-key="INIT-126"]');
-  return { cls: tr.className, res: tr.querySelector('.result').textContent.trim(), how: tr.querySelector('.result span').title,
-           done: tr.querySelector('[data-edit="done:INIT-136"]').textContent, next: !!tr.querySelector('[data-edit="next:INIT-136"]'),
-           autoDone: auto.querySelector('[data-edit^="done:"]').textContent, autoNext: (auto.querySelector('[data-edit^="next:"]') || {}).textContent,
-           kr: !!document.querySelector('#deckSlides tr.grp.kr b[data-edit^="kr:"]') };
+  const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]');
+  const auto = document.querySelector('#deckSlides tr.erow[data-key="INIT-111"]');
+  return { cls: tr.className, res: tr.querySelector('.result > span').textContent.trim(), how: tr.querySelector('.result > span').title,
+           sub: tr.querySelector('.res-sub').textContent, bar: tr.querySelectorAll('.res-bar i').length,
+           tags: [...tr.querySelectorAll('.tag')].map(t => t.textContent).join('|'),
+           done: tr.querySelector('[data-edit="sdone:platform:INIT-125"]').textContent,
+           blk: (tr.querySelector('[data-edit="sblk:platform:INIT-125"]') || {}).textContent,
+           next: (tr.querySelector('[data-edit="snext:platform:INIT-125"]') || {}).textContent,
+           autoDone: auto.querySelector('[data-edit^="sdone:"]').textContent,
+           kr: tr.querySelector('td.task b').textContent,
+           noEpic: [...document.querySelectorAll('#deckSlides tr.erow td.task b')].some(b => b.textContent === 'Вне эпиков') };
 });
-check(rowCheck.res === '90%' && rowCheck.cls.includes('stat-yellow'), 'история на ревью — 90%, жёлтая строка');
-check(rowCheck.how.includes('стадия 90%'), 'как посчитан результат — в подсказке');
-check(rowCheck.done === 'Метрики загрузчика собраны, дашборд на ревью.' && rowCheck.next, 'строка: что сделано одним предложением и след. шаг');
-check(/^Сделано: .+\(\d+ из \d+ подзадач\)\.$/.test(rowCheck.autoDone) && !!rowCheck.autoNext,
-      'без агента текст строки — из данных: закрытые подзадачи и следующая открытая');
-check(rowCheck.kr, 'шапка группы — KR');
+check(/^\d+%$/.test(rowCheck.res) && /^закрыто \d+ из \d+$/.test(rowCheck.sub) && rowCheck.bar > 0, 'результат строки — процент, «закрыто X из Y» и полоса историй');
+check(rowCheck.how.startsWith('среднее «Результата» историй'), 'как посчитан результат — в подсказке');
+check(rowCheck.done.startsWith('Метрики загрузчика собраны и на ревью') && rowCheck.blk === 'нет доступа к очереди событий смежной команды' &&
+      rowCheck.next === 'эскалация на синке команд в четверг', 'сводка агента: итог, блокер, след. шаг');
+check(/^(Закрыто|В работе): .+\.$|^Работа не начата\.$/.test(rowCheck.autoDone), 'без агента сводка — из данных: закрытые истории или что в работе');
+check(rowCheck.kr === 'KR 3.1 — платформа выдерживает пиковый сезон', 'строка — KR');
+check(rowCheck.noEpic, 'истории без эпика — строка «Вне эпиков»');
+check(/не закрыто \d+/.test(rowCheck.tags) || rowCheck.cls.includes('stat-green'), 'незакрытое — меткой «⏳ не закрыто N»');
 // клик по строке — активность истории
-await goTo('#deckSlides tr.row[data-key="INIT-112"]');
-await p.click('#deckSlides tr.row[data-key="INIT-112"] td.task');
+await goTo('#deckSlides tr.erow[data-key="INIT-111"]');
+await p.click('#deckSlides tr.erow[data-key="INIT-111"] td.task');
+await p.waitForTimeout(300);
+const epicTabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]).join('|'));
+const esRows = await p.$$eval('#storiesBody .es-row', r => r.length);
+check(epicTabs === 'Истории спринта|Весь эпик' && esRows === 2, 'клик по строке — сайдбар: истории спринта эпика и «Весь эпик»');
+check((await p.textContent('#storiesBody')).includes('Агрегация каталога собрана и ждёт приёмки PO.'), 'у истории в сайдбаре — её текст из бизнес-блока');
+await p.click('#storiesBody .es-row:has-text("Агрегация каталога и доступности")');
 await p.waitForTimeout(300);
 const tabs = await p.$$eval('.side-tab', t => t.map(x => x.textContent));
 check(await p.isVisible('#panelStack.open') && (await p.textContent('#stackTitle')) === 'Агрегация каталога и доступности' &&
-      tabs.map(x => x.split(' · ')[0]).join('|') === 'Все|История|Подзадачи', 'клик по строке — сайдбар: все события, фильтры «История» и «Подзадачи»');
+      tabs.map(x => x.split(' · ')[0]).join('|') === 'Все|История|Подзадачи', 'клик по истории — сайдбар: все события, фильтры «История» и «Подзадачи»');
 const story = await p.evaluate(() => {
   const st = TEAMS.flatMap(t => t.epics).flatMap(e => e.stories).find(x => x.key === 'INIT-112');
   const at = [...document.querySelectorAll('#storiesBody .sf-item .sf-time')].length;
@@ -234,9 +264,11 @@ check((await p.locator('#storiesBody .sf-sub').count()) === (await p.locator('#s
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 check(await p.isVisible('#deck') && !(await p.isVisible('#panelStack.open')), 'Esc закрывает сайдбар, колода остаётся');
-// клик по KR — объём эпика
-await goTo('#deckSlides tr.grp.kr');
-await p.click('#deckSlides tr.grp.kr >> nth=0');
+// «Весь эпик» — вкладка сайдбара строки
+await goTo('#deckSlides tr.erow[data-key="INIT-101"]');
+await p.click('#deckSlides tr.erow[data-key="INIT-101"] td.task');
+await p.waitForTimeout(300);
+await p.click('.side-tab[data-tab="scope"]');
 await p.waitForTimeout(300);
 const eb = await p.evaluate(() => ({ chart: !!document.querySelector('#storiesBody .eb svg'),
   bars: document.querySelectorAll('#storiesBody .eb svg rect').length,
@@ -247,7 +279,7 @@ const eb = await p.evaluate(() => ({ chart: !!document.querySelector('#storiesBo
   n: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head .n')].reduce((a, x) => a + parseInt(x.textContent.replace('·', ''), 10), 0),
   scope: TEAMS[0].epics[0].scope.length }));
 check(eb.chart && eb.bars > 5 && /Плановая дата/.test(eb.panel) && /Расчётная дата/.test(eb.panel) && /Темп сгорания/.test(eb.panel),
-      'клик по KR — сгорание эпика по неделям, под ним панель анализа: план, расчёт, темп');
+      '«Весь эпик» — сгорание эпика по неделям, под ним панель анализа: план, расчёт, темп');
 check(eb.modes.join('|') === 'SP|Закрытие историй|Закрытие подзадач', 'основа расчёта: SP, закрытие историй, закрытие подзадач');
 check(!eb.why, 'без пояснений словами');
 check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith('Что выполнено') && eb.n === eb.scope,
@@ -255,33 +287,53 @@ check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith(
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // ПКМ — комментарий
-await goTo('#deckSlides tr.row[data-key="INIT-136"]');
-await p.click('#deckSlides tr.row[data-key="INIT-136"] td.task', { button: 'right' });
-check(await p.isVisible('#cpop') && (await p.textContent('#cpopTarget')).includes('INIT-136'), 'правый клик по строке — комментарий к истории');
+await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
+await p.click('#deckSlides tr.erow[data-key="INIT-125"] td.task', { button: 'right' });
+check(await p.isVisible('#cpop') && (await p.textContent('#cpopTarget')).includes('INIT-125'), 'правый клик по строке — комментарий к эпику');
 await p.fill('#cpopText', 'Уточнить дату выкатки');
 await p.press('#cpopText', 'Enter');
-check(await p.evaluate(() => document.querySelector('#deckSlides tr.row[data-key="INIT-136"]').classList.contains('commented')),
+check(await p.evaluate(() => document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]').classList.contains('commented')),
       'строка с комментарием помечена');
 // редактирование текста
 await p.click('#deckEdit');
-const edEl = p.locator('[data-edit="done:INIT-136"]');
+const edEl = p.locator('[data-edit="sdone:platform:INIT-125"]');
 await edEl.click();
-await p.keyboard.press('End');
+// курсор — в конец всего текста: в многострочной сводке End уводит лишь в конец видимой строки
+await edEl.evaluate(el => { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); });
 await p.keyboard.type(' Показали PO.');
 await p.keyboard.press('Enter');
 check(!(await p.isVisible('#panelStack.open')), 'в режиме правки клик не открывает сайдбар');
 await p.click('#deckEdit');
 await p.reload();
 await p.waitForTimeout(300);
-await goTo('[data-edit="done:INIT-136"]');
+await goTo('[data-edit="sdone:platform:INIT-125"]');
 await p.waitForTimeout(300);
-check((await p.textContent('[data-edit="done:INIT-136"]')).endsWith('Показали PO.'), 'правка текста сохраняется и переживает перезагрузку');
+check((await p.textContent('[data-edit="sdone:platform:INIT-125"]')).endsWith('Показали PO.'), 'правка текста сохраняется и переживает перезагрузку');
 p.once('dialog', d => d.accept());
 await p.click('#deckReset');
 await p.waitForTimeout(200);
-check((await p.textContent('[data-edit="done:INIT-136"]')) === 'Метрики загрузчика собраны, дашборд на ревью.', '«Вернуть текст» возвращает исходный');
+check((await p.textContent('[data-edit="sdone:platform:INIT-125"]')).endsWith('приём не включён.'), '«Вернуть текст» возвращает исходный');
 await p.keyboard.press('Escape');
 check(await p.isVisible('#deck'), 'Esc колоду не закрывает: это сама страница');
+
+// высокий слайд прокручивается внутри: «↓ ещё ниже», ↓ сначала докручивает, потом листает
+await goTo('#deckSlides tr.erow');
+const tall = await p.evaluate(() => {
+  const s = document.querySelector('#deckSlides > .fslide.cur');
+  s.querySelector('table.rep tbody').insertAdjacentHTML('beforeend', '<tr><td colspan="3" style="height:900px">заполнитель</td></tr>');
+  s.dispatchEvent(new Event('scroll'));
+  return { sh: s.scrollHeight, ch: s.clientHeight, count: document.getElementById('deckCount').textContent };
+});
+await p.waitForTimeout(100);
+check(tall.sh > tall.ch && await p.isVisible('#deckMore'), 'слайд выше 720 — внутри прокрутка и «↓ ещё ниже»');
+await p.keyboard.press('ArrowDown');
+await p.waitForTimeout(600);
+check((await p.textContent('#deckCount')) === tall.count &&
+      await p.evaluate(() => document.querySelector('#deckSlides > .fslide.cur').scrollTop > 0), '↓ на высоком слайде — прокрутка, а не следующий слайд');
+await p.keyboard.press('End');
+await p.reload();
+await p.waitForTimeout(400);
 
 // «Для техлидов» — промт на отчёт PO с вопросами с бизнес-отчёта
 await p.click('#techBtn');

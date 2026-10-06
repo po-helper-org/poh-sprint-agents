@@ -121,6 +121,9 @@ class LegacyParityTest(unittest.TestCase):
         stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap', 'output')}
         stripped['logs'] = {k: v for k, v in stripped['logs'].items() if k != 'since'}
         stripped['epics'] = self.without_priorities(stripped['epics'])
+        # с 1.10.0 — сгорание без подзадач (storyScope/storyClosed): у старого сборщика его не было
+        stripped['burndown'] = dict(stripped['burndown'], days=[
+            {k: v for k, v in d.items() if k not in ('storyScope', 'storyClosed')} for d in stripped['burndown']['days']])
         self.assertEqual(LEGACY, stripped)
 
     def test_epic_scope_beyond_sprint(self):

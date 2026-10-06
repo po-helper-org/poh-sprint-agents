@@ -22,6 +22,8 @@
     "future": false,
     "remaining": 45,
     "scope": 45,
+    "storyClosed": 0,
+    "storyScope": 18,
     "weekend": false
    },
    {
@@ -30,6 +32,8 @@
     "future": false,
     "remaining": 44,
     "scope": 45,
+    "storyClosed": 0,
+    "storyScope": 18,
     "weekend": false
    },
    {
@@ -38,6 +42,8 @@
     "future": false,
     "remaining": 43,
     "scope": 45,
+    "storyClosed": 0,
+    "storyScope": 18,
     "weekend": false
    },
    {
@@ -46,6 +52,8 @@
     "future": false,
     "remaining": 46,
     "scope": 48,
+    "storyClosed": 0,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -54,6 +62,8 @@
     "future": false,
     "remaining": 44,
     "scope": 48,
+    "storyClosed": 1,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -62,6 +72,8 @@
     "future": false,
     "remaining": 44,
     "scope": 48,
+    "storyClosed": 1,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -70,6 +82,8 @@
     "future": false,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -78,6 +92,8 @@
     "future": false,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -86,6 +102,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -94,6 +112,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -102,6 +122,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -110,6 +132,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -118,6 +142,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": true
    },
    {
@@ -126,6 +152,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    },
    {
@@ -134,6 +162,8 @@
     "future": true,
     "remaining": 43,
     "scope": 48,
+    "storyClosed": 2,
+    "storyScope": 20,
     "weekend": false
    }
   ],

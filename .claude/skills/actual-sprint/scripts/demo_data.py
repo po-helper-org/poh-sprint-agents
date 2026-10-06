@@ -374,8 +374,12 @@ def build_team(spec, rnd, keys):
         else:
             closed_n = round(closed_now * ramp[d] / ramp[-1]) if ramp[-1] else 0
         closed_n = min(closed_n, scope)
+        # без подзадач — меньшая часть объёма и закрывается позже (без новых вызовов rnd)
+        top_scope = (scope * 2 + 4) // 5
+        top_closed = min(top_scope, closed_n * 2 // 5)
         days.append({'date': day.date().isoformat(), 'scope': scope,
                      'remaining': scope - closed_n, 'closed': closed_n,
+                     'storyScope': top_scope, 'storyClosed': top_closed,
                      'weekend': day.weekday() >= 5, 'future': day.date() > NOW.date()})
     burndown = {'sprintName': spec['sprint'], 'start': start.date().isoformat(),
                 'end': end.date().isoformat(), 'days': days}

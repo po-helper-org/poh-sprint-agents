@@ -49,7 +49,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.9.0'
+VERSION = '1.10.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -790,20 +790,27 @@ class Collector:
                     if was and not now_in:
                         left = parse(h['created'])
             _, _, done_at = lead_cycle(i, self.cats, self.rules)
-            members.append({'entered': entered or start, 'left': left, 'doneAt': done_at})
+            sub = bool(((i.get('fields') or {}).get('issuetype') or {}).get('subtask'))
+            members.append({'entered': entered or start, 'left': left, 'doneAt': done_at, 'subtask': sub})
 
+        # scope/closed — все задачи спринта; storyScope/storyClosed — без подзадач
+        # (истории, задачи, баги): бизнес-отчёт рисует сгорание в двух вариантах
         days, cur = [], start
         today = self.now.date().isoformat()
         while cur <= end:
-            scope = closed_n = 0
+            scope = closed_n = top_scope = top_closed = 0
             for m in members:
                 if m['entered'] > cur or (m['left'] and m['left'] <= cur):
                     continue
+                done = bool(m['doneAt'] and m['doneAt'] <= cur)
                 scope += 1
-                if m['doneAt'] and m['doneAt'] <= cur:
-                    closed_n += 1
+                closed_n += done
+                if not m['subtask']:
+                    top_scope += 1
+                    top_closed += done
             days.append({'date': cur.date().isoformat(), 'scope': scope,
                          'remaining': scope - closed_n, 'closed': closed_n,
+                         'storyScope': top_scope, 'storyClosed': top_closed,
                          'weekend': cur.weekday() >= 5, 'future': cur.date().isoformat() > today})
             cur += timedelta(days=1)
         return {'sprintName': active['name'], 'start': start.date().isoformat(),

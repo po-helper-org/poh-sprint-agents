@@ -234,6 +234,8 @@
               "scope": { "type": "integer", "minimum": 0 },
               "remaining": { "type": "integer" },
               "closed": { "type": "integer", "minimum": 0 },
+              "storyScope": { "type": "integer", "minimum": 0, "description": "Сколько в спринте задач без подзадач (истории, задачи, баги). Сборщик 1.10.0+; нет поля — бизнес-отчёт рисует одно сгорание по всем задачам." },
+              "storyClosed": { "type": "integer", "minimum": 0, "description": "Сколько из storyScope закрыто к этому дню." },
               "weekend": { "type": "boolean" },
               "future": { "type": "boolean" }
             }

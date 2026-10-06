@@ -31,8 +31,11 @@ TEMPLATE_PATH = HERE / 'resources' / 'business_template.html'
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG = ins.EXIT_OK, ins.EXIT_ERROR, ins.EXIT_CONFIG
 # поле → предел длины: слайд не резиновый
 LIMITS = {'objective': 100, 'kr': 120, 'promise': 160, 'shown': 160, 'done': 140, 'next': 100, 'blocker': 120,
+          'stream_done': 180, 'stream_next': 100, 'stream_blocker': 140,
           'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280,
           'plan_title': 80, 'plan_text': 160}
+# ключ строки «Вне эпиков» в streams: истории спринта без эпика (как в шаблоне страницы)
+NO_EPIC = 'no-epic'
 
 
 class BusinessError(ins.InsightsError):
@@ -71,16 +74,23 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
     фактами там, где они из данных (строки, Sprint Goal); цели OKR, риски и договорённости
     приходят из документов PO — их числа с фактами спринта не сверить."""
     epics = {e['epicKey'] for e in team['epics'] if e.get('epicKey')}
+    no_epic = any(not e.get('epicKey') and e['stories'] for e in team['epics'])
     stories = {st['key'] for e in team['epics'] for st in e['stories']}
     objectives = biz.get('objectives', {})
     texts = [(f'objectives.{k}', v, LIMITS['objective'], False) for k, v in objectives.items()]
     for key, st in biz.get('streams', {}).items():
-        if key not in epics:
+        if key == NO_EPIC:
+            if not no_epic:
+                errors.append(f'[{slug}] streams.{NO_EPIC}: историй без эпика в спринте нет')
+            if 'obj' in st or 'kr' in st:
+                errors.append(f'[{slug}] streams.{NO_EPIC}: у строки «Вне эпиков» нет цели и KR — только done/next/blocker')
+        elif key not in epics:
             errors.append(f'[{slug}] streams: эпика {key} нет в спринте команды; есть: {", ".join(sorted(epics))}')
         if 'obj' in st and st['obj'] not in objectives:
             warnings.append(f'[{slug}] streams.{key}: цели {st["obj"]} нет в objectives — заголовок слайда будет без названия')
         texts += [(f'streams.{key}.kr', st['kr'], LIMITS['kr'], False)] if 'kr' in st else []
         texts += [(f'streams.{key}.{f}', st[f], LIMITS[f], True) for f in ('promise', 'shown') if f in st]
+        texts += [(f'streams.{key}.{f}', st[f], LIMITS['stream_' + f], True) for f in ('done', 'next', 'blocker') if f in st]
     for key, row in biz.get('rows', {}).items():
         if key not in stories:
             errors.append(f'[{slug}] rows: истории {key} нет в спринте команды')

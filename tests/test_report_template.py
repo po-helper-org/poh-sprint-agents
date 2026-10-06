@@ -100,7 +100,7 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(part, self.html)
         self.assertNotIn('На чём прогноз', self.html, 'пояснений словами нет — всё на графике')
         biz = build_mod.assemble(BUSINESS_TEMPLATE)
-        kr = biz[biz.index('function openKr('):]
+        kr = biz[biz.index('function openEpic('):]
         self.assertIn('renderScope(epic)', kr[:kr.index('\n  }\n')])
 
     def test_team_link_instead_of_sprint(self):
@@ -143,43 +143,50 @@ class BusinessTemplateTest(unittest.TestCase):
     def setUpClass(cls):
         cls.html = build_mod.assemble(BUSINESS_TEMPLATE)
 
-    def test_fact_deck_from_goals(self):
-        """Колода «ФАКТ | спринт» от целей — OBJ → KR (эпик) → истории; отчёта PO на странице нет."""
+    def test_fact_deck_high_level(self):
+        """Колода «ФАКТ | спринт» верхнеуровневая: слайд = цель OBJ, строка = эпик (KR) со сводкой
+        историй, истории — в сайдбаре по клику; отчёта PO на странице нет."""
         for gone in ('id="tableBody"', 'id="metricsLink"', 'id="logsBtn"', 'START_MODE', 'id="deckClose"'):
             self.assertNotIn(gone, self.html)
         for part in ('id="deck"', 'id="techBtn"', '>Для техлидов<', 'function techPrompt(', "'/actual-sprint'",
                      'function biz(t) { return t.business || {}; }', 'function titleSlide(', 'function heroSlide(',
-                     'function objGroups(', 'function objSlide(', 'function krHeader(', 'function storyRow(',
-                     'function autoText(', 'function opsSlide(', 'function memberTable(', 'function changesSlide(',
-                     'function demoSlide(', 'function totalsSlide(', 'function risksSlide(', 'function openKr(',
-                     'function openStory(', "'Без привязки к OKR'", '@page { size: 1280px 720px',
-                     '<th>Задачи</th><th>Комментарий</th><th>Результат</th>', 'stat-green', 'stat-yellow', 'stat-red',
-                     'ROWS_PER_SLIDE = 8'):
+                     'function objGroups(', 'function objSlide(', 'function epicSummary(', 'function epicRow(',
+                     'function autoText(', 'function opsSlide(', 'function memberTable(', 'function risksSlide(',
+                     'function openEpic(', 'function openStory(', "'Без привязки к OKR'", "'Направления спринта'",
+                     "NO_EPIC = 'no-epic'", '@page { size: 1280px 720px',
+                     '<th>Направление</th><th>Итог спринта</th><th>Результат</th>', 'stat-green', 'stat-yellow', 'stat-red',
+                     'ROWS_PER_SLIDE = 6', 'заблокировано ', 'не закрыто '):
             self.assertIn(part, self.html)
+        for gone in ('function krHeader(', 'function storyRow(', 'function openKr(', 'function changesSlide(',
+                     'function demoSlide(', 'function totalsSlide(', '<th>Задачи</th><th>Комментарий</th>'):
+            self.assertNotIn(gone, self.html, 'строка — эпик; слайдов «Изменения», «Демо», «Итоги» нет')
         self.assertNotIn('class="legend"', self.html, 'пояснения цветов на слайдах нет')
         self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
 
     def test_ops_slide_member_output(self):
         """Операционный отчёт без заголовка: производительность и сгорание спринта; группы статусов
         участников — для подсказок и сайдбара участника."""
-        for part in ('Производительность команды за 3 спринта', 'Lead time', 'function tipHtml(', 'function teamOutputChart(', 'function openMember(',
+        for part in ('Производительность за 3 спринта', 'Lead time', 'function tipHtml(', 'function teamOutputChart(', 'function openMember(',
                      'function itemActivityHtml(', "label: 'Backlog / To Do'", "label: 'Отменено'", 'CANCEL_RE'):
             self.assertIn(part, self.html)
-        ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function changesSlide(')]
+        ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function plansSlide(')]
         order = [ops.index("label: '" + g + "'") for g in ('Не начато', 'В работе', 'Выполнено')]
         self.assertEqual(sorted(order), order, 'три группы: не начато / в работе / выполнено')
         slide = self.html[self.html.index('function opsSlide('):]
         self.assertNotIn('slide-title', slide[:slide.index('function plansSlide(')], 'заголовка у операционного слайда нет')
-        self.assertNotIn('memberTable(', slide[:slide.index('function plansSlide(')], 'участники — только в отчёте PO')
+        self.assertNotIn('memberTable(', slide[:slide.index('function plansSlide(')], 'таблица выработки — только в отчёте PO')
         self.assertNotIn('function memberChart(', self.html, 'графика выработки по участникам больше нет')
 
     def test_title_team_and_plans_slides(self):
-        """Титул и слайд команды — со сводкой; после операционного — «Планы на следующий спринт»."""
-        for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function plansSlide(', "'Взять в работу'",
-                     "'Доделать'", "'Эскалировать'", 'html += plansSlide(x.t, x.streams);',
-                     'PLAN_ROWS = { full: 10, dense: 19 }', 'class="prow"', 'pr-more'):
+        """Титул и слайд команды — «заблокированы» отдельно от «не успели по объёму»; после
+        «Сроков» — «Планы на следующий спринт» в четыре колонки по направлениям."""
+        for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-panels', 'h-blk', 'h-behind', 'function behindLabel(',
+                     "'Не успели по объёму'", "'Пока не закрыто'", 'Заблокированы · ',
+                     'function plansSlide(', 'function planColumn(', "'Взять в работу'", "'Доделать'", "'Возможно войдёт'",
+                     "'Эскалировать'", 'function lowPriority(', 'html += plansSlide(x.t, x.streams);',
+                     'PLAN_LINES = 15', 'PLAN_TAKE = 3', 'class="prow"', 'class="pg-head"', 'pr-more'):
             self.assertIn(part, self.html)
-        for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '"):
+        for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '", 'PLAN_ROWS', 'class="pr-key"'):
             self.assertNotIn(gone, self.html)
 
     def test_story_calendar_and_feed(self):
@@ -191,7 +198,10 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_ops_three_charts(self):
         """Операционный слайд: крупно производительность и сгорание спринта; следом слайд «Сроки»."""
         ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
-        self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index('burndownChart'))
+        self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index("burn('story'"))
+        self.assertLess(ops.index("burn('story'"), ops.index("burn('all'"), 'сгорание: без подзадач, затем с подзадачами')
+        self.assertIn('function bizBurnChart(', self.html)
+        self.assertIn('нужна версия 1.10.0', self.html)
         self.assertNotIn('controlChart', ops, 'диаграмма управления — на слайде «Сроки» и в его разборе')
         self.assertNotIn('function controlOverview(', self.html)
         build = self.html[self.html.index('function buildDeck('):]
@@ -238,8 +248,14 @@ class BusinessTemplateTest(unittest.TestCase):
         for part in ('id="deckEdit"', 'Редактировать текст', "contenteditable', 'plaintext-only'", 'function loadEdits(',
                      "'actual-sprint:deck-text:'", 'id="deckReset"', 'data-edit="'):
             self.assertIn(part, self.html)
-        deck = self.html[self.html.index('function storyRow('):self.html.index('function objSlide(')]
-        self.assertIn('ctxAttr(r.target)', deck, 'у строки истории — правый клик для комментария')
+        deck = self.html[self.html.index('function epicRow('):self.html.index('function objSlide(')]
+        self.assertIn('ctxAttr(e.epicKey ? epicTarget(e)', deck, 'у строки-направления — правый клик для комментария')
+
+    def test_deck_scrolls_tall_slides(self):
+        """Слайд выше 720 прокручивается внутри: колесо, ↓/пробел сначала докручивают, «↓ ещё ниже» внизу сцены."""
+        for part in ('overflow-y: auto; overscroll-behavior: contain;', 'function scrollInside(', 'function updateScrollHint(',
+                     'id="deckMore"', 'scrollInside(1)'):
+            self.assertIn(part, self.html)
 
 
 class DemoPageTest(unittest.TestCase):

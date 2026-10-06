@@ -187,6 +187,24 @@ class InvariantTest(unittest.TestCase):
             del d['burndown']['days'][2]
         self.assertTrue(any(n == 6 for n, _, _ in self.check(mutate).failed))
 
+    def test_6_burndown_without_subtasks(self):
+        """Сгорание без подзадач (сборщик 1.10.0) укладывается во все задачи; поля — только парой."""
+        def too_many(d):
+            day = d['burndown']['days'][3]
+            day['storyScope'], day['storyClosed'] = day['scope'] + 1, 0
+        self.assertTrue(any(n == 6 for n, _, _ in self.check(too_many).failed))
+
+        def half(d):
+            d['burndown']['days'][3].pop('storyClosed', None)
+            d['burndown']['days'][3]['storyScope'] = 0
+        self.assertTrue(any(n == 6 for n, _, _ in self.check(half).failed))
+
+        def old(d):
+            for day in d['burndown']['days']:
+                day.pop('storyScope', None)
+                day.pop('storyClosed', None)
+        self.assertFalse(any(n == 6 for n, _, _ in self.check(old).failed), 'снимок старого сборщика — валиден')
+
     def test_7_velocity_split_sum(self):
         def mutate(d):
             d['velocity']['sprints'][0]['split']['open'] += 3
