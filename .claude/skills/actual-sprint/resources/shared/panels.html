@@ -1,0 +1,43 @@
+<div class="overlay" id="overlay"></div>
+<aside class="panel-stack" id="panelStack">
+  <!-- общая шапка: одна кнопка закрытия на всю панель -->
+  <div class="stack-head">
+    <button class="sidebar-close" data-close aria-label="Закрыть">&times;</button>
+    <div class="eyebrow" id="stackKey">—</div>
+    <h2 id="stackTitle">—</h2>
+    <div class="stack-links">
+      <button class="scope-btn" id="scopeBtn" type="button" hidden>Смотреть весь эпик</button>
+    </div>
+  </div>
+
+  <div class="stack-body">
+    <!-- истории эпика + их подзадачи; комментарии — правым кликом по строке -->
+    <section class="pane" id="panelStories">
+      <div class="pane-label" id="storiesLabel">Истории</div>
+      <div class="sidebar-body" id="storiesBody"></div>
+    </section>
+  </div>
+</aside>
+
+<div class="cpop" id="cpop" hidden role="dialog" aria-label="Заметка">
+  <div class="cpop-target" id="cpopTarget"></div>
+  <div class="pexisting" id="cpopExisting" hidden></div>
+  <textarea id="cpopText" placeholder="Заметка — Enter сохранить, Esc отмена"></textarea>
+  <div class="cpop-actions">
+    <span class="hint"></span>
+    <button class="cpop-cancel" id="cpopCancel" type="button">Отмена</button>
+    <button class="action-btn" id="cpopSave">Сохранить</button>
+  </div>
+</div>
+
+<div class="genbox-wrap" id="genWrap" hidden>
+  <div class="genbox" role="dialog" aria-modal="true" aria-labelledby="genTitle">
+    <h3 id="genTitle">Промт</h3>
+    <p class="gen-sub" id="genSub"></p>
+    <textarea id="genText" readonly></textarea>
+    <div class="gen-actions">
+      <button type="button" id="genClose">Закрыть</button>
+      <button type="button" class="primary" id="genCopy">Скопировать промт</button>
+    </div>
+  </div>
+</div>

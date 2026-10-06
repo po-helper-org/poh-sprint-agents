@@ -20,11 +20,17 @@
     epic_link_field  "auto"             или customfield_XXXXX
     epic_link_names  ["ссылка на эпик", "epic link"]  по каким именам искать поле
     sprints_back     3                  глубина метрик по спринтам
-    activity_days    7                  окно ленты активности
-    control_days     30                 окно диаграмм управления
+    activity_days    период спринта     окно ленты активности; не задано — с начала текущего спринта
+    control_days     спринты отчёта     окно диаграмм управления в днях; не задано — с начала первого
+                                        из sprints_back спринтов (слайд «Сроки» показывает их все)
     categories       из status_rules.json               допустимые категории JIRA
     done_categories  ["Выполнено", "Done"]      категории «закрыто» для Lead/Cycle Time
     progress_categories ["В работе", "In Progress"]   категории «взято в работу"
+    epic_scope       true               забрать весь объём эпиков, не только задачи спринта
+    epic_scope_max   2000               сколько задач эпиков забирать максимум за запуск
+    epic_scope_subtasks true            даты подзадач объёма — для сгорания эпика по подзадачам
+    sp_field         "auto"             поле Story Points или customfield_XXXXX
+    sp_names         ["story points", "story point estimate", …]  по каким именам искать поле
 
 Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
 """
@@ -43,7 +49,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.1.0'
+VERSION = '1.9.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -262,6 +268,54 @@ def lead_cycle(issue, cats, rules):
     return lead, cycle, done_at
 
 
+def value_at(issue, field, moment):
+    """(значение, id) поля из changelog на момент moment: статус и исполнитель на конец
+    спринта, а не сейчас. Смен до момента нет — берётся «from» первой смены после него;
+    смен нет вовсе — None (значит, текущее значение)."""
+    changes = sorted(((h['created'], it) for h in issue.get('changelog', {}).get('histories', [])
+                      for it in h['items'] if it['field'] == field), key=lambda c: c[0])
+    if not changes:
+        return None
+    before = [it for at, it in changes if parse(at) <= moment]
+    if before:
+        return before[-1].get('toString'), before[-1].get('to')
+    return changes[0][1].get('fromString'), changes[0][1].get('from')
+
+
+def status_history(issue, until, since=None):
+    """Смены статуса задачи в периоде спринта [since, until]: когда, откуда, куда, кто."""
+    out = []
+    for h in sorted(issue.get('changelog', {}).get('histories', []), key=lambda x: x['created']):
+        if parse(h['created']) > until:
+            break
+        if since and parse(h['created']) < since:
+            continue
+        for it in h['items']:
+            if it['field'] == 'status':
+                out.append({'at': h['created'][:16], 'from': it.get('fromString'), 'to': it.get('toString'),
+                            'by': (h.get('author') or {}).get('displayName')})
+    return out
+
+
+def status_intervals(issue, cats, bucket_of):
+    """Интервалы задачи по бакетам статусов за всё время: [(начало, конец|None, бакет)]."""
+    f = issue['fields']
+    changes = sorted(((h['created'], it) for h in issue.get('changelog', {}).get('histories', [])
+                      for it in h['items'] if it['field'] == 'status'), key=lambda c: c[0])
+    if changes:
+        first = changes[0][1]
+        state = bucket_of(first.get('fromString') or '', cats.get(str(first.get('from'))) or '')
+    else:
+        state = bucket_of(f['status']['name'], cats.get(str(f['status']['id'])) or '')
+    out, at = [], parse(f['created'])
+    for when, it in changes:
+        when = parse(when)
+        out.append((at, when, state))
+        at, state = when, bucket_of(it.get('toString') or '', cats.get(str(it.get('to'))) or '')
+    out.append((at, None, state))
+    return out
+
+
 def in_progress_since(issue, cats, rules):
     """Когда задачу взяли в работу, если она до сих пор не закрыта. Иначе None."""
     if rules.is_done(cats.get(str(issue['fields']['status']['id']))):
@@ -289,8 +343,13 @@ class Collector:
         # TEAM RULE: что считать историей внутри эпика
         self.story_types = tuple(p.get('story_types') or ('История', 'История Enabler', 'Story'))
         self.sprints_back = int(p.get('sprints_back', 3))
-        self.activity_days = int(p.get('activity_days', 7))
-        self.control_days = int(p.get('control_days', 30))
+        # окно ленты: по умолчанию — период текущего спринта (с его начала), а не N дней
+        self.activity_days = int(p['activity_days']) if p.get('activity_days') else None
+        # окно диаграмм: по умолчанию — все спринты отчёта (с начала первого), а не N дней
+        self.control_days = int(p['control_days']) if p.get('control_days') else None
+        self.epic_scope = bool(p.get('epic_scope', True))
+        self.epic_scope_max = int(p.get('epic_scope_max', 2000))
+        self.sp_id = None   # поле Story Points; находится в collect()
 
     # ---------------------------------------------------------- инфраструктура
 
@@ -337,12 +396,26 @@ class Collector:
                   'Задайте params.epic_link_field.')
         return None
 
+    def sp_field(self):
+        """TEAM RULE: поле Story Points. Нет его — выработка считается в задачах."""
+        explicit = self.params.get('sp_field', 'auto')
+        if explicit and explicit != 'auto':
+            return explicit
+        names = [n.lower() for n in (self.params.get('sp_names')
+                                     or ('story points', 'story point estimate', 'сторипоинты', 'стори поинты'))]
+        for f in self.jira.api('/rest/api/2/field'):
+            if f['name'].strip().lower() in names:
+                return f['id']
+        self.warn('поле Story Points не найдено — выработка участников в задачах. Задайте params.sp_field.')
+        return None
+
     # ---------------------------------------------------------- сбор
 
     def collect(self):
         board_id = self.team['board']
         self.cats = self.status_categories()
         epic_field = self.epic_link_field()
+        self.sp_id = self.sp_field()
 
         board_name = self.board_name(board_id)
 
@@ -364,6 +437,8 @@ class Collector:
         fields = 'key,summary,status,issuetype,created,creator,assignee,subtasks,priority'
         if epic_field:
             fields += ',' + epic_field  # иначе пришлось бы делать запрос на каждую историю
+        if self.sp_id:
+            fields += ',' + self.sp_id
         per_sprint = {s['id']: self.jira.sprint_issues(s['id'], fields, expand='changelog')
                       for s in last}
         # второй пакетный проход: в ответе с expand=changelog комментариев нет
@@ -372,10 +447,13 @@ class Collector:
 
         issues = per_sprint[active['id']]
         epics = self.build_epics(issues, epic_field)
+        self.attach_story_events(epics, issues, with_comments[active['id']])
+        self.build_scope(epics, epic_field, last, per_sprint, active)
         metrics, velocity = self.build_metrics(last, per_sprint)
         burndown = self.build_burndown(active, issues)
         control = self.build_control(last, per_sprint)
-        logs = self.build_logs(last, per_sprint, with_comments)
+        logs = self.build_logs(last, per_sprint, with_comments, active)
+        output = self.build_output(last, per_sprint, active, with_comments)
 
         return {
             'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
@@ -383,16 +461,48 @@ class Collector:
             'boardUrl': f'{self.jira.base}/secure/RapidBoard.jspa?rapidView={board_id}',
             'jiraBase': self.jira.base, 'sprintName': active['name'],
             'epics': epics, 'metrics': metrics, 'burndown': burndown, 'control': control,
-            'velocity': velocity, 'logs': logs,
+            'velocity': velocity, 'output': output, 'logs': logs,
             'statusMap': dict(sorted(self.status_map.items())),
         }
+
+    def attach_story_events(self, epics, issues, commented):
+        """Хронология истории за всё время: создание, смены статуса и комментарии самой
+        истории и её подзадач. Для календаря активности в сайдбаре истории."""
+        by_key = {i['key']: i for i in issues}
+        notes = {i['key']: (i['fields'].get('comment') or {}).get('comments') or [] for i in commented}
+        def events(key):
+            i = by_key.get(key)
+            if not i:
+                return []
+            f, out = i['fields'], []
+            out.append({'at': f['created'][:16], 'kind': 'created', 'key': key,
+                        'by': (f.get('creator') or {}).get('displayName')})
+            for h in i.get('changelog', {}).get('histories', []):
+                for it in h['items']:
+                    if it['field'] != 'status':
+                        continue
+                    cat = self.cats.get(str(it.get('to'))) or ''
+                    out.append({'at': h['created'][:16], 'kind': 'status', 'key': key,
+                                'by': (h.get('author') or {}).get('displayName'),
+                                'from': it.get('fromString'), 'to': it.get('toString'),
+                                'done': self.rules.is_done(cat)})
+            for c in notes.get(key, []):
+                out.append({'at': c['created'][:16], 'kind': 'comment', 'key': key,
+                            'by': (c.get('author') or {}).get('displayName'), 'body': (c.get('body') or '')[:400]})
+            return out
+        for e in epics:
+            for st in e['stories']:
+                ev = events(st['key'])
+                for sub in st['subtasks']:
+                    ev += events(sub['key'])
+                st['events'] = sorted(ev, key=lambda x: x['at'])
 
     def build_epics(self, issues, epic_field):
         stories = [i for i in issues if i['fields']['issuetype']['name'] in self.story_types]
         if issues and not stories:
             self.warn(f'ни одна задача спринта не попала в story_types {list(self.story_types)} — '
                       f'таблица эпиков будет пустой')
-        groups, order, epic_cache, epic_prio = {}, [], {}, {}
+        groups, order, epic_cache, epic_prio, epic_due = {}, [], {}, {}, {}
 
         # ключи эпиков уже пришли в полях историй; названия добираем одним запросом на все
         epic_keys = sorted({st['fields'].get(epic_field) for st in stories
@@ -402,10 +512,12 @@ class Collector:
         for start in range(0, len(epic_keys), chunk):
             batch = epic_keys[start:start + chunk]
             jql = 'key in (' + ','.join(batch) + ')'
-            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary,priority',
+            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary,priority,duedate',
                                   maxResults=len(batch))['issues']
             epic_cache.update({i['key']: i['fields']['summary'] for i in found})
             epic_prio.update({i['key']: priority_name(i['fields']) for i in found})
+            # плановая дата закрытия эпика — для графика сгорания на KR
+            epic_due.update({i['key']: (i['fields'].get('duedate') or None) for i in found})
         missing = [k for k in epic_keys if k not in epic_cache]
         if missing:
             self.warn(f'{len(missing)} эпиков не отдались по ключу (нет прав или удалены): '
@@ -420,8 +532,10 @@ class Collector:
                 orphans += 1
             row = groups.setdefault(gkey, {
                 'rowId': gkey, 'epicKey': ek,
-                'epicTitle': epic_cache.get(ek) if ek else 'Без эпика',
-                'epicPriority': epic_prio.get(ek) if ek else None, 'stories': []})
+                # эпик не отдался по ключу (права, удалён) — имя по ключу, а не пустая строка
+                'epicTitle': (epic_cache.get(ek) or ek) if ek else 'Без эпика',
+                'epicPriority': epic_prio.get(ek) if ek else None,
+                'epicDue': epic_due.get(ek) if ek else None, 'stories': []})
             if gkey not in order:
                 order.append(gkey)
             row['stories'].append({
@@ -457,6 +571,111 @@ class Collector:
                         sub['assignee'] = (src['fields'].get('assignee') or {}).get('displayName')
                         sub['priority'] = priority_name(src['fields']) or sub['priority']
         return [groups[k] for k in order]
+
+    def build_scope(self, epics, epic_field, sprints, per_sprint, active):
+        """Весь объём каждого эпика — и то, что в спринте, и сделанное раньше, и бэклог.
+
+        Таблица и панель эпика показывают только задачи спринта; «Весь эпик» на странице
+        отвечает на другой вопрос: что по эпику уже сделано и что осталось. Один пакетный
+        поиск на пачку эпиков, а не запрос на эпик. Подзадачи — из заглушек в полях
+        задачи: отдельный запрос на каждую стоил бы на порядок дороже.
+        """
+        keys = [e['epicKey'] for e in epics if e['epicKey']]
+        if not (self.epic_scope and epic_field and keys):
+            return
+        # в каком спринте отчёта задача была: «в спринте», имя прошлого спринта или ничего
+        where = {}
+        for s in sprints:
+            for i in per_sprint[s['id']]:
+                where[i['key']] = s['name']
+        # TEAM RULE: как в JQL сослаться на поле связи с эпиком
+        m = re.match(r'customfield_(\d+)$', epic_field)
+        field_ref = f'cf[{m.group(1)}]' if m else f'"{epic_field}"'
+        fields = f'summary,status,issuetype,assignee,priority,subtasks,created,resolutiondate,{epic_field}'
+        if self.sp_id:
+            fields += ',' + self.sp_id
+        chunk = int(self.params.get('epic_batch', 50))
+        by_epic, seen = {k: [] for k in keys}, 0
+        for start in range(0, len(keys), chunk):
+            batch = keys[start:start + chunk]
+            jql = f'{field_ref} in ({",".join(batch)}) ORDER BY Rank ASC'
+            at = 0
+            while seen < self.epic_scope_max:
+                page = self.jira.api('/rest/api/2/search', jql=jql, fields=fields,
+                                     startAt=at, maxResults=100)
+                found = page.get('issues', [])
+                for i in found:
+                    f = i['fields']
+                    if f['issuetype'].get('subtask'):
+                        continue
+                    ek = f.get(epic_field)
+                    if ek not in by_epic:
+                        continue
+                    seen += 1
+                    status = f['status']['name']
+                    category = self.cats.get(str(f['status']['id'])) or \
+                        f['status'].get('statusCategory', {}).get('name', '')
+                    bucket = self.bucket(status, category)
+                    done_at = f.get('resolutiondate') if bucket == 'done' else None
+                    item = {
+                        'key': i['key'], 'title': f['summary'], 'type': f['issuetype']['name'],
+                        'status': status, 'category': category,
+                        'assignee': (f.get('assignee') or {}).get('displayName'),
+                        'priority': priority_name(f),
+                        'sprint': where.get(i['key']), 'inSprint': where.get(i['key']) == active['name'],
+                        # даты — для графика сгорания эпика: когда задача появилась и когда закрыта
+                        'created': (f.get('created') or '')[:10] or None,
+                        'doneAt': done_at[:10] if done_at else None,
+                        'sp': f.get(self.sp_id) if self.sp_id and isinstance(f.get(self.sp_id), (int, float)) else None,
+                        'subtasks': [],
+                    }
+                    for sub in f.get('subtasks') or []:
+                        sf = sub['fields']
+                        sub_cat = sf['status'].get('statusCategory', {}).get('name', '')
+                        self.bucket(sf['status']['name'], sub_cat)
+                        item['subtasks'].append({
+                            'key': sub['key'], 'summary': sf['summary'], 'status': sf['status']['name'],
+                            'category': sub_cat, 'priority': priority_name(sf)})
+                    by_epic[ek].append(item)
+                at += len(found)
+                if not found or at >= page.get('total', 0):
+                    break
+            if seen >= self.epic_scope_max:
+                self.warn(f'объём эпиков обрезан на {self.epic_scope_max} задачах — '
+                          f'поднимите params.epic_scope_max')
+                break
+        if self.params.get('epic_scope_subtasks', True):
+            self.scope_subtask_dates([it for items in by_epic.values() for it in items])
+        for e in epics:
+            if e['epicKey']:
+                e['scope'] = by_epic.get(e['epicKey'], [])
+
+    def scope_subtask_dates(self, items):
+        """Даты и исполнители подзадач объёма эпиков: пакетный поиск по родителям, без
+        запроса на подзадачу (в заглушке подзадачи у задачи исполнителя нет)."""
+        parents = [it['key'] for it in items if it['subtasks']]
+        chunk = int(self.params.get('epic_batch', 50))
+        dates = {}
+        for start in range(0, len(parents), chunk):
+            batch = parents[start:start + chunk]
+            jql = 'parent in (' + ','.join(batch) + ')'
+            at = 0
+            while True:
+                page = self.jira.api('/rest/api/2/search', jql=jql, fields='status,created,resolutiondate,assignee',
+                                     startAt=at, maxResults=100)
+                found = page.get('issues', [])
+                for i in found:
+                    f = i['fields']
+                    cat = self.cats.get(str(f['status']['id'])) or f['status'].get('statusCategory', {}).get('name', '')
+                    done = self.bucket(f['status']['name'], cat) == 'done' and f.get('resolutiondate')
+                    dates[i['key']] = ((f.get('created') or '')[:10] or None, done[:10] if done else None,
+                                       (f.get('assignee') or {}).get('displayName'))
+                at += len(found)
+                if not found or at >= page.get('total', 0):
+                    break
+        for it in items:
+            for sub in it['subtasks']:
+                sub['created'], sub['doneAt'], sub['assignee'] = dates.get(sub['key'], (None, None, None))
 
     def build_metrics(self, sprints, per_sprint):
         sprint_rows, all_closed, velocity = [], [], []
@@ -496,6 +715,65 @@ class Collector:
                'avgDone': round(sum(v['done'] for v in velocity) / len(velocity), 1)}
         return metrics, vel
 
+    def build_output(self, sprints, per_sprint, active, with_comments=None):
+        """Выработка участников по спринтам: задачи и Story Points по статусу на конец
+        спринта (у активного — на сейчас), по исполнителю на тот же момент. Подзадачи не
+        считаются: оценка живёт на задаче. Lead Time участника — медиана его закрытых."""
+        out, leads = [], {}
+        comments = {i['key']: (i['fields'].get('comment') or {}).get('comments') or []
+                    for s in sprints for i in (with_comments or {}).get(s['id'], [])}
+        for s in sprints:
+            current = s['id'] == active['id']
+            end = self.now if current else parse(s.get('completeDate') or s.get('endDate') or self.now.isoformat())
+            begin = parse(s['startDate']) if s.get('startDate') else None
+            members, items = {}, {}
+            spent = {}            # бакет → [дней по задачам]: среднее время в статусе за спринт
+            for i in per_sprint[s['id']]:
+                f = i['fields']
+                if f['issuetype'].get('subtask'):
+                    continue
+                st = value_at(i, 'status', end) if not current else None
+                name, sid = st if st and st[0] else (f['status']['name'], f['status']['id'])
+                bucket = self.bucket(name, self.cats.get(str(sid)) or '')
+                who = value_at(i, 'assignee', end) if not current else None
+                who = who[0] if who else (f.get('assignee') or {}).get('displayName')
+                who = who or 'Не назначен'
+                sp = f.get(self.sp_id) if self.sp_id else None
+                sp = sp if isinstance(sp, (int, float)) else 0
+                row = members.setdefault(who, {b: [0, 0] for b in self.rules.empty_counts()})
+                row[bucket][0] += 1
+                row[bucket][1] += sp
+                # задачи участника: что пошло в зачёт и что нет, с движением статусов и комментариями
+                items.setdefault(who, []).append({
+                    'key': i['key'], 'title': f.get('summary') or '', 'status': name, 'bucket': bucket,
+                    'sp': sp, 'history': status_history(i, end, begin), 'comments': [
+                        {'at': c['created'][:16], 'by': (c.get('author') or {}).get('displayName'),
+                         'body': (c.get('body') or '')[:400]}
+                        for c in comments.get(i['key'], [])
+                        if parse(c['created']) <= end and (not begin or parse(c['created']) >= begin)][-5:]})
+                lead, _, _ = lead_cycle(i, self.cats, self.rules)
+                if lead is not None:
+                    leads.setdefault(who, {})[i['key']] = lead
+            # время в статусах — по всем задачам спринта, включая подзадачи, в границах спринта
+            for i in per_sprint[s['id']]:
+                acc = {}
+                for a, b, bk in status_intervals(i, self.cats, lambda n, c: self.rules.classify(n, c)[0]):
+                    lo, hi = max(a, begin) if begin else a, min(b or end, end)
+                    if hi > lo:
+                        acc[bk] = acc.get(bk, 0) + (hi - lo).total_seconds() / 86400
+                for bk, d in acc.items():
+                    spent.setdefault(bk, []).append(d)
+            out.append({'name': s['name'], 'current': current,
+                        'start': (s.get('startDate') or '')[:10] or None, 'end': (s.get('endDate') or '')[:10] or None,
+                        'timeInStatus': {bk: round(sum(v) / len(v), 1) for bk, v in sorted(spent.items())
+                                         if bk in ('blocked', 'progress', 'review', 'testing')},
+                        'members': [{'name': who, 'split': {b: [n, round(sp, 1)] for b, (n, sp) in row.items()},
+                                     'items': items.get(who, [])}
+                                    for who, row in sorted(members.items())]})
+        lead_by = {who: stats(list(v.values())) for who, v in leads.items()}
+        return {'unit': 'SP' if self.sp_id else 'задач', 'field': self.sp_id, 'sprints': out,
+                'lead': {who: {'median': st['median'], 'count': st['count']} for who, st in lead_by.items() if st}}
+
     def build_burndown(self, active, issues):
         start, end = parse(active['startDate']), parse(active['endDate'])
         members = []
@@ -532,9 +810,14 @@ class Collector:
                 'end': end.date().isoformat(), 'days': days}
 
     def build_control(self, sprints, per_sprint):
-        """Точки — закрытые за control_days (Cycle Time). Зона риска — НЕзакрытые задачи,
-        которые идут дольше медианы своей группы."""
-        since = self.now - timedelta(days=self.control_days)
+        """Точки — закрытые за окно (control_days или спринты отчёта), с Cycle Time. Зона риска —
+        НЕзакрытые задачи, которые идут дольше медианы своей группы."""
+        if self.control_days:
+            since = self.now - timedelta(days=self.control_days)
+        else:
+            first = next((s for s in sprints if s.get('startDate')), None)
+            since = parse(first['startDate']) if first else self.now - timedelta(days=30)
+        days = max(1, -(-int((self.now - since).total_seconds()) // 86400))
         closed_by_group = {'stories': {}, 'subtasks': {}}
         open_by_group = {'stories': [], 'subtasks': []}
 
@@ -561,7 +844,7 @@ class Collector:
         def chart(group):
             points = sorted(closed_by_group[group].values(), key=lambda p: p['doneAt'])
             if not points:
-                return {'points': [], 'risks': [], 'days': self.control_days}
+                return {'points': [], 'risks': [], 'days': days}
             vals = [p['cycle'] for p in points]
             mean, median = statistics.mean(vals), statistics.median(vals)
             sd = statistics.pstdev(vals)
@@ -573,16 +856,19 @@ class Collector:
                 if r['elapsed'] > median and r['key'] not in seen_risk:
                     seen_risk[r['key']] = r
             risks = sorted(seen_risk.values(), key=lambda r: (-r['elapsed'], r['key']))
-            return {'points': points, 'risks': risks, 'days': self.control_days,
+            return {'points': points, 'risks': risks, 'days': days,
                     'mean': round(mean, 1), 'median': round(median, 1), 'sd': round(sd, 1),
                     'limit': limit, 'outliers': sum(1 for p in points if p['outlier']),
                     'today': self.now.date().isoformat()}
 
-        return {'stories': chart('stories'), 'subtasks': chart('subtasks'),
-                'days': self.control_days}
+        return {'stories': chart('stories'), 'subtasks': chart('subtasks'), 'days': days}
 
-    def build_logs(self, sprints, per_sprint, with_comments):
-        since = self.now - timedelta(days=self.activity_days)
+    def build_logs(self, sprints, per_sprint, with_comments, active=None):
+        if self.activity_days:
+            since = self.now - timedelta(days=self.activity_days)
+        else:
+            since = parse(active['startDate']) if active and active.get('startDate') else self.now - timedelta(days=14)
+        days = max(1, -(-int((self.now - since).total_seconds()) // 86400))
         events, seen = [], set()
         for s in sprints:
             for i in per_sprint[s['id']]:
@@ -630,7 +916,7 @@ class Collector:
         for e in events:
             authors[e['author']] = authors.get(e['author'], 0) + 1
             kinds[e['kind']] = kinds.get(e['kind'], 0) + 1
-        return {'events': events, 'days': self.activity_days, 'kinds': kinds,
+        return {'events': events, 'days': days, 'since': since.date().isoformat(), 'kinds': kinds,
                 'authors': sorted(authors.items(), key=lambda x: (-x[1], x[0]))}
 
 

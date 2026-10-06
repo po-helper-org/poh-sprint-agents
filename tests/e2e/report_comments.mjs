@@ -26,6 +26,7 @@ const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 await p.goto(pathToFileURL(page).href);
 
+const TEAMS_N = (info) => info.teams.split('|').length;
 const count = async () => (await p.textContent('#cCount')).trim();
 const openBasket = async () => { if (!(await p.isVisible('#notesPanel'))) await p.click('#notesToggle'); };
 
@@ -120,10 +121,213 @@ await p.waitForTimeout(250);
 check((await p.$$('.story-row .prio[title^="Приоритет:"]')).length > 0, 'приоритет у историй');
 check((await p.$$('.sub-item .prio[title^="Приоритет:"]')).length > 0, 'приоритет у подзадач');
 
+// «Смотреть весь эпик»: тот же сайдбар, объём эпика по разделам
+await p.keyboard.press('Escape');
+const noEpicRow = await p.$$eval('#tableBody tr', trs => trs.findIndex(tr => tr.dataset.row === 'no-epic'));
+await p.click(`#tableBody tr:nth-child(${noEpicRow + 1})`);
+await p.waitForTimeout(200);
+check(await p.isHidden('#scopeBtn'), 'у «Без эпика» кнопки «Смотреть весь эпик» нет');
+await p.keyboard.press('Escape');
+await p.click('#tableBody tr:nth-child(1)');
+await p.waitForTimeout(250);
+check(await p.isVisible('#scopeBtn'), 'в шапке панели эпика есть «Смотреть весь эпик»');
+const keyLink = await p.$eval('#stackKeyLink', a => ({ text: a.textContent, href: a.href, target: a.target, svg: !!a.querySelector('svg') }));
+const headKey = await p.evaluate(() => TEAMS[0].epics[0].epicKey);
+check(keyLink.text === headKey && keyLink.href.endsWith('/browse/' + headKey) && keyLink.target === '_blank' && keyLink.svg,
+      'ключ эпика в шапке — ссылка в JIRA с иконкой внешней ссылки');
+check(!(await p.textContent('.stack-head')).includes('Открыть в JIRA'), 'отдельной кнопки «Открыть в JIRA» нет');
+await p.click('#scopeBtn');
+const scope = await p.evaluate(() => {
+  const e = TEAMS[0].epics[0], map = TEAMS[0].statusMap;
+  const done = e.scope.filter(i => map[i.status] === 'done').length;
+  return { total: e.scope.length, done, left: e.scope.length - done,
+           outside: e.scope.filter(i => !i.inSprint).length };
+});
+check((await p.textContent('.scope-sum .big')).startsWith(`Сделано ${scope.done} из ${scope.total}`), 'сводка «сделано из» по данным');
+const burn = async () => p.evaluate(() => ({ mode: document.querySelector('#storiesBody .eb-mode.on').dataset.burnMode,
+  analysis: document.querySelector('#storiesBody .eb-analysis').textContent, svg: !!document.querySelector('#storiesBody .eb svg') }));
+let bv = await burn();
+check(bv.svg && bv.mode === 'sp' && /Плановая дата/.test(bv.analysis) && /Расчётная дата/.test(bv.analysis) && /SP\/нед/.test(bv.analysis),
+      '«Весь эпик»: сгорание по неделям в SP, под графиком — плановая, расчётная дата и темп');
+await p.click('#storiesBody [data-burn-mode="stories"]');
+bv = await burn();
+check(bv.mode === 'stories' && /ист\.\/нед/.test(bv.analysis), 'основа «Закрытие историй» — пересчёт графика и панели');
+await p.click('#storiesBody [data-burn-mode="subtasks"]');
+bv = await burn();
+check(bv.mode === 'subtasks' && /подз\.\/нед/.test(bv.analysis), 'основа «Закрытие подзадач»');
+await p.click('#storiesBody [data-burn-mode="sp"]');
+check((await p.textContent('.scope-sec[data-sec=left] .sec-head .n')).includes(String(scope.left)), 'раздел «Осталось» со счётчиком');
+check((await p.textContent('.scope-sec[data-sec=done] .sec-head .n')).includes(String(scope.done)), 'раздел «Сделано» со счётчиком');
+check((await p.$$('.scope-sec .story-row')).length === scope.total, 'в объёме все задачи эпика, не только спринта');
+check((await p.$$eval('.chip-sprint', els => els.filter(e => !e.classList.contains('now')).length)) === scope.outside,
+      'у задач вне текущего спринта метка спринта');
+check(await p.isHidden('.scope-sec[data-sec=left] .sec-body') && await p.isHidden('.scope-sec[data-sec=done] .sec-body'),
+      'при открытии разделы свёрнуты: видны итог и заголовки');
+await p.click('.scope-sec[data-sec=left] .sec-head');
+const grp = '.scope-sec[data-sec=left] .scope-group >> nth=0';
+const grpRows = await p.$$eval('.scope-sec[data-sec=left] .scope-group', gs => gs[0].querySelectorAll('.story-row').length);
+check(await p.locator(grp + ' >> .grp-head').isVisible() && await p.locator(grp + ' >> .grp-body').isHidden() && grpRows > 0,
+      'в «Осталось» статусы свёрнуты: заголовок со счётчиком, задачи скрыты');
+await p.click(grp + ' >> .grp-head');
+check(await p.locator(grp + ' >> .grp-body').isVisible(), 'статус раскрывается по клику');
+await p.click(grp + ' >> .grp-head');
+check(await p.locator(grp + ' >> .grp-body').isHidden(), 'и сворачивается обратно');
+await p.click(grp + ' >> .grp-head');
+await p.click('.scope-sec[data-sec=done] .sec-head');
+check(await p.isVisible('.scope-sec[data-sec=done] .sec-body'), 'раздел «Сделано» раскрывается');
+await p.click('.scope-sec[data-sec=done] .sec-head');
+check(await p.isHidden('.scope-sec[data-sec=done] .sec-body'), 'и сворачивается');
+await p.click(grp + ' >> .story-row .story-title-wrap >> nth=0', { button: 'right', position: { x: 220, y: 8 } });
+await p.fill('#cpopText', 'Заметка из объёма эпика');
+await p.press('#cpopText', 'Enter');
+check((await p.inputValue('#promptOut')).includes('Заметка из объёма эпика'), 'правый клик по задаче объёма — заметка');
+await p.click('#scopeBtn');
+check((await p.textContent('#scopeBtn')) === 'Смотреть весь эпик' && (await p.$$('.scope-sec')).length === 0,
+      'кнопка возвращает к задачам спринта');
+await p.keyboard.press('Escape');
+
+// сводный отчёт: под графиками только легенда, расшифровка — в «i», инсайды ИИ — разделом внизу
+await p.click('#metricsLink');
+await p.waitForTimeout(300);
+check(!(await p.textContent('#storiesBody')).includes('Зелёная точка'), 'под диаграммами нет длинной расшифровки');
+check((await p.$$('.metrics-section h3 .info')).length === 4, 'у каждого графика иконка «i»');
+const tip = '.metrics-section >> nth=2 >> .info-tip';
+check(await p.locator(tip).isHidden(), 'подсказка скрыта до наведения');
+await p.locator('.metrics-section >> nth=2 >> .info').hover();
+await p.waitForTimeout(250);
+check(await p.locator(tip).isVisible(), 'наведение открывает подсказку');
+const tipText = await p.locator(tip).textContent();
+check(tipText.includes('Как читать') && !tipText.includes('Инсайды ИИ'), 'в подсказке только как читать график');
+const tipBox = await p.locator(tip).boundingBox();
+check(tipBox.y >= 0 && tipBox.y + tipBox.height <= 900 + 1, 'подсказка целиком в окне');
+await p.mouse.move(5, 5);
+const ai = await p.evaluate(() => {
+  const sec = document.getElementById('aiInsights');
+  const all = [...document.querySelectorAll('#storiesBody .metrics-section')];
+  return { last: all[all.length - 1] === sec, items: sec.querySelectorAll('.ai-item').length,
+           first: sec.querySelector('.ai-item')?.className || '', text: sec.textContent,
+           expected: TEAMS[0].insights.observations.length,
+           keys: [...sec.querySelectorAll('.ai-keys a')].every(a => a.href.includes('/browse/') && a.target === '_blank') };
+});
+check(ai.last, 'раздел «Инсайды ИИ» — последним в сводном отчёте');
+check(ai.items === ai.expected && ai.items >= 3, 'в разделе все наблюдения агента');
+check(ai.first.includes('lv-risk') && ai.text.includes('нужна реакция'), 'первым — главное, с уровнем');
+check(ai.text.includes('На что обратить внимание PO') && ai.text.includes('Интерпретация ИИ, не данные'),
+      'подзаголовок для PO и пометка «интерпретация, не данные»');
+check(ai.keys, 'ключи задач у наблюдения — ссылки в JIRA');
+await p.locator('#aiInsights .ai-item >> nth=0').click({ button: 'right', position: { x: 200, y: 30 } });
+check((await p.textContent('#cpopTarget')).includes('Инсайд ИИ'), 'правый клик по наблюдению — заметка к нему');
+await p.keyboard.press('Escape');
+await p.locator('.outlier-row >> nth=0').click({ button: 'right', position: { x: 40, y: 8 } });
+await p.fill('#cpopText', 'Разобрать выброс на ретро');
+await p.press('#cpopText', 'Enter');
+const outPrompt = await p.inputValue('#promptOut');
+check(outPrompt.includes('Разобрать выброс на ретро') && /INIT-\d+/.test(outPrompt.split('\n').pop()),
+      'правый клик по строке «Выбиваются из коридора» — заметка к задаче');
+// Esc снимает слои по одному: поле заметки → корзина → панель
+for (let i = 0; i < 4 && await p.evaluate(() => document.getElementById('overlay').classList.contains('open')); i++) {
+  await p.keyboard.press('Escape');
+  await p.waitForTimeout(100);
+}
+await p.click('[data-team="mobile"]');
+await p.click('#metricsLink');
+await p.waitForTimeout(300);
+check((await p.textContent('#aiInsights')).includes('/sprint-insights') && !(await p.$('#aiInsights .ai-item')),
+      'нет инсайдов для сбора — раздел на месте и говорит, как их получить');
+await p.keyboard.press('Escape');
+await p.click('[data-team="platform"]');
+
 // у каждой команды своя корзина
 await p.keyboard.press('Escape');
 await p.click('[data-team="catalog"]');
 check(await count() === '0', 'у другой команды своя корзина');
+
+// «!» в шапке — интерпретация ИИ: динамика, внимание, рекомендации
+await p.keyboard.press('Escape');
+await p.click('#interpBtn');
+await p.waitForTimeout(300);
+const interp = await p.evaluate(() => ({ open: document.getElementById('panelStack').classList.contains('open'),
+  heads: [...document.querySelectorAll('#storiesBody .interp-sec h3')].map(h => h.textContent),
+  items: document.querySelectorAll('#storiesBody .interp-sec li').length,
+  by: (document.querySelector('#storiesBody .ai-by') || {}).textContent || '' }));
+check(interp.open && interp.heads.join('|') === 'Что можно сказать о динамике команды|На что стоит обратить внимание|Рекомендации на будущее',
+      '«!» открывает сайдбар интерпретации из трёх разделов');
+check(interp.items >= 3 && interp.by.startsWith('Интерпретация ИИ, не данные'), 'пункты интерпретации и подпись «не данные»');
+await p.keyboard.press('Escape');
+await p.click('[data-team="mobile"]');
+await p.click('#interpBtn');
+await p.waitForTimeout(300);
+check(await p.evaluate(() => document.getElementById('interpBtn').classList.contains('empty')) &&
+      (await p.textContent('#storiesBody')).includes('/actual-sprint'), 'нет интерпретации — серая «!» и объяснение, откуда она');
+await p.keyboard.press('Escape');
+await p.click('[data-team="catalog"]');
+
+// «Команда: N» в шапке — участники за 3 спринта; названия команды заголовком нет
+await p.keyboard.press('Escape');
+await p.click('[data-team="platform"]');
+const hero = await p.evaluate(() => ({ h1: !!document.querySelector('.hero h1'), kicker: !!document.querySelector('.hero .team'),
+  meta: document.querySelector('.hero .meta').textContent, link: document.getElementById('teamLink').textContent }));
+check(!hero.h1 && !hero.kicker && !/Спринт:/.test(hero.meta) && /^Команда: \d+ участник/.test(hero.meta.trim()),
+      'в шапке ни «Команда» с названием, ни «Спринт:» — вместо него «Команда: N участников»');
+await p.click('#teamLink');
+await p.waitForTimeout(300);
+const team = await p.evaluate(() => {
+  const b = document.getElementById('storiesBody');
+  return { open: document.getElementById('panelStack').classList.contains('open'),
+           cols: [...b.querySelectorAll('table.mtab thead th')].map(h => h.firstChild.textContent),
+           sprints: TEAMS[0].output.sprints.map(x => x.name),
+           rows: b.querySelectorAll('table.mtab tbody tr').length,
+           members: new Set(TEAMS[0].output.sprints.flatMap(x => x.members.map(m => m.name))).size,
+           nums: b.querySelectorAll('table.mtab td.mcell[data-tip] .mc-nums > span:not(.sep)').length,
+           cells: b.querySelectorAll('table.mtab td.mcell[data-tip]').length };
+});
+check(team.open && team.cols.join('|') === ['Участник', ...team.sprints, 'Lead time'].join('|'), '«Команда» — сайдбар: участник, три спринта, Lead time');
+check(team.rows === team.members + 1, 'по строке на участника и итог команды');
+check(team.nums === team.cells * 3, 'в ячейке три числа: не начато · в работе · выполнено');
+await p.hover('#storiesBody td.mcell[data-tip] >> nth=1');
+await p.waitForTimeout(150);
+const outTip = await p.evaluate(() => { const t = document.querySelector('.deck-tip'); return { shown: !t.hidden, text: t.textContent }; });
+check(outTip.shown && ['Backlog / To Do', 'В блоке', 'Ревью', 'Отладка', 'Отменено'].every(x => outTip.text.includes(x)),
+      'наведение — раскрытые группы: backlog, в блоке; в работе, ревью, отладка; готово, отменено');
+await p.click('#storiesBody button.mname >> nth=0');
+await p.waitForTimeout(300);
+const mem = await p.evaluate(() => ({ open: document.getElementById('panelStack').classList.contains('open'),
+  tabs: [...document.querySelectorAll('.side-tab')].map(x => x.textContent.split(' · ')[0]),
+  first: (document.querySelector('#storiesBody .mi-head') || {}).textContent || '',
+  rows: document.querySelectorAll('#storiesBody .mi-row').length }));
+check(mem.open && mem.tabs.join('|') === team.sprints.join('|') && mem.first.startsWith('Выполнено — в зачёт'),
+      'клик по участнику — сайдбар его задач по спринтам, сначала то, что пошло в зачёт');
+await p.click('.side-tab >> nth=0');
+await p.click('#storiesBody .mi-row >> nth=0');
+await p.waitForTimeout(200);
+const act = await p.evaluate(() => {
+  const d = document.querySelector('#storiesBody .mi-row + .mi-detail');
+  const at = [...d.querySelectorAll('.mi-act .mi-when')].map(x => x.textContent);
+  return { n: at.length, rows: document.querySelectorAll('#storiesBody .mi-row').length,
+           sorted: at.every((x, i) => !i || x.slice(3, 5) + x.slice(0, 2) + x.slice(6) >= at[i - 1].slice(3, 5) + at[i - 1].slice(0, 2) + at[i - 1].slice(6)) };
+});
+check(act.n > 0 && act.sorted && act.rows > 1, 'клик по задаче — её смены статуса и комментарии на том же экране, по хронологии');
+await p.click('#storiesBody .mi-row >> nth=0');
+check((await p.locator('#storiesBody .mi-detail').count()) === 0, 'повторный клик сворачивает историю');
+await p.click('[data-team-back]');
+await p.waitForTimeout(200);
+check(await p.isVisible('#storiesBody table.mtab'), '«← Команда» возвращает к таблице участников');
+await p.keyboard.press('Escape');
+await p.click('[data-team="catalog"]');
+
+// «Бизнес-отчёт» — не колода на этой странице, а промт для навыка sprint-business
+await p.keyboard.press('Escape');
+check(await p.$('#deck') === null, 'колоды в отчёте PO нет: бизнес-отчёт — отдельный файл');
+await p.click('#bizBtn');
+await p.waitForTimeout(150);
+const bizPrompt = await p.inputValue('#genText');
+check(await p.isVisible('#genWrap') && bizPrompt.includes('/sprint-business') && bizPrompt.includes('sprint-report.data.json') &&
+      bizPrompt.includes('OKR/roadmap PO'), '«Бизнес-отчёт» — окно с промтом: навык, общий снимок, цели из OKR');
+check(bizPrompt.includes('Заметки PO из технического отчёта'), 'в промт уходят заметки PO из корзины');
+await p.click('#genCopy');
+check((await p.evaluate(() => navigator.clipboard.readText())) === bizPrompt, '«Скопировать промт» кладёт его в буфер');
+await p.keyboard.press('Escape');
+check(await p.isHidden('#genWrap'), 'Esc закрывает окно промта');
 
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();

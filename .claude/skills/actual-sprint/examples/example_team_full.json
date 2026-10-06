@@ -1,0 +1,1978 @@
+{
+ "_comment": "Полный образец ОДНОГО элемента массива TEAMS: каждое поле контракта (contract/team.schema.json, описание — sprint-data/reference/fields.md) хотя бы раз. Демо-команда, укороченная до читаемого размера; производные числа пересчитаны, образец проходит схему и инварианты. Генерируется: scripts/demo_data.py --example.",
+ "_meta": {
+  "collectedAt": "2026-09-15T17:00:00+03:00",
+  "collector": "demo",
+  "durationMs": 0,
+  "protocol": 1,
+  "requests": 0,
+  "version": "1.0.0",
+  "warnings": [
+   "демо-данные: в JIRA не ходили"
+  ]
+ },
+ "boardId": 1008,
+ "boardName": "Scrum Board Платформа",
+ "boardUrl": "https://tracker.demo-workspace.local/boards/platform",
+ "burndown": {
+  "days": [
+   {
+    "closed": 0,
+    "date": "2026-09-08",
+    "future": false,
+    "remaining": 45,
+    "scope": 45,
+    "weekend": false
+   },
+   {
+    "closed": 1,
+    "date": "2026-09-09",
+    "future": false,
+    "remaining": 44,
+    "scope": 45,
+    "weekend": false
+   },
+   {
+    "closed": 2,
+    "date": "2026-09-10",
+    "future": false,
+    "remaining": 43,
+    "scope": 45,
+    "weekend": false
+   },
+   {
+    "closed": 2,
+    "date": "2026-09-11",
+    "future": false,
+    "remaining": 46,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-12",
+    "future": false,
+    "remaining": 44,
+    "scope": 48,
+    "weekend": true
+   },
+   {
+    "closed": 4,
+    "date": "2026-09-13",
+    "future": false,
+    "remaining": 44,
+    "scope": 48,
+    "weekend": true
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-14",
+    "future": false,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-15",
+    "future": false,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-16",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-17",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-18",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-19",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": true
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-20",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": true
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-21",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   },
+   {
+    "closed": 5,
+    "date": "2026-09-22",
+    "future": true,
+    "remaining": 43,
+    "scope": 48,
+    "weekend": false
+   }
+  ],
+  "end": "2026-09-22",
+  "sprintName": "Спринт 74",
+  "start": "2026-09-08"
+ },
+ "control": {
+  "days": 30,
+  "stories": {
+   "days": 30,
+   "limit": 20.39,
+   "mean": 10.5,
+   "median": 6.8,
+   "outliers": 1,
+   "points": [
+    {
+     "category": "Выполнено",
+     "cycle": 5.2,
+     "doneAt": "2026-09-10",
+     "key": "INIT-175",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Экран онбординга"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 1.24,
+     "doneAt": "2026-09-11",
+     "key": "INIT-182",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Логи и трассировка запросов"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 6.66,
+     "doneAt": "2026-09-13",
+     "key": "INIT-162",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Метрики загрузчика"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 31.72,
+     "doneAt": "2026-09-14",
+     "key": "INIT-160",
+     "outlier": true,
+     "status": "Закрыт",
+     "title": "Рефакторинг слоя данных"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 10.96,
+     "doneAt": "2026-09-14",
+     "key": "INIT-161",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Подписка на уведомления"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 7.01,
+     "doneAt": "2026-09-15",
+     "key": "INIT-180",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Фича-флаги релиза"
+    }
+   ],
+   "risks": [
+    {
+     "assignee": "Участник Ж",
+     "category": "В работе",
+     "elapsed": 27.57,
+     "key": "INIT-132",
+     "status": "В работе",
+     "title": "Сервис приёма событий"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "elapsed": 24.91,
+     "key": "INIT-150",
+     "status": "Анализ",
+     "title": "Обновление контракта"
+    }
+   ],
+   "sd": 9.9,
+   "today": "2026-09-15"
+  },
+  "subtasks": {
+   "days": 30,
+   "limit": 6.47,
+   "mean": 4.2,
+   "median": 4.4,
+   "outliers": 1,
+   "points": [
+    {
+     "category": "Выполнено",
+     "cycle": 5.12,
+     "doneAt": "2026-09-07",
+     "key": "INIT-207",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Схема БД"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 3.9,
+     "doneAt": "2026-09-09",
+     "key": "INIT-193",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Нагрузочный прогон"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 0.96,
+     "doneAt": "2026-09-09",
+     "key": "INIT-197",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Ревью безопасности"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 8.13,
+     "doneAt": "2026-09-12",
+     "key": "INIT-192",
+     "outlier": true,
+     "status": "Закрыт",
+     "title": "Схема БД"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 4.84,
+     "doneAt": "2026-09-14",
+     "key": "INIT-191",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Ревью безопасности"
+    },
+    {
+     "category": "Выполнено",
+     "cycle": 2.14,
+     "doneAt": "2026-09-15",
+     "key": "INIT-205",
+     "outlier": false,
+     "status": "Закрыт",
+     "title": "Бизнес-логика"
+    }
+   ],
+   "risks": [
+    {
+     "assignee": "Участник Ж",
+     "category": "В работе",
+     "elapsed": 33.47,
+     "key": "INIT-132",
+     "status": "В работе",
+     "title": "Сервис приёма событий"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "В работе",
+     "elapsed": 25.95,
+     "key": "INIT-103",
+     "status": "Ревью",
+     "title": "Покрытие тестами"
+    }
+   ],
+   "sd": 2.3,
+   "today": "2026-09-15"
+  }
+ },
+ "epics": [
+  {
+   "epicDue": "2026-10-12",
+   "epicKey": "INIT-101",
+   "epicPriority": "Низкий",
+   "epicTitle": "Приём заказов из внешнего канала",
+   "rowId": "INIT-101",
+   "scope": [
+    {
+     "assignee": "Участник Ж",
+     "category": "В работе",
+     "created": "2026-08-23",
+     "doneAt": null,
+     "inSprint": true,
+     "key": "INIT-102",
+     "priority": "Критический",
+     "sp": 8,
+     "sprint": "Спринт 74",
+     "status": "В работе",
+     "subtasks": [
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "created": "2026-08-24",
+       "doneAt": null,
+       "key": "INIT-103",
+       "priority": "Средний",
+       "status": "Ревью",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник Г",
+       "category": "К выполнению",
+       "created": "2026-08-25",
+       "doneAt": null,
+       "key": "INIT-104",
+       "priority": "Высокий",
+       "status": "Бэклог",
+       "summary": "Обновление контракта"
+      }
+     ],
+     "title": "Переезд на новое хранилище",
+     "type": "История"
+    },
+    {
+     "assignee": "Участник З",
+     "category": "В работе",
+     "created": "2026-08-23",
+     "doneAt": null,
+     "inSprint": true,
+     "key": "INIT-105",
+     "priority": "Средний",
+     "sp": null,
+     "sprint": "Спринт 74",
+     "status": "Дизайн",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "created": "2026-08-23",
+       "doneAt": null,
+       "key": "INIT-106",
+       "priority": "Высокий",
+       "status": "В работе",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "created": "2026-08-24",
+       "doneAt": null,
+       "key": "INIT-107",
+       "priority": "Средний",
+       "status": "Анализ",
+       "summary": "Мониторинг и алерты"
+      }
+     ],
+     "title": "Метрики загрузчика",
+     "type": "История"
+    },
+    {
+     "assignee": "Участник Е",
+     "category": "Выполнено",
+     "created": "2026-08-05",
+     "doneAt": "2026-08-22",
+     "inSprint": false,
+     "key": "INIT-7000",
+     "priority": "Средний",
+     "sp": 13,
+     "sprint": "Спринт 72",
+     "status": "Закрыт",
+     "subtasks": [
+      {
+       "assignee": "Участник Б",
+       "category": "Выполнено",
+       "created": "2026-08-05",
+       "doneAt": "2026-08-20",
+       "key": "INIT-7001",
+       "priority": "Высокий",
+       "status": "Закрыт",
+       "summary": "Документация"
+      },
+      {
+       "assignee": "Участник В",
+       "category": "Выполнено",
+       "created": "2026-08-07",
+       "doneAt": "2026-08-19",
+       "key": "INIT-7002",
+       "priority": "Средний",
+       "status": "Закрыт",
+       "summary": "Нагрузочный прогон"
+      }
+     ],
+     "title": "Фича-флаги релиза",
+     "type": "Задача"
+    },
+    {
+     "assignee": "Участник В",
+     "category": "Выполнено",
+     "created": "2026-07-26",
+     "doneAt": "2026-08-19",
+     "inSprint": false,
+     "key": "INIT-7003",
+     "priority": "Низкий",
+     "sp": 13,
+     "sprint": "Спринт 72",
+     "status": "Закрыт",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "Выполнено",
+       "created": "2026-07-26",
+       "doneAt": "2026-08-18",
+       "key": "INIT-7004",
+       "priority": "Критический",
+       "status": "Закрыт",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник Е",
+       "category": "Выполнено",
+       "created": "2026-07-29",
+       "doneAt": "2026-08-16",
+       "key": "INIT-7005",
+       "priority": "Средний",
+       "status": "Закрыт",
+       "summary": "Обновление контракта"
+      }
+     ],
+     "title": "Дедупликация по типам объектов",
+     "type": "Задача"
+    },
+    {
+     "assignee": "Участник З",
+     "category": "К выполнению",
+     "created": "2026-09-06",
+     "doneAt": null,
+     "inSprint": false,
+     "key": "INIT-7021",
+     "priority": "Средний",
+     "sp": null,
+     "sprint": null,
+     "status": "Бэклог",
+     "subtasks": [
+      {
+       "assignee": "Участник В",
+       "category": "К выполнению",
+       "created": "2026-09-09",
+       "doneAt": null,
+       "key": "INIT-7022",
+       "priority": "Высокий",
+       "status": "Бэклог",
+       "summary": "Обновление контракта"
+      },
+      {
+       "assignee": "Участник Г",
+       "category": "К выполнению",
+       "created": "2026-09-07",
+       "doneAt": null,
+       "key": "INIT-7023",
+       "priority": "Средний",
+       "status": "Бэклог",
+       "summary": "Нагрузочный прогон"
+      }
+     ],
+     "title": "Локальное хранилище",
+     "type": "История"
+    }
+   ],
+   "stories": [
+    {
+     "assignee": "Участник Ж",
+     "category": "В работе",
+     "events": [
+      {
+       "at": "2026-08-07T10:00",
+       "by": "Участник З",
+       "key": "INIT-102",
+       "kind": "created"
+      },
+      {
+       "at": "2026-08-26T13:30",
+       "by": "Участник В",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-102",
+       "kind": "status",
+       "to": "Анализ"
+      },
+      {
+       "at": "2026-08-28T12:00",
+       "by": "Участник Е",
+       "key": "INIT-103",
+       "kind": "created"
+      },
+      {
+       "at": "2026-08-31T12:00",
+       "by": "Участник И",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-103",
+       "kind": "status",
+       "to": "В работе"
+      },
+      {
+       "at": "2026-09-03T12:00",
+       "by": "Участник Б",
+       "done": false,
+       "from": "В работе",
+       "key": "INIT-103",
+       "kind": "status",
+       "to": "Ревью"
+      },
+      {
+       "at": "2026-09-03T13:00",
+       "by": "Участник Б",
+       "key": "INIT-104",
+       "kind": "created"
+      }
+     ],
+     "key": "INIT-102",
+     "priority": "Критический",
+     "status": "В работе",
+     "statusChanged": "2026-09-14T17:00:00+03:00",
+     "subtasks": [
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "key": "INIT-103",
+       "priority": "Средний",
+       "status": "Ревью",
+       "statusChanged": "2026-09-03T12:00:00+03:00",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник Г",
+       "category": "К выполнению",
+       "key": "INIT-104",
+       "priority": "Высокий",
+       "status": "Бэклог",
+       "statusChanged": "2026-09-15T13:00:00+03:00",
+       "summary": "Обновление контракта"
+      }
+     ],
+     "title": "Переезд на новое хранилище"
+    },
+    {
+     "assignee": "Участник З",
+     "category": "В работе",
+     "events": [
+      {
+       "at": "2026-08-31T14:00",
+       "by": "Участник Б",
+       "key": "INIT-105",
+       "kind": "created"
+      },
+      {
+       "at": "2026-08-31T17:00",
+       "by": "Участник В",
+       "key": "INIT-106",
+       "kind": "created"
+      },
+      {
+       "at": "2026-09-03T14:00",
+       "by": "Участник В",
+       "key": "INIT-107",
+       "kind": "created"
+      },
+      {
+       "at": "2026-09-04T04:31",
+       "body": "Разделил задачу — часть вынес в отдельную подзадачу.",
+       "by": "Участник В",
+       "key": "INIT-105",
+       "kind": "comment"
+      },
+      {
+       "at": "2026-09-06T20:30",
+       "by": "Участник З",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-106",
+       "kind": "status",
+       "to": "Анализ"
+      },
+      {
+       "at": "2026-09-07T20:00",
+       "by": "Участник Д",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-105",
+       "kind": "status",
+       "to": "Анализ"
+      }
+     ],
+     "key": "INIT-105",
+     "priority": "Средний",
+     "status": "Дизайн",
+     "statusChanged": "2026-09-15T02:00:00+03:00",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "key": "INIT-106",
+       "priority": "Высокий",
+       "status": "В работе",
+       "statusChanged": "2026-09-13T00:00:00+03:00",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "key": "INIT-107",
+       "priority": "Средний",
+       "status": "Анализ",
+       "statusChanged": "2026-09-13T14:00:00+03:00",
+       "summary": "Мониторинг и алерты"
+      }
+     ],
+     "title": "Метрики загрузчика"
+    }
+   ]
+  },
+  {
+   "epicDue": null,
+   "epicKey": "INIT-111",
+   "epicPriority": "Высокий",
+   "epicTitle": "Единый каталог позиций",
+   "rowId": "INIT-111",
+   "scope": [
+    {
+     "assignee": "Участник И",
+     "category": "К выполнению",
+     "created": "2026-09-02",
+     "doneAt": null,
+     "inSprint": true,
+     "key": "INIT-112",
+     "priority": "Средний",
+     "sp": 13,
+     "sprint": "Спринт 74",
+     "status": "Готово к проверке",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "created": "2026-09-05",
+       "doneAt": null,
+       "key": "INIT-113",
+       "priority": "Высокий",
+       "status": "Ревью",
+       "summary": "Обновление контракта"
+      }
+     ],
+     "title": "Агрегация каталога и доступности",
+     "type": "История"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "К выполнению",
+     "created": "2026-09-03",
+     "doneAt": null,
+     "inSprint": true,
+     "key": "INIT-114",
+     "priority": "Средний",
+     "sp": 8,
+     "sprint": "Спринт 74",
+     "status": "Бэклог",
+     "subtasks": [
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "created": "2026-09-04",
+       "doneAt": null,
+       "key": "INIT-115",
+       "priority": "Низкий",
+       "status": "В работе",
+       "summary": "Схема БД"
+      },
+      {
+       "assignee": "Участник Г",
+       "category": "В работе",
+       "created": "2026-09-04",
+       "doneAt": null,
+       "key": "INIT-116",
+       "priority": "Критический",
+       "status": "Анализ",
+       "summary": "Нагрузочный прогон"
+      }
+     ],
+     "title": "Автотесты интеграционного слоя",
+     "type": "История"
+    },
+    {
+     "assignee": "Участник И",
+     "category": "Выполнено",
+     "created": "2026-08-01",
+     "doneAt": "2026-08-15",
+     "inSprint": false,
+     "key": "INIT-7032",
+     "priority": "Критический",
+     "sp": 2,
+     "sprint": "Спринт 72",
+     "status": "Закрыт",
+     "subtasks": [
+      {
+       "assignee": "Участник Г",
+       "category": "Выполнено",
+       "created": "2026-08-03",
+       "doneAt": "2026-08-12",
+       "key": "INIT-7033",
+       "priority": "Средний",
+       "status": "Закрыт",
+       "summary": "Бизнес-логика"
+      }
+     ],
+     "title": "Агрегация каталога и доступности",
+     "type": "История"
+    },
+    {
+     "assignee": "Участник К",
+     "category": "Выполнено",
+     "created": "2026-08-03",
+     "doneAt": "2026-08-16",
+     "inSprint": false,
+     "key": "INIT-7034",
+     "priority": "Высокий",
+     "sp": 8,
+     "sprint": "Спринт 72",
+     "status": "Закрыт",
+     "subtasks": [
+      {
+       "assignee": "Участник Е",
+       "category": "Выполнено",
+       "created": "2026-08-06",
+       "doneAt": "2026-08-13",
+       "key": "INIT-7035",
+       "priority": "Средний",
+       "status": "Закрыт",
+       "summary": "Покрытие тестами"
+      },
+      {
+       "assignee": "Участник Ж",
+       "category": "Выполнено",
+       "created": "2026-08-05",
+       "doneAt": "2026-08-15",
+       "key": "INIT-7036",
+       "priority": "Высокий",
+       "status": "Закрыт",
+       "summary": "Нагрузочный прогон"
+      }
+     ],
+     "title": "Переезд на новое хранилище",
+     "type": "Задача"
+    },
+    {
+     "assignee": "Участник А",
+     "category": "К выполнению",
+     "created": "2026-09-10",
+     "doneAt": null,
+     "inSprint": false,
+     "key": "INIT-7050",
+     "priority": "Высокий",
+     "sp": null,
+     "sprint": null,
+     "status": "Бэклог",
+     "subtasks": [
+      {
+       "assignee": "Участник Б",
+       "category": "К выполнению",
+       "created": "2026-09-10",
+       "doneAt": null,
+       "key": "INIT-7051",
+       "priority": "Средний",
+       "status": "Бэклог",
+       "summary": "Бизнес-логика"
+      }
+     ],
+     "title": "Экран онбординга",
+     "type": "Задача"
+    }
+   ],
+   "stories": [
+    {
+     "assignee": "Участник И",
+     "category": "К выполнению",
+     "events": [
+      {
+       "at": "2026-08-13T20:00",
+       "by": "Участник И",
+       "key": "INIT-112",
+       "kind": "created"
+      },
+      {
+       "at": "2026-08-29T04:30",
+       "by": "Участник А",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-112",
+       "kind": "status",
+       "to": "В работе"
+      },
+      {
+       "at": "2026-09-07T04:00",
+       "by": "Участник К",
+       "key": "INIT-113",
+       "kind": "created"
+      },
+      {
+       "at": "2026-09-09T00:55",
+       "body": "Проверил на препроде: сценарий проходит, ошибок нет.",
+       "by": "Участник К",
+       "key": "INIT-113",
+       "kind": "comment"
+      },
+      {
+       "at": "2026-09-10T04:00",
+       "by": "Участник З",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-113",
+       "kind": "status",
+       "to": "В работе"
+      },
+      {
+       "at": "2026-09-13T04:00",
+       "by": "Участник Д",
+       "done": false,
+       "from": "В работе",
+       "key": "INIT-113",
+       "kind": "status",
+       "to": "Ревью"
+      }
+     ],
+     "key": "INIT-112",
+     "priority": "Средний",
+     "status": "Готово к проверке",
+     "statusChanged": "2026-09-13T13:00:00+03:00",
+     "subtasks": [
+      {
+       "assignee": "Участник Д",
+       "category": "В работе",
+       "key": "INIT-113",
+       "priority": "Высокий",
+       "status": "Ревью",
+       "statusChanged": "2026-09-13T04:00:00+03:00",
+       "summary": "Обновление контракта"
+      }
+     ],
+     "title": "Агрегация каталога и доступности"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "К выполнению",
+     "events": [
+      {
+       "at": "2026-09-02T01:00",
+       "by": "Участник Г",
+       "key": "INIT-114",
+       "kind": "created"
+      },
+      {
+       "at": "2026-09-04T04:00",
+       "by": "Участник К",
+       "key": "INIT-115",
+       "kind": "created"
+      },
+      {
+       "at": "2026-09-04T04:00",
+       "by": "Участник Г",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-115",
+       "kind": "status",
+       "to": "Анализ"
+      },
+      {
+       "at": "2026-09-04T04:00",
+       "by": "Участник В",
+       "done": false,
+       "from": "Анализ",
+       "key": "INIT-115",
+       "kind": "status",
+       "to": "В работе"
+      },
+      {
+       "at": "2026-09-07T23:00",
+       "by": "Участник Б",
+       "key": "INIT-116",
+       "kind": "created"
+      },
+      {
+       "at": "2026-09-09T11:00",
+       "by": "Участник И",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-116",
+       "kind": "status",
+       "to": "Анализ"
+      }
+     ],
+     "key": "INIT-114",
+     "priority": "Средний",
+     "status": "Бэклог",
+     "statusChanged": "2026-09-12T16:00:00+03:00",
+     "subtasks": [
+      {
+       "assignee": "Участник А",
+       "category": "В работе",
+       "key": "INIT-115",
+       "priority": "Низкий",
+       "status": "В работе",
+       "statusChanged": "2026-09-03T06:00:00+03:00",
+       "summary": "Схема БД"
+      },
+      {
+       "assignee": "Участник Г",
+       "category": "В работе",
+       "key": "INIT-116",
+       "priority": "Критический",
+       "status": "Анализ",
+       "statusChanged": "2026-09-10T23:00:00+03:00",
+       "summary": "Нагрузочный прогон"
+      }
+     ],
+     "title": "Автотесты интеграционного слоя"
+    }
+   ]
+  },
+  {
+   "epicKey": null,
+   "epicPriority": null,
+   "epicTitle": "Без эпика",
+   "rowId": "no-epic",
+   "stories": [
+    {
+     "assignee": "Участник Г",
+     "category": "В работе",
+     "events": [
+      {
+       "at": "2026-07-26T01:00",
+       "by": "Участник И",
+       "key": "INIT-152",
+       "kind": "created"
+      },
+      {
+       "at": "2026-08-13T07:36",
+       "body": "Согласовал контракт со смежной командой, приступаю к реализации.",
+       "by": "Участник В",
+       "key": "INIT-152",
+       "kind": "comment"
+      },
+      {
+       "at": "2026-08-13T09:00",
+       "by": "Участник Е",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-152",
+       "kind": "status",
+       "to": "Анализ"
+      },
+      {
+       "at": "2026-08-31T17:00",
+       "by": "Участник А",
+       "done": false,
+       "from": "Анализ",
+       "key": "INIT-152",
+       "kind": "status",
+       "to": "В работе"
+      }
+     ],
+     "key": "INIT-152",
+     "priority": "Средний",
+     "status": "В работе",
+     "statusChanged": "2026-08-31T17:00:00+03:00",
+     "subtasks": [],
+     "title": "Структура хранения заказов"
+    },
+    {
+     "assignee": "Участник Б",
+     "category": "В работе",
+     "events": [
+      {
+       "at": "2026-08-14T12:00",
+       "by": "Участник К",
+       "key": "INIT-153",
+       "kind": "created"
+      },
+      {
+       "at": "2026-08-23T14:30",
+       "by": "Участник Б",
+       "done": false,
+       "from": "Бэклог",
+       "key": "INIT-153",
+       "kind": "status",
+       "to": "Анализ"
+      },
+      {
+       "at": "2026-09-01T17:00",
+       "by": "Участник Г",
+       "done": false,
+       "from": "Анализ",
+       "key": "INIT-153",
+       "kind": "status",
+       "to": "Дизайн"
+      }
+     ],
+     "key": "INIT-153",
+     "priority": "Высокий",
+     "status": "Дизайн",
+     "statusChanged": "2026-09-01T17:00:00+03:00",
+     "subtasks": [],
+     "title": "Фича-флаги релиза"
+    }
+   ]
+  }
+ ],
+ "jiraBase": "https://tracker.demo-workspace.local",
+ "logs": {
+  "authors": [
+   [
+    "Участник И",
+    2
+   ],
+   [
+    "Участник А",
+    1
+   ],
+   [
+    "Участник Б",
+    1
+   ],
+   [
+    "Участник Г",
+    1
+   ],
+   [
+    "Участник З",
+    1
+   ]
+  ],
+  "days": 8,
+  "events": [
+   {
+    "at": "2026-09-15T12:16:03.091577+03:00",
+    "author": "Участник И",
+    "from": "В работе",
+    "key": "INIT-112",
+    "kind": "status",
+    "title": "Агрегация каталога и доступности",
+    "to": "Бэклог",
+    "toCat": "К выполнению"
+   },
+   {
+    "at": "2026-09-15T06:28:32.283269+03:00",
+    "author": "Участник А",
+    "body": "Нашёл расхождение в справочнике, уточняю у аналитика.",
+    "key": "INIT-106",
+    "kind": "comment",
+    "title": "Покрытие тестами"
+   },
+   {
+    "at": "2026-09-15T01:41:59.715302+03:00",
+    "author": "Участник И",
+    "body": "Завис на стенде — жду доступ, вернусь к задаче завтра.",
+    "key": "INIT-120",
+    "kind": "comment",
+    "title": "Локальное хранилище"
+   },
+   {
+    "at": "2026-09-14T19:48:23.940280+03:00",
+    "author": "Участник Б",
+    "from": "Тестирование",
+    "key": "INIT-104",
+    "kind": "status",
+    "title": "Обновление контракта",
+    "to": "Ревью",
+    "toCat": "В работе"
+   },
+   {
+    "at": "2026-09-13T18:37:20.512634+03:00",
+    "author": "Участник Г",
+    "issueType": "Ошибка",
+    "key": "INIT-147",
+    "kind": "created",
+    "title": "Подписка на уведомления"
+   },
+   {
+    "at": "2026-09-11T16:32:34.917261+03:00",
+    "author": "Участник З",
+    "issueType": "Задача",
+    "key": "INIT-138",
+    "kind": "created",
+    "title": "Нагрузочный прогон"
+   }
+  ],
+  "kinds": {
+   "comment": 2,
+   "created": 2,
+   "status": 2
+  },
+  "since": "2026-09-08"
+ },
+ "metrics": {
+  "overall": {
+   "closed": 83,
+   "cycle": {
+    "count": 83,
+    "mean": 6.2,
+    "median": 3.4
+   },
+   "lead": {
+    "count": 83,
+    "mean": 17.9,
+    "median": 14.5
+   },
+   "leadStory": {
+    "count": 28,
+    "mean": 21.9,
+    "median": 13.8
+   },
+   "leadTask": {
+    "count": 28,
+    "mean": 14.4,
+    "median": 12.6
+   },
+   "total": 152
+  },
+  "sprints": [
+   {
+    "closed": 37,
+    "cycle": {
+     "count": 37,
+     "mean": 5.4,
+     "median": 3.0
+    },
+    "lead": {
+     "count": 37,
+     "mean": 14.6,
+     "median": 11.5
+    },
+    "leadStory": {
+     "count": 12,
+     "mean": 10.7,
+     "median": 8.7
+    },
+    "leadTask": {
+     "count": 25,
+     "mean": 16.5,
+     "median": 13.7
+    },
+    "name": "Спринт 72",
+    "open": 13,
+    "points": [
+     0.72,
+     0.86,
+     1.76,
+     1.9,
+     2.15,
+     2.17,
+     2.45,
+     2.95,
+     3.16,
+     3.2,
+     3.67,
+     5.77,
+     5.81,
+     6.01,
+     6.23,
+     6.51,
+     8.59,
+     9.69,
+     11.51,
+     13.74,
+     14.48,
+     15.02,
+     16.3,
+     17.5,
+     17.74,
+     19.34,
+     19.59,
+     23.48,
+     24.5,
+     26.28,
+     28.22,
+     29.3,
+     31.38,
+     32.15,
+     34.54,
+     43.69,
+     48.49
+    ],
+    "throughputPct": 74,
+    "total": 50
+   },
+   {
+    "closed": 41,
+    "cycle": {
+     "count": 41,
+     "mean": 7.4,
+     "median": 4.8
+    },
+    "lead": {
+     "count": 41,
+     "mean": 21.7,
+     "median": 17.3
+    },
+    "leadStory": {
+     "count": 13,
+     "mean": 28.6,
+     "median": 19.6
+    },
+    "leadTask": {
+     "count": 28,
+     "mean": 18.4,
+     "median": 14.5
+    },
+    "name": "Спринт 73",
+    "open": 13,
+    "points": [
+     0.93,
+     2.32,
+     2.68,
+     2.99,
+     3.3,
+     3.58,
+     4.11,
+     4.53,
+     4.62,
+     5.56,
+     5.67,
+     6.19,
+     6.25,
+     6.77,
+     9.42,
+     9.44,
+     10.29,
+     14.4,
+     14.66,
+     16.25,
+     17.29,
+     17.83,
+     18.4,
+     19.45,
+     19.56,
+     19.56,
+     21.89,
+     25.63,
+     25.85,
+     26.38,
+     26.58,
+     30.94,
+     30.94,
+     36.89,
+     37.72,
+     38.76,
+     48.62,
+     62.73,
+     70.08,
+     78.62,
+     80.14
+    ],
+    "throughputPct": 76,
+    "total": 54
+   },
+   {
+    "closed": 5,
+    "cycle": {
+     "count": 5,
+     "mean": 2.7,
+     "median": 2.9
+    },
+    "lead": {
+     "count": 5,
+     "mean": 11.3,
+     "median": 11.3
+    },
+    "leadStory": {
+     "count": 1,
+     "mean": 0.9,
+     "median": 0.9
+    },
+    "leadTask": {
+     "count": 4,
+     "mean": 13.9,
+     "median": 14.0
+    },
+    "name": "Спринт 74",
+    "open": 43,
+    "points": [
+     0.93,
+     4.75,
+     11.27,
+     16.82,
+     22.85
+    ],
+    "throughputPct": 10,
+    "total": 48
+   }
+  ]
+ },
+ "output": {
+  "field": "customfield_10106",
+  "lead": {
+   "Участник Б": {
+    "count": 5,
+    "median": 17.3
+   },
+   "Участник В": {
+    "count": 6,
+    "median": 11.1
+   },
+   "Участник З": {
+    "count": 6,
+    "median": 12.8
+   },
+   "Участник И": {
+    "count": 3,
+    "median": 17.5
+   }
+  },
+  "sprints": [
+   {
+    "current": false,
+    "end": "2026-08-25",
+    "members": [
+     {
+      "items": [
+       {
+        "bucket": "done",
+        "comments": [
+         {
+          "at": "2026-08-24T23:00",
+          "body": "Нашёл расхождение в справочнике, уточняю у аналитика.",
+          "by": "Участник И"
+         }
+        ],
+        "history": [
+         {
+          "at": "2026-08-16T02:00",
+          "by": "Участник Е",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-08-19T05:00",
+          "by": "Участник И",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8300",
+        "sp": 3,
+        "status": "Закрыт",
+        "title": "Ранжирование выдачи"
+       },
+       {
+        "bucket": "blocked",
+        "comments": [
+         {
+          "at": "2026-08-18T18:00",
+          "body": "Проверил на препроде: сценарий проходит, ошибок нет.",
+          "by": "Участник К"
+         }
+        ],
+        "history": [
+         {
+          "at": "2026-08-17T05:00",
+          "by": "Участник Ж",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-08-19T06:00",
+          "by": "Участник З",
+          "from": "В работе",
+          "to": "В ожидании"
+         }
+        ],
+        "key": "INIT-8301",
+        "sp": 5,
+        "status": "В ожидании",
+        "title": "Поиск по синонимам"
+       }
+      ],
+      "name": "Участник Б",
+      "split": {
+       "blocked": [
+        1,
+        5
+       ],
+       "done": [
+        1,
+        3
+       ],
+       "open": [
+        0,
+        0
+       ],
+       "progress": [
+        0,
+        0
+       ],
+       "review": [
+        0,
+        0
+       ],
+       "testing": [
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "items": [
+       {
+        "bucket": "done",
+        "comments": [
+         {
+          "at": "2026-08-20T15:00",
+          "body": "Нашёл расхождение в справочнике, уточняю у аналитика.",
+          "by": "Участник Г"
+         }
+        ],
+        "history": [
+         {
+          "at": "2026-08-16T04:00",
+          "by": "Участник Ж",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-08-17T10:00",
+          "by": "Участник Ж",
+          "from": "В работе",
+          "to": "Отменён"
+         }
+        ],
+        "key": "INIT-8324",
+        "sp": 13,
+        "status": "Отменён",
+        "title": "Локальное хранилище"
+       },
+       {
+        "bucket": "review",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-08-18T08:00",
+          "by": "Участник Е",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-08-20T11:00",
+          "by": "Участник К",
+          "from": "В работе",
+          "to": "Ревью"
+         }
+        ],
+        "key": "INIT-8325",
+        "sp": 2,
+        "status": "Ревью",
+        "title": "Очередь модерации"
+       }
+      ],
+      "name": "Участник И",
+      "split": {
+       "blocked": [
+        0,
+        0
+       ],
+       "done": [
+        1,
+        13
+       ],
+       "open": [
+        0,
+        0
+       ],
+       "progress": [
+        0,
+        0
+       ],
+       "review": [
+        1,
+        2
+       ],
+       "testing": [
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "name": "Спринт 72",
+    "start": "2026-08-11",
+    "timeInStatus": {
+     "blocked": 2.3,
+     "progress": 4.5,
+     "review": 2.3,
+     "testing": 1.4
+    }
+   },
+   {
+    "current": false,
+    "end": "2026-09-08",
+    "members": [
+     {
+      "items": [
+       {
+        "bucket": "done",
+        "comments": [
+         {
+          "at": "2026-09-02T21:00",
+          "body": "Проверил на препроде: сценарий проходит, ошибок нет.",
+          "by": "Участник Ж"
+         }
+        ],
+        "history": [
+         {
+          "at": "2026-09-01T02:00",
+          "by": "Участник И",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-04T08:00",
+          "by": "Участник Ж",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8326",
+        "sp": 1,
+        "status": "Закрыт",
+        "title": "География и города"
+       },
+       {
+        "bucket": "done",
+        "comments": [
+         {
+          "at": "2026-09-06T23:00",
+          "body": "Завис на стенде — жду доступ, вернусь к задаче завтра.",
+          "by": "Участник Г"
+         }
+        ],
+        "history": [
+         {
+          "at": "2026-09-04T08:00",
+          "by": "Участник И",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-07T16:00",
+          "by": "Участник Б",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8327",
+        "sp": 13,
+        "status": "Закрыт",
+        "title": "Чтение событий отмены"
+       },
+       {
+        "bucket": "done",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-03T01:00",
+          "by": "Участник Е",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-04T09:00",
+          "by": "Участник Е",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8328",
+        "sp": 13,
+        "status": "Закрыт",
+        "title": "Дедупликация по типам объектов"
+       },
+       {
+        "bucket": "done",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-05T03:00",
+          "by": "Участник З",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-06T09:00",
+          "by": "Участник Е",
+          "from": "В работе",
+          "to": "Отменён"
+         }
+        ],
+        "key": "INIT-8329",
+        "sp": 5,
+        "status": "Отменён",
+        "title": "Кэш карточек позиции"
+       }
+      ],
+      "name": "Участник Б",
+      "split": {
+       "blocked": [
+        0,
+        0
+       ],
+       "done": [
+        4,
+        32
+       ],
+       "open": [
+        0,
+        0
+       ],
+       "progress": [
+        0,
+        0
+       ],
+       "review": [
+        0,
+        0
+       ],
+       "testing": [
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "items": [
+       {
+        "bucket": "done",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-03T02:00",
+          "by": "Участник Е",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-06T10:00",
+          "by": "Участник Б",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8352",
+        "sp": 13,
+        "status": "Закрыт",
+        "title": "Метрики загрузчика"
+       },
+       {
+        "bucket": "done",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-03T04:00",
+          "by": "Участник Б",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-05T05:00",
+          "by": "Участник Д",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8353",
+        "sp": 5,
+        "status": "Закрыт",
+        "title": "Экран онбординга"
+       },
+       {
+        "bucket": "done",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-01T05:00",
+          "by": "Участник И",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-03T13:00",
+          "by": "Участник К",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8354",
+        "sp": 13,
+        "status": "Закрыт",
+        "title": "Чтение событий создания"
+       },
+       {
+        "bucket": "done",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-02T06:00",
+          "by": "Участник И",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-03T13:00",
+          "by": "Участник Б",
+          "from": "В работе",
+          "to": "Закрыт"
+         }
+        ],
+        "key": "INIT-8355",
+        "sp": 8,
+        "status": "Закрыт",
+        "title": "Переезд на новое хранилище"
+       }
+      ],
+      "name": "Участник З",
+      "split": {
+       "blocked": [
+        0,
+        0
+       ],
+       "done": [
+        4,
+        39
+       ],
+       "open": [
+        0,
+        0
+       ],
+       "progress": [
+        0,
+        0
+       ],
+       "review": [
+        0,
+        0
+       ],
+       "testing": [
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "name": "Спринт 73",
+    "start": "2026-08-25",
+    "timeInStatus": {
+     "blocked": 4.5,
+     "progress": 2.1,
+     "review": 1.0,
+     "testing": 1.4
+    }
+   },
+   {
+    "current": true,
+    "end": "2026-09-22",
+    "members": [
+     {
+      "items": [
+       {
+        "bucket": "progress",
+        "comments": [],
+        "history": [
+         {
+          "at": "2026-09-06T19:00",
+          "by": "Участник В",
+          "from": "Бэклог",
+          "to": "В работе"
+         }
+        ],
+        "key": "INIT-121",
+        "sp": 8,
+        "status": "В работе",
+        "title": "Поиск по синонимам"
+       }
+      ],
+      "name": "Участник В",
+      "split": {
+       "blocked": [
+        0,
+        0
+       ],
+       "done": [
+        0,
+        0
+       ],
+       "open": [
+        0,
+        0
+       ],
+       "progress": [
+        1,
+        8
+       ],
+       "review": [
+        0,
+        0
+       ],
+       "testing": [
+        0,
+        0
+       ]
+      }
+     },
+     {
+      "items": [
+       {
+        "bucket": "review",
+        "comments": [
+         {
+          "at": "2026-09-10T16:00",
+          "body": "Завис на стенде — жду доступ, вернусь к задаче завтра.",
+          "by": "Участник А"
+         }
+        ],
+        "history": [
+         {
+          "at": "2026-09-11T21:00",
+          "by": "Участник Е",
+          "from": "Бэклог",
+          "to": "В работе"
+         },
+         {
+          "at": "2026-09-13T01:00",
+          "by": "Участник З",
+          "from": "В работе",
+          "to": "Готово к проверке"
+         }
+        ],
+        "key": "INIT-112",
+        "sp": 5,
+        "status": "Готово к проверке",
+        "title": "Агрегация каталога и доступности"
+       }
+      ],
+      "name": "Участник И",
+      "split": {
+       "blocked": [
+        0,
+        0
+       ],
+       "done": [
+        0,
+        0
+       ],
+       "open": [
+        0,
+        0
+       ],
+       "progress": [
+        0,
+        0
+       ],
+       "review": [
+        1,
+        5
+       ],
+       "testing": [
+        0,
+        0
+       ]
+      }
+     }
+    ],
+    "name": "Спринт 74",
+    "start": "2026-09-08",
+    "timeInStatus": {
+     "blocked": 4.1,
+     "progress": 2.0,
+     "review": 2.3,
+     "testing": 2.7
+    }
+   }
+  ],
+  "unit": "SP"
+ },
+ "slug": "platform",
+ "sprintName": "Спринт 74",
+ "statusMap": {
+  "Анализ": "progress",
+  "Бэклог": "open",
+  "В работе": "progress",
+  "Готово к проверке": "review",
+  "Дизайн": "progress",
+  "Ревью": "review"
+ },
+ "team": "Платформа",
+ "velocity": {
+  "avgDone": 27.7,
+  "sprints": [
+   {
+    "done": 37,
+    "name": "Спринт 72",
+    "planned": 50,
+    "split": {
+     "blocked": 2,
+     "done": 37,
+     "open": 10,
+     "progress": 1,
+     "review": 0,
+     "testing": 0
+    }
+   },
+   {
+    "done": 41,
+    "name": "Спринт 73",
+    "planned": 54,
+    "split": {
+     "blocked": 9,
+     "done": 41,
+     "open": 3,
+     "progress": 1,
+     "review": 0,
+     "testing": 0
+    }
+   },
+   {
+    "done": 5,
+    "name": "Спринт 74",
+    "planned": 48,
+    "split": {
+     "blocked": 3,
+     "done": 5,
+     "open": 9,
+     "progress": 20,
+     "review": 8,
+     "testing": 3
+    }
+   }
+  ],
+  "unit": "задач"
+ }
+}

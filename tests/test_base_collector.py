@@ -3,6 +3,8 @@
 Все прогоны идут по replay-фикстурам — без сети и без корпоративных данных.
 """
 import json
+import os
+import sys
 import unittest
 
 import support
@@ -77,16 +79,35 @@ class DeterminismTest(unittest.TestCase):
         self.assertEqual('2026-09-16T17:00:00.000+0300', later['_meta']['collectedAt'])
 
 
+def collect_in_process(dataset=None, params=None):
+    """Базовый сборщик по изменённому синтетическому набору, без replay-фикстур."""
+    sys.path.insert(0, str(support.HERE))
+    import fake_jira
+    mod = support.load_module(support.BASE_COLLECTOR, 'base_collector_inproc')
+    api, _ = fake_jira.make_api(dataset)
+
+    class Fake(mod.Jira):
+        def api(self, path, **params):
+            self.requests += 1
+            return api(path, **params)
+
+    req = support.request(board=fake_jira.BOARD_ID, url=fake_jira.BASE, params=params)
+    collector = mod.Collector(Fake(fake_jira.BASE, 'x'), req, mod.load_rules({}))
+    data = collector.collect()
+    data['_meta'] = {'warnings': collector.warnings}
+    return data
+
+
 class LegacyParityTest(unittest.TestCase):
     """Критерий приёмки: base без params даёт то же, что старый collect.py."""
 
     @staticmethod
     def without_priorities(epics):
-        """Приоритеты появились в 1.1.0 — у старого сборщика их нет, остальное совпадает."""
+        """Приоритеты (1.1.0), объём эпика (1.2.0), дедлайн эпика (1.4.0) — новые поля; остальное как у старого сборщика."""
         out = []
         for e in epics:
-            e = {k: v for k, v in e.items() if k != 'epicPriority'}
-            e['stories'] = [dict({k: v for k, v in st.items() if k != 'priority'},
+            e = {k: v for k, v in e.items() if k not in ('epicPriority', 'scope', 'epicDue')}
+            e['stories'] = [dict({k: v for k, v in st.items() if k not in ('priority', 'events')},
                                  subtasks=[{k: v for k, v in sub.items() if k != 'priority'}
                                            for sub in st['subtasks']])
                             for st in e['stories']]
@@ -94,10 +115,37 @@ class LegacyParityTest(unittest.TestCase):
         return out
 
     def test_same_as_legacy_golden(self):
-        fresh = support.collect_ok()
-        stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap')}
+        # старый сборщик считал ленту за 7 дней, диаграммы — за 30; с 1.5.0 и 1.9.0 по
+        # умолчанию — период спринта и спринты отчёта
+        fresh = support.collect_ok(req=support.request(params={'activity_days': 7, 'control_days': 30}))
+        stripped = {k: v for k, v in fresh.items() if k not in ('_meta', 'statusMap', 'output')}
+        stripped['logs'] = {k: v for k, v in stripped['logs'].items() if k != 'since'}
         stripped['epics'] = self.without_priorities(stripped['epics'])
         self.assertEqual(LEGACY, stripped)
+
+    def test_epic_scope_beyond_sprint(self):
+        """Весь эпик: задачи прошлых спринтов и вне спринтов, у каждой — где она была."""
+        data = support.collect_ok()
+        epics = [e for e in data['epics'] if e['epicKey']]
+        self.assertTrue(epics and all('scope' in e for e in epics))
+        in_sprint = {st['key'] for e in epics for st in e['stories']}
+        for e in epics:
+            keys = [i['key'] for i in e['scope']]
+            self.assertEqual(len(keys), len(set(keys)), 'задача эпика дважды')
+            self.assertTrue({st['key'] for st in e['stories']} <= set(keys),
+                            'истории спринта входят в объём эпика')
+        scope = [i for e in epics for i in e['scope']]
+        self.assertTrue(any(i['sprint'] is None for i in scope), 'есть задачи вне спринтов отчёта')
+        self.assertTrue(any(i['sprint'] and not i['inSprint'] for i in scope), 'есть задачи прошлых спринтов')
+        for i in scope:
+            self.assertEqual(i['key'] in in_sprint, i['inSprint'])
+        self.assertTrue(any(i['subtasks'] for i in scope))
+        # статусы объёма тоже раскладываются по бакетам — страница берёт их из statusMap
+        self.assertTrue({i['status'] for i in scope} <= set(data['statusMap']))
+
+    def test_epic_scope_can_be_switched_off(self):
+        data = support.collect_ok(req=support.request(params={'epic_scope': False}))
+        self.assertFalse(any('scope' in e for e in data['epics']))
 
     def test_priorities_on_every_level(self):
         epics = support.collect_ok()['epics']
@@ -110,7 +158,85 @@ class LegacyParityTest(unittest.TestCase):
 
     def test_new_fields_are_the_only_addition(self):
         fresh = support.collect_ok()
-        self.assertEqual({'_meta', 'statusMap'}, set(fresh) - set(LEGACY))
+        self.assertEqual({'_meta', 'statusMap', 'output'}, set(fresh) - set(LEGACY))
+
+    def test_member_output_in_story_points(self):
+        """Выработка участников (1.3.0): SP и задачи по статусу на конец спринта, без подзадач."""
+        data = support.collect_ok()
+        out = data['output']
+        self.assertEqual(('SP', 'customfield_10106'), (out['unit'], out['field']))
+        self.assertEqual([s['name'] for s in data['metrics']['sprints']], [s['name'] for s in out['sprints']])
+        self.assertEqual([False, False, True], [s['current'] for s in out['sprints']])
+        for s, vel in zip(out['sprints'], data['velocity']['sprints']):
+            tasks = sum(n for m in s['members'] for n, _ in m['split'].values())
+            subtasks = sum(1 for e in data['epics'] for st in e['stories'] for _ in st['subtasks']) if s['current'] else None
+            self.assertLess(tasks, vel['planned'], 'подзадачи в выработку не входят')
+            if subtasks is not None:
+                self.assertEqual(vel['planned'] - subtasks, tasks)
+            for m in s['members']:
+                self.assertEqual({'open', 'blocked', 'progress', 'testing', 'review', 'done'}, set(m['split']))
+        done_sp = sum(m['split']['done'][1] for m in out['sprints'][0]['members'])
+        self.assertGreater(done_sp, 0)
+        for who, lead in out['lead'].items():
+            self.assertGreater(lead['count'], 0)
+
+    def test_member_output_uses_status_at_sprint_end(self):
+        """Задачу закрыли уже после конца спринта — в его выработке она не «готово»."""
+        sys.path.insert(0, str(support.HERE))
+        import fake_jira
+        ds = fake_jira.Dataset()
+        sprint = ds.sprints[0]
+        end = sprint['endDate']
+        story = next(i for i in ds.issues[sprint['id']]
+                     if not i['fields']['issuetype']['subtask'] and i['fields']['status']['name'] == 'Закрыт')
+        hist = story['changelog']['histories']
+        last = [h for h in hist if h['items'][0]['field'] == 'status'][-1]
+        late = fake_jira.datetime.fromisoformat(end) + fake_jira.timedelta(days=2)
+        last['created'] = fake_jira.iso(late)
+        hist.append(ds._history(99999, fake_jira.datetime.fromisoformat(end) - fake_jira.timedelta(days=1),
+                                'assignee', story['fields']['assignee']['displayName'], 'Участник Ю', author='x'))
+        data = collect_in_process(ds)
+        members = {m['name']: m for m in data['output']['sprints'][0]['members']}
+        self.assertIn('Участник Ю', members, 'исполнитель — на конец спринта')
+        split = members['Участник Ю']['split']
+        self.assertEqual(0, split['done'][0], 'закрыта после конца спринта — не в выработке')
+        self.assertEqual(1, sum(n for n, _ in split.values()))
+
+    def test_member_items_and_sprint_dates(self):
+        """1.4.0: у участника — его задачи спринта с SP, движением статусов и комментариями."""
+        data = support.collect_ok()
+        out = data['output']
+        for s in out['sprints']:
+            self.assertRegex(s['start'], r'^\d{4}-\d{2}-\d{2}$')
+            for m in s['members']:
+                self.assertEqual(sum(n for n, _ in m['split'].values()), len(m['items']))
+                self.assertEqual(m['split']['done'][1], sum(i['sp'] for i in m['items'] if i['bucket'] == 'done'))
+        items = [i for s in out['sprints'] for m in s['members'] for i in m['items']]
+        self.assertTrue(any(i['history'] for i in items))
+        self.assertTrue(any(i['comments'] for i in items), 'комментарии из второго прохода по спринту')
+        h = next(i['history'] for i in items if i['history'])[0]
+        self.assertEqual({'at', 'from', 'to', 'by'}, set(h))
+
+    def test_epic_due_and_scope_dates(self):
+        """1.4.0: дедлайн эпика и даты задач объёма — для графика сгорания эпика."""
+        data = support.collect_ok()
+        epics = {e['epicKey']: e for e in data['epics'] if e['epicKey']}
+        self.assertEqual('2026-10-15', epics['INIT-900']['epicDue'])
+        scope = [i for e in epics.values() for i in e['scope']]
+        self.assertTrue(all(i['created'] for i in scope))
+        done = [i for i in scope if i['status'] == 'Закрыт']
+        self.assertTrue(done and all(i['doneAt'] for i in done))
+        self.assertTrue(all(i['doneAt'] is None for i in scope if i['status'] == 'Бэклог'))
+        # 1.6.0: оценка задачи и даты подзадач — для сгорания по SP и по подзадачам
+        self.assertTrue(any(i['sp'] for i in scope))
+        subs = [sub for i in scope for sub in i['subtasks']]
+        self.assertTrue(subs and all(sub['created'] for sub in subs))
+        self.assertTrue(any(sub['doneAt'] for sub in subs))
+
+    def test_no_story_points_field_counts_tasks(self):
+        data = collect_in_process(params={'sp_names': ['нет такого поля']})
+        self.assertEqual(('задач', None), (data['output']['unit'], data['output']['field']))
+        self.assertTrue(any('Story Points не найдено' in w for w in data['_meta']['warnings']))
 
 
 class ParamsTest(unittest.TestCase):
@@ -127,6 +253,65 @@ class ParamsTest(unittest.TestCase):
         two = support.collect_ok(req=support.request(params={'sprints_back': 2}))
         self.assertEqual(2, len(two['metrics']['sprints']))
         self.assertEqual(3, len(support.collect_ok()['metrics']['sprints']))
+
+    def test_time_in_status_per_sprint(self):
+        """1.8.0: среднее время в статусе по спринтам — в днях, в пределах длины спринта."""
+        data = support.collect_ok()
+        for s in data['output']['sprints']:
+            tis = s['timeInStatus']
+            self.assertTrue(set(tis) <= {'blocked', 'progress', 'review', 'testing'})
+            self.assertTrue(all(0 < v <= 15 for v in tis.values()), tis)
+        self.assertTrue(any('progress' in s['timeInStatus'] for s in data['output']['sprints']))
+
+    def test_control_window_covers_report_sprints(self):
+        """1.9.0: окно диаграмм по умолчанию — с начала первого спринта отчёта (слайд «Сроки»
+        показывает их все); явный control_days по-прежнему задаёт его в днях."""
+        from datetime import datetime
+        data = support.collect_ok()
+        first = data['output']['sprints'][0]['start']
+        now = datetime.fromisoformat(data['_meta']['collectedAt'][:10])
+        self.assertGreaterEqual(data['control']['days'], (now - datetime.fromisoformat(first)).days)
+        self.assertTrue(all(p['doneAt'] >= first for g in ('stories', 'subtasks')
+                            for p in data['control'][g]['points']))
+        narrow = support.collect_ok(req=support.request(params={'control_days': 10}))
+        self.assertEqual(10, narrow['control']['days'])
+        self.assertLessEqual(len(narrow['control']['stories']['points']), len(data['control']['stories']['points']))
+
+    def test_scope_subtask_assignees(self):
+        """1.9.0: у подзадач объёма эпика — исполнитель (пакетный поиск по родителям)."""
+        data = support.collect_ok()
+        subs = [s for e in data['epics'] for it in e.get('scope', []) for s in it['subtasks']]
+        self.assertTrue(subs and all('assignee' in s for s in subs))
+        self.assertTrue(any(s['assignee'] for s in subs))
+
+    def test_story_events_all_time(self):
+        """1.7.0: у истории — хронология за всё время: она и её подзадачи, по времени."""
+        data = support.collect_ok()
+        stories = [st for e in data['epics'] for st in e['stories']]
+        self.assertTrue(all(st['events'] and st['events'][0]['kind'] == 'created' for st in stories))
+        for st in stories:
+            at = [ev['at'] for ev in st['events']]
+            self.assertEqual(sorted(at), at)
+            keys = {st['key']} | {sub['key'] for sub in st['subtasks']}
+            self.assertTrue({ev['key'] for ev in st['events']} <= keys)
+        evs = [ev for st in stories for ev in st['events']]
+        self.assertTrue(any(ev['kind'] == 'comment' for ev in evs))
+        self.assertTrue(any(ev['kind'] == 'status' and ev['done'] and ev['key'] != st['key'] for st in stories for ev in st['events']),
+                        'есть закрытые подзадачи')
+        # окно ленты — спринт, а хронология истории — с её создания
+        start = data['logs']['since']
+        self.assertTrue(any(ev['at'][:10] < start for ev in evs))
+
+    def test_activity_window_is_sprint_by_default(self):
+        """1.5.0: без activity_days лента — с начала текущего спринта."""
+        data = support.collect_ok()
+        start = next(s['start'] for s in data['output']['sprints'] if s['current'])
+        self.assertEqual(start, data['logs']['since'])
+        self.assertTrue(all(e['at'][:10] >= start for e in data['logs']['events']))
+        for s in data['output']['sprints']:
+            for m in s['members']:
+                for it in m['items']:
+                    self.assertTrue(all(s['start'] <= h['at'][:10] for h in it['history']), 'история — в границах спринта')
 
     def test_activity_days_changes_window(self):
         wide = support.collect_ok(req=support.request(params={'activity_days': 30}))

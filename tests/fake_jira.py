@@ -19,6 +19,7 @@ BOARD_ID = 101
 BOARD_NAME = 'Scrum Board Платформа'
 OTHER_BOARD_ID = 777
 EPIC_FIELD = 'customfield_10101'
+SP_FIELD = 'customfield_10106'
 
 PEOPLE = ['Участник ' + c for c in 'АБВГДЕ']
 
@@ -147,8 +148,15 @@ class Dataset:
             'priority': priority_obj(key),
             'subtasks': [],
             EPIC_FIELD: epic,
+            # оценка — на задаче, не на подзадаче; детерминированно от ключа, без rnd:
+            # остальной набор (и эталон legacy) от этого не меняется
+            SP_FIELD: None if subtask else (1, 2, 3, 5, 8)[int(key.split('-')[1]) % 5],
             'comment': {'comments': comments or []},
         }
+        # дата решения — момент перехода в закрытый статус (для графика сгорания эпика)
+        closes = [h['created'] for h in (histories or []) if h['items'][0]['field'] == 'status'
+                  and BY_NAME.get(h['items'][0]['toString'], (None, ''))[1] == 'Выполнено']
+        fields['resolutiondate'] = closes[-1] if closes and BY_NAME[status_name][1] == 'Выполнено' else None
         return {'key': key, 'fields': fields, 'parent': parent,
                 'changelog': {'histories': histories or []}}
 
@@ -244,6 +252,39 @@ def project(issue, fields, expand):
     return out
 
 
+def epic_scope(ds):
+    """Задачи эпиков без подзадач: все спринты набора + по две вне спринтов на эпик.
+
+    Внеспринтовые строятся детерминированно, без генератора случайностей, чтобы не
+    сдвинуть остальной набор: одна в бэклоге, одна закрыта давно, с подзадачей.
+    """
+    out, seen = [], set()
+    for sprint in ds.sprints:
+        for i in ds.issues.get(sprint['id'], []):
+            f = i['fields']
+            if f['issuetype'].get('subtask') or not f.get(EPIC_FIELD) or i['key'] in seen:
+                continue
+            seen.add(i['key'])
+            out.append(i)
+    for n, (ekey, _) in enumerate(EPICS):
+        for j, (status, title) in enumerate((('Бэклог', 'Отложенная доработка'),
+                                             ('Закрыт', 'Первая версия контракта'))):
+            key = f'INIT-{3000 + n * 10 + j}'
+            sub_key = f'INIT-{3000 + n * 10 + j + 5}'
+            out.append({'key': key, 'parent': None, 'changelog': {'histories': []}, 'fields': {
+                'summary': title, 'status': status_obj(status),
+                'issuetype': {'name': 'История', 'subtask': False},
+                'assignee': {'displayName': PEOPLE[n % len(PEOPLE)]},
+                'priority': priority_obj(key), EPIC_FIELD: ekey,
+                'created': iso(NOW - timedelta(days=80 + j * 5)),
+                'resolutiondate': iso(NOW - timedelta(days=60)) if status == 'Закрыт' else None,
+                'subtasks': [{'key': sub_key, 'fields': {'summary': 'Проверка на стенде',
+                                                         'status': status_obj(status),
+                                                         'priority': priority_obj(sub_key)}}],
+            }})
+    return out
+
+
 def make_api(dataset=None):
     """api(path, **params) поверх синтетического набора — подменяет сеть."""
     ds = dataset or Dataset()
@@ -255,6 +296,7 @@ def make_api(dataset=None):
         if path == '/rest/api/2/field':
             return [{'id': 'summary', 'name': 'Summary'},
                     {'id': EPIC_FIELD, 'name': 'Ссылка на эпик'},
+                    {'id': SP_FIELD, 'name': 'Story Points'},
                     {'id': 'customfield_10100', 'name': 'Sprint'}]
         if path == '/rest/agile/1.0/board':
             return {'values': [{'id': BOARD_ID, 'name': BOARD_NAME},
@@ -278,13 +320,42 @@ def make_api(dataset=None):
                     'total': len(issues), 'startAt': start}
         if path == '/rest/api/2/search':
             jql = params.get('jql', '')
-            inside = jql[jql.find('(') + 1:jql.rfind(')')] if '(' in jql else ''
+            inside = jql[jql.find('(') + 1:jql.find(')')] if '(' in jql else ''
             keys = [k.strip() for k in inside.split(',') if k.strip()]
+            if jql.startswith('parent in'):
+                # подзадачи объёма эпиков: полные из спринтов, заглушки — с датами родителя
+                full = {i['key']: i for sp in ds.sprints for i in ds.issues.get(sp['id'], [])}
+                parents = {i['key']: i for i in epic_scope(ds)}
+                subs = []
+                for pk in keys:
+                    parent = parents.get(pk) or full.get(pk)
+                    for stub in (parent or {'fields': {}})['fields'].get('subtasks') or []:
+                        if stub['key'] in full:
+                            subs.append(full[stub['key']])
+                        else:
+                            pf = parent['fields']
+                            subs.append({'key': stub['key'], 'fields': {
+                                'status': stub['fields']['status'], 'created': pf.get('created'),
+                                'resolutiondate': pf.get('resolutiondate')}})
+                start = int(params.get('startAt', 0))
+                page = subs[start:start + int(params.get('maxResults', 50))]
+                return {'issues': [project(i, params.get('fields', ''), None) for i in page],
+                        'total': len(subs), 'startAt': start}
+            if jql.startswith('cf['):
+                # весь объём эпиков: задачи всех спринтов набора плюс вне спринтов
+                wanted = set(keys)
+                scope = [i for i in epic_scope(ds) if i['fields'].get(EPIC_FIELD) in wanted]
+                start = int(params.get('startAt', 0))
+                page = scope[start:start + int(params.get('maxResults', 50))]
+                return {'issues': [project(i, params.get('fields', ''), None) for i in page],
+                        'total': len(scope), 'startAt': start}
             titles = dict(EPICS)
             want = params.get('fields', 'summary').split(',')
             return {'issues': [{'key': k, 'fields': {f: v for f, v in
                                                      (('summary', titles.get(k, 'Эпик ' + k)),
-                                                      ('priority', priority_obj(k))) if f in want}}
+                                                      ('priority', priority_obj(k)),
+                                                      ('duedate', '2026-10-15' if k == EPICS[0][0] else None))
+                                                     if f in want}}
                                for k in keys if k in titles],
                     'total': len(keys)}
         raise AssertionError(f'синтетическая JIRA не знает ручку {path}')

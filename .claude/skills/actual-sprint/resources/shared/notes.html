@@ -1,0 +1,14 @@
+  <div class="notes-panel" id="notesPanel">
+    <div class="ncompose" id="nCompose">
+      <textarea id="nText" rows="1" placeholder="Добавить заметку"
+        title="Enter — добавить, Shift+Enter — перенос строки"></textarea>
+      <input class="nref" id="nRef" list="refList" autocomplete="off" placeholder="К чему — ключ эпика или задачи, необязательно">
+    </div>
+    <div class="ncard" id="itemsList"></div>
+    <div class="nfoot">
+      <button class="copybtn" id="copyBtn" type="button">Скопировать промт для ИИ</button>
+      <button class="ico" id="promptShow" type="button" title="Показать промт" aria-label="Показать промт"></button>
+    </div>
+    <textarea class="prompt-view" id="promptOut" readonly></textarea>
+  </div>
+  <datalist id="refList"></datalist>

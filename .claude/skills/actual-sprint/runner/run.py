@@ -6,7 +6,9 @@
 
     run.py doctor    [--config sprint-report.config.toml]
     run.py run       [--config sprint-report.config.toml] [--only team-a,team-b]
+    run.py render    [--data снимок.json] [--output страница.html]
     run.py validate  <slug> [--sample 5] [--seed N]
+    run.py check     <файл.json> [--all]   схема, инварианты и покрытие экранов готового JSON
     run.py lock      <slug>
     run.py new       <slug> [--lang python]
 
@@ -298,6 +300,10 @@ def cmd_run(args):
             sidecar = write_sidecar(cfg, team, data)
             print(f'[{team.slug}] сайдкар → {os.path.relpath(sidecar, cfg.root)}')
             print(team_line(team, data, elapsed))
+            gaps = [r for r in validate_mod.coverage(data) if r[2] != 'есть']
+            if gaps:
+                print(f'[{team.slug}] без данных или частично: {len(gaps)} экранов '
+                      f'({", ".join(r[1] for r in gaps[:3])}{"…" if len(gaps) > 3 else ""}) — run.py check <снимок>')
         except RunFailure as exc:
             print(f'[{team.slug}] ✗ {exc}')
             failures.append((team.slug, str(exc)))
@@ -313,11 +319,12 @@ def cmd_run(args):
 
     notes = build.read_notes(cfg.notes)
     picked = build.attach_notes(collected, notes)
+    # инсайды прошлого сбора к новым данным не подходят: attach_insights их отсеет по хешу
+    ins_line = build.insights_line(*build.attach_insights(collected, build.read_insights(cfg.insights)))
     # порядок команд в файле = порядок в конфиге = порядок вкладок
     order = {t.slug: i for i, t in enumerate(teams)}
     collected.sort(key=lambda d: order.get(d['slug'], 0))
-    html = build.render(collected, config_mod.TEMPLATE_PATH)
-    out = build.write_atomic(cfg.output, html)
+    out = build.write_page(collected, config_mod.TEMPLATE_PATH, cfg.output)
     # снимок пишется только вместе со страницей: у текста и HTML одни и те же цифры
     build.write_atomic(cfg.data, build.snapshot(collected))
 
@@ -329,7 +336,10 @@ def cmd_run(args):
             print(f'[{r.slug}] предупреждение: {w}')
     print(f'схема ✓   инварианты {invariants}/{total_inv} ✓   '
           f'предупреждений {warnings}   заметок подхвачено {picked}')
-    print(f'→ {os.path.relpath(out, Path.cwd()) if str(out).startswith(str(Path.cwd())) else out}')
+    if ins_line:
+        print(ins_line)
+    rel = lambda p: os.path.relpath(p, Path.cwd()) if str(p).startswith(str(Path.cwd())) else p  # noqa: E731
+    print(f'→ {rel(out)}')
     return EXIT_OK
 
 
@@ -398,16 +408,52 @@ def cmd_merge(args):
             except build.BuildError as exc:
                 print(f'заметки: {exc}')
     picked = build.attach_notes(collected, notes)
-    html = build.render(collected, config_mod.TEMPLATE_PATH)
+    ins_line = build.insights_line(*build.attach_insights(collected, build.read_insights(cfg.insights)))
     out = Path(args.output).resolve() if args.output else cfg.output
-    written = build.write_atomic(out, html)
+    written = build.write_page(collected, config_mod.TEMPLATE_PATH, out)
     # снимок для /sprint-status — рядом со страницей, как у run: иначе PDF показывал
     # бы прошлый сбор, а страница — склейку из сайдкаров
     data_out = out.with_name(out.stem + '.data.json') if args.output else cfg.data
     build.write_atomic(data_out, build.snapshot(collected))
     print(f'схема ✓   заметок подхвачено {picked}   команд {len(collected)}')
+    if ins_line:
+        print(ins_line)
     print(f'→ {written}')
     return EXIT_OK
+
+
+def cmd_render(args):
+    """Пересобрать страницу из снимка данных: без JIRA и без сборщиков.
+
+    Нужен после /sprint-insights: цифры те же, к ним добавляется интерпретация.
+    Снимок перевалидируется — правленый руками файл на страницу не попадёт.
+    """
+    cfg = config_mod.load(args.config)
+    data_path = Path(args.data).resolve() if args.data else cfg.data
+    if not data_path.is_file():
+        raise RunFailure(f'снимка данных нет: {data_path}. Сначала соберите отчёт: run.py run',
+                         code=EXIT_CONFIG)
+    try:
+        teams = json.loads(data_path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as exc:
+        raise RunFailure(f'снимок {data_path} не разбирается как JSON ({exc})') from exc
+    if not isinstance(teams, list) or not teams:
+        raise RunFailure(f'снимок {data_path}: ожидается непустой массив команд')
+    for team in teams:
+        core = {k: v for k, v in team.items() if k not in build.OVERLAY_FIELDS}
+        report = validate_mod.check(core)
+        if not report.ok:
+            print(f'[{team.get("slug", "?")}] ✗ снимок не прошёл валидацию: {data_path}')
+            for line in report.lines():
+                print(line)
+            return EXIT_ERROR
+    attached, stale = build.attach_insights(teams, build.read_insights(cfg.insights))
+    out = Path(args.output).resolve() if args.output else cfg.output
+    written = build.write_page(teams, config_mod.TEMPLATE_PATH, out)
+    print(f'страница из снимка: команд {len(teams)}   ' +
+          (build.insights_line(attached, stale) or f'инсайдов нет ({cfg.insights.name} не найден)'))
+    print(f'→ {written}')
+    return EXIT_ERROR if stale and not attached else EXIT_OK
 
 
 def cmd_validate(args):
@@ -428,6 +474,8 @@ def cmd_validate(args):
     if not report.ok:
         print(f'\n✗ команда «{team.slug}» не прошла валидацию. Поправьте сборщик и повторите.')
         return EXIT_ERROR
+    for line in validate_mod.coverage_lines(data):
+        print(line)
 
     rows, seed = validate_mod.sample(data, args.sample, args.seed)
     print(f'выборка для сверки с JIRA (seed {seed}):')
@@ -437,6 +485,40 @@ def cmd_validate(args):
     print('\nСверьте эти задачи в JIRA поле за полем. Совпало и PO подтвердил → '
           f'python3 {Path(__file__).name} lock {team.slug}')
     return EXIT_OK
+
+
+def cmd_check(args):
+    """Проверить готовый JSON без сборщика и без JIRA: объект команды или снимок-массив.
+
+    Нужен автору своего сборщика (выход на любом языке) и для вопроса «почему слайд
+    пустой»: схема и инварианты — как при сборе, плюс покрытие экранов данными.
+    """
+    path = Path(args.file).resolve()
+    if not path.is_file():
+        raise RunFailure(f'нет файла {path}', code=EXIT_CONFIG)
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError as exc:
+        raise RunFailure(f'{path} не разбирается как JSON ({exc})') from exc
+    teams = doc if isinstance(doc, list) else [doc]
+    ok = True
+    for team in teams:
+        if not isinstance(team, dict):
+            print('✗ элемент не объект команды')
+            ok = False
+            continue
+        core = {k: v for k, v in team.items() if k not in build.OVERLAY_FIELDS and k != '_comment'}
+        report = validate_mod.check(core)
+        print(f'[{core.get("slug", "?")}] {core.get("team", "")}')
+        for line in report.lines():
+            print(line)
+        if report.ok:
+            for line in validate_mod.coverage_lines(core, full=args.all):
+                print(line)
+        ok = ok and report.ok
+        print()
+    print('✓ форма и инварианты в порядке' if ok else '✗ JSON не проходит контракт: поправьте сборщик, не файл')
+    return EXIT_OK if ok else EXIT_ERROR
 
 
 def cmd_lock(args):
@@ -505,10 +587,19 @@ def main(argv=None):
     p_merge.add_argument('--stale-hours', type=float, default=DEFAULT_STALE_HOURS,
                          help=f'порог свежести сайдкара в часах (по умолчанию {DEFAULT_STALE_HOURS})')
 
+    p_render = sub.add_parser(
+        'render', help='пересобрать HTML из снимка данных и инсайдов (без похода в JIRA)')
+    p_render.add_argument('--data', default=None, help='снимок данных (по умолчанию data конфига)')
+    p_render.add_argument('--output', default=None, help='куда писать HTML (по умолчанию output конфига)')
+
     p_val = sub.add_parser('validate', help='прогнать одну команду: схема, инварианты, выборка')
     p_val.add_argument('slug')
     p_val.add_argument('--sample', type=int, default=5)
     p_val.add_argument('--seed', type=int, default=None)
+
+    p_check = sub.add_parser('check', help='проверить готовый JSON: схема, инварианты, покрытие экранов')
+    p_check.add_argument('file', help='объект команды или снимок-массив (reports/sprint-report.data.json)')
+    p_check.add_argument('--all', action='store_true', help='показать все экраны, не только пробелы')
 
     p_lock = sub.add_parser('lock', help='записать хеш проверенного сборщика')
     p_lock.add_argument('slug')
@@ -518,7 +609,7 @@ def main(argv=None):
     p_new.add_argument('--lang', default='python')
 
     args = ap.parse_args(argv)
-    handlers = {'run': cmd_run, 'merge': cmd_merge, 'validate': cmd_validate,
+    handlers = {'run': cmd_run, 'merge': cmd_merge, 'render': cmd_render, 'validate': cmd_validate, 'check': cmd_check,
                 'lock': cmd_lock, 'new': cmd_new, 'doctor': cmd_doctor}
     if not args.cmd:
         args.cmd = 'run'

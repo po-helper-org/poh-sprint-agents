@@ -237,6 +237,47 @@ class InvariantTest(unittest.TestCase):
             d['statusMap'].pop(d['epics'][0]['stories'][0]['status'], None)
         self.assertTrue(any(n == 12 for n, _, _ in self.check(mutate).failed))
 
+    def test_7_last_sprint_is_active(self):
+        def mutate(d):
+            d['velocity']['sprints'].reverse()
+        self.assertTrue(any(n == 7 for n, _, _ in self.check(mutate).failed))
+
+    def test_10_points_ordered_and_with_stats(self):
+        def unordered(d):
+            d['control']['stories']['points'].reverse()
+        self.assertTrue(any(n == 10 for n, _, _ in self.check(unordered).failed))
+
+        def no_limit(d):
+            del d['control']['stories']['limit']
+        self.assertTrue(any(n == 10 and 'limit' in t for n, _, t in self.check(no_limit).failed))
+
+    def test_13_split_matches_items(self):
+        def mutate(d):
+            member = next(m for s in d['output']['sprints'] for m in s['members'] if m['items'])
+            member['items'].pop()
+        self.assertTrue(any(n == 13 for n, _, _ in self.check(mutate).failed))
+
+    def test_13_unit_agrees_with_field(self):
+        def mutate(d):
+            d['output']['field'] = None
+        self.assertTrue(any(n == 13 and 'unit' in t for n, _, t in self.check(mutate).failed))
+
+    def test_13_active_sprint_is_last(self):
+        def mutate(d):
+            d['output']['sprints'].reverse()
+        self.assertTrue(any(n == 13 for n, _, _ in self.check(mutate).failed))
+
+    def test_14_events_order_and_owner(self):
+        def unordered(d):
+            st = next(st for e in d['epics'] for st in e['stories'] if len(st.get('events') or []) > 1)
+            st['events'].reverse()
+        self.assertTrue(any(n == 14 for n, _, _ in self.check(unordered).failed))
+
+        def alien(d):
+            st = next(st for e in d['epics'] for st in e['stories'] if st.get('events'))
+            st['events'][-1]['key'] = 'ЧУЖАЯ-1'
+        self.assertTrue(any(n == 14 and 'чужих' in t for n, _, t in self.check(alien).failed))
+
     def test_1_config_mismatch(self):
         class FakeTeam:
             slug, name, board, params = 'team-a', 'Другое название', 101, {}
@@ -256,3 +297,152 @@ class InvariantTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+# ------------------------------------------------------------- согласованность контракта
+
+DATA_SKILL = support.ROOT / '.claude' / 'skills' / 'sprint-data'
+OVERLAYS = {'notes', 'insights', 'business', '_comment'}
+FULL_EXAMPLE = support.SKILL / 'examples' / 'example_team_full.json'
+
+
+def schema_paths(node=None, prefix='', root=None):
+    """Пути всех полей схемы: «a.b», «a[].b». stats — одна запись (поля описаны отдельно),
+    карты (additionalProperties) — до самой карты."""
+    root = root or SCHEMA
+    node = node if node is not None else SCHEMA
+    if '$ref' in node:
+        if node['$ref'] == '#/definitions/stats':
+            return
+        node = schema_mod._resolve(node['$ref'], root)
+    for name, sub in (node.get('properties') or {}).items():
+        path = f'{prefix}.{name}' if prefix else name
+        yield path
+        target = schema_mod._resolve(sub['$ref'], root) if '$ref' in sub else sub
+        if target.get('type') == 'array' or 'items' in target:
+            items = target.get('items') or {}
+            if isinstance(items, dict) and (items.get('properties') or '$ref' in items):
+                yield from schema_paths(items, path + '[]', root)
+        elif sub.get('$ref') != '#/definitions/stats':
+            yield from schema_paths(sub, path, root)
+
+
+def data_paths(node, prefix=''):
+    """Пути всех полей, которые реально есть в данных (карты-словари — до самой карты)."""
+    if isinstance(node, list):
+        for item in node:
+            if isinstance(item, (dict, list)):
+                yield from data_paths(item, prefix + '[]')
+        return
+    if not isinstance(node, dict):
+        return
+    for key, value in node.items():
+        path = f'{prefix}.{key}' if prefix else key
+        yield path
+        if isinstance(value, (dict, list)):
+            yield from data_paths(value, path)
+
+
+def declared(path, known):
+    """Путь объявлен в схеме: сам или внутри объявленной карты (statusMap, split, lead, stats…)."""
+    path = path[:-2] if path.endswith('[]') else path
+    path = path[:-2] if path.endswith('.*') else path
+    return path in known or any(path.startswith(m + '.') for m in MAPS if m in known)
+
+
+MAPS = {'statusMap', 'logs.kinds', 'velocity.sprints[].split', 'output.lead',
+        'output.sprints[].members[].split', 'output.sprints[].timeInStatus', 'metrics.sprints[].lead',
+        'metrics.sprints[].cycle', 'metrics.sprints[].leadStory', 'metrics.sprints[].leadTask',
+        'metrics.overall.lead', 'metrics.overall.cycle', 'metrics.overall.leadStory', 'metrics.overall.leadTask'}
+
+
+def doc_paths(text):
+    """Пути полей, названные в справочнике: полные `a.b[].c` и относительные `.d` в той же
+    строке («`x.y.a` / `.b`» — это x.y.a и x.y.b)."""
+    import re
+    out = set()
+    for line in text.splitlines():
+        last = None
+        for tok in re.findall(r'`([^`]+)`', line):
+            if re.fullmatch(r'\.[A-Za-z_]+', tok) and last:
+                out.add(last.rsplit('.', 1)[0] + tok)
+            elif re.fullmatch(r'[A-Za-z_]+(\[\])?(\.[A-Za-z_*]+(\[\])?)*', tok):
+                out.add(tok)
+                last = tok
+    return out
+
+
+class ContractConsistencyTest(unittest.TestCase):
+    """Схема, справочник полей, образец, демо и базовый сборщик описывают одно и то же."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.known = set(schema_paths())
+        cls.full = {k: v for k, v in json.loads(FULL_EXAMPLE.read_text(encoding='utf-8')).items()
+                    if k not in OVERLAYS}
+        cls.fields = (DATA_SKILL / 'reference' / 'fields.md').read_text(encoding='utf-8')
+
+    def undeclared(self, team):
+        return sorted({p for p in data_paths({k: v for k, v in team.items() if k not in OVERLAYS})
+                       if not declared(p, self.known)})
+
+    def test_full_example_passes_schema_and_invariants(self):
+        report = validate_mod.check(copy.deepcopy(self.full))
+        self.assertTrue(report.ok, report.lines())
+
+    def test_full_example_covers_every_screen(self):
+        gaps = [r for r in validate_mod.coverage(self.full) if r[2] != 'есть']
+        self.assertEqual([], gaps)
+
+    def test_full_example_has_every_schema_field(self):
+        """Полный образец — правда полный: в нём есть каждое поле схемы."""
+        given = set(data_paths(self.full))
+        missing = sorted(p for p in self.known if p not in given and p != '_meta.sha' and p not in OVERLAYS)
+        self.assertEqual([], missing)
+
+    def test_every_emitted_field_is_declared(self):
+        """Всё, что отдают базовый сборщик, демо-данные и образец, объявлено в схеме:
+        страница не читает полей, которых нет в контракте."""
+        demo = support.load_module(support.SKILL / 'scripts' / 'demo_data.py', 'demo_data_contract')
+        import random
+        teams = [demo.build_team(spec, random.Random(demo.SEED), demo.Keys()) for spec in demo.TEAMS[:1]]
+        for name, team in (('образец', self.full), ('демо', teams[0]), ('базовый сборщик', support.collect_ok())):
+            with self.subTest(name):
+                self.assertEqual([], self.undeclared(team))
+
+    def test_reference_describes_every_schema_field(self):
+        """Каждое поле схемы описано в sprint-data/reference/fields.md."""
+        named = {p.replace('control.subtasks.', 'control.stories.') for p in doc_paths(self.fields)}
+        # контейнер описан своими полями: «epics[].rowId» описывает и сам epics
+        described = lambda p: p in named or any(n.startswith(p + '.') or n.startswith(p + '[]') for n in named)  # noqa: E731
+        missing = sorted(p for p in self.known
+                         if not described(p.replace('control.subtasks.', 'control.stories.')))
+        self.assertEqual([], missing)
+
+    def test_reference_names_only_real_fields(self):
+        """И наоборот: справочник не описывает полей, которых нет в схеме (опечатки, старьё)."""
+        tops = {p.split('.')[0].split('[')[0] for p in self.known} - OVERLAYS
+        named = [p for p in doc_paths(self.fields) if p.split('.')[0].split('[')[0] in tops]
+        stray = sorted(p for p in named if not declared(p, self.known))
+        self.assertEqual([], stray)
+
+    def test_render_map_names_every_covered_screen(self):
+        """Покрытие экранов (validate.COVERAGE) и render.md говорят об одних экранах."""
+        render = (DATA_SKILL / 'reference' / 'render.md').read_text(encoding='utf-8')
+        missing = [screen for _, screen, _, _ in validate_mod.COVERAGE if screen not in render]
+        self.assertEqual([], missing)
+        for _, _, paths, _ in validate_mod.COVERAGE:
+            for path in paths:
+                with self.subTest(path):
+                    self.assertTrue(declared(path, self.known), path)
+
+    def test_example_is_generated(self):
+        """Образец собирается из демо-данных: правка демо без перегенерации образца — ошибка."""
+        demo = support.load_module(support.SKILL / 'scripts' / 'demo_data.py', 'demo_data_example')
+        import random
+        rnd = random.Random(demo.SEED)
+        keys = demo.Keys()
+        teams = [demo.build_team(spec, rnd, keys) for spec in demo.TEAMS]
+        want = json.loads(json.dumps(demo.example_team(teams[0]), ensure_ascii=False))
+        got = json.loads(FULL_EXAMPLE.read_text(encoding='utf-8'))
+        self.assertEqual(want, got, 'перегенерируйте: demo_data.py --example examples/example_team_full.json')

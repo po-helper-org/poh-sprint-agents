@@ -217,6 +217,48 @@
       }
     ]
   },
+  "output": {
+    "unit": "SP",
+    "field": "customfield_10106",
+    "sprints": [
+      {
+        "name": "2026Q3-S6",
+        "current": true,
+        "members": [
+          {
+            "name": "Не назначен",
+            "split": {
+              "open": [
+                1,
+                3
+              ],
+              "blocked": [
+                0,
+                0
+              ],
+              "progress": [
+                0,
+                0
+              ],
+              "testing": [
+                0,
+                0
+              ],
+              "review": [
+                1,
+                5
+              ],
+              "done": [
+                0,
+                0
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "lead": {}
+  },
   "logs": {
     "days": 7,
     "kinds": {

@@ -1,662 +1,35 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
+<!--#include shared/head.html-->
 <title>Отчёт по спринтам команд</title>
 <style>
-  :root {
-    --fg: #111;
-    --bg: #fff;
-    --muted: #666;
-    --line: #ddd;
-    --accent: #111;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    color: var(--fg);
-    background: var(--bg);
-    line-height: 1.5;
-  }
-  .hero {
-    padding: 48px 32px 32px;
-    border-bottom: 3px solid var(--fg);
-  }
-  .hero .team {
-    font-size: 13px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 8px;
-  }
-  .hero h1 {
-    margin: 0 0 12px;
-    font-size: 32px;
-    font-weight: 700;
-  }
-  .hero .meta {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-    font-size: 14px;
-    color: var(--muted);
-  }
-  .hero .meta strong { color: var(--fg); }
-  .team-switch { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
-  .team-tab {
-    font: inherit; font-size: 13px; padding: 5px 14px;
-    border: 1px solid var(--line); background: var(--bg); color: var(--muted);
-    border-radius: 4px; cursor: pointer;
-  }
-  .team-tab:hover { border-color: var(--fg); color: var(--fg); }
-  .team-tab.active { background: var(--fg); border-color: var(--fg); color: var(--bg); font-weight: 600; }
-
-  .hero .board-link { color: var(--fg); text-decoration: none; border-bottom: 1px solid var(--line); }
-  .hero .board-link:hover { border-bottom-color: var(--fg); }
-  .hero .metrics-link {
-    color: var(--fg);
-    text-decoration: none;
-    border-bottom: 1px dashed var(--muted);
-    cursor: pointer;
-    font-variant-numeric: tabular-nums;
-  }
-  .hero .metrics-link:hover { border-bottom-style: solid; border-bottom-color: var(--fg); }
-
-  .logs-btn {
-    font: inherit;
-    font-size: 13px;
-    padding: 6px 14px;
-    border: 1px solid var(--fg);
-    background: var(--bg);
-    color: var(--fg);
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  .logs-btn:hover { background: var(--fg); color: var(--bg); }
-
-  /* лента изменений */
-  .log-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; flex-shrink: 0; }
-  .log-chip {
-    font: inherit;
-    font-size: 12px;
-    padding: 3px 10px;
-    border: 1px solid var(--line);
-    background: var(--bg);
-    color: var(--muted);
-    border-radius: 12px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .log-chip:hover { border-color: var(--fg); color: var(--fg); }
-  .log-chip.active { background: var(--fg); border-color: var(--fg); color: var(--bg); }
-
-  .log-day { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-             color: var(--muted); margin: 16px 0 6px; font-weight: 600; }
-  .log-day:first-child { margin-top: 0; }
-
-  .log-item { display: flex; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
-  .log-item:last-child { border-bottom: none; }
-  .log-who {
-    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
-    background: #f1f2f4; color: var(--muted);
-    font-size: 10px; font-weight: 600; letter-spacing: 0.03em;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .log-main { min-width: 0; flex: 1; }
-  .log-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
-  .log-author { font-weight: 600; }
-  .log-time { flex-shrink: 0; font-size: 11px; color: var(--muted); }
-  .log-move { margin: 2px 0 3px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
-  .log-move .arrow { color: var(--c-zero); }
-  .log-issue { font-size: 12px; }
-  .log-issue a { color: var(--muted); text-decoration: none; }
-  .log-issue a:hover { color: var(--fg); text-decoration: underline; }
-  .log-verb { color: var(--muted); font-size: 12px; }
-  .log-quote {
-    font-size: 12px;
-    color: var(--fg);
-    background: #fafafa;
-    border-left: 2px solid var(--line);
-    padding: 6px 9px;
-    margin: 2px 0 4px;
-    border-radius: 0 3px 3px 0;
-  }
-  .log-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-
-  /* сводный отчёт за 3 спринта */
-  .metrics-section + .metrics-section { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
-  .metrics-section h3 {
-    margin: 0 0 12px;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 600;
-  }
-  .m-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .m-table th, .m-table td {
-    padding: 7px 10px;
-    border-bottom: 1px solid #eee;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    vertical-align: middle;
-  }
-  .m-table th:first-child, .m-table td:first-child { text-align: left; }
-  .m-table thead th {
-    border-bottom: 1px solid var(--line);
-    font-size: 11px;
-    color: var(--muted);
-    font-weight: 600;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-  .m-table tbody tr:last-child td { border-bottom: none; }
-  .m-table .accent { font-weight: 700; }
-  .m-muted { color: var(--muted); }
-
-  /* полоса производительности спринта */
-  .bar {
-    display: block;
-    height: 6px;
-    width: 100%;
-    min-width: 90px;
-    background: #eee;
-    border-radius: 3px;
-    overflow: hidden;
-  }
-  .bar > i { display: block; height: 100%; background: var(--c-done); }
-  td.bar-cell { width: 130px; }
-
-  /* диаграмма управления: точки Lead Time по спринтам */
-  .chart { width: 100%; height: 190px; display: block; }
-  .chart-legend { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
-  .chart-legend .swatch {
-    display: inline-block; width: 18px; height: 0; vertical-align: middle;
-    border-top: 2px solid var(--c-progress); margin-right: 5px;
-  }
-  .chart-legend .swatch.median { border-top-style: dashed; border-top-color: var(--c-done); }
-  .chart-legend .swatch.ideal { border-top-color: #9ca3af; }
-  .chart-legend .swatch.actual { border-top-color: var(--c-blocked); }
-  .chart-legend .swatch.limit { border-top-color: var(--c-blocked); }
-  .chart-legend .dot {
-    display: inline-block; width: 9px; height: 9px; border-radius: 2px;
-    vertical-align: middle; margin-right: 4px;
-  }
-
-  /* список задач-выбросов под диаграммой управления */
-  .outliers { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-  .outliers-head {
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-    color: var(--c-blocked); font-weight: 600; margin-bottom: 8px;
-  }
-  .outlier-row {
-    display: flex; justify-content: space-between; gap: 10px;
-    align-items: baseline; padding: 6px 0; font-size: 12px;
-    border-bottom: 1px solid #f0f0f0;
-  }
-  .outlier-row:last-child { border-bottom: none; }
-  .outlier-row a { color: var(--fg); text-decoration: none; }
-  .outlier-row a:hover { text-decoration: underline; }
-
-  main { padding: 32px; }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-  th, td {
-    text-align: left;
-    padding: 12px;
-    border-bottom: 1px solid var(--line);
-    vertical-align: middle;
-  }
-  thead th {
-    border-bottom: 2px solid var(--fg);
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  /* вся строка кликабельна — открывает панель эпика */
-  tbody tr { cursor: pointer; }
-  tbody tr:hover { background: #fafafa; }
-  td.epic { font-weight: 600; }
-  td.epic .no-epic { color: var(--muted); }
-
-  /* цвета бакетов статусов */
-  :root {
-    --c-open: #6b7280;      /* серый  — открыто/бэклог */
-    --c-blocked: #dc2626;   /* красный — заблокировано */
-    --c-progress: #2563eb;  /* синий  — в работе */
-    --c-testing: #ca8a04;   /* жёлтый — тестирование */
-    --c-review: #ea580c;    /* оранжевый — ревью */
-    --c-done: #16a34a;      /* зелёный — готово */
-    --c-zero: #c9ccd1;      /* нули — приглушённые */
-  }
-
-  /* агрегированные счётчики: миниатюрный текст 2/0/0/0/1/3
-     ВАЖНО: класс ячейки (td.tally) и класс внутреннего бокса (.tally-box) разные.
-     Одинаковое имя делало td инлайн-блоком и ломало раскладку таблицы. */
-  td.tally { white-space: nowrap; width: 1%; text-align: right; padding-right: 20px; }
-  .tally-box {
-    position: relative;
-    display: inline-block;
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-    cursor: default;
-  }
-  .tally-box .n { font-weight: 600; }
-  .tally-box .n.zero { color: var(--c-zero); font-weight: 400; }
-  .tally-box .sep { color: var(--c-zero); margin: 0 1px; }
-  .n.b-open { color: var(--c-open); }
-  .n.b-blocked { color: var(--c-blocked); }
-  .n.b-progress { color: var(--c-progress); }
-  .n.b-testing { color: var(--c-testing); }
-  .n.b-review { color: var(--c-review); }
-  .n.b-done { color: var(--c-done); }
-
-  /* подсказка при наведении на счётчик; якорь справа — счётчики стоят у правого края,
-     при left:0 длинная подсказка уезжала за пределы экрана и обрезалась */
-  .tally-box .tip {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: 5;
-    background: #111;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 400;
-    letter-spacing: normal;
-    line-height: 1.4;
-    padding: 6px 10px;
-    border-radius: 4px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.12s ease;
-  }
-  .tally-box:hover .tip { opacity: 1; }
-
-  td.actions { white-space: nowrap; width: 1%; }
-  .action-btn {
-    font: inherit;
-    font-size: 13px;
-    padding: 5px 12px;
-    border: 1px solid var(--fg);
-    background: var(--bg);
-    color: var(--fg);
-    border-radius: 4px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .action-btn:hover { background: var(--fg); color: var(--bg); }
-  .action-btn.has-note { border-color: #111; font-weight: 600; }
-  .action-btn.has-note::after { content: " •"; }
-
-  /* сайдбары: два независимых панеля, один стек едет целиком */
-  .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.25);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s ease;
-    z-index: 10;
-  }
-  .overlay.open { opacity: 1; pointer-events: auto; }
-
-  /* единая панель: одна рамка, одна тень, одна кнопка закрытия.
-     Внутри — две колонки (заметка + истории) без собственных теней. */
-  .panel-stack {
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100%;
-    width: 860px;
-    max-width: 100vw;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg);
-    border-left: 1px solid var(--line);
-    box-shadow: -8px 0 24px rgba(0,0,0,0.08);
-    z-index: 11;
-    transform: translateX(100%);
-    transition: transform 0.2s ease;
-    pointer-events: none;
-  }
-  .panel-stack.open { transform: translateX(0); pointer-events: auto; }
-
-  .stack-head {
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid var(--line);
-    position: relative;
-    flex-shrink: 0;
-  }
-  .stack-head .eyebrow {
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 6px;
-  }
-  .stack-head h2 { margin: 0 0 6px; font-size: 17px; line-height: 1.35; padding-right: 32px; }
-  .stack-head a { font-size: 13px; color: var(--muted); }
-
-  .sidebar-close {
-    position: absolute;
-    top: 18px;
-    right: 20px;
-    border: none;
-    background: none;
-    font-size: 22px;
-    line-height: 1;
-    cursor: pointer;
-    color: var(--muted);
-  }
-  .sidebar-close:hover { color: var(--fg); }
-
-  .stack-body { display: flex; flex: 1; min-height: 0; }
-
-  .pane {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding: 16px 24px 20px;
-    overflow-y: auto;
-  }
-  #panelStories { flex: 1; }
-
-  .pane-label {
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 10px;
-    flex-shrink: 0;
-  }
-
-  .sidebar-body { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-
-
-  /* список историй эпика, с разворотом подзадач */
-  .story-item { border-bottom: 1px solid #eee; }
-  .story-item:last-child { border-bottom: none; }
-  .story-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: baseline;
-    padding: 10px 0;
-    font-size: 13px;
-  }
-  .story-row .story-title-wrap, .sub-item .story-title-wrap { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; }
-  .story-row .meta-wrap, .sub-item .meta-wrap {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  /* возраст статуса: сколько дней статус не менялся */
-  .age {
-    font-size: 11px;
-    color: var(--muted);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-    min-width: 26px;
-    text-align: right;
-  }
-  .age.stale { color: var(--c-blocked); font-weight: 600; }
-  .age.done { color: var(--c-done); font-weight: 600; }
-  .age.risk { color: var(--c-testing); font-weight: 600; }
-  .outliers-head.risk { color: var(--c-testing); }
-
-  /* инициалы исполнителя слева от задачи; полное имя — в подсказке */
-  .who {
-    position: relative;
-    flex-shrink: 0;
-    width: 30px;
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    cursor: default;
-  }
-  .who.none { color: var(--c-zero); font-weight: 400; }
-  /* нативный title показывается с задержкой в секунду — рисуем свою подсказку */
-  .who .who-tip {
-    position: absolute;
-    left: 0;
-    top: calc(100% + 4px);
-    z-index: 6;
-    background: #111;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 400;
-    letter-spacing: normal;
-    padding: 5px 9px;
-    border-radius: 4px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.12s ease;
-  }
-  .who:hover .who-tip { opacity: 1; }
-  .sub-item .age { font-size: 10px; }
-  .story-toggle {
-    flex-shrink: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 11px;
-    color: var(--muted);
-    padding: 0 4px 0 0;
-    width: 14px;
-    transform: rotate(0deg);
-    transition: transform 0.15s ease;
-  }
-  .story-toggle.open { transform: rotate(90deg); }
-  .story-toggle:disabled { visibility: hidden; }
-  .story-row a { color: var(--fg); text-decoration: none; }
-  .story-row a:hover { text-decoration: underline; }
-
-  /* базовый бейдж статуса — общий для историй и подзадач */
-  .status {
-    flex-shrink: 0;
-    padding: 2px 8px;
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    font-size: 11px;
-    white-space: nowrap;
-  }
-  .sub-item .status { font-size: 10px; padding: 1px 6px; }
-  .status.b-open { color: var(--c-open); border-color: var(--c-open); }
-  .status.b-blocked { color: var(--c-blocked); border-color: var(--c-blocked); }
-  .status.b-progress { color: var(--c-progress); border-color: var(--c-progress); }
-  .status.b-testing { color: var(--c-testing); border-color: var(--c-testing); }
-  .status.b-review { color: var(--c-review); border-color: var(--c-review); }
-  .status.b-done { color: var(--c-done); border-color: var(--c-done); font-weight: 600; }
-
-  .sub-list { display: none; padding: 0 0 10px 20px; }
-  .sub-list.open { display: block; }
-  .sub-item {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    align-items: baseline;
-    padding: 6px 0;
-    font-size: 12px;
-    border-top: 1px dashed #eee;
-  }
-  .sub-item:first-child { border-top: none; }
-  .sub-item a { color: var(--muted); text-decoration: none; flex: 1; min-width: 0; }
-  .sub-item a:hover { color: var(--fg); text-decoration: underline; }
-
-  .sidebar-empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
-
-  /* подвал: чем и когда собраны данные команды — чтобы цифрам можно было доверять */
-  .provenance {
-    max-width: 1100px; margin: 32px auto 24px; padding: 10px 24px 0;
-    border-top: 1px solid var(--line);
-    color: var(--muted); font-size: 11px; line-height: 1.7;
-  }
-  .provenance .warn {
-    color: #b45309; border-bottom: 1px dotted #b45309; cursor: help; margin-left: 6px;
-  }
-
-  /* Корзина заметок в правом верхнем углу — тот же приём, что на странице ревью
-     БФТ (poh-bft-writer): кнопка «Комментарии (N)», под ней панель со списком
-     заметок и готовым промтом для ИИ. */
-  .promptbox {
-    position: fixed; top: 20px; right: 24px; z-index: 9;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
-  }
-  .pb-row { display: flex; gap: 8px; }
-  .pb-toggle {
-    font: inherit; font-size: 13px; padding: 6px 14px; border-radius: 4px; cursor: pointer;
-    background: var(--fg); color: var(--bg); border: 1px solid var(--fg);
-  }
-  .pb-toggle[aria-expanded="true"] { background: var(--bg); color: var(--fg); }
-  .notes-panel {
-    display: none; width: 380px; max-height: calc(100vh - 90px); overflow-y: auto;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.12); padding: 12px;
-  }
-  .notes-panel.open { display: block; }
-
-  /* Иконки и строки — как в панели poh-okr-plugin: контур 1.4px, кнопка 28×28,
-     серая до наведения; строка подсвечивается мягким фоном. */
-  :root { --hover-bg: rgba(38,49,72,.06); --ico: #adb2b8; }
-  .ico {
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    width: 28px; height: 28px; border: none; background: transparent; border-radius: 8px;
-    color: var(--ico); cursor: pointer; padding: 0;
-  }
-  .ico:hover { background: var(--hover-bg); color: var(--fg); }
-  .ico.danger:hover { color: var(--c-blocked); }
-
-  .ncompose textarea {
-    display: block; width: 100%; min-height: 38px; max-height: 160px; resize: none;
-    font: inherit; font-size: 14px; line-height: 1.45; color: var(--fg);
-    border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
-  }
-  .ncompose textarea:focus, .nref:focus { outline: none; border-color: var(--fg); }
-  .nref {
-    width: 100%; margin-top: 6px; font: inherit; font-size: 12px; color: var(--fg);
-    border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px;
-  }
-  /* «К чему» появляется, когда заметку начали писать, и не прячется по потере
-     фокуса: иначе список под ним прыгал бы и клик уходил мимо иконки */
-  .ncompose .nref { display: none; }
-  .ncompose.filled .nref { display: block; }
-
-  .ncard { margin-top: 10px; border-radius: 12px; background: var(--hover-bg); overflow: hidden; }
-  .ncard:empty { display: none; }
-  .nrow { display: flex; align-items: flex-start; gap: 6px; padding: 8px 6px 8px 12px; }
-  .nrow + .nrow { box-shadow: inset 0 1px 0 rgba(0,0,0,.08); }
-  .nrow:hover { background: var(--hover-bg); }
-  .nrow .ntext { flex: 1; min-width: 0; padding-top: 3px; font-size: 14px; line-height: 1.45;
-                 white-space: pre-wrap; word-break: break-word; }
-  .nrow .nref-line { display: block; margin-top: 2px; font-size: 12px; color: var(--muted);
-                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nrow .nacts { display: flex; opacity: 0; transition: opacity 0.12s ease; }
-  .nrow:hover .nacts, .nrow:focus-within .nacts { opacity: 1; }
-  .nrow.editing { display: block; padding: 8px; background: var(--bg); }
-  .nrow.editing textarea {
-    display: block; width: 100%; min-height: 58px; resize: vertical; font: inherit; font-size: 14px;
-    line-height: 1.45; border: 1px solid var(--fg); border-radius: 8px; padding: 6px 10px;
-  }
-  .nempty { margin: 10px 2px 2px; font-size: 13px; color: var(--muted); }
-
-  .nfoot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-  .nfoot .copybtn {
-    flex: 1; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--line); background: var(--bg); color: var(--fg);
-  }
-  .nfoot .copybtn:hover { background: var(--hover-bg); border-color: var(--fg); }
-  .nfoot .copybtn:disabled { color: var(--c-zero); border-color: var(--line); background: var(--bg); cursor: default; }
-  .prompt-view {
-    display: none; width: 100%; min-height: 140px; margin-top: 8px; resize: vertical;
-    font: 11px/1.5 "SF Mono", Menlo, Consolas, monospace; color: var(--muted);
-    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
-  }
-  .prompt-view.open { display: block; }
-
-  /* уже оставленное к этой сущности — в поле правого клика, те же строки */
-  .pexisting { margin-bottom: 8px; border-radius: 10px; background: var(--hover-bg); overflow: hidden; }
-  .pexisting .nrow { padding: 4px 4px 4px 10px; }
-  .pexisting .ntext { font-size: 13px; color: var(--muted); }
-
-  /* поле комментария по правому клику */
-  .cpop {
-    position: fixed; z-index: 20; width: 360px;
-    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.16); padding: 10px 12px 12px;
-  }
-  .cpop[hidden] { display: none; }
-  .cpop-target { margin: 0 2px 8px; }
-  .cpop-target .nref-line { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cpop textarea {
-    width: 100%; min-height: 64px; resize: vertical; font: inherit; font-size: 14px; line-height: 1.45;
-    border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; color: var(--fg);
-  }
-  .cpop textarea:focus { outline: none; border-color: var(--fg); }
-  .cpop-actions { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-  .cpop-actions .hint { flex: 1; font-size: 11px; color: var(--muted); }
-
-  /* метка «есть комментарии» у эпика и задачи */
-  .cmark { font-size: 11px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .cmark::before { content: "● "; font-size: 9px; }
-  [data-ctx] { cursor: context-menu; }
-  tbody tr[data-ctx] { cursor: pointer; }
-
-  /* приоритет: глиф фиксированной ширины, имя из JIRA — в подсказке.
-     Ч/б: цвет на странице несёт только статус, приоритет — насыщенностью. */
-  .prio {
-    flex-shrink: 0; display: inline-block; width: 16px; text-align: center;
-    font-size: 12px; font-weight: 700; color: var(--fg); cursor: default;
-  }
-  .prio.p-medium, .prio.p-low, .prio.p-lowest { color: var(--muted); font-weight: 400; }
-  .prio.p-none { color: var(--c-zero); font-weight: 400; }
-  td.epic .prio { margin-right: 6px; }
-
-  @media (max-width: 900px) {
-    .promptbox { position: static; padding: 12px 16px 0; }
-    .notes-panel { width: 100%; }
-  }
+/*#include shared/core.css*/
 </style>
 </head>
 <body>
+<!-- Отчёт PO (навык actual-sprint): эпики спринта, сводный отчёт, интерпретация ИИ.
+     Общий движок — resources/shared; бизнес-отчёт — отдельный навык sprint-business. -->
 
 <div class="promptbox" id="promptbox">
   <div class="pb-row">
-    <button class="logs-btn" id="logsBtn" title="Кто что менял за последнюю неделю">Logs</button>
+    <button class="pres-btn" id="bizBtn" title="Промт для генерации бизнес-отчёта «ФАКТ | спринт» для управляющего комитета">Бизнес-отчёт</button>
+    <button class="logs-btn" id="logsBtn" title="Кто что менял за спринт">Logs</button>
     <button class="pb-toggle" id="notesToggle" aria-expanded="false" aria-controls="notesPanel"
       title="Заметки к спринту и промт для ИИ">Комментарии (<span id="cCount">0</span>)</button>
   </div>
-  <div class="notes-panel" id="notesPanel">
-    <div class="ncompose" id="nCompose">
-      <textarea id="nText" rows="1" placeholder="Добавить заметку"
-        title="Enter — добавить, Shift+Enter — перенос строки"></textarea>
-      <input class="nref" id="nRef" list="refList" autocomplete="off" placeholder="К чему — ключ эпика или задачи, необязательно">
-    </div>
-    <div class="ncard" id="itemsList"></div>
-    <div class="nfoot">
-      <button class="copybtn" id="copyBtn" type="button">Скопировать промт для ИИ</button>
-      <button class="ico" id="promptShow" type="button" title="Показать промт" aria-label="Показать промт"></button>
-    </div>
-    <textarea class="prompt-view" id="promptOut" readonly></textarea>
-  </div>
-  <datalist id="refList"></datalist>
+<!--#include shared/notes.html-->
 </div>
 
 <div class="hero">
-  <div class="team">Команда</div>
-  <h1 id="teamName">—</h1>
-  <div class="team-switch" id="teamSwitch"></div>
+  <!-- команда видна по переключателю: ни метки «Команда», ни названия заголовком -->
+  <div class="switch-row">
+    <div class="team-switch" id="teamSwitch"></div>
+    <button class="interp-btn" id="interpBtn" type="button" aria-label="Интерпретация ИИ"
+            title="Интерпретация ИИ: динамика команды, на что обратить внимание, рекомендации">!</button>
+  </div>
   <div class="meta">
-    <div>Спринт: <strong id="sprintName">—</strong></div>
+    <div>Команда: <strong><a class="metrics-link" href="#" id="teamLink" title="Участники: выработка за 3 спринта, задачи каждого">—</a></strong></div>
     <div>Доска: <strong><a class="board-link" id="boardLink" href="#" target="_blank" rel="noopener">—</a></strong></div>
     <div>Lead Time за 3 спринта:
       <strong><a class="metrics-link" href="#" id="metricsLink" title="Среднее / медиана / количество закрытых запросов. Открыть сводный отчёт">—</a></strong>
@@ -670,188 +43,11 @@
   </table>
 </main>
 
-<footer class="provenance" id="provenance"></footer>
 
-<div class="overlay" id="overlay"></div>
-<aside class="panel-stack" id="panelStack">
-  <!-- общая шапка: одна кнопка закрытия на всю панель -->
-  <div class="stack-head">
-    <button class="sidebar-close" data-close aria-label="Закрыть">&times;</button>
-    <div class="eyebrow" id="stackKey">—</div>
-    <h2 id="stackTitle">—</h2>
-    <a id="stackLink" href="#" target="_blank" rel="noopener">Открыть в JIRA →</a>
-  </div>
-
-  <div class="stack-body">
-    <!-- истории эпика + их подзадачи; комментарии — правым кликом по строке -->
-    <section class="pane" id="panelStories">
-      <div class="pane-label" id="storiesLabel">Истории</div>
-      <div class="sidebar-body" id="storiesBody"></div>
-    </section>
-  </div>
-</aside>
-
-<div class="cpop" id="cpop" hidden role="dialog" aria-label="Заметка">
-  <div class="cpop-target" id="cpopTarget"></div>
-  <div class="pexisting" id="cpopExisting" hidden></div>
-  <textarea id="cpopText" placeholder="Заметка — Enter сохранить, Esc отмена"></textarea>
-  <div class="cpop-actions">
-    <span class="hint"></span>
-    <button class="action-btn" id="cpopSave">Сохранить</button>
-  </div>
-</div>
+<!--#include shared/panels.html-->
 
 <script>
-  // -------------------------------------------------------------------
-  // TEAMS: по одному объекту на команду — то, что отдаёт сборщик команды
-  // (contract/team.schema.json). Каждый — { slug, team, boardName, boardUrl,
-  //            jiraBase, sprintName, epics, metrics, burndown, control,
-  //            velocity, logs, statusMap?, notes?, _meta }.
-  // Одна страница обслуживает все команды: переключатель в шапке.
-  var TEAMS = {{TEAMS_JSON}};
-
-  var team = TEAMS[0];
-  var REPORT_ID, JIRA_BASE, EPICS, METRICS, BURNDOWN, CONTROL, VELOCITY, LOGS, STATUS_MAP;
-
-  function useTeam(slug) {
-    team = TEAMS.find(function (t) { return t.slug === slug; }) || TEAMS[0];
-    // REPORT_ID разводит localStorage-заметки: у каждой команды свои
-    REPORT_ID = team.slug;
-    // раскладку статусов считает сборщик команды и кладёт в statusMap: у команд
-    // разные workflow. Нет карты (старый файл данных) — падаем в classifyBucket.
-    STATUS_MAP = team.statusMap || null;
-    JIRA_BASE = team.jiraBase;
-    EPICS = team.epics; METRICS = team.metrics; BURNDOWN = team.burndown;
-    CONTROL = team.control; VELOCITY = team.velocity; LOGS = team.logs;
-  }
-  // -------------------------------------------------------------------
-
-  // Бакеты статусов. Порядок = порядок вывода счётчиков в строке эпика.
-  // phrase — формулировка для подсказки при наведении («2 — в бэклоге»).
-  var BUCKETS = [
-    { id: 'open',     label: 'Открыто',       cls: 'b-open',     phrase: 'в бэклоге' },
-    { id: 'blocked',  label: 'Заблокировано', cls: 'b-blocked',  phrase: 'заблокировано' },
-    { id: 'progress', label: 'В работе',      cls: 'b-progress', phrase: 'в работе' },
-    { id: 'testing',  label: 'Тестирование',  cls: 'b-testing',  phrase: 'в тестировании' },
-    { id: 'review',   label: 'Ревью',         cls: 'b-review',   phrase: 'в ревью' },
-    { id: 'done',     label: 'Готово',        cls: 'b-done',     phrase: 'готово' }
-  ];
-
-  // Маппинг реального статуса JIRA -> бакет (см. resources/status_mapping.md).
-  // Порядок проверок важен и выверен регрессией по всем ~330 статусам инстанса.
-  var DONE_EXACT = [
-    'закрыт', 'закрыта', 'закрыто', 'готово', 'сделано', 'выполнено', 'выполнена',
-    'завершено', 'завершена', 'отменен', 'отменён', 'отменена', 'отменено',
-    'отклонен', 'отклонён', 'отклонена', 'отклонено', 'решён', 'решен', 'решена'
-  ];
-
-  function classifyBucket(status, category) {
-    if (STATUS_MAP) {
-      var mapped = STATUS_MAP[status];
-      if (mapped) return mapped;
-    }
-    var s = (status || '').trim().toLowerCase();
-
-    // 1. Категория JIRA "Выполнено" — авторитетный и единственный широкий признак готовности.
-    //    Подстрочный поиск по имени здесь недопустим: "Аналитика завершена", "Готово к закрытию",
-    //    "Ожидает решения КЦ" содержат done-подобные корни, но финальными НЕ являются.
-    if (category === 'Выполнено') return 'done';
-    if (DONE_EXACT.indexOf(s) !== -1) return 'done';
-
-    // 2. Блокировки и ожидания — раньше остальных: "Ожидает тестирование" это очередь, не тесты.
-    if (/блок|ожида|пауза|на паузе|hold|wait|отложен|приостановл/.test(s)) return 'blocked';
-
-    // 3. Тестирование раньше ревью: "Готово к тестированию" — про тесты.
-    if (/тест|qa/.test(s)) return 'testing';
-
-    // 4. Ревью / приёмка / согласование.
-    if (/ревью|review|проверк|приемк|приёмк|согласован|утвержд/.test(s)) return 'review';
-
-    // 5. Дефолт по категории JIRA.
-    if (category === 'К выполнению') return 'open';
-    return 'progress';
-  }
-
-  function bucketClass(status, category) {
-    var id = classifyBucket(status, category);
-    for (var i = 0; i < BUCKETS.length; i++) {
-      if (BUCKETS[i].id === id) return BUCKETS[i].cls;
-    }
-    return 'b-open';
-  }
-
-  // Агрегация по ВСЕЙ иерархии эпика: каждая история + каждая её подзадача = 1 единица.
-  function tallyEpic(epic) {
-    var counts = {};
-    BUCKETS.forEach(function (b) { counts[b.id] = 0; });
-
-    (epic.stories || []).forEach(function (story) {
-      counts[classifyBucket(story.status, story.category)]++;
-      (story.subtasks || []).forEach(function (sub) {
-        counts[classifyBucket(sub.status, sub.category)]++;
-      });
-    });
-
-    counts.total = BUCKETS.reduce(function (acc, b) { return acc + counts[b.id]; }, 0);
-    return counts;
-  }
-
-  function jiraUrl(key) { return JIRA_BASE + '/browse/' + key; }
-
-  // Сколько дней статус не менялся. Считается в браузере от текущей даты,
-  // поэтому страница не «протухает»: в данных лежит ISO-дата последней смены статуса.
-  // Больше STALE_DAYS дней без движения — подсвечиваем красным.
-  var STALE_DAYS = 3;
-
-  function statusAge(iso) {
-    if (!iso) return null;
-    var then = new Date(iso);
-    if (isNaN(then.getTime())) return null;
-    var days = Math.floor((Date.now() - then.getTime()) / 86400000);
-    if (days < 0) days = 0;
-    return days;
-  }
-
-  // Готовые задачи по определению стоят без движения — красить их «просрочкой» смысла нет,
-  // поэтому для бакета done возраст всегда зелёный и никогда не stale.
-  function ageHtml(iso, status, category) {
-    var isDone = classifyBucket(status, category) === 'done';
-    var days = statusAge(iso);
-    if (days === null) {
-      return '<span class="age' + (isDone ? ' done' : '') + '" title="Дата смены статуса неизвестна">—</span>';
-    }
-    var label = days + 'д';
-    var title = isDone
-      ? 'Закрыто ' + (days === 0 ? 'сегодня' : days + ' дн. назад')
-      : (days === 0 ? 'Статус изменён сегодня' : 'Статус не менялся ' + days + ' дн.');
-    var cls = isDone ? ' done' : (days > STALE_DAYS ? ' stale' : '');
-    return '<span class="age' + cls + '" title="' + esc(title) + '">' + label + '</span>';
-  }
-
-  // Инициалы исполнителя: "Фамилия Имя Отчество" -> "ФИ" (фамилия + имя).
-  // Полное имя показывается подсказкой при наведении.
-  function whoHtml(name) {
-    if (!name) {
-      return '<span class="who none">—<span class="who-tip">Исполнитель не назначен</span></span>';
-    }
-    var parts = String(name).trim().split(/\s+/);
-    var initials = parts.slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
-    // В подсказке переставляем «Фамилия Имя Отчество» в «Имя Фамилия».
-    // Но если вторая часть — одна буква (инициал или метка вида «Участник А»),
-    // переставлять нечего: получится «А Участник».
-    var full = (parts.length >= 2 && parts[1].replace('.', '').length > 1)
-      ? parts[1] + ' ' + parts[0]
-      : name;
-    return '<span class="who" title="' + esc(name) + '">' + esc(initials) +
-      '<span class="who-tip">' + esc(full) + '</span></span>';
-  }
-
-  function esc(s) {
-    var d = document.createElement('div');
-    d.textContent = s == null ? '' : s;
-    return d.innerHTML;
-  }
-
+/*#include shared/core.js*/
   var tableBody = document.getElementById('tableBody');
 
   // подсказка: только ненулевые бакеты, «2 — в бэклоге, 1 — в ревью»
@@ -869,6 +65,16 @@
       return '<span class="n ' + b.cls + (n ? '' : ' zero') + '">' + n + '</span>';
     }).join('<span class="sep">/</span>');
     return '<span class="tally-box">' + nums + '<span class="tip">' + esc(tallyTip(counts)) + '</span></span>';
+  }
+
+  // метки заметок у строк эпиков
+  function pageMarks(counts) {
+    tableBody.querySelectorAll('tr[data-row]').forEach(function (tr) {
+      var btn = tr.querySelector('.action-btn');
+      var n = counts.byRow[tr.dataset.row] || 0;
+      btn.classList.toggle('has-note', !!n);
+      btn.title = n ? 'Заметок по эпику: ' + n : '';
+    });
   }
 
   function renderTable() {
@@ -896,466 +102,8 @@
     refreshComments();
   }
 
-  var overlay = document.getElementById('overlay');
-  var panelStack = document.getElementById('panelStack');
-  var stackKey = document.getElementById('stackKey');
-  var stackTitle = document.getElementById('stackTitle');
-  var stackLink = document.getElementById('stackLink');
-  var storiesLabel = document.getElementById('storiesLabel');
-  var storiesBody = document.getElementById('storiesBody');
-
-  // ------------------------- заметки (корзина) -------------------------
-  // Как на странице ревью БФТ: заметки копятся в корзине справа вверху, каждую
-  // можно поправить или удалить, наружу они уходят готовым промтом для ИИ.
-  // У заметки необязательная привязка к сущности (эпик, история, подзадача или
-  // любой ключ вне отчёта) — чтобы LLM сразу понимала, о чём речь.
-  // Хранение — localStorage браузера, своя корзина у каждой команды и спринта.
-  function commentsKey() { return 'actual-sprint:' + REPORT_ID + ':comments:' + team.sprintName; }
-
-  function loadComments() {
-    try {
-      var list = JSON.parse(localStorage.getItem(commentsKey()) || '[]');
-      return Array.isArray(list) ? list : [];
-    } catch (e) { return []; }
-  }
-
-  function saveComments(list) {
-    try { localStorage.setItem(commentsKey(), JSON.stringify(list)); } catch (e) {}
-  }
-
-  function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-
-  function addComment(target, text) {
-    text = String(text || '').trim();
-    if (!text) return false;
-    var list = loadComments();
-    list.push({ id: newId(), at: new Date().toISOString(), target: target, text: text });
-    saveComments(list);
-    refreshComments();
-    return true;
-  }
-
-  function updateComment(id, text, target) {
-    text = String(text || '').trim();
-    if (!text) return false;
-    saveComments(loadComments().map(function (c) {
-      return c.id === id ? Object.assign({}, c, { text: text, target: target, editedAt: new Date().toISOString() }) : c;
-    }));
-    refreshComments();
-    return true;
-  }
-
-  function removeComment(id) {
-    saveComments(loadComments().filter(function (c) { return c.id !== id; }));
-    refreshComments();
-  }
-
-  // Заметки прошлых версий страницы (textarea в панели и файл sprint-report-notes.json)
-  // один раз переезжают в корзину, чтобы ничего не потерялось. Старые ключи не трогаем.
-  function migrateNotes() {
-    var flag = 'actual-sprint:' + REPORT_ID + ':notes-migrated';
-    if (localStorage.getItem(flag)) return;
-    var prefix = 'actual-sprint:' + REPORT_ID + ':note:';
-    var bag = {};
-    Object.keys(team.notes || {}).forEach(function (k) { bag[k] = team.notes[k]; });
-    Object.keys(localStorage).forEach(function (k) {
-      if (k.indexOf(prefix) === 0 && localStorage.getItem(k)) bag[k.slice(prefix.length)] = localStorage.getItem(k);
-    });
-    var list = loadComments();
-    Object.keys(bag).forEach(function (rowId) {
-      var text = String(bag[rowId] || '').trim();
-      if (!text) return;
-      var epic = EPICS.find(function (e) { return e.rowId === rowId; });
-      var target = epic ? epicTarget(epic)
-        : { kind: 'general', title: rowId === '__metrics__' ? 'Сводный отчёт' : rowId === '__logs__' ? 'Лента изменений' : '' };
-      list.push({ id: 'm-' + rowId, at: new Date().toISOString(), target: target, text: text, migrated: true });
-    });
-    saveComments(list);
-    localStorage.setItem(flag, '1');
-  }
-
-  // --- к чему заметка: снимок сущности на момент записи, чтобы промт читался
-  //     и тогда, когда данные отчёта уже пересобраны
-  function epicTarget(epic) {
-    return { kind: 'epic', key: epic.epicKey, title: epic.epicTitle || 'Без эпика',
-             rowId: epic.rowId, priority: epic.epicPriority || null };
-  }
-
-  function itemTarget(kind, item, epic) {
-    return { kind: kind, key: item.key, title: item.title || item.summary, status: item.status,
-             priority: item.priority || null, assignee: item.assignee || null,
-             epicKey: epic.epicKey, epicTitle: epic.epicTitle, rowId: epic.rowId };
-  }
-
-  var GENERAL = { kind: 'general' };
-  var KIND_NAME = { epic: 'Эпик', story: 'История', subtask: 'Подзадача', event: 'Задача',
-                    ref: 'Вне отчёта' };
-
-  // все сущности текущей команды по ключу: для привязки из корзины и подсказок
-  function entityIndex() {
-    var idx = {};
-    EPICS.forEach(function (e) {
-      if (e.epicKey) idx[e.epicKey.toUpperCase()] = epicTarget(e);
-      (e.stories || []).forEach(function (st) {
-        idx[st.key.toUpperCase()] = itemTarget('story', st, e);
-        (st.subtasks || []).forEach(function (sub) { idx[sub.key.toUpperCase()] = itemTarget('subtask', sub, e); });
-      });
-    });
-    return idx;
-  }
-
-  function fillRefList() {
-    var idx = entityIndex();
-    document.getElementById('refList').innerHTML = Object.keys(idx).map(function (k) {
-      var t = idx[k];
-      return '<option value="' + esc(t.key) + '">' + esc(KIND_NAME[t.kind] + ' · ' + t.title) + '</option>';
-    }).join('');
-  }
-
-  // «INIT-132» или «INIT-132 — что угодно» → снимок сущности; ключ не из отчёта
-  // (история вне спринта) тоже годится; пусто → заметка без привязки
-  function resolveRef(value) {
-    value = String(value || '').trim();
-    if (!value) return GENERAL;
-    var m = value.match(/^[A-Za-zА-Яа-яЁё][\wЀ-ӿ]*-\d+/);
-    var key = m ? m[0].toUpperCase() : null;
-    var known = key ? entityIndex()[key] : null;
-    if (known) return known;
-    return { kind: 'ref', key: key || value, title: key ? value.slice(m[0].length).replace(/^[\s—–-]+/, '') : '' };
-  }
-
-  function refValue(t) { return t && t.kind !== 'general' && t.key ? t.key : ''; }
-
-  // одна строка «к чему»: и для корзины, и для промта
-  function targetLine(t) {
-    if (!t || t.kind === 'general') return 'без привязки' + (t && t.title ? ' · ' + t.title : '');
-    var head = KIND_NAME[t.kind] + (t.key ? ' ' + t.key : '') + (t.title ? ' «' + t.title + '»' : '');
-    var parts = [head];
-    if ((t.kind === 'story' || t.kind === 'subtask') && t.epicTitle) {
-      parts.push('эпик ' + (t.epicKey ? t.epicKey + ' ' : '') + '«' + t.epicTitle + '»');
-    }
-    if (t.priority) parts.push('приоритет ' + t.priority);
-    if (t.status) parts.push('статус ' + t.status);
-    if (t.assignee) parts.push('исполнитель ' + t.assignee);
-    return parts.join(' · ');
-  }
-
-  function stamp(iso, withYear) {
-    var d = new Date(iso);
-    var two = function (n) { return ('0' + n).slice(-2); };
-    return two(d.getDate()) + '.' + two(d.getMonth() + 1) + (withYear ? '.' + d.getFullYear() : '') +
-      ' ' + two(d.getHours()) + ':' + two(d.getMinutes());
-  }
-
-  // Промт для ИИ: контекст отчёта, формат строки и заметки по порядку.
-  // В квадратных скобках — к чему заметка; по ним LLM сразу находит сущность.
-  function buildPrompt(list) {
-    if (!list.length) return '';
-    var when = team._meta && team._meta.collectedAt ? ' · данные JIRA на ' + stamp(team._meta.collectedAt, true) : '';
-    var out = ['Заметки PO к отчёту спринта — учти их при разборе спринта и в ответах.',
-               'Команда «' + team.team + '» · ' + team.sprintName + ' · доска «' + team.boardName + '»' + when + '.',
-               'Формат: номер. [к чему относится] текст заметки. [без привязки] — заметка о процессе в целом.', ''];
-    list.forEach(function (c, i) {
-      var lines = String(c.text).split('\n');
-      out.push((i + 1) + '. [' + targetLine(c.target) + '] ' + lines[0]);
-      lines.slice(1).forEach(function (line) { out.push('   ' + line); });
-    });
-    return out.join('\n');
-  }
-
-  function copyText(text) {
-    // file:// и старые браузеры без Clipboard API — через скрытое поле
-    function fallback() {
-      var ta = document.createElement('textarea');
-      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      var ok = false;
-      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
-      document.body.removeChild(ta);
-      return ok ? Promise.resolve() : Promise.reject(new Error('copy'));
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).catch(fallback);
-    }
-    return fallback();
-  }
-
-  // --- иконки: контур 1.4px в сетке 16×16, как в панели poh-okr-plugin
-  var ICON = {
-    pencil: 'M10.4 3.4l2.2 2.2-6.9 6.9-2.9.7.7-2.9zM9.2 4.6l2.2 2.2',
-    trash: 'M3.4 4.6h9.2M6.4 4.6V3.4h3.2v1.2M5 4.6l.6 8.2h4.8l.6-8.2',
-    eye: 'M1.8 8s2.3-4.2 6.2-4.2S14.2 8 14.2 8s-2.3 4.2-6.2 4.2S1.8 8 1.8 8zM8 6.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4'
-  };
-  function svgIcon(name) {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"' +
-      ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + ICON[name] + '"/></svg>';
-  }
-  function icoBtn(name, title, attr, cls) {
-    return '<button class="ico' + (cls ? ' ' + cls : '') + '" type="button" ' + attr +
-      ' title="' + title + '" aria-label="' + title + '">' + svgIcon(name) + '</button>';
-  }
-
-  // --- корзина
-  var notesPanel = document.getElementById('notesPanel');
-  var notesToggle = document.getElementById('notesToggle');
-  var editingId = null;
-
-  // подпись под заметкой: только если привязана — «INIT-132 · Сервис приёма событий»
-  function refLineHtml(t) {
-    if (!t || t.kind === 'general') return '';
-    var text = (t.key ? t.key : KIND_NAME[t.kind]) + (t.title ? ' · ' + t.title : '');
-    return '<span class="nref-line" title="' + esc(targetLine(t)) + '">' + esc(text) + '</span>';
-  }
-
-  function noteItemHtml(c) {
-    if (c.id === editingId) {
-      return '<div class="nrow editing" data-id="' + esc(c.id) + '">' +
-        '<textarea class="nedit-text" title="Enter — сохранить, Esc — отмена">' + esc(c.text) + '</textarea>' +
-        '<input class="nref nedit-ref" list="refList" autocomplete="off" value="' + esc(refValue(c.target)) + '"' +
-        ' placeholder="К чему — ключ эпика или задачи, необязательно"></div>';
-    }
-    var tip = 'Добавлено ' + stamp(c.at, true) + (c.editedAt ? ', изменено ' + stamp(c.editedAt, true) : '') +
-      (c.migrated ? ' · перенесено из заметки' : '');
-    return '<div class="nrow" data-id="' + esc(c.id) + '" title="' + esc(tip) + '">' +
-      '<div class="ntext">' + esc(c.text) + refLineHtml(c.target) + '</div>' +
-      '<div class="nacts">' + icoBtn('pencil', 'Редактировать', 'data-edit') +
-        icoBtn('trash', 'Удалить', 'data-del', 'danger') + '</div></div>';
-  }
-
-  function renderNotes() {
-    var list = loadComments();
-    document.getElementById('cCount').textContent = list.length;
-    var box = document.getElementById('itemsList');
-    box.innerHTML = list.map(noteItemHtml).join('');
-    var empty = document.getElementById('nEmpty');
-    if (!list.length && !empty) {
-      box.insertAdjacentHTML('beforebegin', '<p class="nempty" id="nEmpty">Заметок пока нет. Правый клик по строке отчёта — заметка к ней.</p>');
-    } else if (list.length && empty) {
-      empty.remove();
-    }
-    var prompt = buildPrompt(list);
-    document.getElementById('promptOut').value = prompt;
-    document.getElementById('copyBtn').disabled = !prompt;
-
-    box.querySelectorAll('.nrow').forEach(function (item) {
-      var id = item.dataset.id;
-      var q = function (sel) { return item.querySelector(sel); };
-      if (q('[data-del]')) q('[data-del]').addEventListener('click', function () { removeComment(id); });
-      if (q('[data-edit]')) q('[data-edit]').addEventListener('click', function () {
-        editingId = id; renderNotes();
-        var ta = box.querySelector('.nedit-text');
-        ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
-      });
-      if (item.classList.contains('editing')) {
-        var save = function () {
-          // ключ не трогали — оставляем снимок сущности как был, а не пересобираем его
-          var old = loadComments().find(function (c) { return c.id === id; });
-          var ref = q('.nedit-ref').value.trim();
-          var target = old && ref === refValue(old.target) ? old.target : resolveRef(ref);
-          if (updateComment(id, q('.nedit-text').value, target)) editingId = null;
-          renderNotes();
-        };
-        var cancel = function () { editingId = null; renderNotes(); };
-        [q('.nedit-text'), q('.nedit-ref')].forEach(function (el) {
-          el.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); save(); }
-            if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
-          });
-        });
-      }
-    });
-  }
-
-  function setNotesOpen(open) {
-    notesPanel.classList.toggle('open', open);
-    notesToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if (!open) editingId = null;
-  }
-
-  // сколько заметок у задачи и у эпика со всей его иерархией
-  function commentCounts() {
-    var byKey = {}, byRow = {};
-    loadComments().forEach(function (c) {
-      var t = c.target || {};
-      if (t.key) byKey[t.key] = (byKey[t.key] || 0) + 1;
-      if (t.rowId) byRow[t.rowId] = (byRow[t.rowId] || 0) + 1;
-    });
-    return { byKey: byKey, byRow: byRow };
-  }
-
-  function cmarkHtml(n) { return n ? '<span class="cmark" title="Заметок: ' + n + '">' + n + '</span>' : ''; }
-
-  function refreshComments() {
-    renderNotes();
-    var counts = commentCounts();
-    tableBody.querySelectorAll('tr[data-row]').forEach(function (tr) {
-      var btn = tr.querySelector('.action-btn');
-      var n = counts.byRow[tr.dataset.row] || 0;
-      btn.classList.toggle('has-note', !!n);
-      btn.title = n ? 'Заметок по эпику: ' + n : '';
-    });
-    document.querySelectorAll('[data-cmark]').forEach(function (el) {
-      el.innerHTML = cmarkHtml(counts.byKey[el.dataset.cmark] || 0);
-    });
-  }
-
-  // --- поле заметки по правому клику: сразу с привязкой к строке
-  var cpop = document.getElementById('cpop');
-  var cpopText = document.getElementById('cpopText');
-  var cpopTarget = null;
-
-  function renderPopExisting(target) {
-    var box = document.getElementById('cpopExisting');
-    var list = target.key ? loadComments().filter(function (c) { return c.target && c.target.key === target.key; }) : [];
-    box.hidden = !list.length;
-    box.innerHTML = list.map(function (c) {
-      return '<div class="nrow"><div class="ntext">' + esc(c.text) + '</div>' +
-        '<div class="nacts">' + icoBtn('trash', 'Удалить', 'data-pdel="' + esc(c.id) + '"', 'danger') + '</div></div>';
-    }).join('');
-    box.querySelectorAll('[data-pdel]').forEach(function (b) {
-      b.addEventListener('click', function () { removeComment(b.dataset.pdel); renderPopExisting(target); });
-    });
-  }
-
-  function openCommentPopup(target, x, y) {
-    cpopTarget = target;
-    document.getElementById('cpopTarget').innerHTML = refLineHtml(target) || '<span class="nref-line">Без привязки</span>';
-    renderPopExisting(target);
-    cpopText.value = '';
-    cpop.hidden = false;
-    var w = cpop.offsetWidth, h = cpop.offsetHeight;
-    cpop.style.left = Math.max(8, Math.min(x, window.innerWidth - w - 8)) + 'px';
-    cpop.style.top = Math.max(8, Math.min(y, window.innerHeight - h - 8)) + 'px';
-    cpopText.focus();
-  }
-
-  function closeCommentPopup() { cpop.hidden = true; cpopTarget = null; }
-
-  function saveCommentPopup() {
-    if (cpopTarget && addComment(cpopTarget, cpopText.value)) closeCommentPopup();
-  }
-
-  document.getElementById('cpopSave').addEventListener('click', saveCommentPopup);
-  cpopText.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); saveCommentPopup(); }
-    if (e.key === 'Escape') { e.stopPropagation(); closeCommentPopup(); }
-  });
-  // клик мимо закрывает пустое поле; начатый текст не теряем
-  document.addEventListener('mousedown', function (e) {
-    if (!cpop.hidden && !cpop.contains(e.target) && !cpopText.value.trim()) closeCommentPopup();
-  });
-
-  // Правый клик по любой строке с data-ctx открывает поле заметки к ней.
-  // Цель берётся из реестра, заполняемого при отрисовке строк.
-  var ctxTargets = {}, ctxSeq = 0;
-  function ctxId(target) {
-    var id = 'c' + (ctxSeq++);
-    ctxTargets[id] = target;
-    return id;
-  }
-  function ctxAttr(target) { return ' data-ctx="' + ctxId(target) + '"'; }
-  document.addEventListener('contextmenu', function (e) {
-    var el = e.target.closest && e.target.closest('[data-ctx]');
-    if (!el || !ctxTargets[el.dataset.ctx]) return;
-    e.preventDefault();
-    openCommentPopup(ctxTargets[el.dataset.ctx], e.clientX, e.clientY);
-  });
-
-  // --- приоритет: уровень выводим из имени, как бакет из статуса
-  var PRIO_LEVELS = [
-    { cls: 'p-highest', glyph: '⇈', rx: /блокир|критич|highest|blocker|critical|наивысш|срочн/ },
-    { cls: 'p-lowest',  glyph: '⇊', rx: /lowest|trivial|незначит|минимальн/ },
-    { cls: 'p-high',    glyph: '↑', rx: /высок|high|major|важн/ },
-    { cls: 'p-low',     glyph: '↓', rx: /низк|low|minor/ },
-    { cls: 'p-medium',  glyph: '=', rx: /средн|medium|normal|обычн|нормальн/ }
-  ];
-
-  function prioHtml(name) {
-    if (!name) return '<span class="prio p-none" title="Приоритет не задан">·</span>';
-    var s = String(name).toLowerCase();
-    var lvl = PRIO_LEVELS.find(function (l) { return l.rx.test(s); }) || { cls: 'p-medium', glyph: '•' };
-    return '<span class="prio ' + lvl.cls + '" title="Приоритет: ' + esc(name) + '">' + lvl.glyph + '</span>';
-  }
-
-  // общая шапка панели — заполняется один раз на открытие, не дублируется по колонкам
-  function setStackHead(epic) {
-    stackTitle.parentNode.setAttribute('data-ctx', ctxId(epicTarget(epic)));
-    stackKey.textContent = epic.epicKey || 'Без эпика';
-    stackTitle.textContent = epic.epicTitle || 'Без эпика';
-    if (epic.epicKey) { stackLink.href = jiraUrl(epic.epicKey); stackLink.style.display = ''; }
-    else { stackLink.style.display = 'none'; }
-  }
-
-  function fillStoriesPanel(epic) {
-    storiesBody.innerHTML = '';
-    var counts = commentCounts().byKey;
-
-    if (!epic.stories || !epic.stories.length) {
-      var empty = document.createElement('div');
-      empty.className = 'sidebar-empty';
-      empty.textContent = 'Историй нет.';
-      storiesBody.appendChild(empty);
-      return;
-    }
-
-    epic.stories.forEach(function (story) {
-      var wrap = document.createElement('div');
-      wrap.className = 'story-item';
-
-      var hasSubtasks = story.subtasks && story.subtasks.length > 0;
-
-      var row = document.createElement('div');
-      row.className = 'story-row';
-      row.innerHTML =
-        '<div class="story-title-wrap"' + ctxAttr(itemTarget('story', story, epic)) + '>' +
-          '<button class="story-toggle" ' + (hasSubtasks ? '' : 'disabled') + '>▶</button>' +
-          prioHtml(story.priority) +
-          whoHtml(story.assignee) +
-          '<a href="' + jiraUrl(story.key) + '" target="_blank" rel="noopener">' + esc(story.key) + ' — ' + esc(story.title) + '</a>' +
-        '</div>' +
-        '<div class="meta-wrap">' +
-          '<span data-cmark="' + esc(story.key) + '">' + cmarkHtml(counts[story.key] || 0) + '</span>' +
-          '<span class="status ' + bucketClass(story.status, story.category) + '">' + esc(story.status) + '</span>' +
-          ageHtml(story.statusChanged, story.status, story.category) +
-        '</div>';
-      wrap.appendChild(row);
-
-      var subList = document.createElement('div');
-      subList.className = 'sub-list';
-      if (hasSubtasks) {
-        story.subtasks.forEach(function (sub) {
-          var subRow = document.createElement('div');
-          subRow.className = 'sub-item';
-          subRow.innerHTML = '<span class="story-title-wrap"' + ctxAttr(itemTarget('subtask', sub, epic)) + '>' +
-            prioHtml(sub.priority) +
-            whoHtml(sub.assignee) +
-            '<a href="' + jiraUrl(sub.key) + '" target="_blank" rel="noopener">' + esc(sub.key) + ' — ' + esc(sub.summary) + '</a>' +
-            '</span>' +
-            '<div class="meta-wrap">' +
-              '<span data-cmark="' + esc(sub.key) + '">' + cmarkHtml(counts[sub.key] || 0) + '</span>' +
-              '<span class="status ' + bucketClass(sub.status, sub.category) + '">' + esc(sub.status) + '</span>' +
-              ageHtml(sub.statusChanged, sub.status, sub.category) +
-            '</div>';
-          subList.appendChild(subRow);
-        });
-      }
-      wrap.appendChild(subList);
-
-      var toggleBtn = row.querySelector('.story-toggle');
-      if (hasSubtasks) {
-        toggleBtn.addEventListener('click', function () {
-          toggleBtn.classList.toggle('open');
-          subList.classList.toggle('open');
-        });
-      }
-
-      storiesBody.appendChild(wrap);
-    });
-  }
-
   // ------------------------- сводный отчёт за 3 спринта -------------------------
 
-  function fmt(v) { return v === null || v === undefined ? '—' : String(v).replace('.', ','); }
 
   // «среднее/медиана/количество» — формат шапки и всех ячеек сводки
   function triple(s) {
@@ -1369,324 +117,153 @@
     link.textContent = o && o.lead ? triple(o.lead).replace(/<[^>]+>/g, '') : '—';
   }
 
-  // ------------------ Burndown текущего спринта ------------------
-  // Показывает, сколько задач ещё не закрыто по дням спринта.
-  // scope пересчитывается по changelog поля Sprint, поэтому внесённые и
-  // вынесенные из спринта задачи видны как ступеньки серой линии объёма.
-  function burndownChart() {
-    var b = BURNDOWN;
-    if (!b || !b.days || !b.days.length) return '<div class="m-muted">Нет данных по спринту.</div>';
 
-    var days = b.days;
-    var W = 560, H = 210, padL = 34, padR = 14, padT = 12, padB = 30;
-    var maxY = Math.max.apply(null, days.map(function (d) { return d.scope; })) || 1;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var xOf = function (i) { return padL + innerW * (days.length > 1 ? i / (days.length - 1) : 0); };
-    var yOf = function (v) { return padT + innerH * (1 - v / maxY); };
+  // «Как читать» — постоянная расшифровка графика в подсказке «i». Интерпретация
+  // конкретных цифр — отдельный раздел «Инсайды ИИ» внизу отчёта. Под графиком
+  // остаются только легенда и списки.
+  var CHART_INFO = {
+    burndown: ['Серая линия — идеальный темп: от объёма на старте до нуля в последний день.',
+               'Красная — сколько задач осталось на каждый день; точка — подсказка с числами.',
+               'Светлые полосы — выходные. Ступенька вверх — в спринт добавили задачи.'],
+    velocity: ['Левый столбец — всё, что было в спринте, разложенное по текущему статусу.',
+               'Правый — сколько сделано. Пунктир — среднее сделанное за показанные спринты.'],
+    control: ['Точка — закрытая задача: по горизонтали дата закрытия, по вертикали Cycle Time — дни от взятия в работу до закрытия.',
+              'Синяя линия — скользящее среднее по 5 задачам, светлая полоса — коридор ±σ.',
+              'Красная линия — порог выброса: среднее + σ. Выше — задача шла заметно дольше обычного.',
+              'Жёлтые точки у правого края — ещё в работе и уже дольше медианы; по высоте — сколько идут на сегодня.']
+  };
+  var AI_LEVELS = { risk: 'нужна реакция', warn: 'присмотреться', good: 'работает', info: 'наблюдение' };
+  var AI_ABOUT = { sprint: 'спринт', team: 'команда', burndown: 'burndown', velocity: 'производительность',
+                   controlStories: 'cycle time историй', controlSubtasks: 'cycle time подзадач' };
 
-    var parts = [];
-
-    // выходные — светлые полосы
-    days.forEach(function (d, i) {
-      if (!d.weekend) return;
-      var x1 = xOf(i) - innerW / (days.length - 1) / 2;
-      var x2 = xOf(i) + innerW / (days.length - 1) / 2;
-      parts.push('<rect x="' + Math.max(padL, x1).toFixed(1) + '" y="' + padT +
-        '" width="' + Math.max(0, Math.min(W - padR, x2) - Math.max(padL, x1)).toFixed(1) +
-        '" height="' + innerH + '" fill="#f4f4f5"/>');
-    });
-
-    // сетка и ось Y
-    [0, Math.round(maxY / 2), maxY].forEach(function (v) {
-      parts.push('<line x1="' + padL + '" y1="' + yOf(v).toFixed(1) + '" x2="' + (W - padR) +
-        '" y2="' + yOf(v).toFixed(1) + '" stroke="#eee"/>');
-      parts.push('<text x="4" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="10" fill="#666">' + v + '</text>');
-    });
-
-    // идеальная линия: от объёма на старте до нуля в конце
-    parts.push('<line x1="' + xOf(0) + '" y1="' + yOf(days[0].scope).toFixed(1) +
-      '" x2="' + xOf(days.length - 1) + '" y2="' + yOf(0).toFixed(1) +
-      '" stroke="#9ca3af" stroke-width="2"/>');
-
-    // фактический остаток — только по сегодняшний день
-    var actual = days.filter(function (d) { return !d.future; });
-    if (actual.length) {
-      var path = actual.map(function (d, i) {
-        return (i ? 'L' : 'M') + xOf(i).toFixed(1) + ' ' + yOf(d.remaining).toFixed(1);
-      }).join(' ');
-      parts.push('<path d="' + path + '" fill="none" stroke="#dc2626" stroke-width="2"/>');
-      actual.forEach(function (d, i) {
-        parts.push('<circle cx="' + xOf(i).toFixed(1) + '" cy="' + yOf(d.remaining).toFixed(1) +
-          '" r="2.5" fill="#dc2626"><title>' + esc(d.date + ': осталось ' + d.remaining +
-          ' из ' + d.scope + ', закрыто ' + d.closed) + '</title></circle>');
-      });
+  // Раздел «Инсайды ИИ»: на что обратить внимание PO, что можно сказать о состоянии
+  // команды в этом спринте и о тенденции. Пишет агент (/sprint-insights) по фактам из
+  // снимка; runner кладёт в team.insights, только если они написаны по этим же данным.
+  // Нет наблюдений — раздел всё равно на месте и говорит, как их получить.
+  function insightsSection() {
+    var ins = team.insights;
+    var list = ins && ins.observations && ins.observations.length ? ins.observations : null;
+    var title = 'Инсайды ИИ';
+    var body;
+    if (!list) {
+      body = '<p class="ai-none">ИИ-агент ещё не смотрел этот сбор. Попросите его: <code>/sprint-insights</code> — ' +
+        'здесь появятся наблюдения о спринте и команде.</p>';
+    } else {
+      body = '<p class="ai-lead">На что обратить внимание PO: состояние команды в этом спринте и тенденция</p>' +
+        '<ol class="ai-list">' + list.map(function (it) {
+          var lvl = AI_LEVELS[it.level] ? it.level : 'info';
+          var keys = (it.keys || []).map(function (k) {
+            return '<a href="' + jiraUrl(k) + '" target="_blank" rel="noopener">' + esc(k) + '</a>';
+          }).join('');
+          return '<li class="ai-item lv-' + lvl + '"' + ctxAttr({ kind: 'insight', title: it.text }) + '>' +
+            '<div class="ai-meta"><span class="dot"></span><span class="lvl">' + AI_LEVELS[lvl] + '</span>' +
+              (AI_ABOUT[it.about] ? '<span class="about">' + AI_ABOUT[it.about] + '</span>' : '') + '</div>' +
+            '<p class="ai-text">' + esc(it.text) + '</p>' +
+            (it.action ? '<p class="ai-act">→ ' + esc(it.action) + '</p>' : '') +
+            (keys ? '<div class="ai-keys">' + keys + '</div>' : '') +
+          '</li>';
+        }).join('') + '</ol>' +
+        '<p class="ai-by">Интерпретация ИИ, не данные' + (ins.author ? ' · ' + esc(ins.author) : '') +
+        (ins.generatedAt ? ' · ' + esc(String(ins.generatedAt).slice(0, 16).replace('T', ' ')) : '') + '</p>';
     }
-
-    // подписи крайних дат
-    parts.push('<text x="' + padL + '" y="' + (H - 8) + '" font-size="10" fill="#666">' + esc(b.start) + '</text>');
-    parts.push('<text x="' + (W - padR) + '" y="' + (H - 8) +
-      '" font-size="10" fill="#666" text-anchor="end">' + esc(b.end) + '</text>');
-
-    var last = actual.length ? actual[actual.length - 1] : days[0];
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-      parts.join('') + '</svg>' +
-      '<div class="chart-legend">' +
-        '<span class="swatch ideal"></span>идеальный темп &nbsp; ' +
-        '<span class="swatch actual"></span>фактический остаток<br>' +
-        'Сейчас закрыто <b>' + last.closed + '</b> из <b>' + last.scope + '</b>, осталось <b>' +
-        last.remaining + '</b>. Серая ступенька — изменение объёма спринта.' +
-      '</div>';
+    return '<div class="metrics-section ai-section" id="aiInsights"><h3>' + title + '</h3>' + body + '</div>';
   }
 
-  // ------------------ Диаграмма управления ------------------
-  // X — дата закрытия, Y — Cycle Time задачи. Синяя линия — скользящее среднее,
-  // светлая полоса — коридор ±σ, красная черта — порог выброса (среднее + σ).
-  // Точки выше порога подсвечены и вынесены списком под графиком.
-  function controlChart(c, label) {
-    if (!c || !c.points || !c.points.length) {
-      return '<div class="m-muted">Нет закрытых ' + esc(label) + ' за период.</div>';
-    }
+  // Интерпретация динамики команды (отдельный промт sprint-insights/prompts/interpretation.md):
+  // пишется ИИ-агентом на этапе генерации отчёта, показывается сайдбаром по «!» в шапке.
+  var INTERP_PARTS = [
+    ['dynamics', 'Что можно сказать о динамике команды'],
+    ['attention', 'На что стоит обратить внимание'],
+    ['recommendations', 'Рекомендации на будущее']
+  ];
 
-    var pts = c.points;
-    var W = 560, H = 210, padL = 34, padR = 14, padT = 12, padB = 30;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var maxY = Math.max.apply(null, pts.map(function (p) { return p.cycle; })) || 1;
-
-    var t0 = new Date(pts[0].doneAt).getTime();
-    var t1 = new Date(pts[pts.length - 1].doneAt).getTime();
-    var span = Math.max(t1 - t0, 1);
-    var xOf = function (iso) { return padL + innerW * ((new Date(iso).getTime() - t0) / span); };
-    var yOf = function (v) { return padT + innerH * (1 - v / maxY); };
-
-    var parts = [];
-    [0, Math.round(maxY / 2), Math.round(maxY)].forEach(function (v) {
-      parts.push('<line x1="' + padL + '" y1="' + yOf(v).toFixed(1) + '" x2="' + (W - padR) +
-        '" y2="' + yOf(v).toFixed(1) + '" stroke="#eee"/>');
-      parts.push('<text x="4" y="' + (yOf(v) + 4).toFixed(1) + '" font-size="10" fill="#666">' + v + '</text>');
-    });
-
-    // скользящее среднее по окну из 5 задач + коридор ±σ
-    var WIN = 5, avg = [], band = [];
-    pts.forEach(function (p, i) {
-      var from = Math.max(0, i - Math.floor(WIN / 2));
-      var win = pts.slice(from, from + WIN).map(function (q) { return q.cycle; });
-      var m = win.reduce(function (a, v) { return a + v; }, 0) / win.length;
-      var sd = Math.sqrt(win.reduce(function (a, v) { return a + (v - m) * (v - m); }, 0) / win.length);
-      avg.push({ x: xOf(p.doneAt), y: yOf(m) });
-      band.push({ x: xOf(p.doneAt), hi: yOf(Math.min(maxY, m + sd)), lo: yOf(Math.max(0, m - sd)) });
-    });
-
-    var bandPath = band.map(function (b, i) { return (i ? 'L' : 'M') + b.x.toFixed(1) + ' ' + b.hi.toFixed(1); }).join(' ') +
-      ' ' + band.slice().reverse().map(function (b) { return 'L' + b.x.toFixed(1) + ' ' + b.lo.toFixed(1); }).join(' ') + ' Z';
-    parts.push('<path d="' + bandPath + '" fill="#2563eb" fill-opacity="0.10"/>');
-    parts.push('<path d="' + avg.map(function (a, i) { return (i ? 'L' : 'M') + a.x.toFixed(1) + ' ' + a.y.toFixed(1); }).join(' ') +
-      '" fill="none" stroke="#2563eb" stroke-width="2"/>');
-
-    // порог выброса
-    parts.push('<line x1="' + padL + '" y1="' + yOf(c.limit).toFixed(1) + '" x2="' + (W - padR) +
-      '" y2="' + yOf(c.limit).toFixed(1) + '" stroke="#dc2626" stroke-width="1.5"/>');
-
-    // задачи в зоне риска: ещё не закрыты, но в работе дольше медианы.
-    // Ставим их на «сегодня» — по вертикали столько, сколько уже длятся.
-    var risks = (c.risks || []).filter(function (r) { return r.elapsed <= maxY; });
-    var overflow = (c.risks || []).length - risks.length;
-    if (c.risks && c.risks.length) {
-      var xRisk = W - padR - 6;
-      risks.forEach(function (r) {
-        parts.push('<circle cx="' + xRisk.toFixed(1) + '" cy="' + yOf(r.elapsed).toFixed(1) +
-          '" r="4" fill="#ca8a04" fill-opacity="0.85" stroke="#ca8a04"><title>' +
-          esc(r.key + ' · в работе ' + fmt(r.elapsed) + ' дн. · ' + r.status + '\n' + r.title) +
-          '</title></circle>');
-      });
-    }
-
-    // точки: выбросы крупнее и красные
-    pts.forEach(function (p) {
-      parts.push('<circle cx="' + xOf(p.doneAt).toFixed(1) + '" cy="' + yOf(p.cycle).toFixed(1) +
-        '" r="' + (p.outlier ? 4 : 3) + '" fill="' + (p.outlier ? '#dc2626' : '#16a34a') +
-        '" fill-opacity="' + (p.outlier ? 0.85 : 0.5) + '" stroke="' + (p.outlier ? '#dc2626' : '#16a34a') +
-        '" stroke-opacity="0.9"><title>' + esc(p.key + ' · ' + fmt(p.cycle) + ' дн. · ' + p.doneAt + '\n' + p.title) +
-        '</title></circle>');
-    });
-
-    parts.push('<text x="' + padL + '" y="' + (H - 8) + '" font-size="10" fill="#666">' + esc(pts[0].doneAt) + '</text>');
-    parts.push('<text x="' + (W - padR) + '" y="' + (H - 8) +
-      '" font-size="10" fill="#666" text-anchor="end">' + esc(pts[pts.length - 1].doneAt) + '</text>');
-
-    // список выбросов — то, ради чего диаграмма и нужна
-    var outliers = pts.filter(function (p) { return p.outlier; })
-      .sort(function (a, b) { return b.cycle - a.cycle; });
-    var listHtml = '';
-    if (outliers.length) {
-      listHtml += '<div class="outliers"><div class="outliers-head">Выбиваются из коридора (' +
-        outliers.length + ' из ' + pts.length + ')</div>' +
-        outliers.map(function (p) {
-          return '<div class="outlier-row">' +
-            '<a href="' + jiraUrl(p.key) + '" target="_blank" rel="noopener">' + esc(p.key) + ' — ' + esc(p.title) + '</a>' +
-            '<div class="meta-wrap">' +
-              '<span class="status ' + bucketClass(p.status, p.category) + '">' + esc(p.status) + '</span>' +
-              '<span class="age stale">' + fmt(p.cycle) + 'д</span>' +
-            '</div></div>';
-        }).join('') + '</div>';
-    }
-    if (c.risks && c.risks.length) {
-      listHtml += '<div class="outliers"><div class="outliers-head risk">В зоне риска (' + c.risks.length +
-        ') — в работе дольше медианы ' + fmt(c.median) + ' дн.</div>' +
-        c.risks.map(function (r) {
-          return '<div class="outlier-row">' +
-            '<a href="' + jiraUrl(r.key) + '" target="_blank" rel="noopener">' + esc(r.key) + ' — ' + esc(r.title) + '</a>' +
-            '<div class="meta-wrap">' +
-              '<span class="status ' + bucketClass(r.status, r.category) + '">' + esc(r.status) + '</span>' +
-              '<span class="age risk">' + fmt(r.elapsed) + 'д</span>' +
-            '</div></div>';
-        }).join('') + '</div>';
-    }
-
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-      parts.join('') + '</svg>' +
-      '<div class="chart-legend">' +
-        '<span class="swatch"></span>скользящее среднее &nbsp; ' +
-        '<span class="swatch limit"></span>порог выброса ' + fmt(c.limit) + ' дн. &nbsp; ' +
-        '<span class="dot" style="background:var(--c-testing)"></span>в зоне риска' +
-        (overflow > 0 ? ' (' + overflow + ' выше шкалы)' : '') + '<br>' +
-        'Зелёная точка — закрытая задача: по горизонтали дата закрытия, по вертикали Cycle Time. ' +
-        'Жёлтая — ещё в работе, стоит у правого края на сегодня. ' +
-        'За ' + c.days + ' дн.: медиана <b>' + fmt(c.median) + '</b> дн., среднее <b>' + fmt(c.mean) + '</b> дн., σ ' + fmt(c.sd) + '.' +
-      '</div>' + listHtml;
+  function interpretation() {
+    return team.insights && team.insights.interpretation || null;
   }
 
-  // ------------------ Производительность: запланировано / сделано ------------------
-  // Плановый столбец разложен по текущим статусам — видно, где осело незакрытое.
-  function velocityChart() {
-    var v = VELOCITY;
-    if (!v || !v.sprints || !v.sprints.length) return '<div class="m-muted">Нет данных по спринтам.</div>';
-
-    var rows = v.sprints;
-    var W = 560, H = 210, padL = 34, padR = 14, padT = 12, padB = 30;
-    var innerW = W - padL - padR, innerH = H - padT - padB;
-    var maxY = Math.max.apply(null, rows.map(function (r) { return Math.max(r.planned, r.done); })) || 1;
-    var yOf = function (val) { return padT + innerH * (1 - val / maxY); };
-    var group = innerW / rows.length;
-    var barW = Math.min(38, group / 3);
-
-    var parts = [];
-    [0, Math.round(maxY / 2), maxY].forEach(function (val) {
-      parts.push('<line x1="' + padL + '" y1="' + yOf(val).toFixed(1) + '" x2="' + (W - padR) +
-        '" y2="' + yOf(val).toFixed(1) + '" stroke="#eee"/>');
-      parts.push('<text x="4" y="' + (yOf(val) + 4).toFixed(1) + '" font-size="10" fill="#666">' + val + '</text>');
+  function keyLinks(text) {
+    return esc(text).replace(/\b[A-Z][A-Z0-9_]*-\d+\b/g, function (k) {
+      return '<a href="' + jiraUrl(k) + '" target="_blank" rel="noopener">' + k + '</a>';
     });
+  }
 
-    var STACK = [
-      { id: 'open',     label: 'TODO',          color: 'var(--c-open)' },
-      { id: 'blocked',  label: 'Заблокировано', color: 'var(--c-blocked)' },
-      { id: 'progress', label: 'В работе',      color: 'var(--c-progress)' },
-      { id: 'testing',  label: 'Тестирование',  color: 'var(--c-testing)' },
-      { id: 'review',   label: 'Ревью',         color: 'var(--c-review)' },
-      { id: 'done',     label: 'Готово',        color: 'var(--c-done)' }
-    ];
-
-    rows.forEach(function (r, i) {
-      var cx = padL + group * i + group / 2;
-      var xPlan = cx - barW - 3, xDone = cx + 3;
-
-      // плановый столбец — стопка по статусам снизу вверх
-      var acc = 0;
-      STACK.forEach(function (seg) {
-        var n = (r.split && r.split[seg.id]) || 0;
-        if (!n) return;
-        var yTop = yOf(acc + n), yBot = yOf(acc);
-        parts.push('<rect x="' + xPlan.toFixed(1) + '" y="' + yTop.toFixed(1) +
-          '" width="' + barW.toFixed(1) + '" height="' + Math.max(0, yBot - yTop).toFixed(1) +
-          '" fill="' + seg.color + '" fill-opacity="0.85"><title>' +
-          esc(r.name + ' · ' + seg.label + ': ' + n) + '</title></rect>');
-        acc += n;
-      });
-
-      // столбец «сделано»
-      parts.push('<rect x="' + xDone.toFixed(1) + '" y="' + yOf(r.done).toFixed(1) +
-        '" width="' + barW.toFixed(1) + '" height="' + Math.max(0, yOf(0) - yOf(r.done)).toFixed(1) +
-        '" fill="var(--c-done)"><title>' + esc(r.name + ' · сделано: ' + r.done) + '</title></rect>');
-
-      parts.push('<text x="' + cx.toFixed(1) + '" y="' + (H - 8) +
-        '" font-size="10" fill="#666" text-anchor="middle">' + esc(r.name) + '</text>');
-    });
-
-    // линия среднего выполнения
-    if (v.avgDone) {
-      parts.push('<line x1="' + padL + '" y1="' + yOf(v.avgDone).toFixed(1) + '" x2="' + (W - padR) +
-        '" y2="' + yOf(v.avgDone).toFixed(1) + '" stroke="#111" stroke-width="1.5" stroke-dasharray="4 3"/>');
+  function interpretationHtml() {
+    var it = interpretation(), ins = team.insights;
+    if (!it) {
+      return '<p class="ai-none">Интерпретации по этому сбору нет. Её пишет ИИ-агент при генерации отчёта ' +
+        '(<code>/actual-sprint</code>), отдельно — <code>/sprint-insights</code>.</p>';
     }
+    return (ins.stale ? '<p class="interp-stale">Написано по прошлому сбору: данные с тех пор обновились. ' +
+        'Свежая интерпретация — <code>/sprint-insights</code>.</p>' : '') +
+      INTERP_PARTS.map(function (p) {
+        var items = it[p[0]] || [];
+        return '<section class="interp-sec" data-part="' + p[0] + '"><h3>' + p[1] + '</h3><ul>' +
+          items.map(function (x) {
+            return '<li' + ctxAttr({ kind: 'insight', title: x }) + '>' + keyLinks(x) + '</li>';
+          }).join('') + '</ul></section>';
+      }).join('') +
+      '<p class="ai-by">Интерпретация ИИ, не данные' + (ins.author ? ' · ' + esc(ins.author) : '') +
+      (ins.generatedAt ? ' · ' + esc(String(ins.generatedAt).slice(0, 16).replace('T', ' ')) : '') + '</p>';
+  }
 
-    var legend = STACK.map(function (seg) {
-      return '<span class="dot" style="background:' + seg.color + '"></span>' + esc(seg.label);
-    }).join(' &nbsp; ');
+  function refreshInterpBtn() {
+    var it = interpretation(), btn = document.getElementById('interpBtn');
+    btn.classList.toggle('empty', !it);
+    btn.classList.toggle('stale', !!(it && team.insights.stale));
+    btn.title = !it ? 'Интерпретации ИИ по этому сбору нет'
+      : team.insights.stale ? 'Интерпретация ИИ по прошлому сбору'
+      : 'Интерпретация ИИ: динамика команды, на что обратить внимание, рекомендации';
+  }
 
-    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
-      parts.join('') + '</svg>' +
-      '<div class="chart-legend">' + legend + '</div>';
+  function openInterpretation() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    storiesLabel.textContent = 'Команда за последние 3 спринта';
+    stackKey.textContent = 'Интерпретация ИИ';
+    stackTitle.textContent = team.team + ' · ' + team.sprintName;
+    storiesBody.innerHTML = interpretationHtml();
+    overlay.classList.add('open');
+    panelStack.classList.add('open');
+  }
+
+  function infoHtml(kind, stat) {
+    var li = function (list) { return '<ul>' + list.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>'; };
+    return '<span class="info" tabindex="0" role="button" aria-label="Как читать график">' +
+      '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"' +
+      ' stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.3v3.6M8 5.1h.01"/></svg>' +
+      '<span class="info-tip" role="tooltip">' + (stat ? '<div class="stat">' + stat + '</div>' : '') +
+      '<b>Как читать</b>' + li(CHART_INFO[kind]) +
+      '</span></span>';
+  }
+
+  function controlStat(c) {
+    if (!c || !c.points || !c.points.length) return '';
+    return 'За ' + c.days + ' дн.: медиана <strong>' + fmt(c.median) + '</strong> дн., среднее <strong>' +
+      fmt(c.mean) + '</strong> дн., σ ' + fmt(c.sd) + '.';
+  }
+
+  // раздел графика: правый клик по нему — заметка к графику целиком
+  function chartSection(title, info, body) {
+    return '<div class="metrics-section"' + ctxAttr({ kind: 'chart', title: title }) + '><h3>' + esc(title) + info + '</h3>' +
+      body + '</div>';
   }
 
   function fillMetricsPanel() {
     var html = '';
-
-    html += '<div class="metrics-section"><h3>Burndown текущего спринта</h3>' + burndownChart() + '</div>';
-    html += '<div class="metrics-section"><h3>Производительность: запланировано / сделано</h3>' + velocityChart() + '</div>';
-    html += '<div class="metrics-section"><h3>Диаграмма управления — истории</h3>' +
-      controlChart(CONTROL.stories, 'историй') + '</div>';
-    html += '<div class="metrics-section"><h3>Диаграмма управления — подзадачи</h3>' +
-      controlChart(CONTROL.subtasks, 'подзадач') + '</div>';
-
+    html += chartSection('Burndown текущего спринта', infoHtml('burndown'), burndownChart());
+    html += chartSection('Производительность: запланировано / сделано', infoHtml('velocity'), velocityChart());
+    html += chartSection('Диаграмма управления — истории', infoHtml('control', controlStat(CONTROL.stories)),
+      controlChart(CONTROL.stories, 'историй', 'story'));
+    html += chartSection('Диаграмма управления — подзадачи', infoHtml('control', controlStat(CONTROL.subtasks)),
+      controlChart(CONTROL.subtasks, 'подзадач', 'subtask'));
+    html += insightsSection();
     return html;
   }
 
   // ------------------ Лента изменений статусов ------------------
   // Кто какую задачу куда перевёл за последнюю неделю. Фильтр по автору.
   var logsFilter = null;
-
-  function relTime(iso) {
-    var diff = (Date.now() - new Date(iso).getTime()) / 1000;
-    if (diff < 3600) return Math.max(1, Math.round(diff / 60)) + ' мин назад';
-    if (diff < 86400) return Math.round(diff / 3600) + ' ч назад';
-    var d = new Date(iso);
-    return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-  }
-
-  function dayLabel(iso) {
-    var d = new Date(iso), today = new Date();
-    var same = function (a, b) { return a.toDateString() === b.toDateString(); };
-    var yest = new Date(today.getTime() - 86400000);
-    if (same(d, today)) return 'Сегодня';
-    if (same(d, yest)) return 'Вчера';
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-  }
-
-  function initials(name) {
-    var parts = String(name || '').trim().split(/\s+/);
-    return parts.slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('');
-  }
-
-  // Тип события определяет, что показываем в строке ленты.
-  var LOG_KINDS = [
-    { id: 'status',  label: 'Смена статуса' },
-    { id: 'comment', label: 'Комментарий' },
-    { id: 'created', label: 'Создание' }
-  ];
-
-  function logEventBody(e) {
-    if (e.kind === 'comment') {
-      return '<div class="log-move"><span class="log-verb">оставил комментарий</span></div>' +
-        '<div class="log-quote">' + esc(e.body || '') + '</div>';
-    }
-    if (e.kind === 'created') {
-      return '<div class="log-move"><span class="log-verb">создал</span>' +
-        '<span class="status b-open">' + esc(e.issueType || 'задачу') + '</span></div>';
-    }
-    return '<div class="log-move">' +
-      '<span class="status b-open">' + esc(e.from) + '</span>' +
-      '<span class="arrow">→</span>' +
-      '<span class="status ' + bucketClass(e.to, e.toCat) + '">' + esc(e.to) + '</span>' +
-    '</div>';
-  }
 
   var logsKind = null;
 
@@ -1748,11 +325,13 @@
   }
 
   function openLogs() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
-    storiesLabel.textContent = 'Изменения за неделю';
+    storiesLabel.textContent = LOGS && LOGS.since ? 'Изменения за спринт' : 'Изменения за неделю';
     stackKey.textContent = 'Logs';
-    stackTitle.textContent = 'Кто что менял за последние ' + ((LOGS && LOGS.days) || 7) + ' дней';
-    stackLink.style.display = 'none';
+    stackTitle.textContent = LOGS && LOGS.since ? 'Кто что менял с начала спринта (' + ddmm(LOGS.since) + ')'
+      : 'Кто что менял за последние ' + ((LOGS && LOGS.days) || 7) + ' дней';
 
     logsFilter = null;
     logsKind = null;
@@ -1763,11 +342,12 @@
   }
 
   function openMetrics() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
     stackTitle.parentNode.removeAttribute('data-ctx');
     storiesLabel.textContent = 'Метрики';
     stackKey.textContent = 'Сводный отчёт';
     stackTitle.textContent = 'Команда за последние 3 спринта';
-    stackLink.style.display = 'none';
 
     storiesBody.innerHTML = fillMetricsPanel();
 
@@ -1779,34 +359,45 @@
     var epic = EPICS.find(function (e) { return e.rowId === rowId; });
     if (!epic) return;
 
-    storiesLabel.textContent = 'Истории';
     setStackHead(epic);
-    fillStoriesPanel(epic);
+    scopeEpic = epic;
+    scopeBtn.hidden = !(epic.epicKey && epic.scope);
+    setScopeMode(false);
 
     overlay.classList.add('open');
     panelStack.classList.add('open');
   }
 
-  function closePanels() {
-    closeCommentPopup();
-    overlay.classList.remove('open');
-    panelStack.classList.remove('open');
+  // «Команда: N» — участники за 3 спринта: выработка по группам, Lead time; клик по
+  // участнику — его задачи с историей. Только здесь, в отчёте для техлидов.
+  function openTeam() {
+    scopeBtn.hidden = true;
+    scopeEpic = null;
+    stackTitle.parentNode.removeAttribute('data-ctx');
+    stackKey.textContent = 'Команда';
+    stackTitle.textContent = team.team + ' · ' + team.sprintName;
+    var m = outputModel(team);
+    storiesLabel.textContent = m ? 'Участники за 3 спринта · ' + (m.sp ? 'SP' : 'задачи') : 'Участники';
+    if (!m) {
+      storiesBody.innerHTML = '<div class="sidebar-empty">Выработки участников в данных нет: её отдаёт сборщик 1.3.0+ (поле output).</div>';
+    } else {
+      OUT_TIPS = [];
+      MEMBER_REFS = [];
+      storiesBody.innerHTML = '<div class="team-legend">' + OUT_GROUPS.map(function (g) {
+        return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
+      }).join('') + '<span class="hint">наведите на ячейку — раскладка, клик по имени — задачи</span></div>' +
+        '<div class="team-tab-wrap">' + memberTable(team, m, { back: true }) + '</div>';
+    }
+    overlay.classList.add('open');
+    panelStack.classList.add('open');
   }
 
-  overlay.addEventListener('click', closePanels);
-  document.querySelectorAll('[data-close]').forEach(function (btn) {
-    btn.addEventListener('click', closePanels);
-  });
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Escape') return;
-    if (!cpop.hidden) { closeCommentPopup(); return; }  // сначала поле заметки
-    if (notesPanel.classList.contains('open')) { setNotesOpen(false); return; }  // потом корзина
-    closePanels();
-  });
-
   function renderHero() {
-    document.getElementById('teamName').textContent = team.team;
-    document.getElementById('sprintName').textContent = team.sprintName;
+    refreshInterpBtn();
+    var m = outputModel(team);
+    var people = m ? m.rows.filter(function (r) { return r.name !== 'Не назначен'; }).length : 0;
+    var tl = document.getElementById('teamLink');
+    tl.textContent = m ? people + ' ' + plural(people, 'участник', 'участника', 'участников') : 'нет данных';
     var bl = document.getElementById('boardLink');
     bl.textContent = team.boardName;
     bl.href = team.boardUrl;
@@ -1817,31 +408,6 @@
     document.querySelectorAll('[data-team]').forEach(function (btn) {
       btn.addEventListener('click', function () { switchTeam(btn.dataset.team); });
     });
-  }
-
-  // «собрано 28.09 09:00 · team-b@1.2.0 · 9b01e4d» — паспорт сбора из _meta.
-  // Объект без _meta (данные до контракта) просто не показывает подвал.
-  function renderProvenance() {
-    var box = document.getElementById('provenance');
-    var rows = TEAMS.map(function (t) {
-      var m = t._meta;
-      if (!m) return '';
-      var when = new Date(m.collectedAt);
-      var stamp = isNaN(when.getTime()) ? m.collectedAt :
-        ('0' + when.getDate()).slice(-2) + '.' + ('0' + (when.getMonth() + 1)).slice(-2) + ' ' +
-        ('0' + when.getHours()).slice(-2) + ':' + ('0' + when.getMinutes()).slice(-2);
-      var parts = [esc(t.team) + ': собрано ' + esc(stamp),
-                   esc(m.collector) + '@' + esc(m.version)];
-      if (m.sha) parts.push(esc(String(m.sha).slice(0, 7)));
-      if (m.requests !== undefined) parts.push(m.requests + ' запросов');
-      var line = parts.join(' · ');
-      if ((m.warnings || []).length) {
-        line += '<span class="warn" title="' + esc(m.warnings.join('\n')) + '">' +
-          m.warnings.length + ' предупр.</span>';
-      }
-      return '<div>' + line + '</div>';
-    }).join('');
-    box.innerHTML = rows;
   }
 
   function switchTeam(slug) {
@@ -1860,53 +426,39 @@
   renderHero();
   renderTable();
   renderMetricsLink();
-  renderProvenance();
   document.getElementById('logsBtn').addEventListener('click', openLogs);
-  // корзина: открыть/закрыть, новая заметка, промт
-  notesToggle.addEventListener('click', function () {
-    setNotesOpen(!notesPanel.classList.contains('open'));
-    if (notesPanel.classList.contains('open')) { renderNotes(); document.getElementById('nText').focus(); }
-  });
-  var nText = document.getElementById('nText'), nRef = document.getElementById('nRef');
-  var nCompose = document.getElementById('nCompose');
-  function syncCompose() {
-    nCompose.classList.toggle('filled', !!(nText.value || nRef.value));
-    nText.style.height = 'auto';
-    nText.style.height = Math.min(nText.scrollHeight + 2, 160) + 'px';
-  }
-  function addFromBasket() {
-    if (addComment(resolveRef(nRef.value), nText.value)) { nText.value = ''; nRef.value = ''; syncCompose(); nText.focus(); }
-  }
-  nText.addEventListener('input', syncCompose);
-  nRef.addEventListener('input', syncCompose);
-  [nText, nRef].forEach(function (el) {
-    el.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); addFromBasket(); }
-    });
-  });
-
-  var copyBtn = document.getElementById('copyBtn');
-  copyBtn.addEventListener('click', function () {
-    var text = document.getElementById('promptOut').value;
-    if (!text) return;
-    copyText(text).then(function () {
-      copyBtn.textContent = 'Скопировано ✓';
-    }, function () {
-      var view = document.getElementById('promptOut');
-      view.classList.add('open'); view.select();
-      copyBtn.textContent = 'Выделено — Ctrl+C';
-    }).then(function () {
-      setTimeout(function () { copyBtn.textContent = 'Скопировать промт для ИИ'; }, 1600);
-    });
-  });
-  var promptShow = document.getElementById('promptShow');
-  promptShow.innerHTML = svgIcon('eye');
-  promptShow.addEventListener('click', function () {
-    document.getElementById('promptOut').classList.toggle('open');
-  });
   document.getElementById('metricsLink').addEventListener('click', function (e) {
     e.preventDefault();
     openMetrics();
+  });
+  document.getElementById('interpBtn').addEventListener('click', openInterpretation);
+  document.getElementById('teamLink').addEventListener('click', function (e) {
+    e.preventDefault();
+    openTeam();
+  });
+
+  // «Бизнес-отчёт»: промт на колоду «ФАКТ | спринт» — тем же данным, своим навыком
+  function businessPrompt() {
+    var notes = allNotesLines();
+    return [
+      'Собери бизнес-отчёт «ФАКТ | спринт» для управляющего комитета, PO смежных департаментов и бизнес-заказчиков.',
+      '',
+      '/sprint-business',
+      '',
+      'Контекст:'
+    ].concat(dataContext().map(function (l) { return '- ' + l; })).concat([
+      '- Отчёт строится от целей: слайд = цель OBJ, группа = KR (эпик), строка = история спринта — что сделано одним предложением и следующий шаг.',
+      '- Цели OBJ и KR — только из OKR/roadmap PO (.okr/<квартал>/OKR-*.md, roadmap.md) или со слов PO; источник — в goalsSource.',
+      '- В конце каждой команды — операционный отчёт: производительность и выработка участников в SP.',
+      '',
+      notes.length ? 'Заметки PO из технического отчёта — учесть, если касаются бизнеса (риски, сдвиги, договорённости):' : 'Заметок PO в техническом отчёте нет.'
+    ]).concat(notes).concat([
+      '',
+      'Выход: reports/sprint-business.html. Цифры — только из снимка, ключи задач — только из данных.'
+    ]).join('\n');
+  }
+  document.getElementById('bizBtn').addEventListener('click', function () {
+    openGenPrompt('Промт: бизнес-отчёт', 'Скопируйте и отправьте агенту — он соберёт «ФАКТ | спринт» навыком /sprint-business на тех же данных.', businessPrompt());
   });
 </script>
 

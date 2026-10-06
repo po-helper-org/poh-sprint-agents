@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # Python 3.9–3.10: tomllib ещё нет
     _TomlError = _toml.MiniTomlError
 
 PROTOCOL = 1
-PLUGIN_VERSION = '1.1.0'
+PLUGIN_VERSION = '1.2.0'
 BASE_COLLECTOR = Path(__file__).resolve().parent.parent / 'templates' / 'python' / 'collector.py'
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / 'contract' / 'team.schema.json'
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / 'resources' / 'report_template.html'
@@ -121,6 +121,12 @@ class Config:
         # снимок проверенных данных рядом со страницей: из него /sprint-status пишет
         # PDF-статус в чат, не ходя в JIRA второй раз
         self.data = (self.root / data.get('data', './reports/sprint-report.data.json')).resolve()
+        # интерпретация графиков от ИИ-агента (/sprint-insights): runner только встраивает
+        self.insights = (self.root / data.get('insights', './reports/sprint-insights.json')).resolve()
+        # бизнес-отчёт «ФАКТ | спринт» — свой навык sprint-business на тех же данных:
+        # его страница и его файл с целями и формулировками агента
+        self.business = (self.root / data.get('business', './reports/sprint-business.html')).resolve()
+        self.business_data = (self.root / data.get('business_data', './reports/sprint-business.json')).resolve()
         self.lock_path = self.root / data.get('lock', './sprint-report.lock.json')
         self.teams = []
 
