@@ -253,6 +253,9 @@ check(rowCheck.done.startsWith('Метрики загрузчика собран
       rowCheck.next === 'эскалация на синке команд в четверг', 'сводка агента: итог, блокер, след. шаг');
 check(/^(Закрыто|В работе): .+\.$|^Работа не начата\.$/.test(rowCheck.autoDone), 'без агента сводка — из данных: закрытые истории или что в работе');
 check(rowCheck.kr === 'KR 3.1 — платформа выдерживает пиковый сезон', 'строка — KR');
+const po = await p.evaluate(() => { const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-111"]');
+  return { res: tr.querySelector('.result > span').textContent, tag: !!tr.querySelector('.res-po'), how: tr.querySelector('.result > span').title }; });
+check(po.res === '80%' && po.tag && po.how.startsWith('оценка PO: 80%; по задачам спринта — '), 'готовность по оценке PO — в «Результате», расчёт по задачам — в подсказке');
 check(rowCheck.noEpic, 'истории без эпика — строка «Вне эпиков»');
 check(rowCheck.tags === 0, 'в комментарии нет меток «не закрыто N» — это видно по результату');
 const badge = await p.evaluate(() => { const b = document.querySelector('#deckSlides tr.erow .blk-badge');

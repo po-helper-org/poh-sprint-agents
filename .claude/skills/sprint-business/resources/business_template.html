@@ -75,6 +75,7 @@
   table.rep .t-blk { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
   table.rep .t-behind { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
   table.rep .blk { color: #991b1b; }
+  table.rep td.result .res-po { font-size: 10.5px; font-weight: 400; color: #777; }
   table.rep td.result .res-sub { font-size: 11.5px; font-weight: 400; color: #555; margin-top: 3px; }
   table.rep td.result .res-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; cursor: help; }
   table.rep td.result .res-bar i { display: block; height: 100%; border-right: 1px solid #fff; }
@@ -627,6 +628,13 @@
     s.pct = rows.length ? Math.round(rows.reduce(function (a, r) { return a + r.r.pct; }, 0) / rows.length) : 0;
     s.how = 'среднее «Результата» историй спринта: закрыто ' + done.length + ' из ' + rows.length +
       (blocked.length ? ', в блоке ' + blocked.length : '') + (behind.length ? ', не закрыто ' + behind.length : '');
+    // готовность по оценке PO (streams.*.readiness) — главная цифра строки: PO видит
+    // остаток работ, которого нет в задачах (релизный цикл, демо); расчёт — в подсказке
+    if (typeof s.ai.readiness === 'number') {
+      s.how = 'оценка PO: ' + s.ai.readiness + '%; по задачам спринта — ' + s.pct + '% (' + s.how + ')';
+      s.pct = s.ai.readiness;
+      s.byPo = true;
+    }
     s.cls = s.pct >= 100 ? 'stat-green' : s.pct >= 50 ? 'stat-yellow' : 'stat-red';
     var autoDone = done.length ? 'Закрыто: ' + titlesOf(done, 2) + '.'
       : active.length ? 'В работе: ' + titlesOf(active, 2) + '.' : 'Работа не начата.';
@@ -815,7 +823,8 @@
       '<td>' + ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
         (s.text.blocker ? '<div class="blk"><b>Блокер:</b> ' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') +
         (s.text.next ? '<div class="next">След. шаг: ' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') + '</td>' +
-      '<td class="result"><span title="' + esc(s.how) + '">' + s.pct + '%</span><div class="res-sub">закрыто ' + s.done.length + ' из ' + s.rows.length + '</div>' +
+      '<td class="result"><span title="' + esc(s.how) + '">' + s.pct + '%</span>' + (s.byPo ? '<small class="res-po"> оценка PO</small>' : '') +
+        '<div class="res-sub">закрыто ' + s.done.length + ' из ' + s.rows.length + '</div>' +
         '<div class="res-bar" title="' + esc(tip) + '">' + bar + '</div>' +
         (s.blocked.length ? '<button type="button" class="blk-badge" data-blk="' + id + '" title="' +
           esc(s.blocked.map(function (r) { return r.st.key + ' · ' + r.st.title + (r.blocker ? ' — ' + r.blocker : ''); }).join('\n')) +

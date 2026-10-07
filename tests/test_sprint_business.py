@@ -82,6 +82,14 @@ class CheckTest(unittest.TestCase):
         self.assertTrue(any('streams.INIT-125.done: длиннее 180' in e for e in errors), errors)
         self.assertTrue(any('streams.INIT-125.blocker' in e and 'INIT-55555' in e for e in errors), errors)
 
+    def test_po_readiness(self):
+        """Готовность по оценке PO — целое 0..100, только у направления."""
+        self.biz()['streams']['INIT-125']['readiness'] = 80
+        self.assertEqual(([], []), self.check(self.doc))
+        self.biz()['streams']['INIT-125']['readiness'] = 120
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
     def test_no_epic_row(self):
         """«Вне эпиков» — своя строка со сводкой, но без цели и KR."""
         self.biz()['streams']['no-epic'] = {'done': 'Вне эпиков: мелкие доработки закрыты.', 'next': 'разобрать на планировании'}
