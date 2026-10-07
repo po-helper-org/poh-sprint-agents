@@ -75,6 +75,37 @@
   table.rep .t-blk { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
   table.rep .t-behind { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
   table.rep .blk { color: #991b1b; }
+  /* итог строки: метаданные, текст, «Дальше», «Блокер» — один кегль, подписи серым */
+  table.rep.epics td.sum > div + div { margin-top: 4px; }
+  table.rep .ln-meta { font-size: 11.5px; color: #777; }
+  table.rep .ln, .kr-detail .ln { color: #222; }
+  .lbl { display: inline-block; min-width: 58px; margin-right: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #888; }
+  .ln-blk .lbl { color: #b91c1c; }
+  /* сайдбар KR: два столбца */
+  .panel-stack.wide { width: min(1240px, 96vw); }
+  .kr2 { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
+  .kr-list { position: sticky; top: 0; max-height: calc(100vh - 210px); overflow-y: auto; padding-right: 4px; }
+  .kl-head { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #888; margin: 10px 0 4px; }
+  .kl-group:first-child .kl-head { margin-top: 0; }
+  .b-blocked .kl-head { color: #b91c1c; }
+  .kl-item { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; font: inherit; background: var(--bg); border: 1px solid var(--line);
+             border-left: 3px solid #ccc; border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; cursor: pointer; color: var(--fg); }
+  .kl-item.stat-green { border-left-color: #16a34a; } .kl-item.stat-yellow { border-left-color: #eab308; } .kl-item.stat-red { border-left-color: #dc2626; }
+  .kl-item:hover { background: #fafafa; } .kl-item.on { background: #f2f4f7; border-color: #9ca3af; }
+  .kl-title { font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .kl-meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 4px; } .kl-meta b { margin-left: auto; color: var(--fg); font-weight: 600; }
+  .kd-title { font-size: 16px; font-weight: 600; line-height: 1.35; } .kd-meta { font-size: 12px; color: var(--muted); margin: 3px 0 10px; }
+  .kd-text { font-size: 13.5px; line-height: 1.5; margin-bottom: 4px; } .kr-detail .ln { font-size: 13px; margin-top: 3px; }
+  .kd-act { margin-top: 14px; }
+  @media (max-width: 900px) { .kr2 { grid-template-columns: 1fr; } .kr-list { position: static; max-height: none; } }
+  /* участник: блоки «история + подзадачи», «вне спринта» */
+  .mkpis { grid-template-columns: repeat(6, 1fr); }
+  .sbs { display: flex; gap: 2px; min-width: 0; align-items: flex-start; }
+  .sb { display: flex; flex-direction: column; gap: 2px; min-width: 4px; cursor: pointer; }
+  .sb .sb-st { display: block; height: 11px; border-radius: 2px; }
+  .sb.other .sb-st { opacity: .35; }
+  .sb-subs { display: flex; gap: 1px; height: 6px; } .sb-subs i { flex: 1; border-radius: 1px; }
+  .sb:hover .sb-st { box-shadow: 0 0 0 1px #111; }
   table.rep td.result .res-po { font-size: 10.5px; font-weight: 400; color: #777; }
   table.rep td.result .res-sub { font-size: 11.5px; font-weight: 400; color: #555; margin-top: 3px; }
   table.rep td.result .res-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; cursor: help; }
@@ -240,8 +271,8 @@
   /* распределение по участникам: истории и подзадачи спринта */
   .mx { margin-top: 14px; border-top: 1px solid #e5e5e5; padding-top: 10px; }
 
-  .mx-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) 90px 150px 150px; column-gap: 14px; align-items: center; min-height: 30px; }
-  .mx-grid.nosubs .mx-row { grid-template-columns: 170px minmax(0, 1fr) 90px 150px; }
+  .mx-row { display: grid; grid-template-columns: 170px minmax(0, 3fr) minmax(0, 1.4fr); column-gap: 18px; align-items: center; min-height: 28px; }
+  .mx-grid.nooff .mx-row { grid-template-columns: 170px minmax(0, 1fr); }
   .mx-grid .mx-row + .mx-row { border-top: 1px solid #f1f1f1; }
   .mx-graph { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .mx-bar { display: block; height: 13px; }
@@ -256,7 +287,7 @@
   .ext { font-size: 10.5px; font-weight: 700; color: #7c3aed; letter-spacing: .02em; }
   .mx-grid.tight .mx-row { min-height: 24px; }
   .mx-head { min-height: 18px !important; font-size: 11.5px; color: #888; }
-  .mx-head span:nth-child(n+3), .mx-n { text-align: right; }
+  .mx-head span { text-align: left; }
   .mx-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mx-name .mname { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
   .mx-name .mname:hover { text-decoration: underline; }
@@ -419,9 +450,9 @@
     table.rep td { overflow-wrap: anywhere; }
     table.rep .tag { white-space: normal; }
     table.rep .blk-badge { white-space: normal; max-width: 100%; }
-    .mx-row { grid-template-columns: 74px minmax(0, 1fr) 46px 62px 62px; column-gap: 5px; }
-    .mx-grid.nosubs .mx-row { grid-template-columns: 74px minmax(0, 1fr) 46px 62px; }
-    .mx-n small { display: block; }
+    .mx-row { grid-template-columns: 74px minmax(0, 2fr) minmax(0, 1fr); column-gap: 6px; }
+    .mx-grid.nooff .mx-row { grid-template-columns: 74px minmax(0, 1fr); }
+    .mkpis { grid-template-columns: repeat(3, 1fr); }
     .mx-name { font-size: 12px; } .mx-n, .mx-stuck { font-size: 11px; }
 
     table.rep td { padding: 8px; font-size: 12px; }
@@ -818,11 +849,13 @@
     return '<tr class="row erow ' + s.cls + (s.blocked.length ? ' has-blk' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
       (e.epicKey ? ' data-key="' + esc(e.epicKey) + '"' : '') +
       ctxAttr(e.epicKey ? epicTarget(e) : { kind: 'general', title: 'Вне эпиков' }) + ' title="Истории спринта и весь эпик">' +
-      '<td class="task">' + name + '<span class="role">' + (e.epicKey ? keyLink(e.epicKey) + ' · ' : '') + s.rows.length + ' ' +
-        plural(s.rows.length, 'задача', 'задачи', 'задач') + ' в спринте</span></td>' +
-      '<td>' + ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
-        (s.text.blocker ? '<div class="blk"><b>Блокер:</b> ' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') +
-        (s.text.next ? '<div class="next">След. шаг: ' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') + '</td>' +
+      '<td class="task">' + name + '</td>' +
+      // одна гарнитура и один кегль: итог, «дальше», блокер — подписью, без жирного и красных абзацев
+      '<td class="sum"><div class="ln-meta">' + (e.epicKey ? keyLink(e.epicKey) + ' · ' : '') + s.rows.length + ' ' +
+        plural(s.rows.length, 'задача', 'задачи', 'задач') + ' в спринте</div>' +
+        ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
+        (s.text.next ? '<div class="ln"><span class="lbl">Дальше</span>' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') +
+        (s.text.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер</span>' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') + '</td>' +
       '<td class="result"><span title="' + esc(s.how) + '">' + s.pct + '%</span>' + (s.byPo ? '<small class="res-po"> оценка PO</small>' : '') +
         '<div class="res-sub">закрыто ' + s.done.length + ' из ' + s.rows.length + '</div>' +
         '<div class="res-bar" title="' + esc(tip) + '">' + bar + '</div>' +
@@ -1228,51 +1261,63 @@
       });
   }
 
-  var OFF_REFS = [];
-  function mxBar(items, scaleMax, cls) {
-    var segs = MX_BUCKETS.map(function (b) {
-      var xs = items.filter(function (x) { return x.bucket === b.id; });
-      return xs.length ? '<i style="flex:' + xs.length + ';background:' + b.color + '"></i>' : '';
+  var OFF_REFS = [], SB_REFS = [];
+  // блоки участника «в спринте»: история сверху (цвет — статус), под ней её подзадачи;
+  // ширина блока — по числу подзадач. Подзадачи участника в чужих историях — блоком с
+  // бледной полосой истории. Блок «вне спринта» — задача целиком, без подзадач.
+  function sprintBlocks(t, name) {
+    var out = [], hide = biz(t).hide || [];
+    withTeam(t, function () {
+      (t.epics || []).forEach(function (e) {
+        (e.stories || []).forEach(function (st) {
+          if (hide.indexOf(st.key) !== -1) return;
+          var mine = (st.assignee || 'Не назначен') === name;
+          var subs = (st.subtasks || []).filter(function (x) { return mine || (x.assignee || 'Не назначен') === name; });
+          if (!mine && !subs.length) return;
+          out.push({ st: st, epic: e, mine: mine, bucket: classifyBucket(st.status, st.category),
+                     subs: subs.map(function (x) { return { key: x.key, title: x.summary || x.title, status: x.status, bucket: classifyBucket(x.status, x.category) }; }) });
+        });
+      });
+    });
+    return out.sort(function (a, b) { return b.mine - a.mine || ES_ORDER.indexOf(a.bucket) - ES_ORDER.indexOf(b.bucket); });
+  }
+  function bColor(b) { var x = MX_BUCKETS.find(function (g) { return g.id === b; }); return x ? x.color : '#d1d5db'; }
+  function blocksHtml(blocks, unitsMax) {
+    return blocks.map(function (bl) {
+      var units = Math.max(1, bl.subs.length), i = SB_REFS.push(bl) - 1;
+      var tip = bl.st.key + ' · ' + bl.st.status + ' · ' + bl.st.title + (bl.mine ? '' : '\n(история другого исполнителя)') +
+        (bl.subs.length ? '\n' + bl.subs.map(function (x) { return '  ' + x.key + ' · ' + x.status + ' · ' + x.title; }).join('\n') : '');
+      return '<span class="sb' + (bl.mine ? '' : ' other') + '" data-sb="' + i + '" style="flex:0 0 ' + (100 * units / unitsMax).toFixed(2) + '%" title="' + esc(tip) + '">' +
+        '<i class="sb-st" style="background:' + bColor(bl.bucket) + '"></i><span class="sb-subs">' +
+        bl.subs.map(function (x) { return '<i style="background:' + bColor(x.bucket) + '"></i>'; }).join('') + '</span></span>';
     }).join('');
-    return '<span class="' + cls + '" style="width:' + (scaleMax ? Math.max(4, 100 * items.length / scaleMax) : 0).toFixed(1) + '%">' + segs + '</span>';
   }
-  function tipList(title, items) {
-    return title + ': ' + items.length + (items.length ? '\n' + items.slice(0, 14).map(function (x) {
-      return (x.key || '') + ' · ' + (x.status || '') + ' · ' + (x.title || '');
-    }).join('\n') + (items.length > 14 ? '\nи ещё ' + (items.length - 14) : '') : '');
-  }
-  function planFact(list, lt) {
-    var done = list.filter(function (x) { return x.bucket === 'done'; }).length;
-    return list.length ? '<b>' + list.length + '</b> / <b>' + done + '</b>' + (lt !== null ? '<small> · ' + fmtNum(lt) + ' дн.</small>' : '') : '<span class="mx-none">—</span>';
+  function offHtml(r, unitsMax, idx) {
+    return r.off.map(function (it) {
+      return '<span class="sb off" data-off="' + idx + '" style="flex:0 0 ' + (100 / unitsMax).toFixed(2) + '%" title="' +
+        esc(it.key + ' · ' + it.status + ' · ' + it.title + '\nклик — задачи вне спринта') + '"><i class="sb-st" style="background:' + bColor(it.bucket) + '"></i></span>';
+    }).join('');
   }
 
   function memberMatrixHtml(t) {
     var rows = memberRows(t);
     if (!rows.length) return '<div class="ops-empty">В спринте нет задач.</div>';
-    var max = Math.max.apply(null, rows.map(function (r) { return Math.max(r.items.length, r.off.length); })) || 1;
-    var anySubs = rows.some(function (r) { return r.subs.length; });
+    rows.forEach(function (r) { r.blocks = sprintBlocks(t, r.name); });
+    var unitsIn = Math.max(1, Math.max.apply(null, rows.map(function (r) { return r.blocks.reduce(function (a, b) { return a + Math.max(1, b.subs.length); }, 0); })));
+    var unitsOff = Math.max(1, Math.max.apply(null, rows.map(function (r) { return r.off.length; })));
     var hasOff = !!(t.output && t.output.offboard);
     var line = function (r) {
       var name = esc(r.name === 'Не назначен' ? r.name : shortName(r.name));
-      if (r.row) { MEMBER_REFS.push({ team: t, row: r.row, m: outputModel(t) }); name = '<button type="button" class="mname" data-member="' + (MEMBER_REFS.length - 1) + '" title="' + esc(r.name) + ' — задачи за спринт">' + name + '</button>'; }
+      if (r.row) { MEMBER_REFS.push({ team: t, row: r.row, m: outputModel(t) }); name = '<button type="button" class="mname" data-member="' + (MEMBER_REFS.length - 1) + '" title="' + esc(r.name) + ' — метрики и задачи за спринт">' + name + '</button>'; }
       var offIdx = OFF_REFS.push({ team: t, name: r.name, items: r.off }) - 1;
-      var offDone = r.off.filter(function (x) { return x.bucket === 'done'; });
       return '<div class="mx-row"><span class="mx-name">' + (r.ext ? '<span class="ext">[EXT]</span> ' : '') + name + '</span>' +
-        '<span class="mx-graph"><span class="mx-bar" title="' + esc(tipList('Задачи спринта', r.items)) + '">' + mxBar(r.items, max, 'mx-b') + '</span>' +
-          (hasOff ? '<span class="mx-bar off" data-off="' + offIdx + '" title="' + esc(tipList('Вне доски — закрыто ' + offDone.length + ', всего', r.off) + (r.off.length ? '\n\nклик — задачи и активность' : '')) + '">' +
-            (r.off.length ? '<span class="mx-o" style="width:' + Math.max(4, 100 * r.off.length / max).toFixed(1) + '%"><i style="flex:' + (offDone.length || 0) + '" class="od"></i><i style="flex:' + (r.off.length - offDone.length) + '" class="oo"></i></span>' : '') + '</span>' : '') +
-        '</span>' +
-        '<span class="mx-n">' + (r.sp ? '<b>' + fmtNum(r.sp.plan) + '</b> / <b>' + fmtNum(r.sp.fact) + '</b>' : '<span class="mx-none">—</span>') + '</span>' +
-        '<span class="mx-n">' + planFact(r.items, r.lt.items) + '</span>' +
-        (anySubs ? '<span class="mx-n">' + planFact(r.subs, r.lt.subs) + '</span>' : '') + '</div>';
+        '<span class="sbs">' + blocksHtml(r.blocks, unitsIn) + '</span>' +
+        (hasOff ? '<span class="sbs">' + offHtml(r, unitsOff, offIdx) + '</span>' : '') + '</div>';
     };
     var none = rows.filter(function (r) { return r.name === 'Не назначен'; });
     var team = rows.filter(function (r) { return !r.ext && r.name !== 'Не назначен'; }), ext = rows.filter(function (r) { return r.ext; });
-    return '<div class="mx-grid' + (anySubs ? '' : ' nosubs') + (rows.length > 11 ? ' tight' : '') + '">' +
-      '<div class="mx-row mx-head"><span></span><span>Задачи спринта' + (hasOff ? ' · под ними — вне доски' : '') + '</span>' +
-        '<span title="Story Points текущего спринта: взято / сделано">SP план / факт</span>' +
-        '<span title="Задачи спринта участника (истории, задачи, ошибки): взято / закрыто · медиана lead time закрытых">Задачи план / факт · LT</span>' +
-        (anySubs ? '<span title="Подзадачи участника: взято / закрыто · медиана lead time закрытых">Подзадачи план / факт · LT</span>' : '') + '</div>' +
+    return '<div class="mx-grid' + (hasOff ? '' : ' nooff') + (rows.length > 11 ? ' tight' : '') + '">' +
+      '<div class="mx-row mx-head"><span></span><span>В спринте</span>' + (hasOff ? '<span>Вне спринта</span>' : '') + '</div>' +
       team.map(line).join('') +
       (ext.length ? '<div class="mx-sep">[EXT] — на доске, но не в составе команды</div>' + ext.map(line).join('') : '') +
       none.map(line).join('') + '</div>';
@@ -1357,19 +1402,14 @@
   function opsSlide(t) {
     var m = outputModel(t);
     var box = { W: 560, H: 200 };
-    var legend = '<div class="ops-legend">' + OUT_GROUPS.map(function (g) {
-      return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>';
-    }).join('') + '<span><i class="l-avg"></i>среднее</span></div>';
     // сверху — производительность за 3 спринта и одно сгорание (клик — из чего построено),
-    // снизу — выработка участников текущего спринта
-    var perf = '<div><div class="ops-h">Производительность за 3 спринта <small>· ' + (m && m.sp ? 'SP' : 'задач') + '</small></div>' +
-      '<div class="ops-chart">' + (m ? teamOutputChart(m, box) : withTeam(t, function () { return withChartBox(box, velocityChart); })) + '</div>' + legend + '</div>';
-    var p = teamPace(t), part = burnPart(t);
-    var burn = '<div class="burn-click" data-burn="' + esc(t.slug) + '" title="Из чего построено сгорание: по дням и по задачам">' +
-      '<div class="ops-h">Сгорание спринта <small>· ' + (part === 'story' ? 'без подзадач' : 'все задачи') + (p ? ' · день ' + p.workday + ' из ' + p.workdays : '') + ' · клик — расшифровка</small></div>' +
-      '<div class="ops-chart">' + bizBurnChart(t, part, box) + '</div>' +
-      '<div class="ops-legend"><span><i class="l-fact"></i>осталось</span><span><i class="l-ideal"></i>идеальная</span>' +
-      '<span><i class="l-scope"></i>объём</span><span><i class="l-wknd"></i>выходные</span></div></div>';
+    // снизу — участники; без подписей и легенд: расшифровка — по наведению и в сайдбарах
+    var perf = '<div><div class="ops-h">Производительность за 3 спринта</div>' +
+      '<div class="ops-chart">' + (m ? teamOutputChart(m, box) : withTeam(t, function () { return withChartBox(box, velocityChart); })) + '</div></div>';
+    var part = burnPart(t);
+    var burn = '<div class="burn-click" data-burn="' + esc(t.slug) + '" title="Из чего построено сгорание: по дням и по задачам' +
+      (part === 'story' ? ' (без подзадач)' : '') + '">' +
+      '<div class="ops-h">Сгорание спринта</div><div class="ops-chart">' + bizBurnChart(t, part, box) + '</div></div>';
     return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops2b">' + perf + burn + '</div>' +
       '<div class="mx" data-mx-team="' + esc(t.slug) + '">' + memberMatrixHtml(t) + '</div>',
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Операционный отчёт · ' + t.team }));
@@ -1574,6 +1614,7 @@
     MEMBER_REFS = [];
     deckRefs = {};
     OFF_REFS = [];
+    SB_REFS = [];
     var all = TEAMS.map(function (t) { return { t: t, streams: teamStreams(t) }; });
     var html = titleSlide(all);
     all.forEach(function (x) {
@@ -1695,19 +1736,39 @@
     if (!open) PANEL_HIST = [];
     PANEL_CUR = { render: render, id: id || null };
     kmenu.hidden = true;
+    panelStack.classList.remove('wide');
     render();
     panelBack.hidden = !PANEL_HIST.length;
   }
   panelBack.addEventListener('click', function () {
     if (!PANEL_HIST.length) return;
     PANEL_CUR = PANEL_HIST.pop();
+    panelStack.classList.remove('wide');
     PANEL_CUR.render();
     panelBack.hidden = !PANEL_HIST.length;
   });
   var closePanelsBase = closePanels;
-  closePanels = function () { PANEL_HIST = []; PANEL_CUR = null; panelBack.hidden = true; closePanelsBase(); };
+  closePanels = function () { PANEL_HIST = []; PANEL_CUR = null; panelBack.hidden = true; panelStack.classList.remove('wide'); closePanelsBase(); };
   var openMemberBase = openMember;
-  openMember = function (ref, idx) { showPanel(function () { openMemberBase(ref, idx); }, 'member:' + ref.row.name); };
+  openMember = function (ref, idx) {
+    showPanel(function () {
+      openMemberBase(ref, idx);
+      var r = memberRows(ref.team).find(function (x) { return x.name === ref.row.name; });
+      if (r) storiesBody.insertAdjacentHTML('afterbegin', memberKpis(r));
+    }, 'member:' + ref.row.name);
+  };
+  // SP, задачи и подзадачи план/факт и lead time, вне доски — над задачами участника
+  function memberKpis(r) {
+    var k = function (v, l, tip) { return '<div class="ck"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><b>' + v + '</b><span>' + l + '</span></div>'; };
+    var pf = function (list) { return list.length + ' <small>/ ' + list.filter(function (x) { return x.bucket === 'done'; }).length + '</small>'; };
+    var lt = function (v) { return v === null ? '—' : fmtNum(v) + ' <small>дн.</small>'; };
+    var offDone = r.off.filter(function (x) { return x.bucket === 'done'; }).length;
+    return '<div class="ckpis mkpis">' +
+      k(r.sp ? fmtNum(r.sp.plan) + ' <small>/ ' + fmtNum(r.sp.fact) + '</small>' : '—', 'SP план / факт', 'Story Points текущего спринта: взято / сделано') +
+      k(pf(r.items), 'задачи план / факт') + k(lt(r.lt.items), 'LT задач', 'медиана lead time закрытых задач') +
+      k(pf(r.subs), 'подзадачи план / факт') + k(lt(r.lt.subs), 'LT подзадач', 'медиана lead time закрытых подзадач') +
+      k(r.off.length + ' <small>/ ' + offDone + '</small>', 'вне спринта', 'задачи вне спринта за период: всего / закрыто') + '</div>';
+  }
 
   // ---------- ключ задачи: JIRA в браузере или JIRA-native (виджет) ----------
   function nativeUrl(key) {
@@ -1786,6 +1847,7 @@
     if (epic.epicKey) tabs.push({ id: 'scope', label: 'Весь эпик', n: (epic.scope || []).length });
     sideTabs(tabs, state.tab || 'sprint', function (id, body) {
       state.tab = id;
+      panelStack.classList.toggle('wide', id === 'sprint');
       if (id === 'scope') {
         if (!epic.scope) { body.innerHTML = '<div class="sidebar-empty">Объёма эпика в данных нет (params.epic_scope).</div>'; return; }
         var keep = storiesBody;            // renderScope рисует в storiesBody — подменяем на вкладку
@@ -1793,42 +1855,42 @@
         try { renderScope(epic); } finally { storiesBody = keep; }
         return;
       }
+      // слева — задачи спринта по статусам, справа — выбранная задача целиком
       var label = {};
       BUCKETS.forEach(function (b) { label[b.id] = b.label; });
-      var count = {};
-      s.rows.forEach(function (r) { count[r.r.bucket] = (count[r.r.bucket] || 0) + 1; });
-      var chips = [{ id: 'all', label: 'Все', n: s.rows.length }].concat(ES_ORDER.filter(function (b) { return count[b]; })
-        .map(function (b) { return { id: b, label: label[b] || b, n: count[b] }; }));
       var rows = s.rows.map(function (r, i) { return { r: r, i: i }; })
-        .filter(function (x) { return state.filter === 'all' || x.r.r.bucket === state.filter; })
         .sort(function (a, b) { return ES_ORDER.indexOf(a.r.r.bucket) - ES_ORDER.indexOf(b.r.r.bucket); });
-      if (state.open === null) {
+      if (!state.open) {
         var first = rows.find(function (x) { return x.r.r.bucket !== 'done'; }) || rows[0];
         state.open = first ? first.r.st.key : '';
       }
-      body.innerHTML = '<div class="es-filter">' + chips.map(function (c) {
-          return '<button type="button" class="es-chip b-' + c.id + (state.filter === c.id ? ' on' : '') + '" data-f="' + c.id + '">' + esc(c.label) + ' · ' + c.n + '</button>';
-        }).join('') + '</div>' +
-        rows.map(function (x) {
-          var r = x.r, isOpen = state.open === r.st.key;
-          return '<div class="es-row ' + r.r.cls + (isOpen ? ' open' : '') + '" data-i="' + x.i + '">' +
-            '<div class="es-head" title="' + (isOpen ? 'Свернуть' : 'Активность — здесь же') + '"><div class="es-top"><span class="es-title">' + esc(r.st.title) + '</span><span class="es-pct">' + r.r.flag + r.r.pct + '%</span></div>' +
-            '<div class="es-meta">' + keyLink(r.st.key) + ' · ' + esc(r.st.status) + (r.st.assignee ? ' · ' + esc(shortName(r.st.assignee)) : '') + '</div>' +
-            '<div class="es-text">' + esc(r.done) + '</div>' +
-            (r.blocker ? '<div class="es-text es-blk"><b>Блокер:</b> ' + esc(r.blocker) + '</div>' : '') +
-            (r.next ? '<div class="es-text"><b>След. шаг:</b> ' + esc(r.next) + '</div>' : '') + '</div>' +
-            (isOpen ? '<div class="es-detail">' + withTeam(ref.team, function () { var ev = storyEvents(r.st); return storyCalendar(r.st, ev) + storyFeedHtml(r.st, ev); }) + '</div>' : '') + '</div>';
-        }).join('') + (rows.length ? '' : '<div class="sidebar-empty">Нет задач в этом статусе.</div>');
-      body.querySelectorAll('.es-chip').forEach(function (c) {
-        c.addEventListener('click', function () { state.filter = c.dataset.f; state.open = null; renderEpic(ref, state); });
-      });
-      body.querySelectorAll('.es-head').forEach(function (h) {
-        h.addEventListener('click', function () {
-          var k = s.rows[+h.parentNode.dataset.i].st.key;
-          state.open = state.open === k ? '' : k;
+      var groups = ES_ORDER.filter(function (b) { return rows.some(function (x) { return x.r.r.bucket === b; }); });
+      var list = groups.map(function (b) {
+        var items = rows.filter(function (x) { return x.r.r.bucket === b; });
+        return '<div class="kl-group b-' + b + '"><div class="kl-head">' + esc(label[b] || b) + ' · ' + items.length + '</div>' +
+          items.map(function (x) {
+            var r = x.r;
+            return '<button type="button" class="kl-item ' + r.r.cls + (state.open === r.st.key ? ' on' : '') + '" data-i="' + x.i + '">' +
+              '<span class="kl-title">' + esc(cleanTitle(r.st.title)) + '</span>' +
+              '<span class="kl-meta">' + esc(r.st.key) + (r.st.assignee ? ' · ' + esc(shortName(r.st.assignee)) : '') + '<b>' + r.r.pct + '%</b></span></button>';
+          }).join('') + '</div>';
+      }).join('');
+      var cur = rows.find(function (x) { return x.r.st.key === state.open; });
+      var detail = cur ? (function (r) {
+        var ev = withTeam(ref.team, function () { return storyEvents(r.st); });
+        return '<div class="kd-head"><div class="kd-title">' + esc(r.st.title) + '</div>' +
+          '<div class="kd-meta">' + keyLink(r.st.key) + ' · ' + esc(r.st.status) + (r.st.assignee ? ' · ' + esc(shortName(r.st.assignee)) : '') +
+            ' · ' + r.r.flag + r.r.pct + '%</div></div>' +
+          '<div class="kd-text">' + esc(r.done) + '</div>' +
+          (r.next ? '<div class="ln"><span class="lbl">Дальше</span>' + esc(r.next) + '</div>' : '') +
+          (r.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер</span>' + esc(r.blocker) + '</div>' : '') +
+          '<div class="kd-act">' + withTeam(ref.team, function () { return storyCalendar(r.st, ev) + storyFeedHtml(r.st, ev); }) + '</div>';
+      })(cur.r) : '<div class="sidebar-empty">Выберите задачу слева.</div>';
+      body.innerHTML = '<div class="kr2"><div class="kr-list">' + list + '</div><div class="kr-detail">' + detail + '</div></div>';
+      body.querySelectorAll('.kl-item').forEach(function (b) {
+        b.addEventListener('click', function () {
+          state.open = s.rows[+b.dataset.i].st.key;
           renderEpic(ref, state);
-          var el = storiesBody.querySelector('.es-row.open');
-          if (el) el.scrollIntoView({ block: 'nearest' });
         });
       });
     });
@@ -1956,6 +2018,12 @@
     var byTeam = function (slug) { return TEAMS.find(function (x) { return x.slug === slug; }); };
     var blk = e.target.closest('[data-blk]');
     if (blk) { e.stopPropagation(); openBlockers(deckRefs[blk.dataset.blk]); return; }
+    var sb = e.target.closest('[data-sb]');
+    if (sb && SB_REFS[+sb.dataset.sb]) {
+      var bl = SB_REFS[+sb.dataset.sb];
+      openStory({ team: byTeam(sb.closest('[data-team]').dataset.team), epic: bl.epic, story: bl.st });
+      return;
+    }
     var off = e.target.closest('[data-off]');
     if (off && OFF_REFS[+off.dataset.off] && OFF_REFS[+off.dataset.off].items.length) { openOffboard(OFF_REFS[+off.dataset.off]); return; }
     var burn = e.target.closest('[data-burn]');

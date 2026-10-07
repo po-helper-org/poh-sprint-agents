@@ -213,9 +213,10 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_ops_member_matrix(self):
         """Операционный слайд снизу: истории и подзадачи спринта по исполнителю — полосы по статусам,
         «сделано/всего», застрявшие; шкала «Числа / Доли» и сортировка."""
-        for part in ('function memberRows(', 'function memberMatrixHtml(', "label: 'Отладка'", 'SP план / факт',
-                     'Задачи план / факт · LT', 'Подзадачи план / факт · LT', '[EXT]', 'mx-bar off', 'function openOffboard(',
-                     "data-mx-team="):
+        for part in ('function memberRows(', 'function memberMatrixHtml(', 'function sprintBlocks(', "label: 'Отладка'",
+                     '<span>В спринте</span>', '<span>Вне спринта</span>', 'sb-subs', 'sb off', 'function memberKpis(',
+                     'SP план / факт', 'подзадачи план / факт', '[EXT]', 'function openOffboard(', "data-mx-team=",
+                     'class="kr2"', 'kr-detail', 'panelStack.classList.toggle(\'wide\'', "id=\"clearAll\"", 'function clearAllComments('):
             self.assertIn(part, self.html)
         for gone in ("'По застрявшим'", "'Доли'", 'Застряли', 'mx-btn', 'mx-legend'):
             self.assertNotIn(gone, self.html, 'без сортировок, шкал, легенды и «Застряли»')

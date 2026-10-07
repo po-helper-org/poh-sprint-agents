@@ -514,6 +514,7 @@
     var prompt = groups.map(function (g) { return g.prompt; }).filter(Boolean).join('\n\n');
     document.getElementById('promptOut').value = prompt;
     document.getElementById('copyBtn').disabled = !prompt;
+    document.getElementById('clearAll').disabled = !total;
 
     box.querySelectorAll('.nrow').forEach(function (item) {
       var id = item.dataset.id, slug = item.dataset.team;
@@ -572,6 +573,34 @@
   }
 
   function cmarkHtml(n) { return n ? '<span class="cmark" title="Заметок: ' + n + '">' + n + '</span>' : ''; }
+
+  // «Очистить комментарии» — единственный способ стереть корзину целиком: все команды,
+  // копии (backup, corrupt, старые ключи по спринтам) и IndexedDB — пустым списком, чтобы
+  // ничего не восстановилось. Только после подтверждения.
+  function clearAllComments() {
+    var keys = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (TEAMS.some(function (t) { return k && (k.indexOf('actual-sprint:' + t.slug + ':comments') === 0 || k.indexOf('actual-sprint:' + t.slug + ':note:') === 0); })) keys.push(k);
+      }
+    } catch (e) { /* без хранилища — нечего стирать */ }
+    keys.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+    TEAMS.forEach(function (t) {
+      var key = 'actual-sprint:' + t.slug + ':comments';
+      lsSet(key, '[]');
+      lsSet('actual-sprint:' + t.slug + ':notes-migrated', '1');   // заметки старого формата не возвращаются
+      idbPut(key, '[]');
+    });
+  }
+  document.getElementById('clearAll').addEventListener('click', function () {
+    var n = +document.getElementById('cCount').textContent || 0;
+    if (!n) return;
+    if (!window.confirm('Удалить все комментарии (' + n + ') всех команд из памяти браузера? Вернуть их будет нельзя.')) return;
+    clearAllComments();
+    editingId = null;
+    refreshComments();
+  });
 
   // копия в IndexedDB догоняет localStorage, а очищенный localStorage — восстанавливается из неё
   restoreComments(function (restored) { if (restored) refreshComments(); });

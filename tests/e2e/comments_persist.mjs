@@ -90,6 +90,25 @@ await p.waitForTimeout(400);
 s = await panel();
 check(s.n === before - 1 && !s.text.includes(delText.slice(0, 20)), 'удалённый вручную комментарий не возвращается');
 
+// «Очистить комментарии» — стирает всё, после подтверждения; копия в IndexedDB их не возвращает
+await open();
+await p.waitForTimeout(300);
+await p.click('#deckNotes');
+await p.waitForTimeout(150);
+let asked = '';
+p.once('dialog', d => { asked = d.message(); d.accept(); });
+await p.click('#clearAll');
+await p.waitForTimeout(300);
+check(asked.startsWith('Удалить все комментарии') && (await panel()).n === 0, '«Очистить комментарии» — после подтверждения корзина пуста');
+await open();
+await p.waitForTimeout(500);
+check((await panel()).n === 0, 'после перезагрузки комментарии не вернулись');
+await p.evaluate(() => Object.keys(localStorage).filter(k => /:comments/.test(k)).forEach(k => localStorage.removeItem(k)));
+await open();
+await p.waitForTimeout(500);
+check((await panel()).n === 0 && await p.evaluate(() => document.getElementById('clearAll').disabled),
+      'и из копии в IndexedDB не восстановились; кнопка неактивна, пока корзина пуста');
+
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();
 if (failures.length) { console.log(`\nупало: ${failures.length}`); process.exit(1); }
