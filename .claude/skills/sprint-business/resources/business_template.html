@@ -430,6 +430,11 @@
     .ops-tab { overflow-x: auto; }
     table.mtab { min-width: 560px; }
     .deck-bar .hide-narrow { display: none; }
+    /* телефон: кнопки не выпадают за край — лента кнопок прокручивается, если не влезла */
+    .deck-bar { overflow-x: auto; scrollbar-width: none; gap: 6px; }
+    .deck-bar::-webkit-scrollbar { display: none; }
+    .deck-bar .title { display: none; }
+    .deck-bar button { flex: none; padding: 5px 9px; }
   }
 
   /* печать / «Сохранить в PDF»: только слайды, как в эталоне */
@@ -474,7 +479,7 @@
     <button id="deckEdit" aria-pressed="false" title="Править текст прямо на слайдах; правки сохраняются в браузере">Редактировать текст</button>
     <button id="deckNotes" class="hide-narrow" title="Комментарии: правый клик по строке или слайду">Комментарии (<span id="deckNotesN">0</span>)</button>
     <button id="deckFull" class="stage-only" title="Во весь экран (F)">На весь экран</button>
-    <button id="techBtn" title="Промт для генерации технического отчёта PO для техлидов">Для техлидов</button>
+    <button id="techBtn" class="hide-narrow" title="Промт для генерации технического отчёта PO для техлидов">Для техлидов</button>
     <button id="deckPrint" class="dark" title="Печать или «Сохранить как PDF»: по слайду на страницу">PDF</button>
   </div>
   <div class="deck-body">
