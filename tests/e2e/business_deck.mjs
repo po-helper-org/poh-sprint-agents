@@ -33,9 +33,9 @@ const deckInfo = await p.evaluate(() => ({
   slides: [...document.querySelectorAll('#deckSlides > .fslide')].map(s => {
     const was = s.classList.contains('cur');
     s.classList.add('cur');
-    const h = s.scrollHeight;
+    const h = s.scrollHeight, ch = s.clientHeight;
     if (!was) s.classList.remove('cur');
-    return { title: (s.querySelector('.slide-title, h1') || {}).textContent || '', h };
+    return { title: s.getAttribute('data-title') || (s.querySelector('.slide-title, h1') || {}).textContent || '', h, ch };
   }),
   toc: document.querySelectorAll('#deckTocList a').length,
   heroes: [...document.querySelectorAll('#deckSlides .hero-slide h1')].map(h => h.textContent).join('|'),
@@ -47,15 +47,19 @@ const deckInfo = await p.evaluate(() => ({
 }));
 check(deckInfo.open, 'страница открывается сразу колодой');
 check(await p.$('#tableBody') === null && await p.$('#deckClose') === null, 'отчёта PO под колодой нет, выйти некуда');
-check(deckInfo.slides[0].title.startsWith('ФАКТ | '), 'титул «ФАКТ | спринт»');
+check(deckInfo.slides[0].title.startsWith('ФАКТ | '), 'титул «ФАКТ | спринт» — в оглавлении');
+check(await p.evaluate(() => { const t = document.querySelector('.title-slide');
+  return !t.querySelector('h1, .t-kicker, .t-status, .t-period, .t-days, .t-foot') && t.textContent.indexOf('Данные JIRA') === -1; }),
+      'на титуле только карточки команд: без «Отчёт о…», статуса, «ФАКТ | период», строки спринтов и подписи');
+check(await p.evaluate(() => !document.querySelector('#deckSlides .ln-meta')), 'в строке направления нет «ключ эпика · N задач в спринте»');
 check(deckInfo.heroes === deckInfo.teams, 'у каждой команды — разделитель с её именем, в порядке вкладок');
 check(deckInfo.slides.some(s => s.title.startsWith('OBJ 1: Партнёрские заказы')), 'слайд — цель: «OBJ 1: название»');
 check(deckInfo.slides.some(s => s.title.startsWith('Без привязки к OKR')), 'эпики без цели — «Без привязки к OKR»');
 check(!deckInfo.slides.some(s => s.title.startsWith('Стримы')) && !deckInfo.legend, 'нет «Стримы: команда» и пояснения цветов');
 check(deckInfo.rows === deckInfo.epics && deckInfo.storyRows === 0, 'строка — эпик (и «Вне эпиков»), историй построчно на слайдах нет');
 check(!deckInfo.slides.some(s => /^(Изменения в процессе спринта|Демо|Итоги спринта)/.test(s.title)), 'слайдов «Изменения», «Демо», «Итоги» нет');
-check(deckInfo.slides.filter(s => !/^(OBJ|Без привязки|Направления)/.test(s.title)).every(s => s.h === 720),
-      'титул, команда, операционный, «Сроки», «Планы» — ровно 1280×720');
+check(deckInfo.slides.filter(s => !/^(OBJ|Без привязки|Направления|.+ · операционный)/.test(s.title)).every(s => s.h <= s.ch),
+      'титул, команда, «Сроки», «Планы» умещаются на экран без прокрутки');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
 const kinds = await p.evaluate(() => [...document.querySelectorAll('#deckSlides > .fslide')].map(s => s.className));
 const isOps = c => c.includes(' ops') && !c.includes(' cycle');
@@ -86,11 +90,26 @@ const stage = await p.evaluate(() => {
   const cur = document.querySelectorAll('#deckSlides > .fslide.cur');
   const r = cur[0].getBoundingClientRect(), feed = document.getElementById('deckFeed').getBoundingClientRect();
   return { cur: cur.length, first: cur[0] === document.querySelector('#deckSlides > .fslide'), w: r.width, feedW: feed.width,
+           h: r.height, feedH: feed.height, shadow: getComputedStyle(cur[0]).boxShadow,
            thumbs: document.querySelectorAll('#deckTocList .thumb-box').length,
            tocOpen: document.getElementById('deckToc').classList.contains('open'), count: document.getElementById('deckCount').textContent };
 });
 check(stage.cur === 1 && stage.first, 'на сцене — один слайд, с первого');
-check(stage.w > stage.feedW - 60, 'слайд растянут на всю ширину сцены');
+check(Math.abs(stage.w - stage.feedW) < 2 && Math.abs(stage.h - stage.feedH) < 2 && stage.shadow === 'none',
+      'слайд — на всю ширину и высоту сцены, без рамки и тени');
+const opsFit = await p.evaluate(() => {
+  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
+  s.classList.add('cur');
+  const over = [...s.querySelectorAll('.mx-row:not(.mx-head) .sbs')].filter(x => {
+    const r = x.getBoundingClientRect(), last = x.lastElementChild;
+    return last && last.getBoundingClientRect().right > r.right + 1;
+  }).length;
+  const name = s.querySelector('.mx-row .mx-name').getBoundingClientRect().width / s.getBoundingClientRect().width;
+  s.classList.remove('cur');
+  return { over, name };
+});
+check(opsFit.over === 0, 'операционный: блоки задач не вылезают за свой столбец');
+check(opsFit.name < 0.12, 'операционный: колонка имени узкая');
 check(!stage.tocOpen && stage.thumbs === 0, 'постоянной панели миниатюр нет, сайдбар слайдов закрыт');
 await p.click('#deckSideTab');
 await p.waitForTimeout(300);
@@ -290,12 +309,16 @@ await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // ключ задачи: при наведении — JIRA в браузере или JIRA-native (виджет)
 await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
-await p.hover('#deckSlides tr.erow[data-key="INIT-125"] .klink');
+await p.click('#deckSlides tr.erow[data-key="INIT-125"] td.task');
+await p.waitForTimeout(300);
+await p.hover('#stackKey .klink');
 await p.waitForTimeout(150);
 const km = await p.evaluate(() => [...document.querySelectorAll('.kmenu a')].map(a => a.textContent + '=' + a.getAttribute('href')));
 check(km.length === 2 && km[0].startsWith('JIRA — в браузере=') && /\/browse\/INIT-125$/.test(km[0]) && km[1].startsWith('JIRA-native — виджет=') && km[1].includes('INIT-125'),
-      'ключ эпика при наведении: «JIRA — в браузере» и «JIRA-native — виджет»');
+      'ключ эпика (шапка сайдбара) при наведении: «JIRA — в браузере» и «JIRA-native — виджет»');
 await p.mouse.move(5, 5);
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
 // клик по строке — активность истории
 await goTo('#deckSlides tr.erow[data-key="INIT-111"]');
 await p.click('#deckSlides tr.erow[data-key="INIT-111"] td.task');

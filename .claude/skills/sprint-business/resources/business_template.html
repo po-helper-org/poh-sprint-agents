@@ -77,7 +77,6 @@
   table.rep .blk { color: #991b1b; }
   /* итог строки: метаданные, текст, «Дальше», «Блокер» — один кегль, подписи серым */
   table.rep.epics td.sum > div + div { margin-top: 4px; }
-  table.rep .ln-meta { font-size: 11.5px; color: #777; }
   table.rep .ln, .kr-detail .ln { color: #222; }
   .lbl { display: inline-block; min-width: 58px; margin-right: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #888; }
   .ln-blk .lbl { color: #b91c1c; }
@@ -100,8 +99,10 @@
   @media (max-width: 900px) { .kr2 { grid-template-columns: 1fr; } .kr-list { position: static; max-height: none; } }
   /* участник: блоки «история + подзадачи», «вне спринта» */
   .mkpis { grid-template-columns: repeat(6, 1fr); }
-  .sbs { display: flex; gap: 2px; min-width: 0; align-items: flex-start; }
-  .sb { display: flex; flex-direction: column; gap: 2px; min-width: 4px; cursor: pointer; }
+  /* блоки делят ширину столбца пропорцией (flex-grow), хвост — пустой: ничего не вылезает */
+  .sbs { display: flex; gap: 2px; min-width: 0; align-items: flex-start; overflow: hidden; }
+  .sb { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex-basis: 0; cursor: pointer; }
+  .sbs .sb-rest { flex-basis: 0; min-width: 0; }
   .sb .sb-st { display: block; height: 11px; border-radius: 2px; }
   .sb.other .sb-st { opacity: .35; }
   .sb-subs { display: flex; gap: 1px; height: 6px; } .sb-subs i { flex: 1; border-radius: 1px; }
@@ -210,17 +211,9 @@
   .fslide .sort-note { font-size: 11px; color: #888; margin: 6px 0 0; font-style: italic; }
   .fslide .ai-note { font-size: 11px; color: #888; margin: 4px 0 0; }
 
-  /* титул: что за отчёт, ход спринта, карточки команд */
-  .title-slide { display: flex; flex-direction: column; padding: 56px 72px 40px; }
-  .t-head { display: flex; justify-content: space-between; align-items: center; }
-  .t-kicker { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #777; }
-  .t-status { font-size: 13px; padding: 6px 14px; border-radius: 999px; border: 1px solid #ccc; color: #444; }
-  .t-status.on { border-color: #16a34a; color: #15803d; background: #f0fdf4; }
-  .title-slide h1 { font-size: 64px; font-weight: 700; letter-spacing: -.02em; margin: 26px 0 6px; line-height: 1.05; }
-  .t-period { font-size: 20px; color: #555; }
-  .t-days { height: 4px; background: #eee; border-radius: 2px; margin: 18px 0 34px; overflow: hidden; }
-  .t-days i { display: block; height: 100%; background: #111; }
-  .t-cards { display: grid; gap: 20px; flex: 1; align-content: start; }
+  /* титул — только карточки команд, по центру: без заголовков, периода и подписи */
+  .title-slide { display: flex; flex-direction: column; justify-content: center; padding: 56px 6%; }
+  .t-cards { display: grid; gap: 24px; align-content: center; width: 100%; max-width: 1600px; margin: 0 auto; }
   .t-cards.n1 { grid-template-columns: minmax(0, 420px); } .t-cards.n2 { grid-template-columns: repeat(2, 1fr); }
   .t-cards.n3 { grid-template-columns: repeat(3, 1fr); } .t-cards.n4 { grid-template-columns: repeat(4, 1fr); }
   .t-card { border: 1px solid #ddd; border-radius: 10px; padding: 20px 22px 18px; background: #fafafa; }
@@ -235,7 +228,6 @@
   .t-kpis b { display: block; font-size: 17px; color: #111; font-variant-numeric: tabular-nums; }
   .t-kpis .bad b { color: var(--c-blocked); }
   .t-kpis .warn b { color: #b45309; }
-  .t-foot { display: flex; justify-content: space-between; font-size: 13px; color: #888; border-top: 1px solid #e5e5e5; padding-top: 14px; }
 
   /* слайд команды: итог с одного взгляда — числа, цели, «заблокированы» и «не успели» */
   .hero-slide { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 64px; }
@@ -263,7 +255,8 @@
   .ops-tag { font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: #888; margin-bottom: 6px; }
   .fslide.ops .ops2 { margin-top: 0; }
 
-  .ops2b { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 36px; margin-top: 4px; }
+  .ops2b { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 3%; margin-top: 4px; }
+  .fslide.ops .ops-chart .chart { max-height: 210px; width: auto; max-width: 100%; }
   .burn-click { cursor: pointer; border-radius: 6px; }
   .burn-click:hover { background: #f7f7f7; box-shadow: 0 0 0 6px #f7f7f7; }
   .ops-legend .l-scope { width: 16px; height: 0; border-top: 2px dashed #6b7280; border-radius: 0; }
@@ -271,8 +264,9 @@
   /* распределение по участникам: истории и подзадачи спринта */
   .mx { margin-top: 14px; border-top: 1px solid #e5e5e5; padding-top: 10px; }
 
-  .mx-row { display: grid; grid-template-columns: 170px minmax(0, 3fr) minmax(0, 1.4fr); column-gap: 18px; align-items: center; min-height: 28px; }
-  .mx-grid.nooff .mx-row { grid-template-columns: 170px minmax(0, 1fr); }
+  /* имя — постоянная узкая колонка, графики делят остальное: 65% / 35% */
+  .mx-row { display: grid; grid-template-columns: 124px minmax(0, 65fr) minmax(0, 35fr); column-gap: 2%; align-items: center; min-height: 26px; }
+  .mx-grid.nooff .mx-row { grid-template-columns: 124px minmax(0, 1fr); }
   .mx-grid .mx-row + .mx-row { border-top: 1px solid #f1f1f1; }
   .mx-graph { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
   .mx-bar { display: block; height: 13px; }
@@ -288,7 +282,7 @@
   .mx-grid.tight .mx-row { min-height: 24px; }
   .mx-head { min-height: 18px !important; font-size: 11.5px; color: #888; }
   .mx-head span { text-align: left; }
-  .mx-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mx-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .mx-name .mname { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
   .mx-name .mname:hover { text-decoration: underline; }
   .mx-n { font-size: 12px; color: #555; text-align: right; font-variant-numeric: tabular-nums; }
@@ -407,12 +401,15 @@
 
   /* Сцена (широкий экран): один слайд на всю площадь, масштаб под окно, внизу ‹ N / M ›.
      Узкий экран и печать остаются лентой. */
-  .deck.stage .deck-feed { position: relative; overflow: hidden; }
+  .deck.stage .deck-feed { position: relative; overflow: hidden; background: #fff; }
   .deck.stage .deck-slides { display: block; height: 100%; padding: 0; position: relative; }
-  .deck.stage .deck-slides > .fslide { display: none; position: absolute; left: 50%; top: calc(50% - 22px);
-                                       width: 1280px; height: 720px; min-height: 720px; max-width: none;
+  /* слайд — вся площадь сцены без рамки и тени: холст не уже 1280 и не ниже 720 единиц,
+     масштаб --k под окно, лишняя ширина/высота экрана достаётся раскладке (проценты) */
+  .deck.stage .deck-slides > .fslide { display: none; position: absolute; left: 0; top: 0;
+                                       width: var(--sw, 1280px); height: var(--sh, 720px); min-height: 0; max-width: none;
+                                       box-shadow: none; padding-bottom: 56px;
                                        overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
-                                       transform: translate(-50%, -50%) scale(var(--k, 1)); }
+                                       transform: scale(var(--k, 1)); transform-origin: 0 0; }
   .deck-nav .more-hint { width: auto; padding: 0 12px; font-size: 12px; background: #111; color: #fff; }
   .deck-nav .more-hint:hover:not(:disabled) { background: #333; }
   .deck-nav .more-hint[hidden] { display: none; }
@@ -441,7 +438,7 @@
   @media (max-width: 700px) {
     .fslide { padding: 20px 16px 28px; }
     .title-slide, .hero-slide { padding: 24px 18px; min-height: 60vh; }
-    .title-slide h1 { font-size: 34px; } .hero-slide h1 { font-size: 40px; }
+    .hero-slide h1 { font-size: 40px; }
     .t-cards[class*="n"], .h-goals[class*="n"], .plans { grid-template-columns: 1fr; }
     .h-kpis > div { padding: 0 14px; } .h-kpis b { font-size: 26px; }
     .fslide h1.slide-title { font-size: 22px; }
@@ -684,7 +681,11 @@
       : !s.epic.scope ? 'истории спринта закрыты — взять следующие по эпику'
       : openScope.length ? 'дальше по эпику: ' + clip(cleanTitle(openScope[0].title), 70)
       : 'эпик завершён';
-    s.text = { done: s.ai.done || autoDone, blocker: s.ai.blocker || autoBlk, next: s.ai.next || autoNext };
+    // PO оценил направление в 100% — сделанное по плану: статусы задач (например, «В ожидании»
+    // у отменённой инициативы) не превращаются в блокер; явный блокер PO остаётся
+    s.poDone = !!s.byPo && s.pct >= 100;
+    s.showBlk = s.blocked.length > 0 && (!s.poDone || !!s.ai.blocker);
+    s.text = { done: s.ai.done || autoDone, blocker: s.ai.blocker || (s.poDone ? '' : autoBlk), next: s.ai.next || autoNext };
     return s;
   }
 
@@ -784,9 +785,6 @@
     var paces = TEAMS.map(teamPace).filter(Boolean);
     var start = paces.map(function (p) { return p.start; }).sort()[0];
     var end = paces.map(function (p) { return p.end; }).sort().pop();
-    var at = TEAMS.map(function (t) { return t._meta && t._meta.collectedAt; }).filter(Boolean).sort().pop();
-    var p0 = paces[0], running = sprintRunning();
-    var dayPct = p0 && p0.workdays ? Math.round(100 * p0.workday / p0.workdays) : 100;
     var cards = all.map(function (x) {
       var st = teamStats(x.t, x.streams), pc = pctOf(st.done, st.stories);
       return '<div class="t-card"><div class="t-team">' + esc(x.t.team) + '</div><div class="t-sprint">' + esc(x.t.sprintName) + '</div>' +
@@ -796,14 +794,10 @@
         '<span class="' + (st.blocked ? 'bad' : '') + '"><b>' + st.blocked + '</b>🛑 в блоке</span>' +
         '<span class="' + (st.behind ? 'warn' : '') + '"><b>' + st.behind + '</b>⏳ не закрыто</span></div></div>';
     }).join('');
-    return slide('title-slide',
-      '<div class="t-head"><div class="t-kicker">' + ed('title:kicker', 'Отчёт о продвижении за спринт') + '</div>' +
-        '<div class="t-status ' + (running ? 'on' : 'off') + '">' + (running ? 'Спринт идёт' + (p0 ? ' · рабочий день ' + p0.workday + ' из ' + p0.workdays : '') : 'Спринт закрыт') + '</div></div>' +
-      '<h1>' + ed('title:h1', 'ФАКТ | ' + dayMonth(start) + ' — ' + dayMonth(end) + ' ' + (end || '').slice(0, 4)) + '</h1>' +
-      '<div class="t-period">' + TEAMS.map(function (t) { return esc(t.team) + ' — ' + esc(t.sprintName); }).join(' · ') + '</div>' +
-      '<div class="t-days"><i style="width:' + dayPct + '%"></i></div>' +
-      '<div class="t-cards n' + Math.min(all.length, 4) + '">' + cards + '</div>' +
-      '<div class="t-foot"><span>' + ed('title:author', 'PO') + '</span><span>Данные JIRA на ' + ddmmhhmm(at) + '</span></div>');
+    // на слайде — только карточки; период — в оглавлении и подсказке
+    var name = 'ФАКТ | ' + dayMonth(start) + ' — ' + dayMonth(end) + ' ' + (end || '').slice(0, 4);
+    return slide('title-slide', '<div class="t-cards n' + Math.min(all.length, 4) + '">' + cards + '</div>',
+      ' data-title="' + esc(name) + '"');
   }
 
   // Слайд команды — итог с одного взгляда: числа, цели (если есть) и две панели —
@@ -843,23 +837,22 @@
     var e = s.epic, key = e.epicKey || NO_EPIC, id = 'e' + Object.keys(deckRefs).length;
     deckRefs[id] = { team: t, epic: e, stream: s };
     var n = { done: s.done.length, work: s.active.length, blocked: s.blocked.length, open: s.behind.length - s.active.length };
-    var bar = RES_SEGS.map(function (g) { return n[g.id] ? '<i style="flex:' + n[g.id] + ';background:' + g.color + '"></i>' : ''; }).join('');
+    var bar = s.poDone ? '<i style="flex:1;background:var(--c-done)"></i>'
+      : RES_SEGS.map(function (g) { return n[g.id] ? '<i style="flex:' + n[g.id] + ';background:' + g.color + '"></i>' : ''; }).join('');
     var tip = RES_SEGS.filter(function (g) { return n[g.id]; }).map(function (g) { return g.label + ' ' + n[g.id]; }).join(' · ');
     var name = s.ai.kr ? ed('kr:' + t.slug + ':' + key, s.ai.kr, 'b') : '<b>' + esc(streamName(s)) + '</b>';
-    return '<tr class="row erow ' + s.cls + (s.blocked.length ? ' has-blk' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
+    return '<tr class="row erow ' + s.cls + (s.showBlk ? ' has-blk' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
       (e.epicKey ? ' data-key="' + esc(e.epicKey) + '"' : '') +
       ctxAttr(e.epicKey ? epicTarget(e) : { kind: 'general', title: 'Вне эпиков' }) + ' title="Истории спринта и весь эпик">' +
       '<td class="task">' + name + '</td>' +
       // одна гарнитура и один кегль: итог, «дальше», блокер — подписью, без жирного и красных абзацев
-      '<td class="sum"><div class="ln-meta">' + (e.epicKey ? keyLink(e.epicKey) + ' · ' : '') + s.rows.length + ' ' +
-        plural(s.rows.length, 'задача', 'задачи', 'задач') + ' в спринте</div>' +
-        ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
+      '<td class="sum">' + ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
         (s.text.next ? '<div class="ln"><span class="lbl">Дальше</span>' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') +
         (s.text.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер</span>' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') + '</td>' +
       '<td class="result"><span title="' + esc(s.how) + '">' + s.pct + '%</span>' + (s.byPo ? '<small class="res-po"> оценка PO</small>' : '') +
         '<div class="res-sub">закрыто ' + s.done.length + ' из ' + s.rows.length + '</div>' +
         '<div class="res-bar" title="' + esc(tip) + '">' + bar + '</div>' +
-        (s.blocked.length ? '<button type="button" class="blk-badge" data-blk="' + id + '" title="' +
+        (s.showBlk ? '<button type="button" class="blk-badge" data-blk="' + id + '" title="' +
           esc(s.blocked.map(function (r) { return r.st.key + ' · ' + r.st.title + (r.blocker ? ' — ' + r.blocker : ''); }).join('\n')) +
           '">🛑 блокаторы: ' + s.blocked.length + '</button>' : '') + '</td></tr>';
   }
@@ -1282,21 +1275,26 @@
     return out.sort(function (a, b) { return b.mine - a.mine || ES_ORDER.indexOf(a.bucket) - ES_ORDER.indexOf(b.bucket); });
   }
   function bColor(b) { var x = MX_BUCKETS.find(function (g) { return g.id === b; }); return x ? x.color : '#d1d5db'; }
+  function restHtml(used, unitsMax) {
+    return used < unitsMax ? '<span class="sb-rest" style="flex-grow:' + (unitsMax - used) + '"></span>' : '';
+  }
   function blocksHtml(blocks, unitsMax) {
+    var used = 0;
     return blocks.map(function (bl) {
       var units = Math.max(1, bl.subs.length), i = SB_REFS.push(bl) - 1;
+      used += units;
       var tip = bl.st.key + ' · ' + bl.st.status + ' · ' + bl.st.title + (bl.mine ? '' : '\n(история другого исполнителя)') +
         (bl.subs.length ? '\n' + bl.subs.map(function (x) { return '  ' + x.key + ' · ' + x.status + ' · ' + x.title; }).join('\n') : '');
-      return '<span class="sb' + (bl.mine ? '' : ' other') + '" data-sb="' + i + '" style="flex:0 0 ' + (100 * units / unitsMax).toFixed(2) + '%" title="' + esc(tip) + '">' +
+      return '<span class="sb' + (bl.mine ? '' : ' other') + '" data-sb="' + i + '" style="flex-grow:' + units + '" title="' + esc(tip) + '">' +
         '<i class="sb-st" style="background:' + bColor(bl.bucket) + '"></i><span class="sb-subs">' +
         bl.subs.map(function (x) { return '<i style="background:' + bColor(x.bucket) + '"></i>'; }).join('') + '</span></span>';
-    }).join('');
+    }).join('') + restHtml(used, unitsMax);
   }
   function offHtml(r, unitsMax, idx) {
     return r.off.map(function (it) {
-      return '<span class="sb off" data-off="' + idx + '" style="flex:0 0 ' + (100 / unitsMax).toFixed(2) + '%" title="' +
+      return '<span class="sb off" data-off="' + idx + '" style="flex-grow:1" title="' +
         esc(it.key + ' · ' + it.status + ' · ' + it.title + '\nклик — задачи вне спринта') + '"><i class="sb-st" style="background:' + bColor(it.bucket) + '"></i></span>';
-    }).join('');
+    }).join('') + restHtml(r.off.length, unitsMax);
   }
 
   function memberMatrixHtml(t) {
@@ -1645,7 +1643,7 @@
     document.getElementById('deckTocList').innerHTML = Array.prototype.map.call(deckSlides.querySelectorAll(':scope > .fslide'), function (s, i) {
       var h = s.querySelector('.slide-title, h1, .ops-tag');
       var kind = s.classList.contains('hero-slide') ? 'команда' : s.classList.contains('title-slide') ? 'титул' : 'слайд';
-      var title = h ? h.textContent : '';
+      var title = s.getAttribute('data-title') || (h ? h.textContent : '');
       return '<a href="#' + s.id + '" data-go="' + s.id + '" title="' + esc(title) + '"><span class="kind">' + (i + 1) + ' · ' + kind +
         '</span>' + esc(title) + '</a>';
     }).join('');
@@ -2066,11 +2064,13 @@
     return idx;
   }
 
-  // масштаб слайда 1280×720 под свободную площадь сцены: и вверх, и вниз
+  // слайд на всю сцену: масштаб — чтобы холст был не меньше 1280×720, размер — вся площадь
   function fitStage() {
     if (!isStage() || deck.hidden) return;
-    var w = deckFeed.clientWidth - 32, h = deckFeed.clientHeight - 64;
-    deckSlides.style.setProperty('--k', Math.max(0.2, Math.min(w / 1280, h / 720)).toFixed(4));
+    var w = deckFeed.clientWidth, h = deckFeed.clientHeight, k = Math.max(0.2, Math.min(w / 1280, h / 720));
+    deckSlides.style.setProperty('--k', k.toFixed(4));
+    deckSlides.style.setProperty('--sw', (w / k).toFixed(1) + 'px');
+    deckSlides.style.setProperty('--sh', (h / k).toFixed(1) + 'px');
   }
 
   function goSlide(i, quiet) {

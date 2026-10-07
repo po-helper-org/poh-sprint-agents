@@ -161,6 +161,11 @@ class BusinessTemplateTest(unittest.TestCase):
                      'function demoSlide(', 'function totalsSlide(', '<th>Задачи</th><th>Комментарий</th>'):
             self.assertNotIn(gone, self.html, 'строка — эпик; слайдов «Изменения», «Демо», «Итоги» нет')
         self.assertNotIn('class="legend"', self.html, 'пояснения цветов на слайдах нет')
+        for gone in ("ed('title:kicker'", "ed('title:h1'", "ed('title:author'", 'class="t-foot"', 'class="ln-meta"'):
+            self.assertNotIn(gone, self.html, 'титул — только карточки команд; в строке нет «ключ · N задач»')
+        for part in ("s.poDone = !!s.byPo && s.pct >= 100", "blocker: s.ai.blocker || (s.poDone ? '' : autoBlk)",
+                     "setProperty('--sw'", "setProperty('--sh'", 'transform-origin: 0 0'):
+            self.assertIn(part, self.html, 'оценка PO 100% без авто-блокера; слайд на всю сцену')
         self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
 
     def test_ops_slide_member_output(self):
