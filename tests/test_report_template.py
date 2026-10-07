@@ -161,6 +161,11 @@ class BusinessTemplateTest(unittest.TestCase):
                      'function demoSlide(', 'function totalsSlide(', '<th>Задачи</th><th>Комментарий</th>'):
             self.assertNotIn(gone, self.html, 'строка — эпик; слайдов «Изменения», «Демо», «Итоги» нет')
         self.assertNotIn('class="legend"', self.html, 'пояснения цветов на слайдах нет')
+        for gone in ("ed('title:kicker'", "ed('title:h1'", "ed('title:author'", 'class="t-foot"', 'class="ln-meta"'):
+            self.assertNotIn(gone, self.html, 'титул — только карточки команд; в строке нет «ключ · N задач»')
+        for part in ("s.poDone = !!s.byPo && s.pct >= 100", "blocker: s.ai.blocker || (s.poDone ? '' : autoBlk)",
+                     "setProperty('--sw'", "setProperty('--sh'", 'transform-origin: 0 0'):
+            self.assertIn(part, self.html, 'оценка PO 100% без авто-блокера; слайд на всю сцену')
         self.assertNotIn("'Стримы: '", self.html, 'заголовок слайда — цель, а не «Стримы: команда»')
 
     def test_ops_slide_member_output(self):
@@ -213,9 +218,10 @@ class BusinessTemplateTest(unittest.TestCase):
     def test_ops_member_matrix(self):
         """Операционный слайд снизу: истории и подзадачи спринта по исполнителю — полосы по статусам,
         «сделано/всего», застрявшие; шкала «Числа / Доли» и сортировка."""
-        for part in ('function memberRows(', 'function memberMatrixHtml(', "label: 'Отладка'", 'SP план / факт',
-                     'Задачи план / факт · LT', 'Подзадачи план / факт · LT', '[EXT]', 'mx-bar off', 'function openOffboard(',
-                     "data-mx-team="):
+        for part in ('function memberRows(', 'function memberMatrixHtml(', 'function sprintBlocks(', "label: 'Отладка'",
+                     '<span>В спринте</span>', '<span>Вне спринта</span>', 'sb-subs', 'sb off', 'function memberKpis(',
+                     'SP план / факт', 'подзадачи план / факт', '[EXT]', 'function openOffboard(', "data-mx-team=",
+                     'class="kr2"', 'kr-detail', 'panelStack.classList.toggle(\'wide\'', "id=\"clearAll\"", 'function clearAllComments('):
             self.assertIn(part, self.html)
         for gone in ("'По застрявшим'", "'Доли'", 'Застряли', 'mx-btn', 'mx-legend'):
             self.assertNotIn(gone, self.html, 'без сортировок, шкал, легенды и «Застряли»')

@@ -191,6 +191,12 @@
           ],
           "description": "Sprint Goal по KR."
         },
+        "readiness": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Готовность направления по оценке PO, %: главная цифра в «Результате» (с пометкой «оценка PO»), расчёт по задачам спринта — в подсказке. Только со слов PO."
+        },
         "done": {
           "type": "string",
           "minLength": 5,
