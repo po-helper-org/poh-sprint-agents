@@ -184,9 +184,9 @@ check(mx.ext > 0 && mx.sep.startsWith('[EXT]'), 'участники вне со�
 const tips = await p.$$eval('#deckSlides .fslide.members .sb:not(.off)', bs => bs.map(b => b.title));
 check(tips.length && tips.every(x => /⏱ (в статусе «[^»]+» \d+ дн\. \(с \d\d\.\d\d\)|закрыта \d\d\.\d\d)/.test(x)),
       'наведение на историю — сколько дней в текущем статусе (закрытая — когда закрыта)');
-check(tips.some(x => /⏱ lead time \d+ дн\. — в работе с \d\d\.\d\d/.test(x)) &&
-      tips.some(x => /закрыта \d\d\.\d\d · lead time \d+ дн\./.test(x)),
-      'в подсказке lead time: в работе — с первого перехода, закрытая — от начала до закрытия');
+check(tips.some(x => /⏱ lead time \d+ дн\. \(создана \d\d\.\d\d\)/.test(x)) &&
+      tips.some(x => /⏱ cycle time \d+ дн\. \(в работе с \d\d\.\d\d\)/.test(x)),
+      'в подсказке lead time (с создания) и cycle time (с начала работы) — до закрытия или до сбора');
 await goTo('#deckSlides .fslide.members');
 await p.click('#deckSlides .fslide.members .mx-name .mname >> nth=0');
 await p.waitForTimeout(300);

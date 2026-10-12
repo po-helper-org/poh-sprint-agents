@@ -1161,22 +1161,26 @@
     return out.sort(function (a, b) { return b.mine - a.mine || ES_ORDER.indexOf(a.bucket) - ES_ORDER.indexOf(b.bucket); });
   }
   // «сколько висит» для подсказки: в текущем статусе — со statusChanged до сбора; lead time —
-  // с первого перехода из начального статуса (события истории) до закрытия или до сбора
+  // с создания (событие created), cycle time — с первого перехода из начального статуса, если
+  // это не сразу закрытие; оба — до закрытия или до сбора (события истории)
   function daysBetween(a, b) {
     var d = (parseTs(b).getTime() - parseTs(a).getTime()) / 86400000;
     return isNaN(d) ? null : Math.max(0, Math.floor(d));
   }
   function leadLines(t, it, events) {
-    var moves = (events || []).filter(function (e) { return e.kind === 'status' && e.key === it.key && e.at; })
-      .map(function (e) { return e.at; }).sort(), start = moves[0], out = [];
-    if (it.bucket === 'done') {
-      var lt = start && it.statusChanged ? daysBetween(start, it.statusChanged) : null;
-      if (it.statusChanged) out.push('закрыта ' + ddmm(it.statusChanged) + (lt !== null ? ' · lead time ' + lt + ' дн. (с ' + ddmm(start) + ')' : ''));
-      return out;
+    var own = (events || []).filter(function (e) { return e.key === it.key && e.at; }).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+    var created = own.find(function (e) { return e.kind === 'created'; });
+    var move = own.find(function (e) { return e.kind === 'status'; });
+    var start = move && !move.done ? move.at : null, done = it.bucket === 'done', out = [];
+    var upto = function (from) { return done ? (it.statusChanged ? daysBetween(from, it.statusChanged) : null) : ageAtCollect(t, from); };
+    if (done) { if (it.statusChanged) out.push('закрыта ' + ddmm(it.statusChanged)); }
+    else {
+      var now = ageAtCollect(t, it.statusChanged);
+      if (now !== null) out.push('в статусе «' + it.status + '» ' + now + ' дн. (с ' + ddmm(it.statusChanged) + ')');
     }
-    var now = ageAtCollect(t, it.statusChanged);
-    if (now !== null) out.push('в статусе «' + it.status + '» ' + now + ' дн. (с ' + ddmm(it.statusChanged) + ')');
-    if (it.bucket !== 'open' && start) out.push('lead time ' + ageAtCollect(t, start) + ' дн. — в работе с ' + ddmm(start));
+    var lt = created ? upto(created.at) : null, ct = start ? upto(start) : null;
+    if (lt !== null) out.push('lead time ' + lt + ' дн. (создана ' + ddmm(created.at) + ')');
+    if (ct !== null) out.push('cycle time ' + ct + ' дн. (в работе с ' + ddmm(start) + ')');
     return out;
   }
   function subLead(t, x) {
