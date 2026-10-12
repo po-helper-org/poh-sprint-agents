@@ -180,6 +180,13 @@ check(mx.carried > 0, 'история, которая была и в прошл�
 check(mx.blocks > 0 && mx.withSubs > 0, 'блок на историю: сверху история, под ней её подзадачи');
 check(mx.off > 0, 'вне спринта — задачи отдельными блоками');
 check(mx.ext > 0 && mx.sep.startsWith('[EXT]'), 'участники вне состава команды — отдельно, с меткой [EXT]');
+// подсказка на блоке истории — сколько висит: в текущем статусе, lead time (закрыта — за сколько)
+const tips = await p.$$eval('#deckSlides .fslide.members .sb:not(.off)', bs => bs.map(b => b.title));
+check(tips.length && tips.every(x => /⏱ (в статусе «[^»]+» \d+ дн\. \(с \d\d\.\d\d\)|закрыта \d\d\.\d\d)/.test(x)),
+      'наведение на историю — сколько дней в текущем статусе (закрытая — когда закрыта)');
+check(tips.some(x => /⏱ lead time \d+ дн\. \(создана \d\d\.\d\d\)/.test(x)) &&
+      tips.some(x => /⏱ cycle time \d+ дн\. \(в работе с \d\d\.\d\d\)/.test(x)),
+      'в подсказке lead time (с создания) и cycle time (с начала работы) — до закрытия или до сбора');
 await goTo('#deckSlides .fslide.members');
 await p.click('#deckSlides .fslide.members .mx-name .mname >> nth=0');
 await p.waitForTimeout(300);

@@ -202,8 +202,30 @@ class PageTest(unittest.TestCase):
         proc = self.ws.bcli('render')
         self.assertIn('блок устарел (данные пересобраны): platform — /sprint-business', proc.stdout)
         teams = {t['slug']: t for t in self.ws.page_teams_of(self.ws.biz_page)}
-        self.assertNotIn('business', teams['platform'])
-        self.assertIn('business', teams['catalog'])
+        self.assertNotIn('objectives', teams['platform'].get('business', {}), 'тексты устаревшего блока не берутся')
+        self.assertIn('objectives', teams['catalog']['business'])
+
+    def test_roster_survives_stale_block(self):
+        # состав команды, скрытые ключи и эскалация от снимка не зависят: блок устарел
+        # (observe пересобрал данные) — [EXT] на «Участниках» всё равно размечен
+        doc = self.ws.biz_example()
+        doc['teams']['platform'].update(dataHash='b' * 64, members=['Иванов Иван'], hide=['INIT-1'], escalation='Петров')
+        doc['jiraNative'] = '/jira/?key={key}'
+        self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
+        # кэш целей рядом с блоком: команды без блока берут состав оттуда
+        (self.ws.biz_file.parent / 'sprint-goals.json').write_text(json.dumps(
+            {'version': 1, 'teams': {'mobile': {'members': ['Сидоров Сидор']}}}, ensure_ascii=False), encoding='utf-8')
+        proc = self.ws.bcli('render')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        self.assertIn('блок устарел (данные пересобраны): platform', proc.stdout)
+        teams = {t['slug']: t for t in self.ws.page_teams_of(self.ws.biz_page)}
+        self.assertEqual({'members': ['Иванов Иван'], 'hide': ['INIT-1'], 'escalation': 'Петров',
+                          'jiraNative': '/jira/?key={key}'}, teams['platform']['business'])
+        self.assertEqual({'members': ['Сидоров Сидор'], 'jiraNative': '/jira/?key={key}'}, teams['mobile']['business'])
+        self.assertIn('objectives', teams['catalog']['business'], 'свежий блок — целиком')
+        for slug, t in teams.items():
+            self.assertEqual(build_mod.team_digest(next(x for x in self.ws.teams if x['slug'] == slug)),
+                             build_mod.team_digest(t), 'данные те же, что в снимке')
 
     def test_apply_refuses_bad_block(self):
         doc = self.ws.biz_example()

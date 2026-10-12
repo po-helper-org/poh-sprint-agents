@@ -1153,23 +1153,54 @@
           var subs = (st.subtasks || []).filter(function (x) { return mine || (x.assignee || 'Не назначен') === name; });
           if (!mine && !subs.length) return;
           out.push({ st: st, epic: e, mine: mine, bucket: classifyBucket(st.status, st.category),
-                     subs: subs.map(function (x) { return { key: x.key, title: x.summary || x.title, status: x.status, bucket: classifyBucket(x.status, x.category) }; }) });
+                     subs: subs.map(function (x) { return { key: x.key, title: x.summary || x.title, status: x.status, statusChanged: x.statusChanged,
+                                                            bucket: classifyBucket(x.status, x.category) }; }) });
         });
       });
     });
     return out.sort(function (a, b) { return b.mine - a.mine || ES_ORDER.indexOf(a.bucket) - ES_ORDER.indexOf(b.bucket); });
   }
+  // «сколько висит» для подсказки: в текущем статусе — со statusChanged до сбора; lead time —
+  // с создания (событие created), cycle time — с первого перехода из начального статуса, если
+  // это не сразу закрытие; оба — до закрытия или до сбора (события истории)
+  function daysBetween(a, b) {
+    var d = (parseTs(b).getTime() - parseTs(a).getTime()) / 86400000;
+    return isNaN(d) ? null : Math.max(0, Math.floor(d));
+  }
+  function leadLines(t, it, events) {
+    var own = (events || []).filter(function (e) { return e.key === it.key && e.at; }).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
+    var created = own.find(function (e) { return e.kind === 'created'; });
+    var move = own.find(function (e) { return e.kind === 'status'; });
+    var start = move && !move.done ? move.at : null, done = it.bucket === 'done', out = [];
+    var upto = function (from) { return done ? (it.statusChanged ? daysBetween(from, it.statusChanged) : null) : ageAtCollect(t, from); };
+    if (done) { if (it.statusChanged) out.push('закрыта ' + ddmm(it.statusChanged)); }
+    else {
+      var now = ageAtCollect(t, it.statusChanged);
+      if (now !== null) out.push('в статусе «' + it.status + '» ' + now + ' дн. (с ' + ddmm(it.statusChanged) + ')');
+    }
+    var lt = created ? upto(created.at) : null, ct = start ? upto(start) : null;
+    if (lt !== null) out.push('lead time ' + lt + ' дн. (создана ' + ddmm(created.at) + ')');
+    if (ct !== null) out.push('cycle time ' + ct + ' дн. (в работе с ' + ddmm(start) + ')');
+    return out;
+  }
+  function subLead(t, x) {
+    if (x.bucket === 'done') return x.statusChanged ? ' · закрыта ' + ddmm(x.statusChanged) : '';
+    var now = ageAtCollect(t, x.statusChanged);
+    return now !== null ? ' · ' + now + ' дн. в статусе' : '';
+  }
   function bColor(b) { var x = MX_BUCKETS.find(function (g) { return g.id === b; }); return x ? x.color : '#d1d5db'; }
   function restHtml(used, unitsMax) {
     return used < unitsMax ? '<span class="sb-rest" style="flex-grow:' + (unitsMax - used) + '"></span>' : '';
   }
-  function blocksHtml(blocks, unitsMax) {
+  function blocksHtml(t, blocks, unitsMax) {
     var used = 0;
     return blocks.map(function (bl) {
       var units = Math.max(1, bl.subs.length), i = SB_REFS.push(bl) - 1;
       used += units;
+      var lead = leadLines(t, { key: bl.st.key, status: bl.st.status, statusChanged: bl.st.statusChanged, bucket: bl.bucket }, bl.st.events);
       var tip = bl.st.key + ' · ' + bl.st.status + ' · ' + bl.st.title + (bl.mine ? '' : '\n(история другого исполнителя)') +
-        (bl.subs.length ? '\n' + bl.subs.map(function (x) { return '  ' + x.key + ' · ' + x.status + ' · ' + x.title; }).join('\n') : '');
+        (lead.length ? '\n⏱ ' + lead.join('\n⏱ ') : '') +
+        (bl.subs.length ? '\n' + bl.subs.map(function (x) { return '  ' + x.key + ' · ' + x.status + subLead(t, x) + ' · ' + x.title; }).join('\n') : '');
       return '<span class="sb' + (bl.mine ? '' : ' other') + '" data-sb="' + i + '" style="flex-grow:' + units + '" title="' + esc(tip) + '">' +
         '<i class="sb-st" style="background:' + bColor(bl.bucket) + '"></i><span class="sb-subs">' +
         bl.subs.map(function (x) { return '<i style="background:' + bColor(x.bucket) + '"></i>'; }).join('') + '</span></span>';
@@ -1213,9 +1244,9 @@
     var maxOf = function (f) { return Math.max(1, Math.max.apply(null, rows.map(f))); };
     var hasOff = !!(t.output && t.output.offboard);
     var cols = [{ label: 'Задачи из прошлого спринта', units: maxOf(function (r) { return unitsOf(r.carried); }),
-                  html: function (r, u) { return blocksHtml(r.carried, u); } }];
+                  html: function (r, u) { return blocksHtml(t, r.carried, u); } }];
     cols.push({ label: 'Текущий спринт', units: maxOf(function (r) { return unitsOf(r.blocks); }),
-                html: function (r, u) { return blocksHtml(r.blocks, u); } });
+                html: function (r, u) { return blocksHtml(t, r.blocks, u); } });
     if (hasOff) cols.push({ label: 'Вне спринта', units: maxOf(function (r) { return r.off.length; }),
                             html: function (r, u, offIdx) { return offHtml(r, u, offIdx); } });
     var total = cols.reduce(function (a, c) { return a + c.units; }, 0);

@@ -146,21 +146,45 @@ def read_doc(path, required=True):
     return doc
 
 
-def attach(teams, doc):
-    """Блок — в поле business команды, только если он написан по этим же данным."""
+# от снимка не зависят: состав команды ([EXT] на «Участниках»), скрытые PO ключи, кто эскалирует
+ROSTER_FIELDS = ('members', 'hide', 'escalation')
+
+
+def read_goals(path):
+    """Кэш целей и состава команд (sprint-goals.json рядом с блоком). Нет или битый — пусто."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    teams = doc.get('teams') if isinstance(doc, dict) else None
+    return teams if isinstance(teams, dict) else {}
+
+
+def attach(teams, doc, goals=None):
+    """Блок — в поле business команды, только если он написан по этим же данным.
+
+    Устаревший блок (observe пересобрал снимок) не даёт текстов, но состав команды, скрытые
+    ключи и эскалацию — даёт; состава нет в блоке — он из кэша целей (goals)."""
     attached, stale = [], []
     for team in teams:
         team.pop('business', None)
         entry = (doc or {}).get('teams', {}).get(team['slug'])
-        if not isinstance(entry, dict):
+        entry = entry if isinstance(entry, dict) else None
+        if entry and entry.get('dataHash') == build_mod.team_digest(team):
+            biz = {k: v for k, v in entry.items() if k != 'dataHash'}
+            attached.append(team['slug'])
+        else:
+            if entry:
+                stale.append(team['slug'])
+            biz = {k: entry[k] for k in ROSTER_FIELDS if entry and entry.get(k)}
+        cached = ((goals or {}).get(team['slug']) or {}).get('members')
+        if not biz.get('members') and cached:
+            biz['members'] = cached
+        if not biz:
             continue
-        if entry.get('dataHash') != build_mod.team_digest(team):
-            stale.append(team['slug'])
-            continue
-        team['business'] = {k: v for k, v in entry.items() if k != 'dataHash'}
         if (doc or {}).get('jiraNative'):
-            team['business']['jiraNative'] = doc['jiraNative']
-        attached.append(team['slug'])
+            biz['jiraNative'] = doc['jiraNative']
+        team['business'] = biz
     return attached, stale
 
 
@@ -178,7 +202,7 @@ def load_snapshot(path):
 def render(cfg, data=None, file=None, output=None):
     teams = load_snapshot(Path(data).resolve() if data else cfg.data)
     path = Path(file).resolve() if file else cfg.business_data
-    attached, stale = attach(teams, read_doc(path, required=False))
+    attached, stale = attach(teams, read_doc(path, required=False), read_goals(path.parent / 'sprint-goals.json'))
     out = build_mod.write_page(teams, TEMPLATE_PATH, Path(output).resolve() if output else cfg.business)
     parts = [f'бизнес-отчёт из снимка: команд {len(teams)}']
     if attached:
