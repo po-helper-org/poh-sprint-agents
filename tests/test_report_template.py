@@ -209,24 +209,29 @@ class BusinessTemplateTest(unittest.TestCase):
         for part in ('function bizBurnChart(', 'function openBurn(', 'data-burn=', "'Без подзадач'", "'С подзадачами'", 'burn-tab'):
             self.assertIn(part, self.html)
         self.assertIn('нужна версия 1.10.0', self.html)
-        self.assertNotIn('controlChart', ops, 'диаграмма управления — на слайде «Сроки» и в его разборе')
+        self.assertIn('controlChart(c, ', ops, 'под производительностью и сгоранием — диаграмма управления')
+        self.assertIn('data-ctl=', ops, 'клик по диаграмме управления — разбор')
+        self.assertNotIn('memberMatrixHtml(t)', ops[:ops.index('function membersSlide(')], 'участники — отдельным слайдом')
         self.assertNotIn('function controlOverview(', self.html)
         build = self.html[self.html.index('function buildDeck('):]
-        self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += cycleSlide(x.t);'))
+        self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += membersSlide(x.t);'))
+        self.assertLess(build.index('html += membersSlide(x.t);'), build.index('html += cycleSlide(x.t);'))
         self.assertLess(build.index('html += cycleSlide(x.t);'), build.index('html += plansSlide('))
 
     def test_ops_member_matrix(self):
-        """Операционный слайд снизу: истории и подзадачи спринта по исполнителю — полосы по статусам,
-        «сделано/всего», застрявшие; шкала «Числа / Доли» и сортировка."""
+        """Слайд «Участники» (после операционного): истории и подзадачи по исполнителю в три столбца —
+        переходящие из прошлого спринта, взятые в текущий, вне спринта; без шкал, сортировок, легенд."""
         for part in ('function memberRows(', 'function memberMatrixHtml(', 'function sprintBlocks(', "label: 'Отладка'",
-                     '<span>В спринте</span>', '<span>Вне спринта</span>', 'sb-subs', 'sb off', 'function memberKpis(',
+                     "'Задачи из прошлого спринта'", "'Текущий спринт'", "'Вне спринта'", 'function prevSprintKeys(', '--mx-cols', 'sb-subs', 'sb off', 'function memberKpis(',
                      'SP план / факт', 'подзадачи план / факт', '[EXT]', 'function openOffboard(', "data-mx-team=",
                      'class="kr2"', 'kr-detail', 'panelStack.classList.toggle(\'wide\'', "id=\"clearAll\"", 'function clearAllComments('):
             self.assertIn(part, self.html)
         for gone in ("'По застрявшим'", "'Доли'", 'Застряли', 'mx-btn', 'mx-legend'):
             self.assertNotIn(gone, self.html, 'без сортировок, шкал, легенды и «Застряли»')
-        ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
-        self.assertIn('memberMatrixHtml(t)', ops)
+        self.assertNotIn("'В спринте'", self.html, 'столбец «В спринте» разделён на «из прошлого» и «текущий»')
+        members = self.html[self.html.index('function membersSlide('):self.html.index('// одно сгорание на слайде')]
+        self.assertIn('memberMatrixHtml(t)', members)
+        self.assertIn(' · участники', members)
 
     def test_cycle_slide(self):
         """«Сроки»: cycle time с полосами спринтов и скользящими средними, время в статусах по спринтам;

@@ -62,9 +62,10 @@ check(deckInfo.slides.filter(s => !/^(OBJ|Без привязки|Направл
       'титул, команда, «Сроки», «Планы» умещаются на экран без прокрутки');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
 const kinds = await p.evaluate(() => [...document.querySelectorAll('#deckSlides > .fslide')].map(s => s.className));
-const isOps = c => c.includes(' ops') && !c.includes(' cycle');
+const isOps = c => c.includes(' ops') && !c.includes(' cycle') && !c.includes(' members');
 check(kinds.filter(isOps).length === TEAMS_N(deckInfo), 'операционный отчёт — один слайд на команду');
-check(kinds.every((c, i) => !isOps(c) || kinds[i + 1].includes(' cycle')), 'сразу после операционного — «Сроки»');
+check(kinds.every((c, i) => !isOps(c) || kinds[i + 1].includes(' members')), 'сразу после операционного — «Участники»');
+check(kinds.every((c, i) => !c.includes(' members') || kinds[i + 1].includes(' cycle')), 'после «Участников» — «Сроки»');
 check(kinds.every((c, i) => !c.includes(' cycle') || kinds[i + 1].includes(' plans')), 'после «Сроков» — «Планы на следующий спринт»');
 // титул и слайд команды: сводка, а не голый текст; ни подписи про агента, ни «эпик · Sprint Goal» в шапках KR
 const heads = await p.evaluate(() => ({
@@ -98,7 +99,7 @@ check(stage.cur === 1 && stage.first, 'на сцене — один слайд, 
 check(Math.abs(stage.w - stage.feedW) < 2 && Math.abs(stage.h - stage.feedH) < 2 && stage.shadow === 'none',
       'слайд — на всю ширину и высоту сцены, без рамки и тени');
 const opsFit = await p.evaluate(() => {
-  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
+  const s = document.querySelector('#deckSlides .fslide.members');
   s.classList.add('cur');
   const over = [...s.querySelectorAll('.mx-row:not(.mx-head) .sbs')].filter(x => {
     const r = x.getBoundingClientRect(), last = x.lastElementChild;
@@ -108,8 +109,8 @@ const opsFit = await p.evaluate(() => {
   s.classList.remove('cur');
   return { over, name };
 });
-check(opsFit.over === 0, 'операционный: блоки задач не вылезают за свой столбец');
-check(opsFit.name < 0.12, 'операционный: колонка имени узкая');
+check(opsFit.over === 0, 'участники: блоки задач не вылезают за свой столбец');
+check(opsFit.name < 0.12, 'участники: колонка имени узкая');
 check(!stage.tocOpen && stage.thumbs === 0, 'постоянной панели миниатюр нет, сайдбар слайдов закрыт');
 await p.click('#deckSideTab');
 await p.waitForTimeout(300);
@@ -139,39 +140,48 @@ const goTo = async (sel) => {
   }, sel);
   await p.waitForTimeout(100);
 };
-await goTo('#deckSlides .fslide.ops');
-check(await p.isVisible('#deckSlides .fslide.ops') &&
+await goTo('#deckSlides .fslide.ops:not(.cycle):not(.members)');
+check(await p.isVisible('#deckSlides .fslide.ops:not(.cycle):not(.members)') &&
       await p.evaluate(() => document.querySelector('#deckTocList a.cur') !== null), 'переход к слайду из списка, текущий отмечен');
 
-// операционный отчёт: без заголовка; крупно производительность и сгорание спринта, участников здесь нет
+// операционный отчёт: без заголовка; крупно производительность и сгорание спринта, под ними — диаграмма управления;
+// участники — следующим слайдом
 const ops = await p.evaluate(() => {
-  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
+  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle):not(.members)');
   return { title: !!s.querySelector('.slide-title'),
-           heads: [...s.querySelectorAll('.ops-h')].map(h => h.textContent),
-           table: !!s.querySelector('table.mtab'), ctl: !!s.querySelector('[data-ctl]'),
+           heads: [...s.querySelectorAll('.ops-h')].map(h => h.firstChild.textContent),
+           table: !!s.querySelector('table.mtab'), ctl: !!s.querySelector('.ops-ctl[data-ctl] svg circle'), mx: !!s.querySelector('.mx'),
            big: (r => r.width / r.height)(s.querySelector('.ops-chart svg').getBoundingClientRect()),
            legends: s.querySelectorAll('.ops-legend').length, small: [...s.querySelectorAll('.ops-h small')].length };
 });
 check(!ops.title, 'у операционного слайда нет заголовка');
-check(ops.heads.join('|') === 'Производительность за 3 спринта|Сгорание спринта', 'два графика: производительность за 3 спринта и одно сгорание');
+check(ops.heads.join('|') === 'Производительность за 3 спринта|Сгорание спринта|Диаграмма управления',
+      'три графика: производительность за 3 спринта, одно сгорание, диаграмма управления');
 check(ops.legends === 0 && ops.small === 0, 'без подписей «без подзадач · день … · клик» и без легенд');
-check(ops.big > 2.2 && !ops.ctl, 'графики вытянуты по ширине; диаграмма управления — на слайде «Сроки»');
-// снизу — участники: «в спринте» (история и под ней её подзадачи) и «вне спринта»; метрики — в сайдбаре участника
+check(ops.big > 2.2 && ops.ctl && !ops.mx, 'графики вытянуты по ширине; диаграмма управления с точками; участников на слайде нет');
+// слайд «Участники»: «из прошлого спринта» и «текущий спринт» (история и под ней её подзадачи), «вне спринта»;
+// метрики — в сайдбаре участника
 const mx = await p.evaluate(() => {
-  const s = document.querySelector('#deckSlides .fslide.ops:not(.cycle)');
-  const blocks = [...s.querySelectorAll('.mx-row:not(.mx-head) .sbs:nth-child(2) .sb')];
+  const s = document.querySelector('#deckSlides .fslide.members');
+  const blocks = [...s.querySelectorAll('.mx-row:not(.mx-head) .sbs:nth-child(2) .sb, .mx-row:not(.mx-head) .sbs:nth-child(3) .sb')];
+  const carried = s.querySelectorAll('.mx-row:not(.mx-head) .sbs:nth-child(2) .sb').length;
   return { rows: [...s.querySelectorAll('.mx-row:not(.mx-head)')].length,
            heads: [...s.querySelectorAll('.mx-head span')].map(x => x.textContent).filter(Boolean).join('|'),
            extra: s.querySelectorAll('.mx-btn, .mx-legend, .mx-stuck, .mx-n').length,
+           tag: s.querySelector('.ops-tag').textContent, carried,
            blocks: blocks.length, withSubs: blocks.filter(b => b.querySelectorAll('.sb-subs i').length).length,
            off: s.querySelectorAll('.sb.off').length,
            sep: (s.querySelector('.mx-sep') || {}).textContent || '', ext: [...s.querySelectorAll('.mx-name')].filter(n => n.textContent.startsWith('[EXT]')).length };
 });
-check(mx.heads === 'В спринте|Вне спринта' && mx.extra === 0, 'два графика: в спринте и вне спринта; столбцов SP, задач и подзадач нет');
+check(/ · участники$/.test(mx.tag), 'отдельный слайд «Команда · участники»');
+check(mx.heads === 'Задачи из прошлого спринта|Текущий спринт|Вне спринта' && mx.extra === 0,
+      'три столбца: из прошлого спринта, текущий спринт, вне спринта; столбцов SP, задач и подзадач нет');
+check(mx.carried > 0, 'история, которая была и в прошлом спринте, — в столбце «из прошлого спринта»');
 check(mx.blocks > 0 && mx.withSubs > 0, 'блок на историю: сверху история, под ней её подзадачи');
 check(mx.off > 0, 'вне спринта — задачи отдельными блоками');
 check(mx.ext > 0 && mx.sep.startsWith('[EXT]'), 'участники вне состава команды — отдельно, с меткой [EXT]');
-await p.click('#deckSlides .fslide.ops:not(.cycle) .mx-name .mname >> nth=0');
+await goTo('#deckSlides .fslide.members');
+await p.click('#deckSlides .fslide.members .mx-name .mname >> nth=0');
 await p.waitForTimeout(300);
 const mk = await p.evaluate(() => [...document.querySelectorAll('#storiesBody .mkpis .ck span')].map(x => x.textContent).join('|'));
 check((await p.textContent('#stackKey')).startsWith('Участник') &&
@@ -179,19 +189,20 @@ check((await p.textContent('#stackKey')).startsWith('Участник') &&
       'клик по имени — сайдбар участника: SP, задачи и подзадачи план/факт/LT, вне спринта — сверху');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
-await p.click('#deckSlides .fslide.ops:not(.cycle) .mx-row:not(.mx-head) .sbs:nth-child(2) .sb >> nth=0');
+await p.click('#deckSlides .fslide.members .mx-row:not(.mx-head) .sbs:nth-child(3) .sb >> nth=0');
 await p.waitForTimeout(300);
 check((await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]).join('|'))) === 'Все|История|Подзадачи',
       'клик по блоку истории — её активность');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
-await p.click('#deckSlides .fslide.ops:not(.cycle) .sb.off >> nth=0');
+await p.click('#deckSlides .fslide.members .sb.off >> nth=0');
 await p.waitForTimeout(300);
 check((await p.textContent('#stackKey')).startsWith('Вне доски') && await p.locator('#storiesBody .es-row').count() > 0,
       'клик по блоку «вне спринта» — сайдбар задач вне спринта с активностью');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
-await p.click('#deckSlides .fslide.ops:not(.cycle) [data-burn]');
+await goTo('#deckSlides .fslide.ops:not(.cycle):not(.members)');
+await p.click('#deckSlides .fslide.ops:not(.cycle):not(.members) [data-burn]');
 await p.waitForTimeout(300);
 const burnSide = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent,
   days: document.querySelectorAll('#storiesBody table.burn-tab tbody tr').length, n: TEAMS[0].burndown.days.length,
@@ -199,6 +210,13 @@ const burnSide = await p.evaluate(() => ({ key: document.getElementById('stackKe
   tabs: [...document.querySelectorAll('.side-tab')].map(t => t.textContent.split(' · ')[0]).join('|') }));
 check(burnSide.key.startsWith('Сгорание спринта') && burnSide.days === burnSide.n && /Закрыто|Не закрыто/.test(burnSide.lists) &&
       burnSide.tabs === 'Без подзадач|С подзадачами', 'клик по сгоранию — из чего построено: по дням и по задачам, с подзадачами и без');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+await p.click('#deckSlides .fslide.ops:not(.cycle):not(.members) .ops-ctl');
+await p.waitForTimeout(300);
+check((await p.textContent('#stackKey')).startsWith('Диаграмма управления') &&
+      (await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]).join('|'))) === 'Все|Истории|Подзадачи',
+      'клик по диаграмме управления на операционном — разбор: «Все / Истории / Подзадачи»');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 check(!ops.table, 'выработки по участникам в бизнес-отчёте нет — она в отчёте PO');
