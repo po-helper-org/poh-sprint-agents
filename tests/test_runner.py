@@ -97,19 +97,18 @@ class RunnerTest(unittest.TestCase):
         proc = self.p.run('check', str(full), '--all')
         self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
         self.assertIn('инварианты     14/14 ✓', proc.stdout)
-        self.assertIn('покрытие экранов 27/27 ✓', proc.stdout)
-        self.assertIn('✓ презентация: «Сроки»: время в статусах', proc.stdout)
+        self.assertIn('покрытие экранов 26/26 ✓', proc.stdout)
+        self.assertIn('✓ презентация: «Участники» (слайд после операционного)', proc.stdout)
 
     def test_check_names_missing_fields(self):
         """check: без необязательной секции экран помечен и назван пропавшим полем; битый — код 1."""
         data = json.loads((support.SKILL / 'examples' / 'example_team_full.json').read_text(encoding='utf-8'))
-        for s in data['output']['sprints']:
-            s.pop('timeInStatus')
+        data['output'].pop('offboard')
         path = self.p.dir / 'team.json'
         path.write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')
         proc = self.p.run('check', str(path))
         self.assertEqual(0, proc.returncode, proc.stdout)
-        self.assertIn('✗ презентация: «Сроки»: время в статусах — нет output.sprints[].timeInStatus', proc.stdout)
+        self.assertIn('◐ презентация: «Участники» (слайд после операционного) — нет output.offboard', proc.stdout)
         del data['burndown']
         path.write_text(json.dumps([data], ensure_ascii=False), encoding='utf-8')
         proc = self.p.run('check', str(path))

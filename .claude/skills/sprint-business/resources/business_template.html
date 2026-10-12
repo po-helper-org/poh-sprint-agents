@@ -112,10 +112,6 @@
   table.rep td.result .res-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; cursor: help; }
   table.rep td.result .res-bar i { display: block; height: 100%; border-right: 1px solid #fff; }
   table.rep td.result .res-bar i:last-child { border-right: 0; }
-  /* «Сроки»: «Заблокировано» кликабельно — разбор */
-  .tis-click { cursor: pointer; border-radius: 6px; }
-  .tis-click:hover { background: #fdf2f2; box-shadow: 0 0 0 6px #fdf2f2; }
-  .tis-h small { text-transform: none; letter-spacing: 0; color: #aaa; }
   /* блокаторы в «Результате» */
   table.rep .blk-badge { display: inline-block; margin-top: 7px; font: inherit; font-size: 11.5px; font-weight: 700; color: #b91c1c;
                          background: #fee2e2; border: 1px solid #fca5a5; border-radius: 999px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
@@ -270,12 +266,6 @@
   .fslide.members .mx-name { font-size: 13.5px; }
   .fslide.members .sb .sb-st { height: 14px; }
   .fslide.members .sb-subs { height: 8px; }
-  /* диаграмма управления — под производительностью и сгоранием, во всю ширину */
-  .ops-ctl { margin-top: 12px; border-top: 1px solid #e5e5e5; padding-top: 10px; cursor: pointer; border-radius: 6px; }
-  .ops-ctl:hover { background: #f7f7f7; }
-  .fslide.ops .ops-ctl .ops-chart .chart { width: 100%; max-height: 320px; }
-  .ops-ctl .ctl-n { font-weight: 400; color: #888; margin-left: 12px; }
-  .ops-ctl .ctl-n b { color: #222; font-weight: 700; }
 
   /* имя — постоянная узкая колонка, столбцы делят остальное по самому длинному ряду (--mx-cols) */
   .mx-row { display: grid; grid-template-columns: var(--mx-name, 124px) var(--mx-cols, minmax(0, 1fr)); column-gap: 2%; align-items: center; min-height: 26px; }
@@ -301,20 +291,13 @@
 
   .mx-none { color: #bbb; text-align: right; }
 
-  /* «Сроки»: cycle time с полосами спринтов и время в статусах */
-  .cyc { cursor: pointer; border-radius: 6px; }
+  /* операционный: cycle time с полосами спринтов, клик — диаграмма управления */
+  .cyc { cursor: pointer; border-radius: 6px; margin-top: 12px; border-top: 1px solid #e5e5e5; padding-top: 10px; }
   .cyc:hover { box-shadow: 0 0 0 6px #f7f7f7; background: #f7f7f7; }
   .cyc .chart { width: 100%; height: auto; display: block; }
   .ops-legend .l-pt { width: 8px; height: 8px; border-radius: 50%; opacity: .6; }
   .ops-legend .l-line { width: 18px; height: 0; border-radius: 0; }
   .ops-legend .l-band { width: 18px; height: 9px; background: rgba(37, 99, 235, .12); border: 1px solid rgba(37, 99, 235, .3); }
-  .tis-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px; margin-top: 18px; }
-  .tis { border-top: 1px solid #e5e5e5; padding-top: 8px; }
-  .tis-h { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #777; }
-  .tis-big { font-size: 34px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; margin-top: 2px; }
-  .tis-big small { font-size: 15px; font-weight: 400; color: #888; }
-  .tis .chart { width: 100%; height: auto; display: block; }
-  .tis-none { font-size: 13px; color: #999; margin-top: 8px; }
   .ckpis { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 4px; }
   .ck { padding: 0 8px; border-left: 1px solid var(--line); display: flex; flex-direction: column; }
   .ck:first-child { border-left: 0; }
@@ -327,7 +310,7 @@
   table.ctab th, table.ctab td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: right; }
   table.ctab th:first-child, table.ctab td:first-child { text-align: left; }
   table.ctab th { font-size: 11.5px; color: var(--muted); font-weight: 400; }
-  @media (max-width: 700px) { .tis-row { grid-template-columns: 1fr; gap: 12px; } .ckpis { grid-template-columns: repeat(4, 1fr); row-gap: 8px; } }
+  @media (max-width: 700px) { .ckpis { grid-template-columns: repeat(4, 1fr); row-gap: 8px; } }
   .ops-legend .l-ideal { width: 16px; height: 0; border-top: 2px solid #9ca3af; border-radius: 0; }
   .ops-legend .l-fact { width: 16px; height: 0; border-top: 2px solid #dc2626; border-radius: 0; }
   .ops-legend .l-wknd { background: #eee; }
@@ -935,7 +918,7 @@
   ];
   var CYCLE_ROLL = 5;
 
-  // Cycle time закрытых за 3 спринта задач: полосы спринтов, точки двух потоков и
+  // Cycle time закрытых за 3 спринта задач (низ операционного): полосы спринтов, точки двух потоков и
   // скользящее среднее по последним пяти задачам потока, значение — подписью в конце линии.
   function cycleChart(t, m, box) {
     var from = opsFrom(t, m);
@@ -1024,121 +1007,6 @@
     }).join('') + '<span><i class="l-band"></i>коридор ± σ</span>' +
       empty.map(function (st) { return '<span class="l-none">' + st.label + ': за 3 спринта закрытых нет</span>'; }).join('') + '</div>';
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' + legend;
-  }
-
-  // среднее время в статусе по спринтам: крупно текущее значение, столбики по спринтам —
-  // текущий насыщенный, прошлые бледные.
-  var TIS = [
-    { id: 'blocked', label: 'Заблокировано', color: 'var(--c-blocked)' },
-    { id: 'review', label: 'Ревью', color: 'var(--c-review)' },
-    { id: 'testing', label: 'Отладка', color: 'var(--c-testing)' }
-  ];
-
-  function statusTimePanel(m, st) {
-    var vals = m.sprints.map(function (s) { var v = (s.timeInStatus || {})[st.id]; return typeof v === 'number' ? v : null; });
-    var have = vals.map(function (v, i) { return v === null ? -1 : i; }).filter(function (i) { return i >= 0; });
-    if (!have.length) return '<div class="tis"><div class="tis-h">' + st.label + '</div><div class="tis-none">нет данных</div></div>';
-    var cur = vals[have[have.length - 1]];
-    var W = 340, H = 120, padB = 18, padT = 16, max = Math.max.apply(null, have.map(function (i) { return vals[i]; })) || 1;
-    var n = m.sprints.length, bw = Math.min(64, (W - 20) / n - 14);
-    var bars = m.sprints.map(function (s, i) {
-      var x = 10 + (W - 20) * (i + .5) / n - bw / 2, v = vals[i];
-      var h = v === null ? 0 : (H - padT - padB) * v / max, y = H - padB - h;
-      var isCur = i === have[have.length - 1];
-      return (v === null ? '' : '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
-          '" rx="2" fill="' + st.color + '" opacity="' + (isCur ? 1 : .3) + '"/><text x="' + (x + bw / 2).toFixed(1) + '" y="' + (y - 4).toFixed(1) +
-          '" font-size="11" text-anchor="middle" fill="' + (isCur ? '#111' : '#888') + '">' + d1(v) + '</text>') +
-        '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (H - 4) + '" font-size="11" text-anchor="middle" fill="' + (isCur ? '#111' : '#999') + '"' +
-        (isCur ? ' font-weight="700"' : '') + '>' + esc(sprintShort(s.name)) + '</text>';
-    }).join('');
-    return '<div class="tis' + (st.id === 'blocked' ? ' tis-click" data-tis="blocked' : '') + '"' + (st.id === 'blocked' ? ' title="Кто, почему и с какого числа был заблокирован"' : '') +
-      '><div class="tis-h">' + st.label + (st.id === 'blocked' ? ' <small>· клик — разбор</small>' : '') + '</div><div class="tis-big" style="color:' + st.color + '">' + d1(cur) +
-      ' <small>дн.</small></div><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + bars + '</svg></div>';
-  }
-
-  function cycleSlide(t) {
-    var m = outputModel(t);
-    var chart = '<div class="cyc" data-ctl="' + esc(t.slug) + '" title="Подробный разбор: диаграмма управления">' +
-      cycleChart(t, m, { W: 1184, H: 360 }) + '</div>';
-    var tis = m && m.sprints.some(function (s) { return s.timeInStatus; })
-      ? '<div class="tis-row" data-team="' + esc(t.slug) + '">' + TIS.map(function (st) { return statusTimePanel(m, st); }).join('') + '</div>'
-      : '<div class="ops-empty">Сборщик не отдал время в статусах (нужна версия 1.8.0).</div>';
-    return slide('ops cycle', '<div class="ops-tag">' + esc(t.team) + ' · сроки</div>' + chart + tis,
-      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Сроки · ' + t.team }));
-  }
-
-  // Разбор «Заблокировано»: кто и когда стоял в блоке за спринты отчёта, сколько,
-  // почему — по смене статусов и комментариям задач участников (output.sprints[].items)
-  function blockedEpisodes(t) {
-    var m = outputModel(t), out = [];
-    // комментарии задачи за всё время — из хронологии историй спринта: причина блока часто
-    // записана до начала спринта, а items.comments — только в его границах
-    var talk = {};
-    (t.epics || []).forEach(function (e) {
-      (e.stories || []).forEach(function (st) {
-        (st.events || []).forEach(function (ev) {
-          if (ev.kind === 'comment' && ev.body) (talk[ev.key] = talk[ev.key] || []).push({ at: ev.at, by: ev.by, body: ev.body });
-        });
-      });
-    });
-    var at = (t._meta && t._meta.collectedAt) || new Date().toISOString();
-    withTeam(t, function () {
-      (m ? m.sprints : []).forEach(function (sp) {
-        sp.members.forEach(function (mem) {
-          (mem.items || []).forEach(function (it) {
-            var hist = (it.history || []).slice().sort(function (a, b) { return a.at < b.at ? -1 : 1; });
-            var open = null, list = [];
-            hist.forEach(function (h) {
-              var blk = classifyBucket(h.to || '', '') === 'blocked';
-              if (blk && !open) open = { from: h.at, status: h.to, by: h.by };
-              else if (!blk && open) { open.to = h.at; open.next = h.to; list.push(open); open = null; }
-            });
-            if (open) list.push(open);
-            if (!list.length && it.bucket === 'blocked') list.push({ from: null, status: it.status });
-            list.forEach(function (iv) {
-              var end = iv.to || (sp.current ? at : (sp.end || at));
-              var days = iv.from ? Math.max(0, (parseTs(end).getTime() - parseTs(iv.from).getTime()) / 86400000) : null;
-              out.push({ sprint: sp, who: mem.name, it: it, iv: iv, days: days, now: !iv.to && sp.current, talk: talk[it.key] || [] });
-            });
-          });
-        });
-      });
-    });
-    return out.sort(function (a, b) { return (b.sprint.current - a.sprint.current) || (b.now - a.now) || ((b.days || 0) - (a.days || 0)); });
-  }
-
-  function openBlocked(t) { showPanel(function () { renderBlocked(t); }); }
-  function renderBlocked(t) {
-    if (team.slug !== t.slug) switchTeam(t.slug);
-    var eps = blockedEpisodes(t);
-    stackTitle.parentNode.removeAttribute('data-ctx');
-    stackKey.textContent = 'Заблокировано · ' + t.team;
-    stackTitle.textContent = eps.filter(function (x) { return x.now; }).length + ' в блоке сейчас · ' + eps.length + ' эпизодов за 3 спринта';
-    scopeBtn.hidden = true; scopeEpic = null;
-    storiesLabel.textContent = 'По смене статусов и комментариям: кто, с какого числа, почему, что нужно для разблокировки';
-    var bySprint = [];
-    eps.forEach(function (x) {
-      var g = bySprint.find(function (y) { return y.sp === x.sprint; });
-      if (!g) bySprint.push(g = { sp: x.sprint, list: [] });
-      g.list.push(x);
-    });
-    storiesBody.innerHTML = eps.length ? bySprint.map(function (g) {
-      return '<div class="pane-label">' + esc(g.sp.name) + (g.sp.current ? ' · идёт' : '') + ' · ' + g.list.length + '</div>' + g.list.map(function (x) {
-        var all = (x.it.comments || []).concat(x.talk.filter(function (c) {
-          return !(x.it.comments || []).some(function (o) { return o.at === c.at && o.body === c.body; });
-        })).sort(function (a, b) { return a.at < b.at ? -1 : 1; });
-        var com = all.filter(function (c) { return !x.iv.from || c.at >= x.iv.from.slice(0, 10); });
-        com = (com.length ? com : all).slice(-3);
-        return '<div class="bl-card' + (x.now ? ' now' : '') + '"><div class="es-top"><span class="es-title">' + esc(x.it.title) + '</span>' +
-          '<span class="es-pct">' + (x.days !== null ? fmtNum(Math.round(x.days * 10) / 10) + ' дн.' : '') + '</span></div>' +
-          '<div class="es-meta">' + keyLink(x.it.key) + ' · ' + esc(shortName(x.who)) + ' · «' + esc(x.iv.status || x.it.status) + '»' +
-            (x.iv.from ? ' с ' + ddmm(x.iv.from) : '') + (x.iv.to ? ' по ' + ddmm(x.iv.to) + (x.iv.next ? ' → ' + esc(x.iv.next) : '') : x.now ? ' · <b>в блоке сейчас</b>' : '') +
-            (x.iv.by ? ' · перевёл ' + esc(shortName(x.iv.by)) : '') + '</div>' +
-          (com.length ? '<div class="bl-com">' + com.map(function (c) { return '<div><span>' + ddmm(c.at) + (c.by ? ' · ' + esc(shortName(c.by)) : '') + '</span> ' + esc(clip(c.body, 280)) + '</div>'; }).join('') + '</div>'
-                      : '<div class="bl-com empty">Комментариев о причине нет — спросить исполнителя.</div>') + '</div>';
-      }).join('');
-    }).join('') : '<div class="sidebar-empty">За 3 спринта задачи в блок не переходили.</div>';
-    openPanel();
   }
 
   // начало окна «за 3 спринта»: старт первого из трёх спринтов выработки, иначе −6 недель
@@ -1448,20 +1316,17 @@
     var m = outputModel(t);
     var box = { W: 560, H: 200 };
     // сверху — производительность за 3 спринта и одно сгорание (клик — из чего построено),
-    // снизу — диаграмма управления (клик — разбор); без подписей и легенд: расшифровка —
-    // по наведению и в сайдбарах. Участники — следующим слайдом.
+    // снизу — cycle time закрытых за 3 спринта (клик — диаграмма управления); у верхних графиков
+    // без подписей и легенд: расшифровка — по наведению и в сайдбарах. Участники — следующим слайдом.
     var perf = '<div><div class="ops-h">Производительность за 3 спринта</div>' +
       '<div class="ops-chart">' + (m ? teamOutputChart(m, box) : withTeam(t, function () { return withChartBox(box, velocityChart); })) + '</div></div>';
     var part = burnPart(t);
     var burn = '<div class="burn-click" data-burn="' + esc(t.slug) + '" title="Из чего построено сгорание: по дням и по задачам' +
       (part === 'story' ? ' (без подзадач)' : '') + '">' +
       '<div class="ops-h">Сгорание спринта</div><div class="ops-chart">' + bizBurnChart(t, part, box) + '</div></div>';
-    var c = controlWindow(controlAll(t), opsFrom(t, m));
-    var ctl = '<div class="ops-ctl" data-ctl="' + esc(t.slug) + '" title="Разбор: показатели, выбросы, зона риска, по спринтам">' +
-      '<div class="ops-h">Диаграмма управления' + (c.points.length ? '<span class="ctl-n">медиана <b>' + fmt(c.median) + '</b> дн. · порог выброса <b>' +
-        fmt(Math.round(c.limit * 10) / 10) + '</b> дн. · выбросов <b>' + c.outliers + '</b> из ' + c.points.length + ' · в зоне риска <b>' + c.risks.length + '</b></span>' : '') + '</div>' +
-      '<div class="ops-chart">' + withTeam(t, function () { return withChartBox({ W: 1184, H: 310 }, function () { return controlChart(c, 'задач', 'story'); }); }) + '</div></div>';
-    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops2b">' + perf + burn + '</div>' + ctl,
+    var cyc = '<div class="cyc" data-ctl="' + esc(t.slug) + '" title="Подробный разбор: диаграмма управления">' +
+      cycleChart(t, m, { W: 1184, H: 300 }) + '</div>';
+    return slide('ops', '<div class="ops-tag">' + esc(t.team) + ' · операционный отчёт</div><div class="ops2b">' + perf + burn + '</div>' + cyc,
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Операционный отчёт · ' + t.team }));
   }
 
@@ -1683,7 +1548,6 @@
       });
       html += opsSlide(x.t);
       html += membersSlide(x.t);
-      html += cycleSlide(x.t);
       html += plansSlide(x.t, x.streams);
     });
     // итоги — на слайде команды (блокеры и «не успели»); изменения и демо — в отчёте PO
@@ -2086,8 +1950,6 @@
     if (off && OFF_REFS[+off.dataset.off] && OFF_REFS[+off.dataset.off].items.length) { openOffboard(OFF_REFS[+off.dataset.off]); return; }
     var burn = e.target.closest('[data-burn]');
     if (burn) { openBurn(byTeam(burn.dataset.burn)); return; }
-    var tis = e.target.closest('[data-tis]');
-    if (tis) { openBlocked(byTeam(tis.closest('[data-team]').dataset.team)); return; }
     var pcol = e.target.closest('[data-plancol]');
     if (pcol) { openPlans(byTeam(pcol.dataset.team), pcol.dataset.plancol); return; }
     var ctl = e.target.closest('[data-ctl]');
