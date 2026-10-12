@@ -202,39 +202,46 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertNotIn("'Активность за '", self.html)
 
     def test_ops_three_charts(self):
-        """Операционный слайд: крупно производительность и сгорание спринта; следом слайд «Сроки»."""
+        """Операционный слайд: крупно производительность и сгорание спринта, снизу — cycle time; «Сроков» нет."""
         ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
         self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index('bizBurnChart(t, part, box)'))
         self.assertEqual(1, ops.count('bizBurnChart(t, part, box)'), 'сгорание на слайде одно; второй вариант — в расшифровке')
         for part in ('function bizBurnChart(', 'function openBurn(', 'data-burn=', "'Без подзадач'", "'С подзадачами'", 'burn-tab'):
             self.assertIn(part, self.html)
         self.assertIn('нужна версия 1.10.0', self.html)
-        self.assertNotIn('controlChart', ops, 'диаграмма управления — на слайде «Сроки» и в его разборе')
+        self.assertIn('cycleChart(t, m, ', ops, 'под производительностью и сгоранием — cycle time за 3 спринта')
+        self.assertNotIn('controlChart', ops, 'классическая диаграмма управления — в разборе по клику')
+        self.assertIn('data-ctl=', ops, 'клик по cycle time — разбор')
+        self.assertNotIn('memberMatrixHtml(t)', ops[:ops.index('function membersSlide(')], 'участники — отдельным слайдом')
         self.assertNotIn('function controlOverview(', self.html)
         build = self.html[self.html.index('function buildDeck('):]
-        self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += cycleSlide(x.t);'))
-        self.assertLess(build.index('html += cycleSlide(x.t);'), build.index('html += plansSlide('))
+        self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += membersSlide(x.t);'))
+        self.assertLess(build.index('html += membersSlide(x.t);'), build.index('html += plansSlide('))
+        self.assertNotIn('cycleSlide', self.html, 'слайда «Сроки» нет: cycle time — на операционном')
 
     def test_ops_member_matrix(self):
-        """Операционный слайд снизу: истории и подзадачи спринта по исполнителю — полосы по статусам,
-        «сделано/всего», застрявшие; шкала «Числа / Доли» и сортировка."""
+        """Слайд «Участники» (после операционного): истории и подзадачи по исполнителю в три столбца —
+        переходящие из прошлого спринта, взятые в текущий, вне спринта; без шкал, сортировок, легенд."""
         for part in ('function memberRows(', 'function memberMatrixHtml(', 'function sprintBlocks(', "label: 'Отладка'",
-                     '<span>В спринте</span>', '<span>Вне спринта</span>', 'sb-subs', 'sb off', 'function memberKpis(',
+                     "'Задачи из прошлого спринта'", "'Текущий спринт'", "'Вне спринта'", 'function prevSprintKeys(', '--mx-cols', 'sb-subs', 'sb off', 'function memberKpis(',
                      'SP план / факт', 'подзадачи план / факт', '[EXT]', 'function openOffboard(', "data-mx-team=",
                      'class="kr2"', 'kr-detail', 'panelStack.classList.toggle(\'wide\'', "id=\"clearAll\"", 'function clearAllComments('):
             self.assertIn(part, self.html)
         for gone in ("'По застрявшим'", "'Доли'", 'Застряли', 'mx-btn', 'mx-legend'):
             self.assertNotIn(gone, self.html, 'без сортировок, шкал, легенды и «Застряли»')
-        ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
-        self.assertIn('memberMatrixHtml(t)', ops)
+        self.assertNotIn("'В спринте'", self.html, 'столбец «В спринте» разделён на «из прошлого» и «текущий»')
+        members = self.html[self.html.index('function membersSlide('):self.html.index('// одно сгорание на слайде')]
+        self.assertIn('memberMatrixHtml(t)', members)
+        self.assertIn(' · участники', members)
 
-    def test_cycle_slide(self):
-        """«Сроки»: cycle time с полосами спринтов и скользящими средними, время в статусах по спринтам;
-        клик по графику — разбор в классической диаграмме управления."""
-        for part in ('function cycleSlide(', 'function cycleChart(', 'function smoothPath(', 'CYCLE_ROLL = 5', 'cyc-band', 'коридор ± σ',
-                     "label: 'Заблокировано'", "label: 'Ревью'", "label: 'Отладка'", 'timeInStatus',
+    def test_cycle_chart(self):
+        """Низ операционного: cycle time с полосами спринтов и скользящими средними; клик по графику —
+        разбор в классической диаграмме управления. Времени в статусах и разбора «Заблокировано» нет."""
+        for part in ('function cycleChart(', 'function smoothPath(', 'CYCLE_ROLL = 5', 'cyc-band', 'коридор ± σ',
                      'data-ctl=', 'function openControl(', 'controlWindow(', 'По спринтам'):
             self.assertIn(part, self.html)
+        for gone in ('function statusTimePanel(', 'function openBlocked(', 'data-tis', 'tis-row'):
+            self.assertNotIn(gone, self.html)
         for gone in ('Cycle time закрытых задач', 'Среднее время в статусе по спринтам', 'без изменений к ', "'хуже'", 'tis-d'):
             self.assertNotIn(gone, self.html, 'без заголовков блоков и без оценок «хуже / лучше»')
 

@@ -253,6 +253,15 @@ def demo_output(slug, epics, sprint_names):
                         'timeInStatus': {'blocked': round(r.uniform(0.8, 4.5), 1), 'progress': round(r.uniform(2, 5), 1),
                                          'review': round(r.uniform(0.6, 2.5), 1), 'testing': round(r.uniform(0.8, 3), 1)}})
     lead = {w: {'median': round(statistics.median(v), 1), 'count': len(v)} for w, v in leads.items() if v}
+    # переходящие: незакрытая в прошлом спринте задача участника — история текущего (тот же ключ).
+    # Меняются только ключ и название — статусы и SP прошлого спринта, прежние демо-числа на месте
+    if n > 1:
+        rc = random.Random('carry:' + slug)
+        prev = {m['name']: [it for it in m['items'] if it['bucket'] != 'done'] for m in sprints[-2]['members']}
+        for st in rc.sample(stories, len(stories)):
+            free = prev.get(st.get('assignee') or 'Не назначен') or []
+            if free and bucket(st['status'], st['category']) != 'done':
+                free.pop(0).update(key=st['key'], title=st['title'])
     # сборщик 1.10.0: тип и lead time задачи, подзадачи участника, задачи вне доски —
     # свой генератор, чтобы прежние демо-числа не сдвинулись
     r2 = random.Random('output-1.10:' + slug)
