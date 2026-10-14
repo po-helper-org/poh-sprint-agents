@@ -117,6 +117,8 @@
   table.rep td.init { font-weight: 700; cursor: pointer; }
   table.rep td.init:hover .ini-bar { box-shadow: 0 0 0 1px #111; }
   table.rep td.init .ini-pct { border-bottom: 1px dotted #999; }
+  table.rep td.init .ini-delta { margin-left: 4px; font-size: 12px; color: #15803d; cursor: help; }
+  table.rep td.init .ini-delta.zero { color: #888; font-weight: 400; }
   table.rep td.init .res-sub { font-size: 11.5px; font-weight: 400; color: #555; margin-top: 3px; }
   table.rep td.init .ini-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; }
   table.rep td.init .ini-bar i { display: block; height: 100%; border-right: 1px solid #fff; }
@@ -708,6 +710,8 @@
   // по четырём стадиям (QA = тест + ревью), заблокированные — красным рядом с «в работе».
   // Срок — epicDue из JIRA; прогноз — та же «Расчётная дата», что в сайдбаре «Весь эпик»
   // (epicBurn на той же основе), показывается, только если она позже срока или срока нет.
+  // «(+n%)» — вклад спринта: задачи эпика, закрытые с начала спринта (doneAt), от всего объёма;
+  // закрытые без даты не считаются — неизвестно, в каком спринте их закрыли.
   var INI_SEGS = [
     { id: 'todo', of: ['open'], color: 'var(--c-open)', label: 'не начато' },
     { id: 'progress', of: ['progress'], color: 'var(--c-progress)', label: 'в работе' },
@@ -718,18 +722,21 @@
   function initiative(t, e) {
     var scope = e.epicKey && e.scope;
     if (!scope || !scope.length) return null;
-    var n = {}, sp = { done: 0, all: 0 };
+    var n = {}, sp = { done: 0, all: 0 }, inSprint = 0;
+    var start = ((t.burndown || {}).start || '').slice(0, 10);
     INI_SEGS.forEach(function (g) { n[g.id] = 0; });
     scope.forEach(function (it) {
       var b = classifyBucket(it.status, it.category);
       n[INI_SEGS.filter(function (g) { return g.of.indexOf(b) !== -1; })[0].id]++;
       if (it.sp) { sp.all += it.sp; if (b === 'done') sp.done += it.sp; }
+      if (start && b === 'done' && it.doneAt && it.doneAt.slice(0, 10) >= start) inSprint++;
     });
     var burn = epicBurn(t, e, burnDefault(e));
     var due = e.epicDue || null, fc = burn && burn.remaining ? burn.forecast : null;
     var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
     // срок прошёл, а эпик не закрыт — просрочен, даже когда темпа нет и прогноз не построить
     return { n: n, total: scope.length, pct: Math.round(100 * n.done / scope.length), sp: sp,
+             inSprint: start ? inSprint : null, delta: start ? Math.round(100 * inSprint / scope.length) : null,
              due: due, forecast: fc && (!due || fc > due) ? fc : null, late: !!(fc && due && fc > due),
              overdue: !!(due && due < today && n.done < scope.length) };
   }
@@ -914,6 +921,8 @@
     var ddmmOf = function (iso) { return iso.slice(8, 10) + '.' + iso.slice(5, 7); };
     return '<td class="init" data-init="' + id + '" title="Весь эпик: сгорание, сроки, что осталось">' +
       '<span class="ini-pct" title="закрытые задачи эпика: ' + g.n.done + ' из ' + g.total + '">' + g.pct + '%</span>' +
+      (g.delta !== null ? '<span class="ini-delta' + (g.inSprint ? '' : ' zero') + '" title="вклад спринта: в этом спринте закрыто ' +
+        g.inSprint + ' ' + plural(g.inSprint, 'задача', 'задачи', 'задач') + ' эпика из ' + g.total + '">(+' + g.delta + '%)</span>' : '') +
       '<div class="res-sub">сделано ' + g.n.done + ' из ' + g.total + '</div>' +
       '<div class="ini-bar" title="' + esc(tip) + '">' + bar + '</div>' +
       '<div class="ini-due' + (g.overdue ? ' late' : '') + '" title="' + (g.due ? 'Целевая дата эпика в JIRA' : 'Целевая дата эпика в JIRA не задана') + '">' +

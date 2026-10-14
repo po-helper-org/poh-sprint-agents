@@ -398,6 +398,9 @@ const ini = await p.evaluate((SEGS) => {
              tip: bar ? bar.title : '', due: (c.querySelector('.ini-due') || {}).textContent || '',
              fc: (c.querySelector('.ini-fc') || {}).textContent || '', late: !!c.querySelector('.ini-fc.late'),
              overdue: !!c.querySelector('.ini-due.late'), today: (team._meta.collectedAt || '').slice(0, 10),
+             delta: (c.querySelector('.ini-delta') || {}).textContent || '', deltaTip: (c.querySelector('.ini-delta') || {}).title || '',
+             inSprint: e && e.scope ? e.scope.filter(it => classifyBucket(it.status, it.category) === 'done' && it.doneAt &&
+               it.doneAt.slice(0, 10) >= team.burndown.start.slice(0, 10)).length : 0,
              scope: e && e.scope ? e.scope.length : null, epicDue: e ? e.epicDue || null : null,
              done: e && e.scope ? e.scope.filter(it => classifyBucket(it.status, it.category) === 'done').length : 0 };
   });
@@ -425,6 +428,8 @@ const overdue = await p.evaluate(() => {
 check(overdue.ok && /class="ini-due late"[^>]*>срок 05\.01 · просрочен</.test(overdue.cell) &&
       withEpic.every(c => !c.overdue || c.due.endsWith(' · просрочен')),
       'срок прошёл, а эпик не закрыт — «срок дд.мм · просрочен» красным, даже без прогноза');
+check(withEpic.every(c => c.delta === '(+' + Math.round(100 * c.inSprint / c.scope) + '%)' && c.deltaTip.includes('в этом спринте')) &&
+      withEpic.some(c => c.inSprint > 0), 'рядом с процентом — «(+n%)»: вклад спринта = задачи эпика, закрытые с начала спринта, от всего объёма');
 check(ini.cells.filter(c => !c.key).every(c => c.text.trim() === '—'), '«Вне эпиков» — прочерк вместо прогресса инициативы');
 const lateCell = withEpic.find(c => c.late) || withEpic.find(c => c.epicDue) || withEpic[0];
 await goTo('#deckSlides tr.erow[data-key="' + lateCell.key + '"]');

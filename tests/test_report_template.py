@@ -155,7 +155,7 @@ class BusinessTemplateTest(unittest.TestCase):
                      'function openEpic(', 'function openStory(', "'Без привязки к OKR'", "'Направления спринта'",
                      "NO_EPIC = 'no-epic'", '@page { size: 1280px 720px',
                      '<th>Направление</th><th>Итог спринта</th><th>Результат спринта</th><th>Прогресс инициативы</th>',
-                     'function initiative(', 'function initCell(', "openEpic(deckRefs[ini.dataset.init], 'scope')", 'stat-green', 'stat-yellow', 'stat-red',
+                     'function initiative(', 'function initCell(', 'ini-delta', "openEpic(deckRefs[ini.dataset.init], 'scope')", 'stat-green', 'stat-yellow', 'stat-red',
                      'ROWS_PER_SLIDE = 6', 'заблокировано ', 'не закрыто '):
             self.assertIn(part, self.html)
         for gone in ('function krHeader(', 'function storyRow(', 'function openKr(', 'function changesSlide(',
