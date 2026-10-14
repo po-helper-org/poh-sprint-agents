@@ -35,6 +35,9 @@
     epic_scope_subtasks true            даты подзадач объёма — для сгорания эпика по подзадачам
     sp_field         "auto"             поле Story Points или customfield_XXXXX
     sp_names         ["story points", "story point estimate", …]  по каким именам искать поле
+    epic_due_field   "auto"             целевая дата эпика: «Target end» (Advanced Roadmaps), нет — duedate;
+                                        или customfield_XXXXX / duedate — только это поле
+    epic_due_names   ["target end", "целевая дата окончания"]  по каким именам искать поле
 
 Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
 """
@@ -53,7 +56,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.10.0'
+VERSION = '1.11.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -416,6 +419,17 @@ class Collector:
         self.warn('поле Story Points не найдено — выработка участников в задачах. Задайте params.sp_field.')
         return None
 
+    def epic_due_fields(self):
+        """TEAM RULE: где команда держит целевую дату эпика — по порядку, первое заполненное.
+        Чаще всего это «Target end» (Advanced Roadmaps), а не «Срок исполнения» (duedate)."""
+        explicit = self.params.get('epic_due_field', 'auto')
+        if explicit and explicit != 'auto':
+            return [explicit]
+        names = [n.lower() for n in (self.params.get('epic_due_names')
+                                     or ('target end', 'целевая дата окончания'))]
+        found = [f['id'] for f in self.jira.api('/rest/api/2/field') if f['name'].strip().lower() in names]
+        return found[:1] + ['duedate']
+
     # ---------------------------------------------------------- сбор
 
     def collect(self):
@@ -423,6 +437,7 @@ class Collector:
         self.cats = self.status_categories()
         epic_field = self.epic_link_field()
         self.sp_id = self.sp_field()
+        self.due_ids = self.epic_due_fields()
 
         board_name = self.board_name(board_id)
 
@@ -525,15 +540,18 @@ class Collector:
                             if epic_field and st['fields'].get(epic_field)})
         # пачками: длина JQL и maxResults не резиновые, а эпиков у команды бывает много
         chunk = int(self.params.get('epic_batch', 50))
+        due_ids = getattr(self, 'due_ids', None) or ['duedate']
         for start in range(0, len(epic_keys), chunk):
             batch = epic_keys[start:start + chunk]
             jql = 'key in (' + ','.join(batch) + ')'
-            found = self.jira.api('/rest/api/2/search', jql=jql, fields='summary,priority,duedate',
+            found = self.jira.api('/rest/api/2/search', jql=jql, fields=','.join(['summary', 'priority'] + due_ids),
                                   maxResults=len(batch))['issues']
             epic_cache.update({i['key']: i['fields']['summary'] for i in found})
             epic_prio.update({i['key']: priority_name(i['fields']) for i in found})
-            # плановая дата закрытия эпика — для графика сгорания на KR
-            epic_due.update({i['key']: (i['fields'].get('duedate') or None) for i in found})
+            # целевая дата закрытия эпика — для сгорания на KR и «Прогресса инициативы»; дата-время
+            # Advanced Roadmaps («2026-10-18T00:00:00.000+0300») — до дня
+            epic_due.update({i['key']: next((str(i['fields'][f])[:10] for f in due_ids if i['fields'].get(f)), None)
+                             for i in found})
         missing = [k for k in epic_keys if k not in epic_cache]
         if missing:
             self.warn(f'{len(missing)} эпиков не отдались по ключу (нет прав или удалены): '

@@ -46,7 +46,7 @@ GET /rest/agile/1.0/sprint/{id}/issue?fields=key,summary,issuetype,created,creat
 
 ### `epics[]`, `stories[]`, `subtasks[]` → `build_epics`
 - История — задача, чей `issuetype.name` входит в `params.story_types`. Задачи и баги в таблицу эпиков не идут, но идут в метрики и графики.
-- Ключ эпика — из поля связи в полях истории. Названия, приоритеты и срок эпиков — **одним** поиском на пачку (`params.epic_batch`, 50): `GET /rest/api/2/search?jql=key in (A-1,A-2,…)&fields=summary,priority,duedate`. `duedate` → `epicDue`. Эпик не отдался (нет прав, удалён) — `epicTitle` = ключ и предупреждение, не `null`.
+- Ключ эпика — из поля связи в полях истории. Названия, приоритеты и срок эпиков — **одним** поиском на пачку (`params.epic_batch`, 50): `GET /rest/api/2/search?jql=key in (A-1,A-2,…)&fields=summary,priority,<Target end>,duedate`. `epicDue` — первое заполненное: «Target end» (Advanced Roadmaps, поле ищется по имени — `params.epic_due_names`, обычно `customfield_1xxxx`), затем `duedate`, до дня; `params.epic_due_field` — только указанное поле. Эпик не отдался (нет прав, удалён) — `epicTitle` = ключ и предупреждение, не `null`.
 - Истории без эпика — в один псевдо-эпик `rowId: "no-epic"`, `epicKey: null`, `epicTitle: "Без эпика"`. Не выбрасывать.
 - `status` — `status.name` как есть; `category` — категория по id статуса из справочника.
 - `statusChanged` — самый поздний `histories[].created` среди записей с `field == "status"`; смен не было — `fields.created`. Не `fields.updated`: он двигается от любой правки.

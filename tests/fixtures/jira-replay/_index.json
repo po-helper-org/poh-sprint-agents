@@ -4,7 +4,7 @@
  "2368333650ef484f": "/rest/agile/1.0/board/101?",
  "2c2f43611d5c06a3": "/rest/agile/1.0/sprint/5002/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101%2Ccustomfield_10106&maxResults=200&startAt=0",
  "592da7df21f64d94": "/rest/agile/1.0/sprint/5001/issue?expand=changelog&fields=key%2Csummary%2Cstatus%2Cissuetype%2Ccreated%2Ccreator%2Cassignee%2Csubtasks%2Cpriority%2Ccustomfield_10101%2Ccustomfield_10106&maxResults=200&startAt=0",
- "5aed2f342df7cc82": "/rest/api/2/search?fields=summary%2Cpriority%2Cduedate&jql=key+in+%28INIT-900%2CINIT-901%2CINIT-902%29&maxResults=3",
+ "64c95b1d2d0bc17b": "/rest/api/2/search?fields=summary%2Cpriority%2Ccustomfield_10925%2Cduedate&jql=key+in+%28INIT-900%2CINIT-901%2CINIT-902%29&maxResults=3",
  "7fc178921b1f42a2": "/rest/agile/1.0/sprint/5001/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",
  "af0c4a508c7fa14a": "/rest/agile/1.0/board/101/sprint?maxResults=50&startAt=0&state=closed%2Cactive",
  "b72fb11ef43abbd5": "/rest/agile/1.0/sprint/5002/issue?fields=key%2Csummary%2Cissuetype%2Ccreated%2Ccreator%2Ccomment&maxResults=200&startAt=0",

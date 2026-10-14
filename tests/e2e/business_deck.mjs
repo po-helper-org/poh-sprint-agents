@@ -380,6 +380,72 @@ check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith(
       'ниже — что осталось и что выполнено: весь объём эпика, как в отчёте PO');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
+// «Прогресс инициативы» — весь эпик в миниатюре: полоса todo / в работе (блок) / QA / готово,
+// срок эпика и прогноз, если опаздываем; клик — сайдбар сразу на «Весь эпик»
+const SEGS = ['todo', 'progress', 'blocked', 'qa', 'done'];
+const ini = await p.evaluate((SEGS) => {
+  const th = [...document.querySelector('#deckSlides table.rep.epics thead tr').children].map(x => x.textContent);
+  const cells = [...document.querySelectorAll('#deckSlides tr.erow')].map(tr => {
+    const c = tr.querySelector('td.init');
+    if (!c) return { key: tr.dataset.key || '', missing: true, segs: [] };
+    const team = TEAMS.find(t => t.slug === tr.dataset.team);
+    const e = tr.dataset.key && team.epics.find(x => x.epicKey === tr.dataset.key);
+    const bar = c.querySelector('.ini-bar');
+    return { key: tr.dataset.key || '', text: c.textContent, pct: (c.querySelector('.ini-pct') || {}).textContent || '',
+             sub: (c.querySelector('.res-sub') || {}).textContent || '',
+             segs: bar ? [...bar.querySelectorAll('i')].map(i => i.dataset.seg) : [],
+             n: bar ? [...bar.querySelectorAll('i')].reduce((a, i) => a + parseFloat(i.style.flexGrow), 0) : 0,
+             tip: bar ? bar.title : '', due: (c.querySelector('.ini-due') || {}).textContent || '',
+             fc: (c.querySelector('.ini-fc') || {}).textContent || '', late: !!c.querySelector('.ini-fc.late'),
+             overdue: !!c.querySelector('.ini-due.late'), today: (team._meta.collectedAt || '').slice(0, 10),
+             scope: e && e.scope ? e.scope.length : null, epicDue: e ? e.epicDue || null : null,
+             done: e && e.scope ? e.scope.filter(it => classifyBucket(it.status, it.category) === 'done').length : 0 };
+  });
+  return { th, cells, order: cells.every(c => c.segs.every((s, i) => i === 0 || SEGS.indexOf(c.segs[i - 1]) < SEGS.indexOf(s))) };
+}, SEGS);
+const withEpic = ini.cells.filter(c => c.key && c.scope);
+check(ini.th.join('|') === 'Направление|Итог спринта|Результат спринта|Прогресс инициативы',
+      'колонки слайда: «Результат спринта» и рядом «Прогресс инициативы»');
+check(ini.cells.every(c => !c.missing), 'у каждой строки-направления есть «Прогресс инициативы»');
+check(withEpic.length > 0 && withEpic.every(c => c.n === c.scope && c.sub === 'сделано ' + c.done + ' из ' + c.scope &&
+      c.pct === Math.round(100 * c.done / c.scope) + '%'), 'миниатюра — задачи всего эпика: «сделано X из Y», процент, полоса на весь объём');
+check(ini.order && withEpic.every(c => c.segs.length && c.segs.every(s => SEGS.includes(s))),
+      'полоса по порядку: не начато → в работе (блок рядом) → QA → готово');
+check(withEpic.every(c => /не начато|в работе|QA|готово/.test(c.tip)), 'числа по статусам — в подсказке полосы');
+check(withEpic.every(c => c.epicDue ? c.due.startsWith('срок ' + c.epicDue.slice(8, 10) + '.' + c.epicDue.slice(5, 7)) : c.due === 'срок не задан'),
+      'целевая дата эпика — «срок дд.мм» из JIRA, нет срока — «срок не задан»');
+check(withEpic.every(c => !c.late || /^прогноз \d\d\.\d\d$/.test(c.fc)) && withEpic.every(c => !c.fc || !c.epicDue || c.late),
+      'прогноз — только когда расчётная дата позже срока (красным) или срока нет');
+const overdue = await p.evaluate(() => {
+  const t = TEAMS[0], e = t.epics.find(x => x.epicKey && x.scope && x.scope.some(it => classifyBucket(it.status, it.category) !== 'done'));
+  const past = Object.assign({}, e, { epicDue: '2026-01-05' });
+  const cell = initCell({ epic: past, init: initiative(t, past) }, 'x');
+  return { cell, ok: initiative(t, e).overdue === (e.epicDue < t._meta.collectedAt.slice(0, 10)) };
+});
+check(overdue.ok && /class="ini-due late"[^>]*>срок 05\.01 · просрочен</.test(overdue.cell) &&
+      withEpic.every(c => !c.overdue || c.due.endsWith(' · просрочен')),
+      'срок прошёл, а эпик не закрыт — «срок дд.мм · просрочен» красным, даже без прогноза');
+check(ini.cells.filter(c => !c.key).every(c => c.text.trim() === '—'), '«Вне эпиков» — прочерк вместо прогресса инициативы');
+const lateCell = withEpic.find(c => c.late) || withEpic.find(c => c.epicDue) || withEpic[0];
+await goTo('#deckSlides tr.erow[data-key="' + lateCell.key + '"]');
+await p.click('#deckSlides tr.erow[data-key="' + lateCell.key + '"] td.init');
+await p.waitForTimeout(300);
+const iniSide = await p.evaluate(() => ({ tab: (document.querySelector('.side-tab.active') || {}).dataset?.tab,
+  chart: !!document.querySelector('#storiesBody .eb svg'),
+  cells: Object.fromEntries([...document.querySelectorAll('#storiesBody .ea-cell')].map(c => [c.querySelector('.ea-label').textContent, c.querySelector('b').textContent])) }));
+check(iniSide.tab === 'scope' && iniSide.chart, 'клик по «Прогрессу инициативы» — сайдбар сразу на «Весь эпик» со сгоранием');
+const ddmm = s => s.replace(/^(срок|прогноз) /, '');
+check((!lateCell.epicDue || iniSide.cells['Плановая дата'].startsWith(ddmm(lateCell.due))) &&
+      (!lateCell.fc || iniSide.cells['Расчётная дата'].startsWith(ddmm(lateCell.fc))),
+      'срок и прогноз в миниатюре совпадают с «Плановой» и «Расчётной датой» сайдбара');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+await p.click('#deckSlides tr.erow[data-key="' + lateCell.key + '"] td.result');
+await p.waitForTimeout(300);
+check(await p.evaluate(() => (document.querySelector('.side-tab.active') || {}).dataset?.tab) === 'sprint',
+      'клик по «Результату спринта» — по-прежнему «Задачи спринта»');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
 // ПКМ — комментарий
 await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
 await p.click('#deckSlides tr.erow[data-key="INIT-125"] td.task', { button: 'right' });

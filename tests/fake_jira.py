@@ -20,6 +20,7 @@ BOARD_NAME = 'Scrum Board Платформа'
 OTHER_BOARD_ID = 777
 EPIC_FIELD = 'customfield_10101'
 SP_FIELD = 'customfield_10106'
+TARGET_END_FIELD = 'customfield_10925'   # Advanced Roadmaps: целевая дата окончания
 
 PEOPLE = ['Участник ' + c for c in 'АБВГДЕ']
 
@@ -40,6 +41,11 @@ STATUSES = [
 BY_NAME = {name: (sid, cat) for sid, name, cat in STATUSES}
 DONE_ID = 9
 PROGRESS_ID = 4
+
+def jira_dt(s):
+    """Дата JIRA «2026-08-11T17:00:00.000+0300» → datetime; fromisoformat понимает её только с 3.11."""
+    return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f%z')
+
 
 EPICS = [('INIT-900', 'Приём заказов из внешнего канала'),
          ('INIT-901', 'Единый каталог позиций'),
@@ -162,7 +168,7 @@ class Dataset:
 
     def _walk(self, issue_key, sprint, final_status, created, author, hid):
         """Путь задачи по статусам: вход в спринт, взятие в работу, финальный статус."""
-        start = datetime.fromisoformat(sprint['startDate'])
+        start = jira_dt(sprint['startDate'])
         # сдвиг по номеру записи: в реальном трекере две правки не приходят в одну
         # секунду, и фикстура не должна создавать искусственных совпадений времени
         jitter = timedelta(seconds=(hid % 4000) * 11)
@@ -185,7 +191,7 @@ class Dataset:
 
     def _sprint_issues(self, sprint, index):
         rnd = self.rnd
-        start = datetime.fromisoformat(sprint['startDate'])
+        start = jira_dt(sprint['startDate'])
         hid = 10000 + index * 1000
         issues = []
         # в закрытых спринтах закрыто больше, в активном — разнобой
@@ -297,6 +303,7 @@ def make_api(dataset=None):
             return [{'id': 'summary', 'name': 'Summary'},
                     {'id': EPIC_FIELD, 'name': 'Ссылка на эпик'},
                     {'id': SP_FIELD, 'name': 'Story Points'},
+                    {'id': TARGET_END_FIELD, 'name': 'Target end'},
                     {'id': 'customfield_10100', 'name': 'Sprint'}]
         if path == '/rest/agile/1.0/board':
             return {'values': [{'id': BOARD_ID, 'name': BOARD_NAME},
@@ -354,7 +361,9 @@ def make_api(dataset=None):
             return {'issues': [{'key': k, 'fields': {f: v for f, v in
                                                      (('summary', titles.get(k, 'Эпик ' + k)),
                                                       ('priority', priority_obj(k)),
-                                                      ('duedate', '2026-10-15' if k == EPICS[0][0] else None))
+                                                      ('duedate', '2026-10-15' if k == EPICS[0][0] else None),
+                                                      # целевая дата Advanced Roadmaps — у второго эпика, без duedate
+                                                      (TARGET_END_FIELD, '2026-11-20' if k == EPICS[1][0] else None))
                                                      if f in want}}
                                for k in keys if k in titles],
                     'total': len(keys)}

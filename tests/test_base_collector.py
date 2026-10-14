@@ -195,9 +195,9 @@ class LegacyParityTest(unittest.TestCase):
                      if not i['fields']['issuetype']['subtask'] and i['fields']['status']['name'] == 'Закрыт')
         hist = story['changelog']['histories']
         last = [h for h in hist if h['items'][0]['field'] == 'status'][-1]
-        late = fake_jira.datetime.fromisoformat(end) + fake_jira.timedelta(days=2)
+        late = fake_jira.jira_dt(end) + fake_jira.timedelta(days=2)
         last['created'] = fake_jira.iso(late)
-        hist.append(ds._history(99999, fake_jira.datetime.fromisoformat(end) - fake_jira.timedelta(days=1),
+        hist.append(ds._history(99999, fake_jira.jira_dt(end) - fake_jira.timedelta(days=1),
                                 'assignee', story['fields']['assignee']['displayName'], 'Участник Ю', author='x'))
         data = collect_in_process(ds)
         members = {m['name']: m for m in data['output']['sprints'][0]['members']}
@@ -252,6 +252,16 @@ class ParamsTest(unittest.TestCase):
         wide_keys = {s['key'] for e in wide['epics'] for s in e['stories']}
         self.assertTrue(narrow_keys)
         self.assertFalse(narrow_keys & wide_keys)
+
+    def test_epic_due_from_target_end(self):
+        """1.11.0: целевая дата эпика — «Target end» (Advanced Roadmaps), где команды её держат; нет — duedate.
+        Явное epic_due_field — только это поле."""
+        due = lambda data: {e['epicKey']: e['epicDue'] for e in data['epics'] if e['epicKey']}  # noqa: E731
+        auto = due(support.collect_ok())
+        self.assertEqual('2026-10-15', auto['INIT-900'], 'Target end пуст — срок из duedate')
+        self.assertEqual('2026-11-20', auto['INIT-901'], 'целевая дата из Target end')
+        only = due(collect_in_process(params={'epic_due_field': 'duedate'}))
+        self.assertEqual(('2026-10-15', None), (only['INIT-900'], only['INIT-901']))
 
     def test_sprints_back_changes_depth(self):
         two = support.collect_ok(req=support.request(params={'sprints_back': 2}))
