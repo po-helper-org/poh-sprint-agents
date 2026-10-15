@@ -84,6 +84,20 @@ def collect_numbers(value, out):
     return out
 
 
+def disjoint(wids, by_id, report_to):
+    """Пара ожиданий случая, между которыми разрыв во времени (больше выходных), или None."""
+    spans = sorted((by_id[w]['from'], by_id[w]['to'] or report_to, w) for w in wids if w in by_id)
+    if not spans:
+        return None
+    end, last = date.fromisoformat(spans[0][1]), spans[0][2]
+    for start, stop, wid in spans[1:]:
+        if date.fromisoformat(start) > end + timedelta(days=3):
+            return last, wid
+        if date.fromisoformat(stop) > end:
+            end, last = date.fromisoformat(stop), wid
+    return None
+
+
 def check(doc, facts):
     """(ошибки, предупреждения, вид страницы). Есть ошибки — вида нет."""
     errors, warnings = [], []
@@ -129,6 +143,11 @@ def check(doc, facts):
             errors.append(f'cases[{n}]: what длиннее {WHAT_MAX} знаков')
         if len(case['basis']) > BASIS_MAX:
             errors.append(f'cases[{n}]: basis длиннее {BASIS_MAX} знаков')
+    for n, case in enumerate(doc['cases'], 1):
+        gap = disjoint(case['waits'], by_id, facts['period']['to'])
+        if gap:
+            errors.append(f'cases[{n}]: ожидания {gap[0]} и {gap[1]} не пересекаются по времени — это разные '
+                          f'случаи: одно и то же задачи ждут одновременно. Разделите их')
     for sid in sides:
         if sid not in used:
             warnings.append(f'сторона {sid} не используется ни в одном случае')

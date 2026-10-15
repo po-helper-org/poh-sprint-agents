@@ -380,6 +380,28 @@ class CheckTest(unittest.TestCase):
         self.assertEqual((f['waits'][0]['days']['total'], 10, '02.03–15.07'),
                          (case['days'], case['win']['q'], case['when']))
 
+    def test_case_cannot_glue_waits_far_apart_in_time(self):
+        a = issue('DEMO-80', [('2026-07-06T10:00:00+03:00', 'In progress', 'On Hold'),
+                              ('2026-07-13T10:00:00+03:00', 'On Hold', 'In progress')])
+        b = issue('DEMO-81', [('2026-08-17T10:00:00+03:00', 'In progress', 'On Hold'),
+                              ('2026-08-24T10:00:00+03:00', 'On Hold', 'In progress')])
+        f = waits.facts(snapshot(a, b), waits.period('2026Q3', to='2026-10-14'), {})
+        doc = doc_for(f, sides=[{'id': 'ops', 'name': 'DevOps', 'what': 'Стенда'}],
+                      cases=[{'waits': ['w1', 'w2'], 'side': 'ops', 'what': 'Стенд', 'evidence': 'weak', 'basis': 'статус'}])
+        errors, _, _ = report.check(doc, f)
+        self.assertTrue(any('разные случаи' in e for e in errors), errors)
+
+    def test_case_can_join_overlapping_waits(self):
+        a = issue('DEMO-82', [('2026-07-06T10:00:00+03:00', 'In progress', 'On Hold'),
+                              ('2026-07-20T10:00:00+03:00', 'On Hold', 'In progress')])
+        b = issue('DEMO-83', [('2026-07-13T10:00:00+03:00', 'In progress', 'On Hold'),
+                              ('2026-07-27T10:00:00+03:00', 'On Hold', 'In progress')])
+        f = waits.facts(snapshot(a, b), waits.period('2026Q3', to='2026-10-14'), {})
+        doc = doc_for(f, sides=[{'id': 'ops', 'name': 'DevOps', 'what': 'Стенда'}],
+                      cases=[{'waits': ['w1', 'w2'], 'side': 'ops', 'what': 'Стенд', 'evidence': 'weak', 'basis': 'статус'}])
+        errors, _, view = report.check(doc, f)
+        self.assertEqual(([], 15), (errors, view['cases'][0]['days']))
+
     def test_every_wait_must_be_decided(self):
         f = two_waits()
         doc = doc_for(f)
