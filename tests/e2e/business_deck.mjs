@@ -269,18 +269,26 @@ const rm = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fs
   return { team: t.slug, title: sl.querySelector('.slide-title').textContent, end: t.burndown.end, agent: !!(t.business && t.business.roadmap),
     ai: t.business && t.business.roadmap ? t.business.roadmap.rows : null,
     sprints: [...sl.querySelectorAll('.rm-sprint')].map(h => [h.dataset.from, h.dataset.to]),
+    names: [...sl.querySelectorAll('.rm-sprint b')].map(b => b.textContent), dates: [...sl.querySelectorAll('.rm-sprint span')].map(x => x.textContent),
     rows: [...sl.querySelectorAll('.rm-row')].map(r => ({ key: r.dataset.key || '', name: r.querySelector('.rm-name').textContent,
       cells: [...r.querySelectorAll('.rm-cell')].map(c => c.textContent.trim()) })),
     openEpics: t.epics.filter(e => e.epicKey && e.scope && e.scope.some(it => classifyBucket(it.status, it.category) !== 'done')).length };
 }));
 const day = iso => new Date(iso + 'T00:00:00Z').getTime() / 86400000;
+const MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const hd = iso => iso.slice(8, 10) + ' ' + MON[+iso.slice(5, 7) - 1];
 check(rm.length === TEAMS_N(deckInfo), 'роадмап — у каждой команды');
 check(await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.roadmap')].every(s => !s.querySelector('.slide-sub'))),
       'под заголовком роадмапа подписи нет');
-check(rm.every(r => r.sprints.length === 3 && day(r.sprints[0][0]) === day(r.end) + 1 &&
+check(rm.every(r => r.sprints.length === 3 && day(r.sprints[0][0]) === day(r.end) + 1 && r.sprints.every(x => day(x[1]) - day(x[0]) + 1 === 14) &&
       r.sprints.every((x, i) => i === 0 || day(x[0]) === day(r.sprints[i - 1][1]) + 1) &&
-      r.title === 'Инициативы по спринтам до ' + r.sprints[2][1].slice(8, 10) + '.' + r.sprints[2][1].slice(5, 7)),
-      'колонки — 3 спринта подряд после текущего, с датами; заголовок «Инициативы по спринтам до дд.мм»');
+      r.title === 'Инициативы по спринтам до ' + hd(r.sprints[2][1])),
+      'колонки — 3 спринта подряд после текущего, ровно по 2 недели; заголовок «Инициативы по спринтам до 05 дек»');
+// имя спринта — {YYYY}Q{n}-S{s}: квартал — по дате окончания, s — двухнедельный спринт от начала квартала
+const code = to => { const y = +to.slice(0, 4), q = Math.ceil(+to.slice(5, 7) / 3), qs = y + '-' + String((q - 1) * 3 + 1).padStart(2, '0') + '-01';
+  return y + 'Q' + q + '-S' + (Math.floor((day(to) - day(qs)) / 14) + 1); };
+check(rm.every(r => r.names.every((n, i) => n === code(r.sprints[i][1])) && r.dates.every((d, i) => d === hd(r.sprints[i][0]) + ' – ' + hd(r.sprints[i][1]))),
+      'спринт — «2026Q4-S3» и человекочитаемые даты «22 окт – 04 ноя»');
 check(rm.every(r => r.rows.length && r.rows.every(x => x.cells.length === 6 && x.cells.every(c => !c || PHASES.includes(c)))),
       'строка — инициатива, 6 недельных ячеек; в ячейке — фаза из словаря или пусто');
 const agentRm = rm.find(r => r.agent), autoRm = rm.find(r => !r.agent);

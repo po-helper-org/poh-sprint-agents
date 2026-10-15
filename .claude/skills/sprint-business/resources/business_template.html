@@ -1534,18 +1534,26 @@
     (active.length ? active : open).forEach(function (it) { var ph = itemPhase(it); n[ph] = (n[ph] || 0) + 1; });
     return Object.keys(n).sort(function (a, b) { return n[b] - n[a] || RM_PHASES.indexOf(a) - RM_PHASES.indexOf(b); })[0] || 'разработка';
   }
-  // 3 спринта после текущего той же длины; каждый — две половины (недели)
+  // 3 спринта после текущего, по 2 недели (у текущего в JIRA бывает 8 или 15 дней — не берём);
+  // каждый — две недели-ячейки
+  var RM_SPRINT_DAYS = 14;
   function nextSprints(t, n) {
     var b = t.burndown || {};
-    if (!b.start || !b.end) return [];
-    var start = b.start.slice(0, 10), end = b.end.slice(0, 10);
-    var len = Math.round((dayMs(end) - dayMs(start)) / 86400000) + 1, half = Math.ceil(len / 2), out = [], from = addDays(end, 1);
+    if (!b.end) return [];
+    var len = RM_SPRINT_DAYS, half = len / 2, out = [], from = addDays(b.end.slice(0, 10), 1);
     for (var i = 0; i < n; i++) {
       var to = addDays(from, len - 1);
       out.push({ n: i + 1, from: from, to: to, weeks: [[from, addDays(from, half - 1)], [addDays(from, half), to]] });
       from = addDays(to, 1);
     }
     return out;
+  }
+  // «22 ноя», имя спринта «2026Q4-S3»: квартал — по дате окончания, номер — двухнедельный спринт от начала квартала
+  var RM_MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  function dayMon(iso) { return iso.slice(8, 10) + ' ' + RM_MON[+iso.slice(5, 7) - 1]; }
+  function sprintCode(to) {
+    var y = to.slice(0, 4), q = Math.ceil(+to.slice(5, 7) / 3), qs = y + '-' + ('0' + ((q - 1) * 3 + 1)).slice(-2) + '-01';
+    return y + 'Q' + q + '-S' + (Math.floor(Math.round((dayMs(to) - dayMs(qs)) / 86400000) / 14) + 1);
   }
   function objNum(obj) { var m = /(\d+)/.exec(obj || ''); return m ? ('0' + m[1]).slice(-2) : ''; }
 
@@ -1584,7 +1592,7 @@
     var weeks = sp.reduce(function (a, x) { return a.concat(x.weeks); }, []);
     var rm = roadmapRows(t, streams, weeks);
     var head = '<div class="rm-head"><div class="rm-corner"></div>' + sp.map(function (x) {
-      return '<div class="rm-sprint" data-from="' + x.from + '" data-to="' + x.to + '"><b>Спринт ' + x.n + '</b><span>' + ddmm(x.from) + ' — ' + ddmm(x.to) + '</span></div>';
+      return '<div class="rm-sprint" data-from="' + x.from + '" data-to="' + x.to + '"><b>' + sprintCode(x.to) + '</b><span>' + dayMon(x.from) + ' – ' + dayMon(x.to) + '</span></div>';
     }).join('') + '</div>';
     var body = rm.rows.map(function (r) {
       var attrs = '', g = r.s && r.s.init;
@@ -1595,13 +1603,13 @@
       }
       var key = 'rm:' + t.slug + ':' + r.id;
       return '<div class="rm-row"' + attrs + '><div class="rm-name"><span class="rm-num">' + esc(r.num) + '</span><span class="rm-t">' + ed(key, r.name) +
-        (g && g.due ? '<span class="rm-due' + (g.late || g.overdue ? ' late' : '') + '"> · ' + ddmm(g.due) + '</span>' : '') + '</span></div>' +
+        (g && g.due ? '<span class="rm-due' + (g.late || g.overdue ? ' late' : '') + '"> · ' + dayMon(g.due) + '</span>' : '') + '</span></div>' +
         r.cells.map(function (c, i) {
           return '<div class="rm-cell' + (c ? '' : ' empty') + '"' + (c ? ' style="background:' + (RM_COLOR[c] || '#eceff3') + '"' : '') + '>' +
             (c ? ed(key + ':' + i, c) : '') + '</div>';
         }).join('') + '</div>';
     }).join('');
-    return slide('roadmap', '<h1 class="slide-title">Инициативы по спринтам до ' + ddmm(sp[2].to) + '</h1>' +
+    return slide('roadmap', '<h1 class="slide-title">Инициативы по спринтам до ' + dayMon(sp[2].to) + '</h1>' +
       '<div class="rm-wrap"><div class="rm">' + head + (body || '<div class="rm-empty">Открытых инициатив в данных нет.</div>') + '</div></div>' +
       (rm.more ? '<div class="rm-more">ещё ' + rm.more + ' — в отчёте PO</div>' : ''),
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Инициативы по спринтам · ' + t.team }));
