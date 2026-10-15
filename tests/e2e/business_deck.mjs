@@ -59,13 +59,16 @@ check(!deckInfo.slides.some(s => s.title.startsWith('Стримы')) && !deckInf
 check(deckInfo.rows === deckInfo.epics && deckInfo.storyRows === 0, 'строка — эпик (и «Вне эпиков»), историй построчно на слайдах нет');
 check(!deckInfo.slides.some(s => /^(Изменения в процессе спринта|Демо|Итоги спринта)/.test(s.title)), 'слайдов «Изменения», «Демо», «Итоги» нет');
 check(deckInfo.slides.filter(s => !/^(OBJ|Без привязки|Направления|.+ · операционный)/.test(s.title)).every(s => s.h <= s.ch),
-      'титул, команда, «Сроки», «Планы» умещаются на экран без прокрутки');
+      'титул, команда, роадмап и «Риски и проблемы» умещаются на экран без прокрутки');
 check(deckInfo.toc === deckInfo.slides.length, 'оглавление — по фактическим слайдам');
 const kinds = await p.evaluate(() => [...document.querySelectorAll('#deckSlides > .fslide')].map(s => s.className));
 const isOps = c => c.includes(' ops') && !c.includes(' members');
 check(kinds.filter(isOps).length === TEAMS_N(deckInfo), 'операционный отчёт — один слайд на команду');
 check(kinds.every((c, i) => !isOps(c) || kinds[i + 1].includes(' members')), 'сразу после операционного — «Участники»');
-check(kinds.every((c, i) => !c.includes(' members') || kinds[i + 1].includes(' plans')), 'после «Участников» — «Планы на следующий спринт»');
+check(kinds.every((c, i) => !c.includes(' members') || kinds[i + 1].includes(' roadmap')), 'после «Участников» — роадмап «Инициативы по спринтам»');
+check(kinds.every((c, i) => !c.includes(' roadmap') || kinds[i + 1].includes(' risks')), 'после роадмапа — «Риски и проблемы» команды');
+check(!kinds.some(c => c.includes(' plans')) && kinds.filter(c => c.includes(' risks')).length === TEAMS_N(deckInfo),
+      '«Планов на следующий спринт» нет; «Риски и проблемы» — у каждой команды, общего слайда в конце нет');
 check(!kinds.some(c => c.includes(' cycle')), 'слайда «Сроки» нет');
 // титул и слайд команды: сводка, а не голый текст; ни подписи про агента, ни «эпик · Sprint Goal» в шапках KR
 const heads = await p.evaluate(() => ({
@@ -259,27 +262,64 @@ await p.click('.side-tab >> nth=2');
 check(await p.isVisible('#storiesBody .cbig svg'), 'вкладка «Подзадачи» — своя диаграмма');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
-// планы на следующий спринт
-await goTo('#deckSlides .fslide.plans');
-const plans = await p.evaluate(() => [...document.querySelector('#deckSlides .fslide.plans').querySelectorAll('.pcol')]
-  .map(c => [c.querySelector('.pc-head b').textContent, c.querySelectorAll('.prow').length,
-              Math.max(0, ...[...c.querySelectorAll('.prow')].map(r => r.getBoundingClientRect().height)), c.querySelector('.pc-head span').textContent,
-              c.querySelector('.pr-more') ? +c.querySelector('.pr-more').textContent.replace(/\D/g, '') : 0]));
-check(plans.map(x => x[0]).join('|') === 'Взять в работу|Доделать|Возможно войдёт|Эскалировать' && plans.every(x => x[1] <= 15) && plans.some(x => x[1]),
-      '«Планы на следующий спринт»: четыре колонки, в т. ч. «Возможно войдёт»');
-const pg = await p.evaluate(() => { const s = document.querySelector('#deckSlides .fslide.plans');
-  return { heads: s.querySelectorAll('.pg-head').length, keys: s.querySelectorAll('.pr-key').length,
-           tip: (s.querySelector('.prow') || {}).title || '' }; });
-check(pg.heads > 0 && pg.keys === 0 && /^[A-Z]+-\d+/.test(pg.tip), 'внутри колонок — по направлениям; ключей на слайде нет, ключ — в подсказке');
-check(plans.every(x => x[2] < 70 && x[1] + x[4] === parseInt(x[3], 10)), 'строка на задачу (у «Эскалировать» — с пояснением); что не влезло — «ещё N», счётчик колонки — всё');
-await p.click('#deckSlides .fslide.plans .pc-head[data-plancol="take"]');
+// роадмап «Инициативы по спринтам»: 3 следующих спринта по 2 недели, строки — инициативы, в ячейках — фазы
+const PHASES = ['аналитика', 'дизайн', 'бек', 'фронт', 'разработка', 'qa', 'приёмка', 'релиз', 'контент'];
+const rm = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.roadmap')].map(sl => {
+  const t = TEAMS.find(x => x.slug === sl.dataset.team);
+  return { team: t.slug, title: sl.querySelector('.slide-title').textContent, end: t.burndown.end, agent: !!(t.business && t.business.roadmap),
+    ai: t.business && t.business.roadmap ? t.business.roadmap.rows : null,
+    sprints: [...sl.querySelectorAll('.rm-sprint')].map(h => [h.dataset.from, h.dataset.to]),
+    rows: [...sl.querySelectorAll('.rm-row')].map(r => ({ key: r.dataset.key || '', name: r.querySelector('.rm-name').textContent,
+      cells: [...r.querySelectorAll('.rm-cell')].map(c => c.textContent.trim()) })),
+    openEpics: t.epics.filter(e => e.epicKey && e.scope && e.scope.some(it => classifyBucket(it.status, it.category) !== 'done')).length };
+}));
+const day = iso => new Date(iso + 'T00:00:00Z').getTime() / 86400000;
+check(rm.length === TEAMS_N(deckInfo), 'роадмап — у каждой команды');
+check(rm.every(r => r.sprints.length === 3 && day(r.sprints[0][0]) === day(r.end) + 1 &&
+      r.sprints.every((x, i) => i === 0 || day(x[0]) === day(r.sprints[i - 1][1]) + 1) &&
+      r.title === 'Инициативы по спринтам до ' + r.sprints[2][1].slice(8, 10) + '.' + r.sprints[2][1].slice(5, 7)),
+      'колонки — 3 спринта подряд после текущего, с датами; заголовок «Инициативы по спринтам до дд.мм»');
+check(rm.every(r => r.rows.length && r.rows.every(x => x.cells.length === 6 && x.cells.every(c => !c || PHASES.includes(c)))),
+      'строка — инициатива, 6 недельных ячеек; в ячейке — фаза из словаря или пусто');
+const agentRm = rm.find(r => r.agent), autoRm = rm.find(r => !r.agent);
+check(!!agentRm && agentRm.rows.length === agentRm.ai.length && agentRm.rows.every((x, i) => x.cells.join('|') === agentRm.ai[i].cells.concat(Array(6).fill('')).slice(0, 6).join('|')),
+      'роадмап агента (roadmap в бизнес-блоке): строки и фазы как у агента');
+check(!!autoRm && autoRm.rows.length === Math.min(autoRm.openEpics, 14) &&
+      autoRm.rows.every(x => !x.cells.some(c => c) || (x.cells[0] && x.cells.join('|').replace(/^(.*?)(\|+)?$/, '$1').split('|').every(Boolean))),
+      'без агента — каркас из данных: открытые эпики, полоса с текущей недели без разрывов');
+await goTo('#deckSlides .fslide.roadmap .rm-row[data-key]');
+await p.click('#deckSlides .fslide.roadmap .rm-row[data-key] .rm-name >> nth=0');
 await p.waitForTimeout(300);
-const planSide = await p.evaluate(() => ({ key: document.getElementById('stackKey').textContent, rows: document.querySelectorAll('#storiesBody table.plan-tab tr').length,
-  keys: document.querySelectorAll('#storiesBody .klink').length, tabs: document.querySelectorAll('.side-tab').length }));
-check(planSide.key.startsWith('Планы на следующий спринт') && planSide.rows > 0 && planSide.keys === planSide.rows && planSide.tabs === 4,
-      'клик по колонке «Планов» — читаемый список: ключ, суть, приоритет, статус, пояснение');
+check(await p.evaluate(() => (document.querySelector('.side-tab.active') || {}).dataset?.tab) === 'scope', 'клик по инициативе — сайдбар «Весь эпик»');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
+// «Риски и проблемы»: метка, проблема, что будет или где нужна помощь — у каждой команды
+const KINDS = ['Внешнее', 'Ресурс', 'Общее', 'Срок'];
+const rk = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.risks')].map(sl => {
+  const t = TEAMS.find(x => x.slug === sl.dataset.team), b = t.business || {};
+  return { team: t.slug, title: sl.querySelector('.slide-title').textContent, agent: (b.risks || []).length,
+    agentKinds: (b.risks || []).map(r => r.kind || 'general'),
+    blocked: t.epics.some(e => e.stories.some(st => classifyBucket(st.status, st.category) === 'blocked')),
+    rows: [...sl.querySelectorAll('.rk-row')].map(r => ({ kind: r.querySelector('.rk-kind').textContent, title: r.querySelector('.rk-title').textContent,
+      text: r.querySelector('.rk-text').textContent })) };
+}));
+const KIND_RU = { external: 'Внешнее', resource: 'Ресурс', general: 'Общее', deadline: 'Срок' };
+check(rk.every(r => r.title === 'Риски и проблемы' && r.rows.length <= 5 && r.rows.every(x => KINDS.includes(x.kind) && x.title && x.text)),
+      '«Риски и проблемы»: до 5 строк — метка (Внешнее / Ресурс / Общее / Срок), проблема, что будет или какая помощь');
+const agentRk = rk.find(r => r.agent);
+check(!!agentRk && agentRk.rows.length === agentRk.agent && agentRk.rows.every((x, i) => x.kind === KIND_RU[agentRk.agentKinds[i]]),
+      'риски агента — с его метками (без метки — «Общее»)');
+const autoRk = await p.evaluate(() => {
+  // команда с блокерами, но без рисков агента: блок агента на время убираем
+  const t = TEAMS.find(x => x.epics.some(e => e.stories.some(st => /ожида|блок/i.test(st.status))));
+  const saved = t.business;
+  t.business = {};
+  try { return withTeam(t, () => teamRisks(t, teamStreams(t))); } finally { t.business = saved; }
+});
+check(!autoRk.agent && autoRk.list.some(x => x.kind === 'external' && /нужна помощь — эскалирует/i.test(x.text)),
+      'без агента — из данных: блокеры → «Внешнее» с тем, кто эскалирует');
+check(rk.some(r => !r.agent && r.rows.some(x => x.kind === 'Срок' && /по темпу/i.test(x.text))),
+      'без агента — сдвиг сроков из данных: «Срок», по темпу сгорания — к дд.мм');
 await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
 const rowCheck = await p.evaluate(() => {
   const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]');
