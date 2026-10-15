@@ -101,6 +101,21 @@
   .kd-title { font-size: 15px; font-weight: 600; line-height: 1.35; } .kd-meta { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
   .kd-text { font-size: 13.5px; line-height: 1.45; } .kr-detail .ln { font-size: 13.5px; margin-top: 2px; }
   .kd-act { margin-top: 12px; }
+  /* комментарий к задаче в сайдбаре — спокойное поле, список своих заметок над ним */
+  .cbox { margin: 10px 0 0; }
+  .cbox-list:empty { display: none; }
+  .cbox-item { display: flex; gap: 8px; align-items: baseline; font-size: 13px; line-height: 1.4; padding: 2px 0; }
+  .cbox-at { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .cbox-t { flex: 1; min-width: 0; }
+  .cbox-del { border: 0; background: none; color: #aaa; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+  .cbox-del:hover { color: var(--fg); }
+  .cbox-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 4px; }
+  .cbox-text { flex: 1; min-width: 0; font: inherit; font-size: 13px; line-height: 1.4; padding: 6px 8px; border: 1px solid var(--line);
+               border-radius: 6px; background: var(--bg); color: var(--fg); resize: vertical; min-height: 32px; }
+  .cbox-add { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg);
+              color: var(--fg); cursor: pointer; white-space: nowrap; }
+  .cbox-add:hover { background: #f6f7f8; }
+  .iter-how { font-size: 13px; line-height: 1.45; color: #333; margin: 2px 0 8px; }
   @media (max-width: 900px) { .kr2 { grid-template-columns: 1fr; } .kr-list { position: static; max-height: none; } }
   /* участник: блоки «история + подзадачи», «вне спринта» */
   .mkpis { grid-template-columns: repeat(6, 1fr); }
@@ -718,24 +733,34 @@
     { id: 'qa', of: ['testing', 'review'], color: 'var(--c-review)', label: 'QA' },
     { id: 'done', of: ['done'], color: 'var(--c-done)', label: 'готово' }
   ];
+  // Вклад спринта в эпик: задачи эпика в статусе «готово» с датой закрытия с начала спринта,
+  // от всего объёма эпика. Одна функция и для «(+n%)» в строке, и для раздела «Что сделали за
+  // эту итерацию» в «Весь эпик» — числа не разъезжаются. Закрытые без даты не считаются.
+  function iterationClosed(t, e) {
+    var scope = (e.epicKey && e.scope) || [], start = ((t.burndown || {}).start || '').slice(0, 10);
+    var done = scope.filter(function (it) { return classifyBucket(it.status, it.category) === 'done'; });
+    var items = start ? done.filter(function (it) { return it.doneAt && it.doneAt.slice(0, 10) >= start; }) : [];
+    return { start: start, items: items, undated: done.filter(function (it) { return !it.doneAt; }).length, total: scope.length,
+             pct: start && scope.length ? Math.round(100 * items.length / scope.length) : null };
+  }
+
   function initiative(t, e) {
     var scope = e.epicKey && e.scope;
     if (!scope || !scope.length) return null;
-    var n = {}, sp = { done: 0, all: 0 }, inSprint = 0;
-    var start = ((t.burndown || {}).start || '').slice(0, 10);
+    var n = {}, sp = { done: 0, all: 0 };
     INI_SEGS.forEach(function (g) { n[g.id] = 0; });
     scope.forEach(function (it) {
       var b = classifyBucket(it.status, it.category);
       n[INI_SEGS.filter(function (g) { return g.of.indexOf(b) !== -1; })[0].id]++;
       if (it.sp) { sp.all += it.sp; if (b === 'done') sp.done += it.sp; }
-      if (start && b === 'done' && it.doneAt && it.doneAt.slice(0, 10) >= start) inSprint++;
     });
     var burn = epicBurn(t, e, burnDefault(e));
     var due = e.epicDue || null, fc = burn && burn.remaining ? burn.forecast : null;
     var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
     // срок прошёл, а эпик не закрыт — просрочен, даже когда темпа нет и прогноз не построить
+    var ic = iterationClosed(t, e);
     return { n: n, total: scope.length, pct: Math.round(100 * n.done / scope.length), sp: sp,
-             inSprint: start ? inSprint : null, delta: start ? Math.round(100 * inSprint / scope.length) : null,
+             inSprint: ic.pct === null ? null : ic.items.length, delta: ic.pct,
              due: due, forecast: fc && (!due || fc > due) ? fc : null, late: !!(fc && due && fc > due),
              overdue: !!(due && due < today && n.done < scope.length) };
   }
@@ -1848,6 +1873,7 @@
         '<div class="bl-who"><span><b>Исполнитель:</b> ' + esc(r.st.assignee ? shortName(r.st.assignee) : 'не назначен') + '</span>' +
           '<span><b>Эскалирует:</b> ' + esc(ai.escalate || owner) + '</span></div>' +
         (com.length ? '<div class="bl-com">' + com.map(function (e) { return '<div><span>' + ddmm(e.at) + (e.by ? ' · ' + esc(shortName(e.by)) : '') + '</span> ' + esc(clip(e.body, 240)) + '</div>'; }).join('') + '</div>' : '') +
+        cboxHtml(r.target, 'Комментарий: блок снят, сменить статус, кому эскалировать…') +
         '<button type="button" class="bl-open" data-i="' + i + '">Активность ›</button></div>';
     }).join('');
     storiesBody.querySelectorAll('.bl-open').forEach(function (b) {
@@ -1855,6 +1881,62 @@
     });
     openPanel();
   }
+
+  // «Весь эпик»: перед «Что осталось» — что закрыли в этом спринте и как из этого вышло «(+n%)»
+  function addIterationSection(t, epic) {
+    var ic = iterationClosed(t, epic), left = storiesBody.querySelector('.scope-sec[data-sec="left"]');
+    if (ic.pct === null || !left) return;
+    var counts = commentCounts().byKey;
+    var how = document.createElement('div');
+    how.className = 'iter-how';
+    how.innerHTML = '<b>+' + ic.pct + '%</b> = закрыто в этом спринте ' + ic.items.length + ' ' +
+      plural(ic.items.length, 'задача', 'задачи', 'задач') + ' ÷ ' + ic.total + ' в эпике. Считаются задачи эпика в статусе «готово» ' +
+      'с датой закрытия с ' + ddmm(ic.start) + ' — начала спринта' +
+      (ic.undated ? '; закрытые без даты закрытия (' + ic.undated + ') не учтены' : '') + '.';
+    var closedAt = function (it) { return '<span class="chip-sprint now" title="Дата закрытия">закрыта ' + ddmm(it.doneAt.slice(0, 10)) + '</span>'; };
+    var nodes = [how].concat(ic.items.slice().sort(function (a, b) { return a.doneAt < b.doneAt ? 1 : -1; })
+      .map(function (it) { return storyNode(it, epic, counts, closedAt); }));
+    left.parentNode.insertBefore(scopeSection('iter', 'Что сделали за эту итерацию (+' + ic.pct + '%)', ic.items.length, nodes, true), left);
+    var sub = storiesBody.querySelector('.scope-sum .sub');
+    if (sub) sub.textContent += ' · +' + ic.pct + '% за этот спринт';
+  }
+
+  // ---------- комментарий к задаче прямо в сайдбаре ----------
+  // Та же корзина, что по правому клику: заметка с привязкой к задаче уходит ИИ-агенту отчёта —
+  // сменить статус, привязать к эпику, снять блок, дать команду двигаться дальше.
+  function cboxListHtml(key) {
+    return loadComments().filter(function (c) { return c.target && c.target.key === key; }).map(function (c) {
+      return '<div class="cbox-item"><span class="cbox-at">' + ddmm(String(c.at || '').slice(0, 10)) + '</span><span class="cbox-t">' + esc(c.text) + '</span>' +
+        '<button type="button" class="cbox-del" data-cid="' + esc(c.id) + '" title="Удалить комментарий" aria-label="Удалить">×</button></div>';
+    }).join('');
+  }
+  function cboxHtml(target, hint) {
+    return '<div class="cbox" data-key="' + esc(target.key) + '" data-cbox="' + ctxId(target) + '">' +
+      '<div class="cbox-list">' + cboxListHtml(target.key) + '</div><div class="cbox-row">' +
+      '<textarea class="cbox-text" rows="1" placeholder="' + esc(hint || 'Комментарий к ' + target.key + ': сменить статус, привязать к эпику…') + '"></textarea>' +
+      '<button type="button" class="cbox-add">Добавить</button></div></div>';
+  }
+  function cboxSubmit(box) {
+    var ta = box.querySelector('.cbox-text');
+    if (!addComment(ctxTargets[box.dataset.cbox], ta.value)) return;
+    ta.value = '';
+    box.querySelector('.cbox-list').innerHTML = cboxListHtml(box.dataset.key);
+  }
+  document.addEventListener('click', function (e) {
+    var add = e.target.closest && e.target.closest('.cbox-add'), del = e.target.closest && e.target.closest('.cbox-del');
+    if (!add && !del) return;
+    e.stopPropagation();
+    var box = (add || del).closest('.cbox');
+    if (add) { cboxSubmit(box); return; }
+    removeComment(del.dataset.cid);
+    box.querySelector('.cbox-list').innerHTML = cboxListHtml(box.dataset.key);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    var ta = e.target.closest && e.target.closest('.cbox-text');
+    if (!ta) return;
+    if (e.key === 'Escape') { e.stopPropagation(); ta.blur(); return; }   // Esc в поле не закрывает сайдбар
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); cboxSubmit(ta.closest('.cbox')); }
+  }, true);
 
   // ---------- направление: задачи спринта по статусам, активность — на том же экране ----------
   var ES_ORDER = ['blocked', 'progress', 'review', 'testing', 'open', 'done'];
@@ -1879,7 +1961,7 @@
         if (!epic.scope) { body.innerHTML = '<div class="sidebar-empty">Объёма эпика в данных нет (params.epic_scope).</div>'; return; }
         var keep = storiesBody;            // renderScope рисует в storiesBody — подменяем на вкладку
         storiesBody = body;
-        try { renderScope(epic); } finally { storiesBody = keep; }
+        try { renderScope(epic); addIterationSection(ref.team, epic); } finally { storiesBody = keep; }
         return;
       }
       // слева — задачи спринта по статусам, справа — выбранная задача целиком
@@ -1911,6 +1993,7 @@
           '<div class="kd-text">' + esc(r.done) + '</div>' +
           (r.next ? '<div class="ln"><span class="lbl">Дальше:</span> ' + esc(r.next) + '</div>' : '') +
           (r.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер:</span> ' + esc(r.blocker) + '</div>' : '') +
+          cboxHtml(r.target) +
           '<div class="kd-act">' + withTeam(ref.team, function () { return storyCalendar(r.st, ev) + storyFeedHtml(r.st, ev); }) + '</div>';
       })(cur.r) : '<div class="sidebar-empty">Выберите задачу слева.</div>';
       body.innerHTML = '<div class="kr2"><div class="kr-list">' + list + '</div><div class="kr-detail">' + detail + '</div></div>';

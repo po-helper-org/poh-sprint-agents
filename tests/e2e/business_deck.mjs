@@ -140,6 +140,19 @@ const goTo = async (sel) => {
   }, sel);
   await p.waitForTimeout(100);
 };
+// комментарий к выбранной задаче прямо в сайдбаре: уходит в корзину (к ИИ-агенту) с привязкой к задаче
+const cbox = async (scope, text) => {
+  const before = await p.evaluate(() => loadComments().length);
+  await p.fill(scope + ' .cbox-text', text);
+  await p.click(scope + ' .cbox-add');
+  await p.waitForTimeout(200);
+  return p.evaluate(([scope, before, text]) => {
+    const box = document.querySelector(scope + ' .cbox'), list = loadComments(), last = list[list.length - 1];
+    return { key: box.dataset.key, added: list.length === before + 1, target: last && last.target.key, text: last && last.text,
+             shown: box.textContent.includes(text), empty: box.querySelector('.cbox-text').value === '',
+             count: +document.getElementById('cCount').textContent };
+  }, [scope, before, text]);
+};
 await goTo('#deckSlides .fslide.ops:not(.cycle):not(.members)');
 check(await p.isVisible('#deckSlides .fslide.ops:not(.cycle):not(.members)') &&
       await p.evaluate(() => document.querySelector('#deckTocList a.cur') !== null), 'переход к слайду из списка, текущий отмечен');
@@ -316,6 +329,8 @@ const bl = await p.evaluate(() => ({ key: document.getElementById('stackKey').te
   cards: document.querySelectorAll('#storiesBody .bl-card').length }));
 check(bl.key.startsWith('Блокаторы') && bl.cards > 0 && bl.text.includes('Исполнитель:') && bl.text.includes('Эскалирует:'),
       'клик по «блокаторы» — сайдбар: блокер, исполнитель, кто эскалирует');
+const bc = await cbox('#storiesBody .bl-card:nth-child(1)', 'Блок снят, вернуть в работу');
+check(bc.added && bc.target === bc.key && bc.shown && bc.empty, 'в карточке блокатора — комментарий к этой задаче (актуализировать статус, дать команду)');
 await p.click('#storiesBody .bl-open >> nth=0');
 await p.waitForTimeout(300);
 check(await p.isVisible('.panel-back') && (await p.$$eval('.side-tab', t => t.map(x => x.textContent.split(' · ')[0]).join('|'))) === 'Все|История|Подзадачи',
@@ -371,6 +386,9 @@ check(look.itemBorder === '0px' && look.itemLeft === '0px', 'задачи сле
 check(look.tabBorder === '0px', 'вкладки — подчёркиванием, без рамок-таблеток');
 check(look.statusBorder === '0px' && look.chartBorder === '0px' && !look.legend, 'статусы в ленте — текстом без рамок; график без рамки и легенды');
 check(look.oneLine === true, 'событие подзадачи — одна строка: «ключ подзадача · Было → Стало»');
+const kc = await cbox('#storiesBody .kr-detail', 'Перевести в «Готово», ревью принято');
+check(kc.added && kc.target === kc.key && kc.text === 'Перевести в «Готово», ревью принято' && kc.shown && kc.empty && kc.count > 0,
+      'в сайдбаре эпика у выбранной задачи — поле комментария: заметка в корзине с привязкой к задаче и видна под задачей');
 await p.click('#storiesBody .kl-item:has-text("Агрегация каталога и доступности")');
 await p.waitForTimeout(300);
 const story = await p.evaluate(() => {
@@ -401,8 +419,8 @@ const eb = await p.evaluate(() => ({ chart: !!document.querySelector('#storiesBo
   panel: (document.querySelector('#storiesBody .eb-analysis') || {}).textContent || '',
   modes: [...document.querySelectorAll('#storiesBody .eb-mode')].map(b => b.textContent),
   why: !!document.querySelector('#storiesBody .eb-why'),
-  secs: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head')].map(h => h.textContent),
-  n: [...document.querySelectorAll('#storiesBody .scope-sec .sec-head .n')].reduce((a, x) => a + parseInt(x.textContent.replace('·', ''), 10), 0),
+  secs: [...document.querySelectorAll('#storiesBody .scope-sec:not([data-sec="iter"]) .sec-head')].map(h => h.textContent),
+  n: [...document.querySelectorAll('#storiesBody .scope-sec:not([data-sec="iter"]) .sec-head .n')].reduce((a, x) => a + parseInt(x.textContent.replace('·', ''), 10), 0),
   scope: TEAMS[0].epics[0].scope.length }));
 check(eb.chart && eb.bars > 5 && /Плановая дата/.test(eb.panel) && /Расчётная дата/.test(eb.panel) && /Темп сгорания/.test(eb.panel),
       '«Весь эпик» — сгорание эпика по неделям, под ним панель анализа: план, расчёт, темп');
@@ -480,6 +498,26 @@ await p.click('#deckSlides tr.erow[data-key="' + lateCell.key + '"] td.result');
 await p.waitForTimeout(300);
 check(await p.evaluate(() => (document.querySelector('.side-tab.active') || {}).dataset?.tab) === 'sprint',
       'клик по «Результату спринта» — по-прежнему «Задачи спринта»');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+// «Весь эпик»: перед «Что осталось» — «Что сделали за эту итерацию (+n%)» с расчётом и закрытыми задачами
+const iterCell = withEpic.find(c => c.inSprint > 0);
+await goTo('#deckSlides tr.erow[data-key="' + iterCell.key + '"]');
+await p.click('#deckSlides tr.erow[data-key="' + iterCell.key + '"] td.init');
+await p.waitForTimeout(300);
+const iter = await p.evaluate(() => {
+  const secs = [...document.querySelectorAll('#storiesBody .scope-sec')];
+  const it = document.querySelector('#storiesBody .scope-sec[data-sec="iter"]');
+  return { order: secs.map(x => x.dataset.sec), head: it ? it.querySelector('.sec-head').textContent : '',
+           how: it ? (it.querySelector('.iter-how') || {}).textContent || '' : '', rows: it ? it.querySelectorAll('.story-item').length : 0,
+           sum: (document.querySelector('#storiesBody .scope-sum .sub') || {}).textContent || '' };
+});
+check(iter.order.slice(0, 2).join('|') === 'iter|left', '«Весь эпик»: «Что сделали за эту итерацию» стоит перед «Что осталось»');
+check(iter.head.startsWith('Что сделали за эту итерацию ' + iterCell.delta) && iter.rows === iterCell.inSprint,
+      'в заголовке — тот же «(+n%)», что в строке слайда; внутри — закрытые в спринте задачи');
+check(iter.how.includes(iterCell.delta.replace(/[()]/g, '')) && iter.how.includes('÷ ' + iterCell.scope) && /с \d\d\.\d\d/.test(iter.how) &&
+      iter.sum.includes(iterCell.delta.replace(/[()]/g, '') + ' за этот спринт'),
+      'как посчитано: «+n% = закрыто в спринте X ÷ Y в эпике», с какой даты; итог эпика дополнен «+n% за этот спринт»');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // ПКМ — комментарий
