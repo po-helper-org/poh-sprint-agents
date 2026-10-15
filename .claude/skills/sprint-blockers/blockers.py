@@ -25,6 +25,7 @@ for _p in (HERE, ACTUAL / 'runner'):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
+import config as config_mod  # noqa: E402
 import report as report_mod  # noqa: E402
 import source as source_mod  # noqa: E402
 import waits as waits_mod  # noqa: E402
@@ -40,7 +41,6 @@ class BlockersError(Exception):
 
 
 def load_config(path):
-    import config as config_mod
     if not Path(path).is_file():
         raise BlockersError(f'конфиг {path} не найден — отчёт ещё не настроен (/sprint-setup)', EXIT_CONFIG)
     try:
@@ -62,7 +62,6 @@ class Job:
     """Команда, период и пути файлов одного отчёта."""
 
     def __init__(self, cfg, args):
-        import config as config_mod
         try:
             self.team = cfg.team(args.team) if args.team else cfg.teams[0]
         except config_mod.ConfigError as exc:
@@ -98,19 +97,16 @@ def write_json(path, data):
 
 def dump_facts(facts):
     """Факты для агента: шапка с отступами, ожидания и сигналы — по строке на запись."""
+    def one(item):
+        return json.dumps(item, ensure_ascii=False, separators=(',', ':'))
     head = {k: v for k, v in facts.items() if k not in ('waits', 'signals')}
-    one = lambda x: json.dumps(x, ensure_ascii=False, separators=(',', ':'))  # noqa: E731
-    lines = [json.dumps(head, ensure_ascii=False, indent=1)[:-2] + ',']
+    head_text = json.dumps(head, ensure_ascii=False, indent=1)
+    lines = [head_text[:head_text.rindex('}')].rstrip() + ',']
     for name in ('waits', 'signals'):
-        items = facts[name]
-        lines.append(f' "{name}": [' + ('' if items else '],'))
-        for n, item in enumerate(items):
-            lines.append('  ' + one(item) + (',' if n < len(items) - 1 else ''))
-        if items:
-            lines.append(' ],')
+        items = [one(item) for item in facts[name]]
+        lines.append(f' "{name}": [' + ('\n  ' + ',\n  '.join(items) + '\n ' if items else '') + '],')
     lines[-1] = lines[-1].rstrip(',')
-    lines.append('}')
-    return '\n'.join(lines)
+    return '\n'.join(lines) + '\n}'
 
 
 def now_iso(args):
@@ -124,22 +120,19 @@ def transport(job, args):
     if mcp:
         cmd = shlex.split(mcp) if isinstance(mcp, str) else list(mcp)
         return source_mod.McpTransport(cmd)
-    import config as config_mod
     try:
-        return source_mod.RestTransport(job.cfg.jira_url(), job.cfg.token(), job.cfg.ca_bundle,
-                                        replay=job.params.get('replay'))
+        return source_mod.RestTransport(job.cfg.jira_url(), job.cfg.token(), job.cfg.ca_bundle)
     except config_mod.ConfigError as exc:
         raise BlockersError(f'{exc}. Либо укажите MCP-сервер: params.blockers.mcp', EXIT_CONFIG) from exc
 
 
 def cmd_fetch(job, args):
-    jql = job.params.get('jql')
-    if not jql:
-        raise BlockersError(f'у команды {job.team.slug} нет params.blockers.jql — какие задачи считать '
-                            f'задачами команды (например, project = KEY)', EXIT_CONFIG)
     team = {'slug': job.team.slug, 'name': job.team.name}
     try:
         with transport(job, args) as tr:
+            # задачи команды: jql из конфига, иначе — спринты её доски за период
+            jql = job.params.get('jql') or source_mod.board_jql(tr, job.team.board, job.period['from'],
+                                                                 job.period['to'])
             snap = source_mod.fetch(tr, jql, job.period['from'], job.period['to'], team, now_iso(args))
     except source_mod.SourceError as exc:
         raise BlockersError(str(exc)) from exc
@@ -187,12 +180,12 @@ def print_tables(view):
     print('\nрабочих дней, когда стояла хотя бы одна задача (любая сторона / только другие команды): ' + ' | '.join(
         f'{w["label"]} {view["kpi"][w["id"]]["any"]} / {view["kpi"][w["id"]]["external"]} из {w["workdays"]}'
         for w in wins))
-    print('задаче-дней ожидания: ' + ' | '.join(
-        f'{w["label"]} всего {view["kpi"][w["id"]]["taskDays"]}, других команд {view["kpi"][w["id"]]["externalTaskDays"]}'
+    print('дней ожидания (сумма длительностей случаев): ' + ' | '.join(
+        f'{w["label"]} всего {view["kpi"][w["id"]]["caseDays"]}, других команд {view["kpi"][w["id"]]["externalCaseDays"]}'
         for w in wins))
-    print(f'\nкого ждали — задаче-дней / дней: {head}')
+    print(f'\nкого ждали — дней ожидания / дней из N: {head}')
     for r in view['sides']:
-        print(f'  {r["name"]}: ' + ' | '.join(f'{r["taskDays"][w["id"]]} / {r["win"][w["id"]]}' for w in wins)
+        print(f'  {r["name"]}: ' + ' | '.join(f'{r["caseDays"][w["id"]]} / {r["win"][w["id"]]}' for w in wins)
               + f'   случаев {r["cases"]}, открыто {r["open"]}')
     print('\nслучаи — рабочих дней:')
     for c in view['cases']:

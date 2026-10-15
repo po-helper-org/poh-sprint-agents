@@ -39,10 +39,11 @@ class SourceError(Exception):
 
 
 def period_jql(jql, date_from, date_to):
-    """Задачи, которые могли стоять в периоде: менялись после его начала и
-    созданы до конца. Порядок — по ключу: снимок воспроизводим."""
-    return (f'({jql}) AND updated >= "{date_from}" AND created <= "{date_to} 23:59" '
-            f'ORDER BY key ASC')
+    """Задачи, которые могли стоять в периоде: менялись после его начала или ещё
+    не решены (простояли весь квартал без единой правки), созданы до конца.
+    Порядок — по ключу: снимок воспроизводим."""
+    return (f'({jql}) AND (updated >= "{date_from}" OR resolution is EMPTY) '
+            f'AND created <= "{date_to} 23:59" ORDER BY key ASC')
 
 
 # ------------------------------------------------------------------ нормализация
@@ -136,13 +137,16 @@ class McpTransport:
 
     def __enter__(self):
         try:
+            # бинарный канал без буфера: строки собираем сами, иначе select не видит
+            # ответ, который уже прочитан в буфер вместе с нотификацией
             self.proc = subprocess.Popen(self.cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                         stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                                         stderr=subprocess.DEVNULL, bufsize=0)
         except OSError as exc:
             raise SourceError(f'MCP-сервер не запустился ({" ".join(self.cmd)}): {exc.strerror}') from exc
+        self.buf = b''
         try:
             self._handshake()
-        except SourceError:
+        except BaseException:
             self.__exit__()
             raise
         return self
@@ -165,35 +169,44 @@ class McpTransport:
         for pipe in (self.proc.stdin, self.proc.stdout):
             try:
                 pipe.close()
-            except (OSError, BrokenPipeError):
+            except OSError:
                 pass
 
     def _send(self, msg):
         try:
-            self.proc.stdin.write(json.dumps(msg, ensure_ascii=False) + '\n')
+            self.proc.stdin.write((json.dumps(msg, ensure_ascii=False) + '\n').encode('utf-8'))
             self.proc.stdin.flush()
-        except BrokenPipeError as exc:
+        except (BrokenPipeError, OSError) as exc:
             raise SourceError('MCP-сервер закрыл соединение') from exc
+
+    def _line(self, method, deadline):
+        """Следующая строка ответа сервера; ждём не дольше deadline."""
+        while b'\n' not in self.buf:
+            left = deadline - time.monotonic()
+            if left <= 0 or not select.select([self.proc.stdout], [], [], left)[0]:
+                raise SourceError(f'MCP-сервер не ответил на {method} за {self.timeout} с')
+            chunk = os.read(self.proc.stdout.fileno(), 65536)
+            if not chunk:
+                raise SourceError(f'MCP-сервер завершился, не ответив на {method}. Причину покажет '
+                                  f'ручной запуск: {" ".join(self.cmd)}')
+            self.buf += chunk
+        line, self.buf = self.buf.split(b'\n', 1)
+        return line
 
     def _call(self, method, params):
         self.seq += 1
         self._send({'jsonrpc': '2.0', 'id': self.seq, 'method': method, 'params': params})
         deadline = time.monotonic() + self.timeout
         while True:
-            left = deadline - time.monotonic()
-            if left <= 0 or not select.select([self.proc.stdout], [], [], left)[0]:
-                raise SourceError(f'MCP-сервер не ответил на {method} за {self.timeout} с')
-            line = self.proc.stdout.readline()
-            if not line:
-                raise SourceError(f'MCP-сервер завершился, не ответив на {method}')
             try:
-                msg = json.loads(line)
-            except json.JSONDecodeError:
+                msg = json.loads(self._line(method, deadline))
+            except ValueError:
                 continue
-            if msg.get('id') != self.seq:
+            if not isinstance(msg, dict) or msg.get('id') != self.seq:
                 continue
             if 'error' in msg:
-                raise SourceError(f'MCP {method}: {msg["error"].get("message", msg["error"])}')
+                err = msg['error']
+                raise SourceError(f'MCP {method}: {err.get("message", err) if isinstance(err, dict) else err}')
             return msg.get('result') or {}
 
     def search(self, jql, start):
@@ -207,10 +220,32 @@ class McpTransport:
         except json.JSONDecodeError as exc:
             raise SourceError(f'MCP jira_search вернул не JSON: {text[:200]}') from exc
         issues = page.get('issues') or []
-        if issues and not getattr(self, 'jira_base', None):
+        if issues and not self.jira_base:
             url = issues[0].get('browse_url') or ''
             self.jira_base = url.split('/browse/')[0] or None
         return page.get('total', 0), [from_mcp_issue(i) for i in issues]
+
+
+def _mcp_sprints(self, board):
+    out, start = [], 0
+    while True:
+        res = self._call('tools/call', {'name': 'jira_get_sprints_from_board', 'arguments': {
+            'board_id': str(board), 'limit': PAGE, 'start_at': start}})
+        text = ''.join(c.get('text', '') for c in res.get('content') or [] if c.get('type') == 'text')
+        if res.get('isError'):
+            raise SourceError(f'MCP jira_get_sprints_from_board: {text[:300]}')
+        try:
+            page = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise SourceError(f'MCP jira_get_sprints_from_board вернул не JSON: {text[:200]}') from exc
+        out += [{'id': str(sp.get('id')), 'name': sp.get('name'), 'state': sp.get('state'),
+                 'start': sp.get('start_date'), 'end': sp.get('end_date')} for sp in page]
+        start += len(page)
+        if not page:
+            return out
+
+
+McpTransport.sprints = _mcp_sprints
 
 
 class RestTransport:
@@ -267,6 +302,33 @@ class RestTransport:
         return page.get('total', 0), [from_rest_issue(i) for i in page.get('issues') or []]
 
 
+    def sprints(self, board):
+        out, start = [], 0
+        while True:
+            page = self.get(f'/rest/agile/1.0/board/{board}/sprint', startAt=start, maxResults=PAGE)
+            values = page.get('values') or []
+            out += [{'id': str(sp.get('id')), 'name': sp.get('name'), 'state': sp.get('state'),
+                     'start': sp.get('startDate'), 'end': sp.get('endDate')} for sp in values]
+            start += len(values)
+            if page.get('isLast', True) or not values:
+                return out
+
+
+def board_jql(transport, board, date_from, date_to):
+    """Задачи команды по умолчанию — спринты её доски, шедшие в периоде."""
+    ids = []
+    for sp in transport.sprints(board):
+        if sp['state'] == 'future' or not sp.get('start'):
+            continue
+        start, end = sp['start'][:10], (sp.get('end') or '9999-12-31')[:10]
+        if start <= date_to and (end >= date_from or sp['state'] == 'active'):
+            ids.append(sp['id'])
+    if not ids:
+        raise SourceError(f'у доски {board} нет спринтов в периоде {date_from} – {date_to}: '
+                          f'задайте params.blockers.jql')
+    return f'sprint in ({", ".join(ids)})'
+
+
 def fetch(transport, jql, date_from, date_to, team, now):
     """Все задачи периода постранично → снимок."""
     query = period_jql(jql, date_from, date_to)
@@ -282,7 +344,3 @@ def fetch(transport, jql, date_from, date_to, team, now):
         seen[it['key']] = it
     return {'version': 1, 'team': team, 'jql': query, 'fetchedAt': now, 'transport': transport.name,
             'jiraBase': getattr(transport, 'jira_base', None), 'issues': list(seen.values())}
-
-
-def env_token(name):
-    return os.environ.get(name, '')

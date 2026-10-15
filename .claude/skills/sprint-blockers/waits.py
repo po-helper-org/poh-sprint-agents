@@ -44,6 +44,11 @@ STAGES = (
      ['Ready to Install', 'Готово к установке', 'Ready for Release']),
 )
 BLOCKING_LINKS = ['is blocked by', 'depends on', 'to be done after']
+# Очередь на установку по умолчанию не считаем: задачи часто закрывают пачками, и
+# настоящую дату выкладки по JIRA не установить (как в эталоне). Команда, у
+# которой статус установки честный, включает его: skip = [] в конфиге.
+DEFAULT_SKIP = ['Ready to Install', 'Готово к установке', 'Ready for Release', 'UAT']
+BULK_END = 8           # из стадий в один день вышло столько задач — массовое закрытие
 QUEUE_MIN_DAYS = 5      # очередь короче недели — обычный ход процесса, не случай
 EVIDENCE_COMMENTS = 4
 SNIPPET = 220
@@ -133,19 +138,23 @@ def window_label(start, end):
 
 
 def period(quarter, to, holidays=()):
-    """Квартал и хвост после него: два окна, как в эталоне — «июль–сентябрь» и
-    «1–14 октября». Квартал ещё идёт — одно окно, по дату отчёта."""
+    """Квартал и текущий месяц — два окна. Квартал закончился: «июль–сентябрь» и
+    хвост «1–14 октября», как в эталоне. Квартал идёт: «1 октября – 20 ноября» и
+    «в т.ч. 1–20 ноября». Первый месяц идущего квартала — одно окно."""
     q_start, q_end = quarter_bounds(quarter)
     to_d = date.fromisoformat(to)
     if to_d < q_start:
         raise FactsError(f'дата отчёта {to} раньше начала квартала {quarter}')
     hol = {date.fromisoformat(h) for h in holidays}
     windows = []
-    for wid, start, end in (('q', q_start, min(q_end, to_d)),
-                            ('m', q_end + timedelta(days=1), to_d)):
-        if start > end:
+    if to_d <= q_end:
+        month = (to_d.replace(day=1), to_d, 'в т.ч. ') if to_d.month != q_start.month else None
+    else:
+        month = (q_end + timedelta(days=1), to_d, '')
+    for wid, start, end, prefix in (('q', q_start, min(q_end, to_d), ''), ('m',) + (month or (None, None, ''))):
+        if start is None or start > end:
             continue
-        windows.append({'id': wid, 'label': window_label(start, end), 'from': iso_day(start),
+        windows.append({'id': wid, 'label': prefix + window_label(start, end), 'from': iso_day(start),
                         'to': iso_day(end), 'workdays': len(workdays(start, end + timedelta(days=1), hol))})
     return {'quarter': quarter, 'from': iso_day(q_start), 'to': to, 'holidays': sorted(holidays),
             'windows': windows}
@@ -169,8 +178,9 @@ def rules(params):
             if key in by_status:
                 raise FactsError(f'статус «{s}» указан в двух стадиях: {by_status[key]} и {st["id"]}')
             by_status[key] = st['id']
-    skip = {s.strip().casefold() for s in params.get('skip', [])}
-    return {'stages': stages, 'byStatus': by_status, 'skip': skip,
+    skip_names = params.get('skip', DEFAULT_SKIP)
+    skip = {s.strip().casefold() for s in skip_names}
+    return {'stages': stages, 'byStatus': by_status, 'skip': skip, 'skipNames': list(skip_names),
             'queueMinDays': int(params.get('queue_min_days', QUEUE_MIN_DAYS)),
             'blockingLinks': [s.casefold() for s in params.get('blocking_links', BLOCKING_LINKS)],
             'tz': parse_tz(params.get('utc_offset', '+03:00'))}
@@ -217,6 +227,8 @@ def facts(snap, per, params=None):
     found = []
     for item in sorted(items.values(), key=lambda it: key_order(it['key'])):
         for status, since, until in status_intervals(item, tz):
+            if since is None:       # нет даты создания: с какого момента стоит — неизвестно
+                continue
             norm = (status or '').strip().casefold()
             if norm in rl['skip'] or norm not in rl['byStatus']:
                 continue
@@ -237,6 +249,13 @@ def facts(snap, per, params=None):
                     stage_tasks[sid][wid].add(item['key'])
             found.append({'item': item, 'stage': sid, 'status': status, 'since': since,
                           'until': until, 'days': days})
+    # массовое закрытие (разбор бэклога): в этот день из стадий вышло много задач —
+    # интервал кончился решением разобрать бэклог, а не тем, что дождались
+    ends = {}
+    for f in found:
+        if f['until']:
+            day = f['until'].date()
+            ends[day] = ends.get(day, 0) + 1
     waits = []
     for f in found:
         kind = next(st['kind'] for st in rl['stages'] if st['id'] == f['stage'])
@@ -252,6 +271,8 @@ def facts(snap, per, params=None):
             'open': f['until'] is None, 'days': f['days'],
             'evidence': evidence(item, items, f['since'], f['until'], rl),
         })
+        if f['until'] and ends[f['until'].date()] >= BULK_END:
+            waits[-1]['bulkEnd'] = True
     stages = []
     for st in rl['stages']:
         per_win = {}
@@ -270,7 +291,7 @@ def facts(snap, per, params=None):
         'period': per,
         'source': {'transport': snap.get('transport'), 'jql': snap.get('jql'),
                    'fetchedAt': snap.get('fetchedAt'), 'issues': len(items)},
-        'rules': {'queueMinDays': rl['queueMinDays'], 'skip': sorted(params.get('skip', [])) if params else [],
+        'rules': {'queueMinDays': rl['queueMinDays'], 'skip': rl['skipNames'],
                   'blockingLinks': [s for s in (params or {}).get('blocking_links', BLOCKING_LINKS)]},
         'stages': stages,
         'waits': waits,

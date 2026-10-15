@@ -42,7 +42,13 @@ ISSUES = [
 
 
 def reply(msg_id, result):
-    sys.stdout.write(json.dumps({'jsonrpc': '2.0', 'id': msg_id, 'result': result}, ensure_ascii=False) + '\n')
+    line = json.dumps({'jsonrpc': '2.0', 'id': msg_id, 'result': result}, ensure_ascii=False) + '\n'
+    if os.environ.get('FAKE_MCP_BATCH'):
+        # как настоящий сервер: лог-нотификация и ответ одной записью в канал
+        note = json.dumps({'jsonrpc': '2.0', 'method': 'notifications/message',
+                           'params': {'level': 'info', 'data': 'ok'}}) + '\n'
+        line = note + line
+    sys.stdout.write(line)
     sys.stdout.flush()
 
 
@@ -60,6 +66,18 @@ for line in sys.stdin:
                 fh.write(json.dumps(args, ensure_ascii=False) + '\n')
         if os.environ.get('FAKE_MCP_FAIL'):
             reply(msg['id'], {'isError': True, 'content': [{'type': 'text', 'text': 'Unauthorized'}]})
+            continue
+        if msg['params']['name'] == 'jira_get_sprints_from_board':
+            sprints = [{'id': '10', 'name': 'Спринт 1', 'state': 'closed',
+                        'start_date': '2026-05-01T10:00:00.000+03:00', 'end_date': '2026-05-14T10:00:00.000+03:00'},
+                       {'id': '11', 'name': 'Спринт 2', 'state': 'closed',
+                        'start_date': '2026-06-25T10:00:00.000+03:00', 'end_date': '2026-07-08T10:00:00.000+03:00'},
+                       {'id': '12', 'name': 'Спринт 3', 'state': 'active',
+                        'start_date': '2026-10-08T10:00:00.000+03:00', 'end_date': '2026-10-21T10:00:00.000+03:00'},
+                       {'id': '13', 'name': 'Спринт 4', 'state': 'future'}]
+            start = args.get('start_at', 0)
+            reply(msg['id'], {'content': [{'type': 'text', 'text': json.dumps(sprints[start:start + 3])}],
+                              'isError': False})
             continue
         start = args.get('start_at', 0)
         page = {'total': len(ISSUES), 'start_at': start, 'max_results': args['limit'],

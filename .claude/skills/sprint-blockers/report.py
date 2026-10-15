@@ -139,8 +139,11 @@ def check(doc, facts):
         if len(text) > SECTION_MAX:
             errors.append(f'sections.{name}: длиннее {SECTION_MAX} знаков ({len(text)})')
     known_keys = set(KEY_RE.findall(json.dumps(facts, ensure_ascii=False)))
-    texts = [('lead', t) for t in doc['lead']] + [(f'sections.{k}', v) for k, v in (doc.get('sections') or {}).items()]
-    texts += [(f'cases[{n}]', c['what'] + ' ' + c['basis']) for n, c in enumerate(doc['cases'], 1)]
+    # вывод агента: в нём проверяем и ключи, и числа; в случаях и сторонах — только ключи
+    # (в основании законно цитируются даты и номера из комментариев)
+    narrative = [(f'lead[{n}]', t) for n, t in enumerate(doc['lead'], 1)]
+    narrative += [(f'sections.{k}', v) for k, v in (doc.get('sections') or {}).items()]
+    texts = narrative + [(f'cases[{n}]', c['what'] + ' ' + c['basis']) for n, c in enumerate(doc['cases'], 1)]
     texts += [(f'sides.{s["id"]}', s['what']) for s in doc['sides']]
     for where, text in texts:
         for key in sorted(set(KEY_RE.findall(text))):
@@ -150,7 +153,7 @@ def check(doc, facts):
         return errors, warnings, None
     view = build(doc, facts)
     allowed = collect_numbers(facts, set()) | collect_numbers(view['numbers'], set())
-    for where, text in texts[:len(doc['lead']) + len(doc.get('sections') or {})]:
+    for where, text in narrative:
         for raw, num in text_numbers(text):
             if not (num.isdigit() and int(num) <= FREE_INTS) and num not in allowed:
                 warnings.append(f'{where}: числа {raw} нет ни в фактах, ни в таблицах — проверьте, откуда оно')
@@ -199,19 +202,20 @@ def build(doc, facts):
             continue
         sets = [ds for c in own for ds in c['sets']]
         side_rows.append({'name': s['name'], 'what': s['what'], 'internal': bool(s.get('internal')),
+                          'unknown': bool(s.get('unknown')),
                           'cases': len(own), 'open': sum(c['state'] == 'open' for c in own),
                           'win': {w['id']: len(union(sets, w['id'])) for w in wins},
-                          'taskDays': {w['id']: sum(c['win'][w['id']] for c in own) for w in wins}})
-    side_rows.sort(key=lambda r: [-r['taskDays'][w['id']] for w in wins] + [r['name']])
+                          'caseDays': {w['id']: sum(c['win'][w['id']] for c in own) for w in wins}})
+    side_rows.sort(key=lambda r: [-r['caseDays'][w['id']] for w in wins] + [r['name']])
     all_sets = [ds for c in cases for ds in c['sets']]
-    ext_sets = [ds for c in cases if not sides[c['sideId']].get('internal') for ds in c['sets']]
+    external = lambda c: not (sides[c['sideId']].get('internal') or sides[c['sideId']].get('unknown'))  # noqa: E731
+    ext_sets = [ds for c in cases if external(c) for ds in c['sets']]
     kpi = {w['id']: {'any': len(union(all_sets, w['id'])), 'external': len(union(ext_sets, w['id'])),
-                     'taskDays': sum(c['win'][w['id']] for c in cases),
-                     'externalTaskDays': sum(c['win'][w['id']] for c in cases
-                                             if not sides[c['sideId']].get('internal')),
+                     'caseDays': sum(c['win'][w['id']] for c in cases),
+                     'externalCaseDays': sum(c['win'][w['id']] for c in cases if external(c)),
                      'workdays': w['workdays']} for w in wins}
     stages = [st for st in facts['stages'] if any(st['windows'][w['id']]['tasks'] for w in wins)]
-    numbers = {'kpi': kpi, 'sides': [[r['win'], r['taskDays']] for r in side_rows],
+    numbers = {'kpi': kpi, 'sides': [[r['win'], r['caseDays']] for r in side_rows],
                'cases': [[c['days'], c['win']] for c in cases],
                'open': sum(c['state'] == 'open' for c in cases), 'count': len(cases)}
     for c in cases:
@@ -231,7 +235,8 @@ def esc(text):
 
 
 def issue_link(key, base):
-    if base:
+    # адрес JIRA приходит из ответа сервера: в href — только http(s)
+    if base and re.match(r'^https?://', base):
         return (f'<a class="key" href="{esc(base.rstrip("/"))}/browse/{esc(key)}" target="_blank" '
                 f'rel="noopener">{esc(key)}</a>')
     return f'<span class="key mono">{esc(key)}</span>'
@@ -251,8 +256,8 @@ def render(view, now):
     kpi = []
     for w in wins:
         k = view['kpi'][w['id']]
-        kpi.append(f'<div class="kpi"><span class="kpi-n">{k["externalTaskDays"]}</span>'
-                   f'<span class="kpi-l mono">{esc(w["label"])}: задаче-дней ожидания других команд</span></div>')
+        kpi.append(f'<div class="kpi"><span class="kpi-n">{k["externalCaseDays"]}</span>'
+                   f'<span class="kpi-l mono">{esc(w["label"])}: дней ожидания других команд</span></div>')
     opened = view['numbers']['open']
     kpi.append(f'<div class="kpi"><span class="kpi-n">{view["numbers"]["count"]}</span>'
                f'<span class="kpi-l mono">случаев ожидания, открыто {opened}</span></div>')
@@ -262,18 +267,23 @@ def render(view, now):
     parts.append('<h2>Кого ждали</h2>')
     if view['sections'].get('sides'):
         parts.append(f'<p>{esc(view["sections"]["sides"])}</p>')
-    own_tag = ' <span class="tag mono">своя команда</span>'
-    head_s = ''.join(f'<th class="num">{esc(w["label"])}: задаче-дней · дней из {w["workdays"]}</th>' for w in wins)
+    def tag(r):
+        if r['internal']:
+            return ' <span class="tag mono">своя команда</span>'
+        return ' <span class="tag mono">сторона не названа</span>' if r['unknown'] else ''
+    head_s = ''.join(f'<th class="num">{esc(w["label"])}: дней ожидания · дней из {w["workdays"]}</th>' for w in wins)
     rows = ''.join(
-        f'<tr><td data-l="Кого">{esc(r["name"])}{own_tag if r["internal"] else ""}</td>'
-        + ''.join(f'<td class="num" data-l="{esc(w["label"])}">{r["taskDays"][w["id"]]}'
+        f'<tr><td data-l="Кого">{esc(r["name"])}{tag(r)}</td>'
+        + ''.join(f'<td class="num" data-l="{esc(w["label"])}">{r["caseDays"][w["id"]]}'
                   f'<small> · {r["win"][w["id"]]} из {w["workdays"]}</small></td>' for w in wins)
         + f'<td data-l="Чего ждали">{esc(r["what"])}</td></tr>' for r in view['sides'])
     parts.append(f'<div class="table-wrap"><table class="cards"><thead><tr><th>Кого ждали</th>{head_s}'
                  f'<th>Чего ждали</th></tr></thead><tbody>{rows}</tbody></table></div>')
-    parts.append('<p class="note">Задаче-день — рабочий день, который одна задача простояла в ожидании: '
-                 'две задачи ждут неделю — 10 задаче-дней. «Дней из N» — рабочие дни, когда эту сторону ждала '
-                 'хотя бы одна задача; ожидания часто шли одновременно, поэтому эти дни не складываются.</p>')
+    parts.append('<p class="note">Дни ожидания — сумма длительностей случаев в рабочих днях: два разных случая '
+                 'по неделе — 10 дней; если несколько задач ждали одно и то же, это один случай — 5. '
+                 '«Дней из N» — рабочие дни, когда эту сторону ждала хотя бы одна задача; '
+                 'ожидания часто шли одновременно, поэтому эти дни не складываются. Стороны без пометки — '
+                 'другие команды и партнёры.</p>')
 
     parts.append('<h2>Где стояли задачи</h2>')
     if view['sections'].get('stages'):
