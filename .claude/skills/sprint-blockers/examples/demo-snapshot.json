@@ -1,0 +1,382 @@
+{
+ "version": 1,
+ "team": {
+  "slug": "platform",
+  "name": "Платформа"
+ },
+ "jql": "(project = INIT) AND updated >= \"2026-07-01\" AND created <= \"2026-10-14 23:59\" ORDER BY key ASC",
+ "fetchedAt": "2026-10-14T18:00:00+03:00",
+ "transport": "demo",
+ "jiraBase": "https://jira.demo-workspace.local",
+ "issues": [
+  {
+   "key": "INIT-101",
+   "summary": "Приём заказов из внешнего канала",
+   "type": "История",
+   "subtask": false,
+   "status": "В работе",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-07-06T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [],
+   "links": []
+  },
+  {
+   "key": "INIT-102",
+   "summary": "Чтение событий создания заказа",
+   "type": "Подзадача",
+   "subtask": true,
+   "status": "Закрыт",
+   "assignee": "Участник А",
+   "parent": "INIT-101",
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-07-20T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-17T10:00:00+03:00",
+     "from": "In progress",
+     "to": "On Hold",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-09-17T10:00:00+03:00",
+     "from": "On Hold",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-09-24T10:00:00+03:00",
+     "from": "In progress",
+     "to": "Closed",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [
+    {
+     "at": "2026-08-17T11:00:00+03:00",
+     "author": "Участник Б",
+     "body": "Ждём заполнения справочника мероприятий на тестовом стенде от команды БД"
+    }
+   ],
+   "links": [
+    {
+     "label": "depends on",
+     "key": "DBA-310",
+     "summary": "Справочник мероприятий на стенде",
+     "status": "Закрыт"
+    }
+   ]
+  },
+  {
+   "key": "INIT-103",
+   "summary": "Схема хранения заказов",
+   "type": "Подзадача",
+   "subtask": true,
+   "status": "Закрыт",
+   "assignee": "Участник А",
+   "parent": "INIT-101",
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-07-20T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-18T10:00:00+03:00",
+     "from": "In progress",
+     "to": "On Hold",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-09-16T10:00:00+03:00",
+     "from": "On Hold",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-09-22T10:00:00+03:00",
+     "from": "In progress",
+     "to": "Closed",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [
+    {
+     "at": "2026-08-18T11:00:00+03:00",
+     "author": "Участник Б",
+     "body": "Нет служебной учётки к системе продаж, пока работаем на временном решении"
+    }
+   ],
+   "links": []
+  },
+  {
+   "key": "INIT-104",
+   "summary": "Перевод кэша карточек на Redis",
+   "type": "История",
+   "subtask": false,
+   "status": "Закрыт",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-07-21T10:00:00+03:00",
+     "from": "In progress",
+     "to": "Review",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-24T10:00:00+03:00",
+     "from": "Review",
+     "to": "Closed",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [],
+   "links": []
+  },
+  {
+   "key": "INIT-105",
+   "summary": "Проверка возвратов вживую",
+   "type": "История",
+   "subtask": false,
+   "status": "В ожидании",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-09-01T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-09-23T10:00:00+03:00",
+     "from": "In progress",
+     "to": "On Hold",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [
+    {
+     "at": "2026-09-23T11:00:00+03:00",
+     "author": "Участник Б",
+     "body": "Нужен одобренный возврат на тестовом стенде партнёра, без него не проверить"
+    }
+   ],
+   "links": [
+    {
+     "label": "is blocked by",
+     "key": "PART-77",
+     "summary": "Тестовый возврат на стенде партнёра",
+     "status": "Открыто"
+    }
+   ]
+  },
+  {
+   "key": "INIT-106",
+   "summary": "Настройки прода для новых ручек витрины",
+   "type": "История",
+   "subtask": false,
+   "status": "В ожидании",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-09-28T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-10-06T10:00:00+03:00",
+     "from": "In progress",
+     "to": "On Hold",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [
+    {
+     "at": "2026-10-06T11:00:00+03:00",
+     "author": "Участник Б",
+     "body": "Ждём от DevOps: адрес монолита, nginx, переменные окружения"
+    }
+   ],
+   "links": [
+    {
+     "label": "is blocked by",
+     "key": "OPS-2201",
+     "summary": "Настройки прода для ручек витрины",
+     "status": "В работе"
+    }
+   ]
+  },
+  {
+   "key": "INIT-107",
+   "summary": "Ручка профиля пользователя",
+   "type": "История",
+   "subtask": false,
+   "status": "Закрыт",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-09-29T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-10-01T10:00:00+03:00",
+     "from": "In progress",
+     "to": "Review",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-10-12T10:00:00+03:00",
+     "from": "Review",
+     "to": "Closed",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [],
+   "links": []
+  },
+  {
+   "key": "INIT-108",
+   "summary": "Метрики загрузчика",
+   "type": "История",
+   "subtask": false,
+   "status": "Закрыт",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-07-06T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-07-13T10:00:00+03:00",
+     "from": "In progress",
+     "to": "On Hold",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-07-27T10:00:00+03:00",
+     "from": "On Hold",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-03T10:00:00+03:00",
+     "from": "In progress",
+     "to": "Closed",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [
+    {
+     "at": "2026-07-13T11:00:00+03:00",
+     "author": "Участник Б",
+     "body": "Откладываем: приоритет у приёма заказов"
+    }
+   ],
+   "links": []
+  },
+  {
+   "key": "INIT-109",
+   "summary": "География и города",
+   "type": "История",
+   "subtask": false,
+   "status": "Закрыт",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-08-03T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-10T10:00:00+03:00",
+     "from": "In progress",
+     "to": "Ready for Test",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-24T10:00:00+03:00",
+     "from": "Ready for Test",
+     "to": "Testing",
+     "author": "Участник А"
+    },
+    {
+     "at": "2026-08-26T10:00:00+03:00",
+     "from": "Testing",
+     "to": "Closed",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [],
+   "links": []
+  },
+  {
+   "key": "INIT-110",
+   "summary": "Контракт внешнего API",
+   "type": "История",
+   "subtask": false,
+   "status": "В работе",
+   "assignee": "Участник А",
+   "parent": null,
+   "created": "2026-06-15T10:00:00+03:00",
+   "resolved": null,
+   "statusLog": [
+    {
+     "at": "2026-09-07T10:00:00+03:00",
+     "from": "Open",
+     "to": "In progress",
+     "author": "Участник А"
+    }
+   ],
+   "comments": [
+    {
+     "at": "2026-09-15T11:00:00+03:00",
+     "author": "Участник Б",
+     "body": "Ждём доступ к песочнице партнёра, пока делаем по документации"
+    }
+   ],
+   "links": []
+  }
+ ]
+}

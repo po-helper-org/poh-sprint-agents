@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<style>
+/* Айдентика страниц PO — как у эталона разбора квартала (docs/quarter-retro):
+   ч/б, Georgia, моноширинные подписи, цвет только в статусах. */
+:root{
+  --bg:#ffffff; --fg:#000000; --muted:#555555; --faint:#888888;
+  --line-soft:#cccccc; --mark:#f2f2f2; --link:#0000ee; --visited:#551a8b;
+  --open:#b00020; --done:#1b5e20; --workaround:#8a5a00;
+}
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 Georgia, "Times New Roman", serif; }
+.mono, code{ font-family:"Courier New", Consolas, monospace; }
+a{ color:var(--link); } a:visited{ color:var(--visited); }
+.key{ white-space:nowrap; }
+h1, p, td{ overflow-wrap:anywhere; }
+.layout{ max-width:960px; margin:0 auto; padding:2rem 1.5rem 5rem; }
+h1{ font-size:1.65rem; line-height:1.25; margin:0 0 .3rem; }
+h2{ font-size:1.25rem; margin:2.4rem 0 .8rem; padding-top:1.6rem; border-top:1px solid var(--line-soft); }
+p{ margin:0 0 .9rem; }
+.meta{ color:var(--muted); font-size:.78rem; margin-bottom:1.4rem; }
+.lead{ font-size:1.05rem; }
+.kpis{ display:flex; flex-wrap:wrap; gap:.8rem; margin:0 0 1.4rem; }
+.kpi{ border:1px solid var(--fg); padding:.6rem .8rem; min-width:170px; flex:1 1 170px; display:flex; flex-direction:column; }
+.kpi-n{ font-size:1.7rem; line-height:1.1; }
+.kpi-n small{ font-size:.9rem; color:var(--muted); }
+.kpi-l{ font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; margin-top:.3rem; }
+table{ border-collapse:collapse; width:100%; margin:0 0 .6rem; font-size:.88rem; }
+th, td{ border:1px solid var(--line-soft); padding:.5rem .6rem; text-align:left; vertical-align:top; }
+th{ background:var(--mark); font-family:"Courier New", monospace; font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; }
+td.num, th.num{ text-align:right; white-space:nowrap; }
+/* числа — по ширине содержимого, остальное место — тексту «чего ждали» */
+td.num{ width:1%; } th.num{ white-space:normal; min-width:7.5rem; }
+td small{ color:var(--muted); font-size:.75rem; }
+.table-wrap{ overflow-x:auto; }
+.note{ font-size:.84rem; color:var(--muted); border-left:2px solid var(--line-soft); padding:.2rem .8rem; }
+.tag{ font-size:.68rem; border:1px solid var(--line-soft); padding:0 .3em; color:var(--muted); white-space:nowrap; }
+.st{ font-family:"Courier New", monospace; font-size:.78rem; white-space:nowrap; }
+.st-open{ color:var(--open); font-weight:bold; } .st-done{ color:var(--done); } .st-workaround{ color:var(--workaround); }
+details summary{ cursor:pointer; color:var(--muted); font-size:.78rem; font-family:"Courier New", monospace; }
+details[open] summary{ margin-bottom:.3rem; }
+details.more{ margin:.8rem 0; } details.more > summary{ font-size:.9rem; color:var(--fg); }
+ul{ padding-left:1.3rem; } li{ margin-bottom:.4rem; }
+/* Телефон: строка таблицы — карточка, подпись столбца — из data-l. */
+@media (max-width:640px){
+  .layout{ padding:1.2rem 16px 4rem; }
+  table.cards thead{ display:none; }
+  table.cards, table.cards tbody, table.cards tr, table.cards td{ display:block; width:100%; }
+  table.cards tr{ border:1px solid var(--fg); margin:0 0 .8rem; }
+  table.cards td{ border:none; border-bottom:1px solid var(--line-soft); text-align:left; white-space:normal; }
+  table.cards td:last-child{ border-bottom:none; }
+  table.cards td[data-l]::before{ content:attr(data-l); display:block; font-family:"Courier New", monospace;
+    font-size:.66rem; text-transform:uppercase; color:var(--faint); letter-spacing:.03em; }
+}
+@media print{ details{ display:block; } .layout{ padding:0; } }
+</style>
+</head>
+<body>
+<div class="layout"><main>
+{{BODY}}
+</main></div>
+</body>
+</html>
