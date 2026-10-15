@@ -272,7 +272,7 @@ const rowCheck = await p.evaluate(() => {
   const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]');
   const auto = document.querySelector('#deckSlides tr.erow[data-key="INIT-111"]');
   return { cls: tr.className, res: tr.querySelector('.result > span').textContent.trim(), how: tr.querySelector('.result > span').title,
-           sub: tr.querySelector('.res-sub').textContent, bar: tr.querySelectorAll('.res-bar i').length,
+           sub: (tr.querySelector('.res-sub') || {}).textContent || null, bar: tr.querySelectorAll('.res-bar i').length,
            tags: tr.querySelectorAll('.tag').length, badge: (tr.querySelector('.blk-badge') || {}).textContent || '',
            done: tr.querySelector('[data-edit="sdone:platform:INIT-125"]').textContent,
            blk: (tr.querySelector('[data-edit="sblk:platform:INIT-125"]') || {}).textContent,
@@ -281,15 +281,27 @@ const rowCheck = await p.evaluate(() => {
            kr: tr.querySelector('td.task b').textContent,
            noEpic: [...document.querySelectorAll('#deckSlides tr.erow td.task b')].some(b => b.textContent === 'Вне эпиков') };
 });
-check(/^\d+%$/.test(rowCheck.res) && /^закрыто \d+ из \d+$/.test(rowCheck.sub) && rowCheck.bar > 0, 'результат строки — процент, «закрыто X из Y» и полоса историй');
-check(rowCheck.how.startsWith('среднее «Результата» историй'), 'как посчитан результат — в подсказке');
+check(/^\d+%$/.test(rowCheck.res) && rowCheck.sub === null && rowCheck.bar > 0, 'результат спринта — процент и полоса историй, без «закрыто X из Y»');
+check(!rowCheck.how, 'подсказки «как посчитано» у процента нет');
+// типографика как в отчётной колоде: Arial 8 pt слайда 16:9 (≈14px на 1280), «Дальше:» и «Блокер:» — обычный текст в строку
+const typo = await p.evaluate(() => {
+  const td = document.querySelector('#deckSlides tr.erow[data-key="INIT-125"] td.sum'), cs = getComputedStyle(td);
+  return { font: cs.fontFamily, size: cs.fontSize, lines: [...td.querySelectorAll('.lbl')].map(l => {
+    const ls = getComputedStyle(l), ps = getComputedStyle(l.parentElement);
+    return { text: l.parentElement.textContent, same: ls.color === cs.color && ps.color === cs.color && ls.fontSize === cs.fontSize &&
+      ls.textTransform === 'none' && ls.fontWeight === cs.fontWeight && ls.display === 'inline' };
+  }) };
+});
+check(/Arial/.test(typo.font) && typo.size === '14px', 'текст строки — Arial 14px (8 pt на слайде 16:9)');
+check(typo.lines.length === 2 && typo.lines.every(l => l.same) && /^Дальше: /.test(typo.lines[0].text) && /^Блокер: /.test(typo.lines[1].text),
+      '«Дальше:» и «Блокер:» — обычный текст в строку: тот же цвет, кегль и начертание, без капса');
 check(rowCheck.done.startsWith('Метрики загрузчика собраны и на ревью') && rowCheck.blk === 'нет доступа к очереди событий смежной команды' &&
       rowCheck.next === 'эскалация на синке команд в четверг', 'сводка агента: итог, блокер, след. шаг');
 check(/^(Закрыто|В работе): .+\.$|^Работа не начата\.$/.test(rowCheck.autoDone), 'без агента сводка — из данных: закрытые истории или что в работе');
 check(rowCheck.kr === 'KR 3.1 — платформа выдерживает пиковый сезон', 'строка — KR');
 const po = await p.evaluate(() => { const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-111"]');
   return { res: tr.querySelector('.result > span').textContent, tag: !!tr.querySelector('.res-po'), how: tr.querySelector('.result > span').title }; });
-check(po.res === '80%' && po.tag && po.how.startsWith('оценка PO: 80%; по задачам спринта — '), 'готовность по оценке PO — в «Результате», расчёт по задачам — в подсказке');
+check(po.res === '80%' && po.tag && !po.how, 'готовность по оценке PO — в «Результате» с пометкой «оценка PO»');
 check(rowCheck.noEpic, 'истории без эпика — строка «Вне эпиков»');
 check(rowCheck.tags === 0, 'в комментарии нет меток «не закрыто N» — это видно по результату');
 const badge = await p.evaluate(() => { const b = document.querySelector('#deckSlides tr.erow .blk-badge');
@@ -339,6 +351,26 @@ check(epicTabs === 'Задачи спринта|Весь эпик' && es.items =
 check(es.wide && es.cols === 2, 'сайдбар KR широкий, в два столбца');
 check(es.heads.length >= 1, 'слева задачи сгруппированы по статусам');
 check(es.detail === 1, 'справа — первая незакрытая задача с активностью');
+// редизайн сайдбара: меньше акцентов — без капса с разрядкой, рамок у карточек, статусов и графика, без легенды;
+// событие ленты — одна строка, подзадача — серым префиксом в той же строке
+const look = await p.evaluate(() => {
+  const cs = el => el ? getComputedStyle(el) : null;
+  const caps = [...document.querySelectorAll('.stack-head .eyebrow, #storiesLabel, #storiesBody .kl-head, #storiesBody .sf-day')]
+    .filter(el => el.offsetParent).map(el => cs(el).textTransform);
+  const item = document.querySelector('#storiesBody .kl-item'), tab = document.querySelector('.side-tab:not(.active)');
+  const st = document.querySelector('#storiesBody .kr-detail .sf .status');
+  const row = [...document.querySelectorAll('#storiesBody .kr-detail .sf-item')].find(r => r.querySelector('.status') && r.querySelector('.sf-sub'));
+  const lineH = parseFloat(cs(document.querySelector('#storiesBody .kr-detail .sf-item')).lineHeight) || 18;
+  return { caps, itemBorder: cs(item).borderTopWidth, itemLeft: cs(item).borderLeftWidth, tabBorder: cs(tab).borderTopWidth,
+           statusBorder: st ? cs(st).borderTopWidth : 'нет статусов', chartBorder: cs(document.querySelector('#storiesBody .sc')).borderTopWidth,
+           legend: !!document.querySelector('#storiesBody .sc-legend'),
+           oneLine: row ? row.getBoundingClientRect().height < lineH * 1.9 : null };
+});
+check(look.caps.length >= 3 && look.caps.every(t => t === 'none'), 'в шапке, группах и датах ленты нет капса с разрядкой');
+check(look.itemBorder === '0px' && look.itemLeft === '0px', 'задачи слева — без рамок и цветной полосы, выбранная — фоном');
+check(look.tabBorder === '0px', 'вкладки — подчёркиванием, без рамок-таблеток');
+check(look.statusBorder === '0px' && look.chartBorder === '0px' && !look.legend, 'статусы в ленте — текстом без рамок; график без рамки и легенды');
+check(look.oneLine === true, 'событие подзадачи — одна строка: «ключ подзадача · Было → Стало»');
 await p.click('#storiesBody .kl-item:has-text("Агрегация каталога и доступности")');
 await p.waitForTimeout(300);
 const story = await p.evaluate(() => {
@@ -378,6 +410,76 @@ check(eb.modes.join('|') === 'SP|Закрытие историй|Закрыти�
 check(!eb.why, 'без пояснений словами');
 check(eb.secs[0].startsWith('Что осталось') && eb.secs[1].startsWith('Что выполнено') && eb.n === eb.scope,
       'ниже — что осталось и что выполнено: весь объём эпика, как в отчёте PO');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+// «Прогресс инициативы» — весь эпик в миниатюре: только «N% (+n%)» и полоса todo / в работе (блок) / QA / готово;
+// сделано, срок и прогноз — в подсказке полосы; опоздание и просрочка — красным процентом; клик — «Весь эпик»
+const SEGS = ['todo', 'progress', 'blocked', 'qa', 'done'];
+const ini = await p.evaluate((SEGS) => {
+  const th = [...document.querySelector('#deckSlides table.rep.epics thead tr').children].map(x => x.textContent);
+  const cells = [...document.querySelectorAll('#deckSlides tr.erow')].map(tr => {
+    const c = tr.querySelector('td.init');
+    if (!c) return { key: tr.dataset.key || '', missing: true, segs: [] };
+    const team = TEAMS.find(t => t.slug === tr.dataset.team);
+    const e = tr.dataset.key && team.epics.find(x => x.epicKey === tr.dataset.key);
+    const bar = c.querySelector('.ini-bar'), pct = c.querySelector('.ini-pct');
+    return { key: tr.dataset.key || '', text: c.textContent.trim(), pct: pct ? pct.textContent : '', pctTitle: pct ? pct.title : '',
+             red: !!c.querySelector('.ini-pct.late'), extra: c.querySelectorAll('.res-sub, .ini-due, .ini-fc').length,
+             segs: bar ? [...bar.querySelectorAll('i')].map(i => i.dataset.seg) : [],
+             n: bar ? [...bar.querySelectorAll('i')].reduce((a, i) => a + parseFloat(i.style.flexGrow), 0) : 0,
+             tip: bar ? bar.title : '',
+             delta: (c.querySelector('.ini-delta') || {}).textContent || '', deltaTip: (c.querySelector('.ini-delta') || {}).title || '',
+             inSprint: e && e.scope ? e.scope.filter(it => classifyBucket(it.status, it.category) === 'done' && it.doneAt &&
+               it.doneAt.slice(0, 10) >= team.burndown.start.slice(0, 10)).length : 0,
+             scope: e && e.scope ? e.scope.length : null, epicDue: e ? e.epicDue || null : null,
+             done: e && e.scope ? e.scope.filter(it => classifyBucket(it.status, it.category) === 'done').length : 0 };
+  });
+  return { th, cells, order: cells.every(c => c.segs.every((s, i) => i === 0 || SEGS.indexOf(c.segs[i - 1]) < SEGS.indexOf(s))) };
+}, SEGS);
+const withEpic = ini.cells.filter(c => c.key && c.scope);
+const dm = iso => iso.slice(8, 10) + '.' + iso.slice(5, 7);
+check(ini.th.join('|') === 'Направление|Итог спринта|Результат спринта|Прогресс инициативы',
+      'колонки слайда: «Результат спринта» и рядом «Прогресс инициативы»');
+check(ini.cells.every(c => !c.missing), 'у каждой строки-направления есть «Прогресс инициативы»');
+check(withEpic.length > 0 && withEpic.every(c => c.n === c.scope && c.pct === Math.round(100 * c.done / c.scope) + '%' &&
+      c.text === c.pct + c.delta && !c.extra && !c.pctTitle),
+      'в ячейке только «N% (+n%)» и полоса на весь объём эпика: без «сделано», срока, прогноза и подсказки «как посчитано»');
+check(ini.order && withEpic.every(c => c.segs.length && c.segs.every(s => SEGS.includes(s))),
+      'полоса по порядку: не начато → в работе (блок рядом) → QA → готово');
+check(withEpic.every(c => c.tip.includes('сделано ' + c.done + ' из ' + c.scope) && /не начато|в работе|QA|готово/.test(c.tip) &&
+      (c.epicDue ? c.tip.includes('срок ' + dm(c.epicDue)) : c.tip.includes('срок не задан'))),
+      'в подсказке полосы — сделано X из Y, срок эпика (или «срок не задан»), прогноз и числа по статусам');
+check(withEpic.every(c => c.red === /позже срока|просрочен/.test(c.tip)) && withEpic.some(c => c.red),
+      'опоздание по прогнозу или просрочка — красный процент, причина — в подсказке');
+const overdue = await p.evaluate(() => {
+  const t = TEAMS[0], e = t.epics.find(x => x.epicKey && x.scope && x.scope.some(it => classifyBucket(it.status, it.category) !== 'done'));
+  const past = Object.assign({}, e, { epicDue: '2026-01-05' });
+  const cell = initCell({ epic: past, init: initiative(t, past) }, 'x');
+  return { cell, ok: initiative(t, e).overdue === (e.epicDue < t._meta.collectedAt.slice(0, 10)) };
+});
+check(overdue.ok && /class="ini-pct late"/.test(overdue.cell) && /срок 05\.01 — просрочен/.test(overdue.cell),
+      'срок прошёл, а эпик не закрыт — красный процент и «просрочен» в подсказке, даже без прогноза');
+check(withEpic.every(c => c.delta === '(+' + Math.round(100 * c.inSprint / c.scope) + '%)' && c.deltaTip.includes('в этом спринте')) &&
+      withEpic.some(c => c.inSprint > 0), 'рядом с процентом — «(+n%)»: вклад спринта = задачи эпика, закрытые с начала спринта, от всего объёма');
+check(ini.cells.filter(c => !c.key).every(c => c.text === '—'), '«Вне эпиков» — прочерк вместо прогресса инициативы');
+const lateCell = withEpic.find(c => /прогноз \d\d\.\d\d/.test(c.tip) && c.epicDue) || withEpic.find(c => c.epicDue) || withEpic[0];
+await goTo('#deckSlides tr.erow[data-key="' + lateCell.key + '"]');
+await p.click('#deckSlides tr.erow[data-key="' + lateCell.key + '"] td.init');
+await p.waitForTimeout(300);
+const iniSide = await p.evaluate(() => ({ tab: (document.querySelector('.side-tab.active') || {}).dataset?.tab,
+  chart: !!document.querySelector('#storiesBody .eb svg'),
+  cells: Object.fromEntries([...document.querySelectorAll('#storiesBody .ea-cell')].map(c => [c.querySelector('.ea-label').textContent, c.querySelector('b').textContent])) }));
+check(iniSide.tab === 'scope' && iniSide.chart, 'клик по «Прогрессу инициативы» — сайдбар сразу на «Весь эпик» со сгоранием');
+const fcTip = (/прогноз (\d\d\.\d\d)/.exec(lateCell.tip) || [])[1];
+check((!lateCell.epicDue || iniSide.cells['Плановая дата'].startsWith(dm(lateCell.epicDue))) &&
+      (!fcTip || iniSide.cells['Расчётная дата'].startsWith(fcTip)),
+      'срок и прогноз из подсказки совпадают с «Плановой» и «Расчётной датой» сайдбара');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
+await p.click('#deckSlides tr.erow[data-key="' + lateCell.key + '"] td.result');
+await p.waitForTimeout(300);
+check(await p.evaluate(() => (document.querySelector('.side-tab.active') || {}).dataset?.tab) === 'sprint',
+      'клик по «Результату спринта» — по-прежнему «Задачи спринта»');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // ПКМ — комментарий

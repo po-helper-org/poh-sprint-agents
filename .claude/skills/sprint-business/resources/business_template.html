@@ -51,7 +51,6 @@
   table.rep td.task { font-weight: 600; }
   table.rep td.task .role { display: block; font-weight: 400; font-size: 11px; color: var(--gray-dark); }
   table.rep td.result { white-space: nowrap; font-weight: 700; }
-  table.rep td.result span { border-bottom: 1px dotted #999; cursor: help; }
   /* статус красит строку целиком: слайд читается светофором сверху вниз */
   table.rep tr.stat-green td { background: var(--green-fill); }
   table.rep tr.stat-yellow td { background: var(--yellow-fill); }
@@ -65,8 +64,10 @@
   table.rep .kr-open { float: right; color: #888; font-size: 16px; line-height: 1; }
   table.rep .blk { margin-top: 4px; }
   /* строка = направление: метки «в блоке» / «не закрыто», результат с полосой историй */
-  table.rep.epics col.c1 { width: 27%; } table.rep.epics col.c2 { width: 57%; } table.rep.epics col.c3 { width: 16%; }
-  table.rep.epics td { font-size: 13px; }
+  table.rep.epics col.c1 { width: 23%; } table.rep.epics col.c2 { width: 47%; } table.rep.epics col.c3 { width: 15%; }
+  table.rep.epics col.c4 { width: 15%; }
+  /* кегль отчётной колоды: Arial 8 pt на слайде 16:9 (720 pt) = 14px на нашем 1280px */
+  table.rep.epics td { font-size: 14px; line-height: 1.3; padding: 8px 10px; }
   table.rep.epics td.task b { font-size: 14px; }
   table.rep.epics td.task .role { margin-top: 4px; }
   table.rep tr.has-blk td:first-child { box-shadow: inset 4px 0 0 var(--c-blocked); }
@@ -77,25 +78,29 @@
   table.rep .blk { color: #991b1b; }
   /* итог строки: метаданные, текст, «Дальше», «Блокер» — один кегль, подписи серым */
   table.rep.epics td.sum > div + div { margin-top: 4px; }
-  table.rep .ln, .kr-detail .ln { color: #222; }
-  .lbl { display: inline-block; min-width: 58px; margin-right: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #888; }
-  .ln-blk .lbl { color: #b91c1c; }
+  table.rep .ln, .kr-detail .ln { color: inherit; }
+  /* «Дальше:» / «Блокер:» — обычный текст в строку, как в отчётной колоде */
+  .lbl { display: inline; font: inherit; color: inherit; }
   /* сайдбар KR: два столбца */
   .panel-stack.wide { width: min(1240px, 96vw); }
-  .kr2 { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
-  .kr-list { position: sticky; top: 0; max-height: calc(100vh - 210px); overflow-y: auto; padding-right: 4px; }
-  .kl-head { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #888; margin: 10px 0 4px; }
+  .stack-head { padding: 14px 24px 12px; }
+  .stack-head .eyebrow { text-transform: none; letter-spacing: 0; font-size: 12px; margin-bottom: 2px; }
+  .stack-head h2 { font-size: 17px; margin: 0; }
+  #storiesLabel { text-transform: none; letter-spacing: 0; font-size: 13px; margin-bottom: 8px; }
+  /* сайдбар — один спокойный уровень: без рамок-карточек, капса и цветных полос; выбор — фоном */
+  .kr2 { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .kr-list { position: sticky; top: 0; max-height: calc(100vh - 170px); overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+  .kl-head { font-size: 12px; font-weight: 600; color: var(--muted); margin: 12px 0 2px 8px; }
   .kl-group:first-child .kl-head { margin-top: 0; }
   .b-blocked .kl-head { color: #b91c1c; }
-  .kl-item { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; font: inherit; background: var(--bg); border: 1px solid var(--line);
-             border-left: 3px solid #ccc; border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; cursor: pointer; color: var(--fg); }
-  .kl-item.stat-green { border-left-color: #16a34a; } .kl-item.stat-yellow { border-left-color: #eab308; } .kl-item.stat-red { border-left-color: #dc2626; }
-  .kl-item:hover { background: #fafafa; } .kl-item.on { background: #f2f4f7; border-color: #9ca3af; }
-  .kl-title { font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .kl-meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 4px; } .kl-meta b { margin-left: auto; color: var(--fg); font-weight: 600; }
-  .kd-title { font-size: 16px; font-weight: 600; line-height: 1.35; } .kd-meta { font-size: 12px; color: var(--muted); margin: 3px 0 10px; }
-  .kd-text { font-size: 13.5px; line-height: 1.5; margin-bottom: 4px; } .kr-detail .ln { font-size: 13px; margin-top: 3px; }
-  .kd-act { margin-top: 14px; }
+  .kl-item { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; font: inherit; background: none; border: 0;
+             border-radius: 6px; padding: 6px 8px; cursor: pointer; color: inherit; }
+  .kl-item:hover { background: #f6f7f8; } .kl-item.on { background: #eef0f3; }
+  .kl-title { font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .kl-meta { font-size: 12px; color: var(--muted); display: flex; gap: 4px; } .kl-meta b { margin-left: auto; color: var(--muted); font-weight: 400; }
+  .kd-title { font-size: 15px; font-weight: 600; line-height: 1.35; } .kd-meta { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+  .kd-text { font-size: 13.5px; line-height: 1.45; } .kr-detail .ln { font-size: 13.5px; margin-top: 2px; }
+  .kd-act { margin-top: 12px; }
   @media (max-width: 900px) { .kr2 { grid-template-columns: 1fr; } .kr-list { position: static; max-height: none; } }
   /* участник: блоки «история + подзадачи», «вне спринта» */
   .mkpis { grid-template-columns: repeat(6, 1fr); }
@@ -108,10 +113,19 @@
   .sb-subs { display: flex; gap: 1px; height: 6px; } .sb-subs i { flex: 1; border-radius: 1px; }
   .sb:hover .sb-st { box-shadow: 0 0 0 1px #111; }
   table.rep td.result .res-po { font-size: 10.5px; font-weight: 400; color: #777; }
-  table.rep td.result .res-sub { font-size: 11.5px; font-weight: 400; color: #555; margin-top: 3px; }
   table.rep td.result .res-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; cursor: help; }
   table.rep td.result .res-bar i { display: block; height: 100%; border-right: 1px solid #fff; }
   table.rep td.result .res-bar i:last-child { border-right: 0; }
+  /* «Прогресс инициативы»: весь эпик — полоса стадий, срок и прогноз; клик — «Весь эпик» */
+  table.rep td.init { font-weight: 700; cursor: pointer; }
+  table.rep td.init:hover .ini-bar { box-shadow: 0 0 0 1px #111; }
+  table.rep td.init .ini-pct.late { color: var(--c-blocked); }
+  table.rep td.init .ini-delta { margin-left: 4px; font-size: 12px; color: #15803d; cursor: help; }
+  table.rep td.init .ini-delta.zero { color: #888; font-weight: 400; }
+  table.rep td.init .ini-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 6px; background: #eee; }
+  table.rep td.init .ini-bar i { display: block; height: 100%; border-right: 1px solid #fff; }
+  table.rep td.init .ini-bar i:last-child { border-right: 0; }
+  table.rep td.init .ini-none { font-weight: 400; color: #999; }
   /* блокаторы в «Результате» */
   table.rep .blk-badge { display: inline-block; margin-top: 7px; font: inherit; font-size: 11.5px; font-weight: 700; color: #b91c1c;
                          background: #fee2e2; border: 1px solid #fca5a5; border-radius: 999px; padding: 2px 9px; cursor: pointer; white-space: nowrap; }
@@ -196,10 +210,11 @@
   /* сайдбары поверх колоды: KR и активность истории */
   body.deck-open .overlay { z-index: 41; }
   body.deck-open .panel-stack { z-index: 42; }
-  .side-tabs { display: flex; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
-  .side-tab { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); background: var(--bg);
-              color: var(--muted); border-radius: 999px; cursor: pointer; }
-  .side-tab.active { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+  .side-tabs { display: flex; gap: 20px; margin: 0 0 14px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+  .side-tab { font: inherit; font-size: 13px; padding: 6px 0 7px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+              background: none; color: var(--muted); cursor: pointer; }
+  .side-tab:hover { color: var(--fg); }
+  .side-tab.active { color: var(--fg); border-bottom-color: var(--fg); font-weight: 600; }
   table.rep ul { margin: 0; padding-left: 16px; }
   table.rep li { margin-bottom: 3px; }
   table.rep .next { margin-top: 6px; font-weight: 700; }
@@ -318,27 +333,25 @@
   .ops-h2 { margin-top: 12px; }
   .ops-legend .l-dot, .ops-legend .l-ring { border-radius: 50%; border: 1.5px solid; width: 7px; height: 7px; }
   /* сайдбар истории: календарь активности и хронология */
-  .sc { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 8px; margin-bottom: 14px; }
+  /* активность: график без рамки и легенды (строки подписаны), лента — одна строка на событие */
+  .sc { margin: 0 0 6px; }
   .sc .chart { width: 100%; height: auto; display: block; }
-  .sc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  .sc-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
-  .sc-legend .l-band { width: 16px; height: 8px; background: var(--c-progress); opacity: .85; }
-  .sc-legend .l-sub { border-radius: 50%; background: var(--c-review); }
-  .sc-legend .l-done { border-radius: 50%; background: var(--c-done); border: 1.5px solid #15803d; }
-  .sc-legend .l-com { background: #555; width: 8px; height: 8px; }
-  ol.sf { list-style: none; margin: 0; padding: 0; }
-  .sf-day { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 12px 0 4px; }
-  .sf-item { display: grid; grid-template-columns: 44px 1fr 30px; gap: 8px; align-items: start; padding: 5px 0; border-bottom: 1px solid #f3f3f3; font-size: 13px; }
-  .sf-item.done { background: #f3faf3; }
-  .sf-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 2px; }
-  .sf-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .sf-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sf-what { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .sf-what .arrow { color: var(--c-zero); }
+  .sf { list-style: none; margin: 0; padding: 0; }
+  /* дата — колонкой слева, только у первого события дня; новый день — тонкая линия */
+  .sf-item { display: grid; grid-template-columns: 48px 38px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 13px; line-height: 1.4; }
+  .sf-item.day { border-top: 1px solid #f0f0f0; margin-top: 4px; padding-top: 7px; }
+  .sf-item.day:first-child { border-top: 0; margin-top: 0; padding-top: 3px; }
+  .sf-day { font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+  .sf-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .sf-main { min-width: 0; }
+  .sf-sub { color: var(--muted); margin-right: 6px; }
+  .sf .arrow { color: #bbb; margin: 0 4px; }
+  .sf .status { border: 0; padding: 0; background: none; font-size: inherit; border-radius: 0; font-weight: 400; }
+  .sf .status.from { color: var(--muted); }
   .sf-c { font-style: italic; color: #333; }
   .sf-verb { color: var(--muted); }
-  .sf-done { font-size: 11.5px; font-weight: 700; color: var(--c-done); }
-  .sf-by { color: var(--muted); font-size: 11px; text-align: right; padding-top: 2px; }
+  .sf-done { font-size: 12px; color: var(--c-done); margin-left: 6px; }
+  .sf-by { color: #aaa; font-size: 11px; text-align: right; }
   /* «Планы на следующий спринт» */
   .plans-team { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #888; margin: 2px 0 14px; }
   .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
@@ -439,6 +452,10 @@
     .fslide h1.slide-title { font-size: 22px; }
     table.rep col.c1, table.rep.epics col.c1 { width: 32%; } table.rep col.c2, table.rep.epics col.c2 { width: 46%; }
     table.rep col.c3, table.rep.epics col.c3 { width: 22%; }
+    table.rep.epics col.c1 { width: 25%; } table.rep.epics col.c2 { width: 33%; }
+    table.rep.epics col.c3, table.rep.epics col.c4 { width: 21%; }
+    table.rep.epics th, table.rep.epics td.result { white-space: normal; }
+    table.rep.epics th { padding: 6px 4px; font-size: 11px; overflow-wrap: anywhere; hyphens: auto; }
     table.rep td { overflow-wrap: anywhere; }
     table.rep .tag { white-space: normal; }
     table.rep .blk-badge { white-space: normal; max-width: 100%; }
@@ -678,7 +695,7 @@
       : blocked.length ? 'снять блокеры'
       : !s.epic.epicKey ? 'работы вне эпиков закрыты'
       : !s.epic.scope ? 'истории спринта закрыты — взять следующие по эпику'
-      : openScope.length ? 'дальше по эпику: ' + clip(cleanTitle(openScope[0].title), 70)
+      : openScope.length ? 'по эпику: ' + clip(cleanTitle(openScope[0].title), 70)
       : 'эпик завершён';
     // PO оценил направление в 100% — сделанное по плану: статусы задач (например, «В ожидании»
     // у отменённой инициативы) не превращаются в блокер; явный блокер PO остаётся
@@ -686,6 +703,41 @@
     s.showBlk = s.blocked.length > 0 && (!s.poDone || !!s.ai.blocker);
     s.text = { done: s.ai.done || autoDone, blocker: s.ai.blocker || (s.poDone ? '' : autoBlk), next: s.ai.next || autoNext };
     return s;
+  }
+
+  // «Прогресс инициативы» — весь эпик (params.epic_scope), а не только спринт: задачи эпика
+  // по четырём стадиям (QA = тест + ревью), заблокированные — красным рядом с «в работе».
+  // Срок — epicDue из JIRA; прогноз — та же «Расчётная дата», что в сайдбаре «Весь эпик»
+  // (epicBurn на той же основе), показывается, только если она позже срока или срока нет.
+  // «(+n%)» — вклад спринта: задачи эпика, закрытые с начала спринта (doneAt), от всего объёма;
+  // закрытые без даты не считаются — неизвестно, в каком спринте их закрыли.
+  var INI_SEGS = [
+    { id: 'todo', of: ['open'], color: 'var(--c-open)', label: 'не начато' },
+    { id: 'progress', of: ['progress'], color: 'var(--c-progress)', label: 'в работе' },
+    { id: 'blocked', of: ['blocked'], color: 'var(--c-blocked)', label: 'в блоке' },
+    { id: 'qa', of: ['testing', 'review'], color: 'var(--c-review)', label: 'QA' },
+    { id: 'done', of: ['done'], color: 'var(--c-done)', label: 'готово' }
+  ];
+  function initiative(t, e) {
+    var scope = e.epicKey && e.scope;
+    if (!scope || !scope.length) return null;
+    var n = {}, sp = { done: 0, all: 0 }, inSprint = 0;
+    var start = ((t.burndown || {}).start || '').slice(0, 10);
+    INI_SEGS.forEach(function (g) { n[g.id] = 0; });
+    scope.forEach(function (it) {
+      var b = classifyBucket(it.status, it.category);
+      n[INI_SEGS.filter(function (g) { return g.of.indexOf(b) !== -1; })[0].id]++;
+      if (it.sp) { sp.all += it.sp; if (b === 'done') sp.done += it.sp; }
+      if (start && b === 'done' && it.doneAt && it.doneAt.slice(0, 10) >= start) inSprint++;
+    });
+    var burn = epicBurn(t, e, burnDefault(e));
+    var due = e.epicDue || null, fc = burn && burn.remaining ? burn.forecast : null;
+    var today = ((t._meta && t._meta.collectedAt) || new Date().toISOString()).slice(0, 10);
+    // срок прошёл, а эпик не закрыт — просрочен, даже когда темпа нет и прогноз не построить
+    return { n: n, total: scope.length, pct: Math.round(100 * n.done / scope.length), sp: sp,
+             inSprint: start ? inSprint : null, delta: start ? Math.round(100 * inSprint / scope.length) : null,
+             due: due, forecast: fc && (!due || fc > due) ? fc : null, late: !!(fc && due && fc > due),
+             overdue: !!(due && due < today && n.done < scope.length) };
   }
 
   // все строки команды: эпик (KR) → истории спринта со сводкой
@@ -699,7 +751,7 @@
           return { st: st, r: r, target: itemTarget('story', st, e),
                    done: ai.done || auto.done, next: ai.next || auto.next, blocker: ai.blocker || '', ai: !!(ai.done || ai.next) };
         }).sort(function (a, b) { return b.r.pct - a.r.pct; });
-        return epicSummary(t, { epic: e, rows: rows, ai: (biz(t).streams || {})[e.epicKey || NO_EPIC] || {} });
+        return epicSummary(t, { epic: e, rows: rows, ai: (biz(t).streams || {})[e.epicKey || NO_EPIC] || {}, init: initiative(t, e) });
       }).sort(function (a, b) { return (!a.epic.epicKey) - (!b.epic.epicKey) || b.pct - a.pct; });
     });
   }
@@ -838,28 +890,50 @@
     var n = { done: s.done.length, work: s.active.length, blocked: s.blocked.length, open: s.behind.length - s.active.length };
     var bar = s.poDone ? '<i style="flex:1;background:var(--c-done)"></i>'
       : RES_SEGS.map(function (g) { return n[g.id] ? '<i style="flex:' + n[g.id] + ';background:' + g.color + '"></i>' : ''; }).join('');
-    var tip = RES_SEGS.filter(function (g) { return n[g.id]; }).map(function (g) { return g.label + ' ' + n[g.id]; }).join(' · ');
+    var tip = 'закрыто ' + s.done.length + ' из ' + s.rows.length + '\n' +
+      RES_SEGS.filter(function (g) { return n[g.id]; }).map(function (g) { return g.label + ' ' + n[g.id]; }).join(' · ');
     var name = s.ai.kr ? ed('kr:' + t.slug + ':' + key, s.ai.kr, 'b') : '<b>' + esc(streamName(s)) + '</b>';
     return '<tr class="row erow ' + s.cls + (s.showBlk ? ' has-blk' : '') + '" data-ref="' + id + '" data-team="' + esc(t.slug) + '"' +
       (e.epicKey ? ' data-key="' + esc(e.epicKey) + '"' : '') +
       ctxAttr(e.epicKey ? epicTarget(e) : { kind: 'general', title: 'Вне эпиков' }) + ' title="Истории спринта и весь эпик">' +
       '<td class="task">' + name + '</td>' +
-      // одна гарнитура и один кегль: итог, «дальше», блокер — подписью, без жирного и красных абзацев
+      // одна гарнитура и один кегль: итог, «Дальше:», «Блокер:» — обычный текст в строку
       '<td class="sum">' + ed('sdone:' + t.slug + ':' + key, s.text.done, 'div') +
-        (s.text.next ? '<div class="ln"><span class="lbl">Дальше</span>' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') +
-        (s.text.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер</span>' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') + '</td>' +
-      '<td class="result"><span title="' + esc(s.how) + '">' + s.pct + '%</span>' + (s.byPo ? '<small class="res-po"> оценка PO</small>' : '') +
-        '<div class="res-sub">закрыто ' + s.done.length + ' из ' + s.rows.length + '</div>' +
+        (s.text.next ? '<div class="ln"><span class="lbl">Дальше:</span> ' + ed('snext:' + t.slug + ':' + key, s.text.next, 'span') + '</div>' : '') +
+        (s.text.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер:</span> ' + ed('sblk:' + t.slug + ':' + key, s.text.blocker) + '</div>' : '') + '</td>' +
+      '<td class="result"><span>' + s.pct + '%</span>' + (s.byPo ? '<small class="res-po"> оценка PO</small>' : '') +
         '<div class="res-bar" title="' + esc(tip) + '">' + bar + '</div>' +
         (s.showBlk ? '<button type="button" class="blk-badge" data-blk="' + id + '" title="' +
           esc(s.blocked.map(function (r) { return r.st.key + ' · ' + r.st.title + (r.blocker ? ' — ' + r.blocker : ''); }).join('\n')) +
-          '">🛑 блокаторы: ' + s.blocked.length + '</button>' : '') + '</td></tr>';
+          '">🛑 блокаторы: ' + s.blocked.length + '</button>' : '') + '</td>' + initCell(s, id) + '</tr>';
+  }
+
+  function initCell(s, id) {
+    var g = s.init;
+    if (!g) return '<td class="init"><span class="ini-none" title="' + (s.epic.epicKey ? 'Объёма эпика в данных нет (params.epic_scope)' : 'Истории вне эпиков') + '">—</span></td>';
+    var bar = INI_SEGS.map(function (x) {
+      return g.n[x.id] ? '<i data-seg="' + x.id + '" style="flex:' + g.n[x.id] + ';background:' + x.color + '"></i>' : '';
+    }).join('');
+    var ddmmOf = function (iso) { return iso.slice(8, 10) + '.' + iso.slice(5, 7); };
+    // в ячейке — только «N% (+n%)» и полоса; сделано, срок, прогноз и статусы — подсказкой полосы,
+    // опоздание по прогнозу и просрочка — красным процентом
+    var tip = ['сделано ' + g.n.done + ' из ' + g.total + (g.inSprint ? ', в этом спринте +' + g.inSprint : ''),
+      (g.due ? 'срок ' + ddmmOf(g.due) + (g.overdue ? ' — просрочен' : '') : 'срок не задан') +
+        (g.forecast ? ' · прогноз ' + ddmmOf(g.forecast) + (g.late ? ' — позже срока' : '') : ''),
+      INI_SEGS.filter(function (x) { return x.id !== 'blocked'; }).map(function (x) {
+        return x.label + ' ' + g.n[x.id] + (x.id === 'progress' && g.n.blocked ? ' (+ в блоке ' + g.n.blocked + ')' : '');
+      }).join(' · ') + (g.sp.all ? ' · SP: ' + fmtNum(g.sp.done) + ' из ' + fmtNum(g.sp.all) : '')].join('\n');
+    return '<td class="init" data-init="' + id + '" title="Весь эпик: сгорание, сроки, что осталось">' +
+      '<span class="ini-pct' + (g.late || g.overdue ? ' late' : '') + '">' + g.pct + '%</span>' +
+      (g.delta !== null ? '<span class="ini-delta' + (g.inSprint ? '' : ' zero') + '" title="вклад спринта: в этом спринте закрыто ' +
+        g.inSprint + ' ' + plural(g.inSprint, 'задача', 'задачи', 'задач') + ' эпика из ' + g.total + '">(+' + g.delta + '%)</span>' : '') +
+      '<div class="ini-bar" title="' + esc(tip) + '">' + bar + '</div></td>';
   }
 
   function objSlide(t, g, page, part, parts) {
     return slide('', '<h1 class="slide-title">' + ed('obj:' + t.slug + ':' + (g.obj || '-') + ':' + part, g.title + (parts > 1 ? ' · ' + (part + 1) + '/' + parts : '')) + '</h1>' +
-      '<table class="rep epics"><colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>' +
-      '<thead><tr><th>Направление</th><th>Итог спринта</th><th>Результат</th></tr></thead><tbody>' +
+      '<table class="rep epics"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>' +
+      '<thead><tr><th>Направление</th><th>Итог спринта</th><th>Результат спринта</th><th>Прогресс инициативы</th></tr></thead><tbody>' +
       page.map(function (s) { return epicRow(t, s); }).join('') + '</tbody></table>',
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: t.team + ' · ' + g.title }));
   }
@@ -1784,8 +1858,8 @@
 
   // ---------- направление: задачи спринта по статусам, активность — на том же экране ----------
   var ES_ORDER = ['blocked', 'progress', 'review', 'testing', 'open', 'done'];
-  function openEpic(ref) {
-    var state = { filter: 'all', open: null };
+  function openEpic(ref, tab) {
+    var state = { filter: 'all', open: null, tab: tab || null };
     showPanel(function () { renderEpic(ref, state); });
   }
   function renderEpic(ref, state) {
@@ -1835,8 +1909,8 @@
           '<div class="kd-meta">' + keyLink(r.st.key) + ' · ' + esc(r.st.status) + (r.st.assignee ? ' · ' + esc(shortName(r.st.assignee)) : '') +
             ' · ' + r.r.flag + r.r.pct + '%</div></div>' +
           '<div class="kd-text">' + esc(r.done) + '</div>' +
-          (r.next ? '<div class="ln"><span class="lbl">Дальше</span>' + esc(r.next) + '</div>' : '') +
-          (r.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер</span>' + esc(r.blocker) + '</div>' : '') +
+          (r.next ? '<div class="ln"><span class="lbl">Дальше:</span> ' + esc(r.next) + '</div>' : '') +
+          (r.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер:</span> ' + esc(r.blocker) + '</div>' : '') +
           '<div class="kd-act">' + withTeam(ref.team, function () { return storyCalendar(r.st, ev) + storyFeedHtml(r.st, ev); }) + '</div>';
       })(cur.r) : '<div class="sidebar-empty">Выберите задачу слева.</div>';
       body.innerHTML = '<div class="kr2"><div class="kr-list">' + list + '</div><div class="kr-detail">' + detail + '</div></div>';
@@ -1870,12 +1944,12 @@
     var nowAt = ((team._meta && team._meta.collectedAt) || new Date().toISOString()).slice(0, 16);
     var t0 = ms(events[0].at), t1 = Math.max(ms(nowAt), ms(events[events.length - 1].at));
     if (t1 - t0 < 86400000) t1 = t0 + 86400000;
-    var W = 760, padL = 92, padR = 12, top = 22, lane = 30, H = top + lane * 3 + 26;
+    var W = 760, padL = 84, padR = 12, top = 18, lane = 22, H = top + lane * 3 + 22;
     var xOf = function (at) { return padL + (W - padL - padR) * (ms(at) - t0) / (t1 - t0); };
     var yOf = function (i) { return top + lane * i + lane / 2; };
     var parts = [];
     ['История', 'Подзадачи', 'Комментарии'].forEach(function (name, i) {
-      parts.push('<text x="0" y="' + (yOf(i) + 4) + '" font-size="11" fill="#666">' + name + '</text>');
+      parts.push('<text x="0" y="' + (yOf(i) + 4) + '" font-size="11" fill="#888">' + name + '</text>');
       parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(i) + '" y2="' + yOf(i) + '" stroke="#eee"/>');
     });
     // недели — засечки и даты
@@ -1890,8 +1964,8 @@
     var sprintStart = (LOGS && LOGS.since) || (team.burndown && team.burndown.start);
     if (sprintStart && ms(sprintStart) > t0) {
       var sx = xOf(sprintStart).toFixed(1);
-      parts.push('<line x1="' + sx + '" x2="' + sx + '" y1="' + (top - 10) + '" y2="' + (H - 22) + '" stroke="#111" stroke-dasharray="3 3"/>');
-      parts.push('<text x="' + (+sx + 4) + '" y="' + (top - 10) + '" font-size="10" fill="#111">спринт</text>');
+      parts.push('<line x1="' + sx + '" x2="' + sx + '" y1="' + (top - 10) + '" y2="' + (H - 22) + '" stroke="#9ca3af" stroke-dasharray="3 3"/>');
+      parts.push('<text x="' + (+sx + 4) + '" y="' + (top - 10) + '" font-size="10" fill="#888">спринт</text>');
     }
     // статус истории по времени — цветная полоса
     var mine = events.filter(function (e) { return e.key === st.key && e.kind === 'status'; });
@@ -1921,10 +1995,8 @@
           esc(when + ' · ' + (e.from || '—') + ' → ' + e.to + (e.by ? ' · ' + e.by : '')) + '</title></line>');
       }
     });
-    var subsDone = events.filter(function (e) { return e.done && e.key !== st.key; }).length;
-    return '<div class="sc"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' +
-      '<div class="sc-legend"><span><i class="l-band"></i>статус истории</span><span><i class="l-sub"></i>смена статуса подзадачи</span>' +
-      '<span><i class="l-done"></i>подзадача закрыта · ' + subsDone + '</span><span><i class="l-com"></i>комментарий</span></div></div>';
+    // без легенды: строки подписаны, что значит точка или отрезок — в подсказке при наведении
+    return '<div class="sc"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg></div>';
   }
 
   function storyFeedHtml(st, list) {
@@ -1932,15 +2004,17 @@
     var subTitle = {};
     (st.subtasks || []).forEach(function (sb) { subTitle[sb.key] = sb.summary || sb.title || ''; });
     var html = '<ol class="sf">', last = null;
+    var MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     list.forEach(function (e) {
-      var day = dayLabel(e.at);
-      if (day !== last) { html += '<li class="sf-day">' + esc(day) + '</li>'; last = day; }
+      var day = e.at.slice(0, 10), first = day !== last;
+      last = day;
       var what = e.kind === 'comment' ? '<span class="sf-c">«' + esc(e.body || '') + '»</span>'
         : e.kind === 'created' ? '<span class="sf-verb">создана</span>'
-        : '<span class="status b-open">' + esc(e.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.to, '') + '">' +
-          esc(e.to) + '</span>' + (e.done && e.key !== st.key ? '<span class="sf-done">подзадача закрыта</span>' : '');
-      html += '<li class="sf-item' + (e.done ? ' done' : '') + '"><span class="sf-time">' + esc(e.at.slice(11, 16)) + '</span>' +
-        '<span class="sf-main">' + (e.key !== st.key ? '<span class="sf-sub">' + esc(e.key) + ' · ' + esc(subTitle[e.key] || '') + '</span>' : '') +
+        : '<span class="status from">' + esc(e.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.to, '') + '">' +
+          esc(e.to) + '</span>' + (e.done && e.key !== st.key ? '<span class="sf-done">закрыта</span>' : '');
+      html += '<li class="sf-item' + (first ? ' day' : '') + '"><span class="sf-day" title="' + esc(dayLabel(e.at)) + '">' +
+        (first ? parseInt(day.slice(8, 10), 10) + ' ' + MON[parseInt(day.slice(5, 7), 10) - 1] : '') + '</span><span class="sf-time">' + esc(e.at.slice(11, 16)) + '</span>' +
+        '<span class="sf-main">' + (e.key !== st.key ? '<span class="sf-sub" title="' + esc(e.key) + '">' + esc(subTitle[e.key] || e.key) + '</span>' : '') +
         '<span class="sf-what">' + what + '</span></span><span class="sf-by" title="' + esc(e.by || '') + '">' + esc(initials(e.by || '—')) + '</span></li>';
     });
     return html + '</ol>';
@@ -1985,6 +2059,8 @@
     if (pcol) { openPlans(byTeam(pcol.dataset.team), pcol.dataset.plancol); return; }
     var ctl = e.target.closest('[data-ctl]');
     if (ctl) { openControl(TEAMS.find(function (x) { return x.slug === ctl.dataset.ctl; })); return; }
+    var ini = e.target.closest('[data-init]');
+    if (ini && deckRefs[ini.dataset.init]) { openEpic(deckRefs[ini.dataset.init], 'scope'); return; }
     var el = e.target.closest('[data-ref]');
     var ref = el && deckRefs[el.dataset.ref];
     if (!ref) return;
