@@ -1602,7 +1602,6 @@
         }).join('') + '</div>';
     }).join('');
     return slide('roadmap', '<h1 class="slide-title">Инициативы по спринтам до ' + ddmm(sp[2].to) + '</h1>' +
-      '<div class="slide-sub">' + esc(t.team) + (rm.agent ? '' : ' · фазы — по задачам эпиков, агент уточняет по плану PO') + '</div>' +
       '<div class="rm-wrap"><div class="rm">' + head + (body || '<div class="rm-empty">Открытых инициатив в данных нет.</div>') + '</div></div>' +
       (rm.more ? '<div class="rm-more">ещё ' + rm.more + ' — в отчёте PO</div>' : ''),
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Инициативы по спринтам · ' + t.team }));

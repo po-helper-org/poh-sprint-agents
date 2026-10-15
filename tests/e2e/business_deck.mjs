@@ -275,6 +275,8 @@ const rm = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fs
 }));
 const day = iso => new Date(iso + 'T00:00:00Z').getTime() / 86400000;
 check(rm.length === TEAMS_N(deckInfo), 'роадмап — у каждой команды');
+check(await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.roadmap')].every(s => !s.querySelector('.slide-sub'))),
+      'под заголовком роадмапа подписи нет');
 check(rm.every(r => r.sprints.length === 3 && day(r.sprints[0][0]) === day(r.end) + 1 &&
       r.sprints.every((x, i) => i === 0 || day(x[0]) === day(r.sprints[i - 1][1]) + 1) &&
       r.title === 'Инициативы по спринтам до ' + r.sprints[2][1].slice(8, 10) + '.' + r.sprints[2][1].slice(5, 7)),
