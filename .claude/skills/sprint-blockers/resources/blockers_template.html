@@ -33,6 +33,8 @@ table{ border-collapse:collapse; width:100%; margin:0 0 .6rem; font-size:.88rem;
 th, td{ border:1px solid var(--line-soft); padding:.5rem .6rem; text-align:left; vertical-align:top; }
 th{ background:var(--mark); font-family:"Courier New", monospace; font-size:.7rem; text-transform:uppercase; letter-spacing:.03em; }
 td.num, th.num{ text-align:right; white-space:nowrap; }
+/* числа — по ширине содержимого, остальное место — тексту «чего ждали» */
+td.num{ width:1%; } th.num{ white-space:normal; min-width:7.5rem; }
 td small{ color:var(--muted); font-size:.75rem; }
 .table-wrap{ overflow-x:auto; }
 .note{ font-size:.84rem; color:var(--muted); border-left:2px solid var(--line-soft); padding:.2rem .8rem; }
