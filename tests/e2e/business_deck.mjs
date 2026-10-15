@@ -351,6 +351,26 @@ check(epicTabs === 'Задачи спринта|Весь эпик' && es.items =
 check(es.wide && es.cols === 2, 'сайдбар KR широкий, в два столбца');
 check(es.heads.length >= 1, 'слева задачи сгруппированы по статусам');
 check(es.detail === 1, 'справа — первая незакрытая задача с активностью');
+// редизайн сайдбара: меньше акцентов — без капса с разрядкой, рамок у карточек, статусов и графика, без легенды;
+// событие ленты — одна строка, подзадача — серым префиксом в той же строке
+const look = await p.evaluate(() => {
+  const cs = el => el ? getComputedStyle(el) : null;
+  const caps = [...document.querySelectorAll('.stack-head .eyebrow, #storiesLabel, #storiesBody .kl-head, #storiesBody .sf-day')]
+    .filter(el => el.offsetParent).map(el => cs(el).textTransform);
+  const item = document.querySelector('#storiesBody .kl-item'), tab = document.querySelector('.side-tab:not(.active)');
+  const st = document.querySelector('#storiesBody .kr-detail .sf .status');
+  const row = [...document.querySelectorAll('#storiesBody .kr-detail .sf-item')].find(r => r.querySelector('.status') && r.querySelector('.sf-sub'));
+  const lineH = parseFloat(cs(document.querySelector('#storiesBody .kr-detail .sf-item')).lineHeight) || 18;
+  return { caps, itemBorder: cs(item).borderTopWidth, itemLeft: cs(item).borderLeftWidth, tabBorder: cs(tab).borderTopWidth,
+           statusBorder: st ? cs(st).borderTopWidth : 'нет статусов', chartBorder: cs(document.querySelector('#storiesBody .sc')).borderTopWidth,
+           legend: !!document.querySelector('#storiesBody .sc-legend'),
+           oneLine: row ? row.getBoundingClientRect().height < lineH * 1.9 : null };
+});
+check(look.caps.length >= 3 && look.caps.every(t => t === 'none'), 'в шапке, группах и датах ленты нет капса с разрядкой');
+check(look.itemBorder === '0px' && look.itemLeft === '0px', 'задачи слева — без рамок и цветной полосы, выбранная — фоном');
+check(look.tabBorder === '0px', 'вкладки — подчёркиванием, без рамок-таблеток');
+check(look.statusBorder === '0px' && look.chartBorder === '0px' && !look.legend, 'статусы в ленте — текстом без рамок; график без рамки и легенды');
+check(look.oneLine === true, 'событие подзадачи — одна строка: «ключ подзадача · Было → Стало»');
 await p.click('#storiesBody .kl-item:has-text("Агрегация каталога и доступности")');
 await p.waitForTimeout(300);
 const story = await p.evaluate(() => {

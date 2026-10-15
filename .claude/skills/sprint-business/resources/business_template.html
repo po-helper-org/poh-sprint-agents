@@ -83,20 +83,24 @@
   .lbl { display: inline; font: inherit; color: inherit; }
   /* сайдбар KR: два столбца */
   .panel-stack.wide { width: min(1240px, 96vw); }
-  .kr2 { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 18px; align-items: start; }
-  .kr-list { position: sticky; top: 0; max-height: calc(100vh - 210px); overflow-y: auto; padding-right: 4px; }
-  .kl-head { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #888; margin: 10px 0 4px; }
+  .stack-head { padding: 14px 24px 12px; }
+  .stack-head .eyebrow { text-transform: none; letter-spacing: 0; font-size: 12px; margin-bottom: 2px; }
+  .stack-head h2 { font-size: 17px; margin: 0; }
+  #storiesLabel { text-transform: none; letter-spacing: 0; font-size: 13px; margin-bottom: 8px; }
+  /* сайдбар — один спокойный уровень: без рамок-карточек, капса и цветных полос; выбор — фоном */
+  .kr2 { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .kr-list { position: sticky; top: 0; max-height: calc(100vh - 170px); overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+  .kl-head { font-size: 12px; font-weight: 600; color: var(--muted); margin: 12px 0 2px 8px; }
   .kl-group:first-child .kl-head { margin-top: 0; }
   .b-blocked .kl-head { color: #b91c1c; }
-  .kl-item { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; font: inherit; background: var(--bg); border: 1px solid var(--line);
-             border-left: 3px solid #ccc; border-radius: 6px; padding: 6px 8px; margin-bottom: 4px; cursor: pointer; color: var(--fg); }
-  .kl-item.stat-green { border-left-color: #16a34a; } .kl-item.stat-yellow { border-left-color: #eab308; } .kl-item.stat-red { border-left-color: #dc2626; }
-  .kl-item:hover { background: #fafafa; } .kl-item.on { background: #f2f4f7; border-color: #9ca3af; }
-  .kl-title { font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .kl-meta { font-size: 11.5px; color: var(--muted); display: flex; gap: 4px; } .kl-meta b { margin-left: auto; color: var(--fg); font-weight: 600; }
-  .kd-title { font-size: 16px; font-weight: 600; line-height: 1.35; } .kd-meta { font-size: 12px; color: var(--muted); margin: 3px 0 10px; }
-  .kd-text { font-size: 13.5px; line-height: 1.5; margin-bottom: 4px; } .kr-detail .ln { font-size: 13px; margin-top: 3px; }
-  .kd-act { margin-top: 14px; }
+  .kl-item { display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left; font: inherit; background: none; border: 0;
+             border-radius: 6px; padding: 6px 8px; cursor: pointer; color: inherit; }
+  .kl-item:hover { background: #f6f7f8; } .kl-item.on { background: #eef0f3; }
+  .kl-title { font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .kl-meta { font-size: 12px; color: var(--muted); display: flex; gap: 4px; } .kl-meta b { margin-left: auto; color: var(--muted); font-weight: 400; }
+  .kd-title { font-size: 15px; font-weight: 600; line-height: 1.35; } .kd-meta { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+  .kd-text { font-size: 13.5px; line-height: 1.45; } .kr-detail .ln { font-size: 13.5px; margin-top: 2px; }
+  .kd-act { margin-top: 12px; }
   @media (max-width: 900px) { .kr2 { grid-template-columns: 1fr; } .kr-list { position: static; max-height: none; } }
   /* участник: блоки «история + подзадачи», «вне спринта» */
   .mkpis { grid-template-columns: repeat(6, 1fr); }
@@ -206,10 +210,11 @@
   /* сайдбары поверх колоды: KR и активность истории */
   body.deck-open .overlay { z-index: 41; }
   body.deck-open .panel-stack { z-index: 42; }
-  .side-tabs { display: flex; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
-  .side-tab { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); background: var(--bg);
-              color: var(--muted); border-radius: 999px; cursor: pointer; }
-  .side-tab.active { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+  .side-tabs { display: flex; gap: 20px; margin: 0 0 14px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+  .side-tab { font: inherit; font-size: 13px; padding: 6px 0 7px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+              background: none; color: var(--muted); cursor: pointer; }
+  .side-tab:hover { color: var(--fg); }
+  .side-tab.active { color: var(--fg); border-bottom-color: var(--fg); font-weight: 600; }
   table.rep ul { margin: 0; padding-left: 16px; }
   table.rep li { margin-bottom: 3px; }
   table.rep .next { margin-top: 6px; font-weight: 700; }
@@ -328,27 +333,25 @@
   .ops-h2 { margin-top: 12px; }
   .ops-legend .l-dot, .ops-legend .l-ring { border-radius: 50%; border: 1.5px solid; width: 7px; height: 7px; }
   /* сайдбар истории: календарь активности и хронология */
-  .sc { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 8px; margin-bottom: 14px; }
+  /* активность: график без рамки и легенды (строки подписаны), лента — одна строка на событие */
+  .sc { margin: 0 0 6px; }
   .sc .chart { width: 100%; height: auto; display: block; }
-  .sc-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-  .sc-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
-  .sc-legend .l-band { width: 16px; height: 8px; background: var(--c-progress); opacity: .85; }
-  .sc-legend .l-sub { border-radius: 50%; background: var(--c-review); }
-  .sc-legend .l-done { border-radius: 50%; background: var(--c-done); border: 1.5px solid #15803d; }
-  .sc-legend .l-com { background: #555; width: 8px; height: 8px; }
-  ol.sf { list-style: none; margin: 0; padding: 0; }
-  .sf-day { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 12px 0 4px; }
-  .sf-item { display: grid; grid-template-columns: 44px 1fr 30px; gap: 8px; align-items: start; padding: 5px 0; border-bottom: 1px solid #f3f3f3; font-size: 13px; }
-  .sf-item.done { background: #f3faf3; }
-  .sf-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; padding-top: 2px; }
-  .sf-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .sf-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sf-what { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .sf-what .arrow { color: var(--c-zero); }
+  .sf { list-style: none; margin: 0; padding: 0; }
+  /* дата — колонкой слева, только у первого события дня; новый день — тонкая линия */
+  .sf-item { display: grid; grid-template-columns: 48px 38px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 13px; line-height: 1.4; }
+  .sf-item.day { border-top: 1px solid #f0f0f0; margin-top: 4px; padding-top: 7px; }
+  .sf-item.day:first-child { border-top: 0; margin-top: 0; padding-top: 3px; }
+  .sf-day { font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+  .sf-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+  .sf-main { min-width: 0; }
+  .sf-sub { color: var(--muted); margin-right: 6px; }
+  .sf .arrow { color: #bbb; margin: 0 4px; }
+  .sf .status { border: 0; padding: 0; background: none; font-size: inherit; border-radius: 0; font-weight: 400; }
+  .sf .status.from { color: var(--muted); }
   .sf-c { font-style: italic; color: #333; }
   .sf-verb { color: var(--muted); }
-  .sf-done { font-size: 11.5px; font-weight: 700; color: var(--c-done); }
-  .sf-by { color: var(--muted); font-size: 11px; text-align: right; padding-top: 2px; }
+  .sf-done { font-size: 12px; color: var(--c-done); margin-left: 6px; }
+  .sf-by { color: #aaa; font-size: 11px; text-align: right; }
   /* «Планы на следующий спринт» */
   .plans-team { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #888; margin: 2px 0 14px; }
   .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
@@ -1941,12 +1944,12 @@
     var nowAt = ((team._meta && team._meta.collectedAt) || new Date().toISOString()).slice(0, 16);
     var t0 = ms(events[0].at), t1 = Math.max(ms(nowAt), ms(events[events.length - 1].at));
     if (t1 - t0 < 86400000) t1 = t0 + 86400000;
-    var W = 760, padL = 92, padR = 12, top = 22, lane = 30, H = top + lane * 3 + 26;
+    var W = 760, padL = 84, padR = 12, top = 18, lane = 22, H = top + lane * 3 + 22;
     var xOf = function (at) { return padL + (W - padL - padR) * (ms(at) - t0) / (t1 - t0); };
     var yOf = function (i) { return top + lane * i + lane / 2; };
     var parts = [];
     ['История', 'Подзадачи', 'Комментарии'].forEach(function (name, i) {
-      parts.push('<text x="0" y="' + (yOf(i) + 4) + '" font-size="11" fill="#666">' + name + '</text>');
+      parts.push('<text x="0" y="' + (yOf(i) + 4) + '" font-size="11" fill="#888">' + name + '</text>');
       parts.push('<line x1="' + padL + '" x2="' + (W - padR) + '" y1="' + yOf(i) + '" y2="' + yOf(i) + '" stroke="#eee"/>');
     });
     // недели — засечки и даты
@@ -1961,8 +1964,8 @@
     var sprintStart = (LOGS && LOGS.since) || (team.burndown && team.burndown.start);
     if (sprintStart && ms(sprintStart) > t0) {
       var sx = xOf(sprintStart).toFixed(1);
-      parts.push('<line x1="' + sx + '" x2="' + sx + '" y1="' + (top - 10) + '" y2="' + (H - 22) + '" stroke="#111" stroke-dasharray="3 3"/>');
-      parts.push('<text x="' + (+sx + 4) + '" y="' + (top - 10) + '" font-size="10" fill="#111">спринт</text>');
+      parts.push('<line x1="' + sx + '" x2="' + sx + '" y1="' + (top - 10) + '" y2="' + (H - 22) + '" stroke="#9ca3af" stroke-dasharray="3 3"/>');
+      parts.push('<text x="' + (+sx + 4) + '" y="' + (top - 10) + '" font-size="10" fill="#888">спринт</text>');
     }
     // статус истории по времени — цветная полоса
     var mine = events.filter(function (e) { return e.key === st.key && e.kind === 'status'; });
@@ -1992,10 +1995,8 @@
           esc(when + ' · ' + (e.from || '—') + ' → ' + e.to + (e.by ? ' · ' + e.by : '')) + '</title></line>');
       }
     });
-    var subsDone = events.filter(function (e) { return e.done && e.key !== st.key; }).length;
-    return '<div class="sc"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg>' +
-      '<div class="sc-legend"><span><i class="l-band"></i>статус истории</span><span><i class="l-sub"></i>смена статуса подзадачи</span>' +
-      '<span><i class="l-done"></i>подзадача закрыта · ' + subsDone + '</span><span><i class="l-com"></i>комментарий</span></div></div>';
+    // без легенды: строки подписаны, что значит точка или отрезок — в подсказке при наведении
+    return '<div class="sc"><svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' + parts.join('') + '</svg></div>';
   }
 
   function storyFeedHtml(st, list) {
@@ -2003,15 +2004,17 @@
     var subTitle = {};
     (st.subtasks || []).forEach(function (sb) { subTitle[sb.key] = sb.summary || sb.title || ''; });
     var html = '<ol class="sf">', last = null;
+    var MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     list.forEach(function (e) {
-      var day = dayLabel(e.at);
-      if (day !== last) { html += '<li class="sf-day">' + esc(day) + '</li>'; last = day; }
+      var day = e.at.slice(0, 10), first = day !== last;
+      last = day;
       var what = e.kind === 'comment' ? '<span class="sf-c">«' + esc(e.body || '') + '»</span>'
         : e.kind === 'created' ? '<span class="sf-verb">создана</span>'
-        : '<span class="status b-open">' + esc(e.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.to, '') + '">' +
-          esc(e.to) + '</span>' + (e.done && e.key !== st.key ? '<span class="sf-done">подзадача закрыта</span>' : '');
-      html += '<li class="sf-item' + (e.done ? ' done' : '') + '"><span class="sf-time">' + esc(e.at.slice(11, 16)) + '</span>' +
-        '<span class="sf-main">' + (e.key !== st.key ? '<span class="sf-sub">' + esc(e.key) + ' · ' + esc(subTitle[e.key] || '') + '</span>' : '') +
+        : '<span class="status from">' + esc(e.from || '—') + '</span><span class="arrow">→</span><span class="status ' + bucketClass(e.to, '') + '">' +
+          esc(e.to) + '</span>' + (e.done && e.key !== st.key ? '<span class="sf-done">закрыта</span>' : '');
+      html += '<li class="sf-item' + (first ? ' day' : '') + '"><span class="sf-day" title="' + esc(dayLabel(e.at)) + '">' +
+        (first ? parseInt(day.slice(8, 10), 10) + ' ' + MON[parseInt(day.slice(5, 7), 10) - 1] : '') + '</span><span class="sf-time">' + esc(e.at.slice(11, 16)) + '</span>' +
+        '<span class="sf-main">' + (e.key !== st.key ? '<span class="sf-sub" title="' + esc(e.key) + '">' + esc(subTitle[e.key] || e.key) + '</span>' : '') +
         '<span class="sf-what">' + what + '</span></span><span class="sf-by" title="' + esc(e.by || '') + '">' + esc(initials(e.by || '—')) + '</span></li>';
     });
     return html + '</ol>';
