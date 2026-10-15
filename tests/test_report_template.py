@@ -155,7 +155,7 @@ class BusinessTemplateTest(unittest.TestCase):
                      'function openEpic(', 'function openStory(', "'Без привязки к OKR'", "'Направления спринта'",
                      "NO_EPIC = 'no-epic'", '@page { size: 1280px 720px',
                      '<th>Направление</th><th>Итог спринта</th><th>Результат спринта</th><th>Прогресс инициативы</th>',
-                     'function initiative(', 'function initCell(', 'ini-delta', "openEpic(deckRefs[ini.dataset.init], 'scope')", 'stat-green', 'stat-yellow', 'stat-red',
+                     'function initiative(', 'function initCell(', 'ini-delta', 'function iterationClosed(', 'function addIterationSection(', 'function cboxHtml(', "openEpic(deckRefs[ini.dataset.init], 'scope')", 'stat-green', 'stat-yellow', 'stat-red',
                      'ROWS_PER_SLIDE = 6', 'заблокировано ', 'не закрыто '):
             self.assertIn(part, self.html)
         for gone in ('function krHeader(', 'function storyRow(', 'function openKr(', 'function changesSlide(',
@@ -175,25 +175,27 @@ class BusinessTemplateTest(unittest.TestCase):
         for part in ('Производительность за 3 спринта', 'Lead time', 'function tipHtml(', 'function teamOutputChart(', 'function openMember(',
                      'function itemActivityHtml(', "label: 'Backlog / To Do'", "label: 'Отменено'", 'CANCEL_RE'):
             self.assertIn(part, self.html)
-        ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function plansSlide(')]
+        ops = self.html[self.html.index('var OUT_GROUPS = ['):self.html.index('function roadmapSlide(')]
         order = [ops.index("label: '" + g + "'") for g in ('Не начато', 'В работе', 'Выполнено')]
         self.assertEqual(sorted(order), order, 'три группы: не начато / в работе / выполнено')
         slide = self.html[self.html.index('function opsSlide('):]
-        self.assertNotIn('slide-title', slide[:slide.index('function plansSlide(')], 'заголовка у операционного слайда нет')
-        self.assertNotIn('memberTable(', slide[:slide.index('function plansSlide(')], 'таблица выработки — только в отчёте PO')
+        self.assertNotIn('slide-title', slide[:slide.index('function roadmapSlide(')], 'заголовка у операционного слайда нет')
+        self.assertNotIn('memberTable(', slide[:slide.index('function roadmapSlide(')], 'таблица выработки — только в отчёте PO')
         self.assertNotIn('function memberChart(', self.html, 'графика выработки по участникам больше нет')
 
-    def test_title_team_and_plans_slides(self):
-        """Титул и слайд команды — «заблокированы» отдельно от «не успели по объёму»; после
-        «Сроков» — «Планы на следующий спринт» в четыре колонки по направлениям."""
+    def test_title_team_roadmap_and_risks_slides(self):
+        """Титул и слайд команды — «заблокированы» отдельно от «не успели по объёму»; в конце
+        команды — роадмап «Инициативы по спринтам» и «Риски и проблемы» вместо «Планов»."""
         for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function behindLabel(',
                      'blk-badge', '🛑 блокаторы: ', 'function openBlockers(', 'Эскалирует:', "'эпик завершён'",
-                     'function plansSlide(', 'function openPlans(', 'data-plancol', 'function planColumn(', "'Взять в работу'", "'Доделать'", "'Возможно войдёт'",
-                     "'Эскалировать'", 'function lowPriority(', 'html += plansSlide(x.t, x.streams);',
-                     'PLAN_LINES = 15', 'PLAN_TAKE = 3', 'class="prow"', 'class="pg-head"', 'pr-more'):
+                     'function roadmapSlide(', 'function roadmapRows(', 'function nextSprints(', 'function epicPhase(',
+                     "Инициативы по спринтам до ' + ddmm(sp[2].to)", 'RM_ROWS = 14', 'class="rm-sprint"',
+                     'function risksSlide(t, streams)', 'function teamRisks(', "external: 'Внешнее'", "deadline: 'Срок'", 'RK_ROWS = 5',
+                     'html += roadmapSlide(x.t, x.streams);', 'html += risksSlide(x.t, x.streams);'):
             self.assertIn(part, self.html)
         for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '", 'PLAN_ROWS', 'class="pr-key"',
-                     'class="h-panels"', 'Заблокированы · ', '⏳ не закрыто '):
+                     'class="h-panels"', 'Заблокированы · ', '⏳ не закрыто ', 'function plansSlide(', 'function openPlans(',
+                     'data-plancol', 'html += risksSlide();', 'РИСКИ'):
             self.assertNotIn(gone, self.html)
 
     def test_story_calendar_and_feed(self):
@@ -204,7 +206,7 @@ class BusinessTemplateTest(unittest.TestCase):
 
     def test_ops_three_charts(self):
         """Операционный слайд: крупно производительность и сгорание спринта, снизу — cycle time; «Сроков» нет."""
-        ops = self.html[self.html.index('function opsSlide('):self.html.index('// «Планы на следующий спринт»')]
+        ops = self.html[self.html.index('function opsSlide('):self.html.index('// ---------- роадмап «Инициативы по спринтам»')]
         self.assertLess(ops.index('teamOutputChart(m, box)'), ops.index('bizBurnChart(t, part, box)'))
         self.assertEqual(1, ops.count('bizBurnChart(t, part, box)'), 'сгорание на слайде одно; второй вариант — в расшифровке')
         for part in ('function bizBurnChart(', 'function openBurn(', 'data-burn=', "'Без подзадач'", "'С подзадачами'", 'burn-tab'):
@@ -217,7 +219,8 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertNotIn('function controlOverview(', self.html)
         build = self.html[self.html.index('function buildDeck('):]
         self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += membersSlide(x.t);'))
-        self.assertLess(build.index('html += membersSlide(x.t);'), build.index('html += plansSlide('))
+        self.assertLess(build.index('html += membersSlide(x.t);'), build.index('html += roadmapSlide('))
+        self.assertLess(build.index('html += roadmapSlide('), build.index('html += risksSlide('))
         self.assertNotIn('cycleSlide', self.html, 'слайда «Сроки» нет: cycle time — на операционном')
 
     def test_ops_member_matrix(self):

@@ -33,7 +33,7 @@ EXIT_OK, EXIT_ERROR, EXIT_CONFIG = ins.EXIT_OK, ins.EXIT_ERROR, ins.EXIT_CONFIG
 LIMITS = {'objective': 100, 'kr': 120, 'promise': 160, 'shown': 160, 'done': 140, 'next': 100, 'blocker': 120,
           'stream_done': 180, 'stream_next': 100, 'stream_blocker': 140,
           'affected': 80, 'before': 120, 'after': 120, 'outcome': 200, 'what': 120, 'title': 80, 'text': 280,
-          'plan_title': 80, 'plan_text': 160, 'escalate': 60, 'escalation': 60}
+          'plan_title': 80, 'plan_text': 160, 'escalate': 60, 'escalation': 60, 'roadmap_title': 80}
 # ключ строки «Вне эпиков» в streams: истории спринта без эпика (как в шаблоне страницы)
 NO_EPIC = 'no-epic'
 
@@ -106,6 +106,14 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
     for i, r in enumerate(biz.get('risks', []), 1):
         texts += [(f'risks #{i}.title', r['title'], LIMITS['title'], False),
                   (f'risks #{i}.text', r['text'], LIMITS['text'], False)]
+    for i, r in enumerate(biz.get('roadmap', {}).get('rows', []), 1):
+        if 'epic' in r and r['epic'] not in epics:
+            errors.append(f'[{slug}] roadmap #{i}: эпика {r["epic"]} нет в данных команды; есть: {", ".join(sorted(epics))}')
+        if 'epic' not in r and 'title' not in r:
+            errors.append(f'[{slug}] roadmap #{i}: нужен epic (эпик команды) или title (своя строка)')
+        if 'obj' in r and r['obj'] not in objectives:
+            warnings.append(f'[{slug}] roadmap #{i}: цели {r["obj"]} нет в objectives')
+        texts += [(f'roadmap #{i}.title', r['title'], LIMITS['roadmap_title'], False)] if 'title' in r else []
     for col, cards in biz.get('plans', {}).items():
         for i, c in enumerate(cards, 1):
             texts += [(f'plans.{col} #{i}.title', c['title'], LIMITS['plan_title'], True)]
@@ -124,7 +132,7 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
             small = num.isdigit() and int(num) <= ins.FREE_INTS
             if not small and num not in allowed:
                 warnings.append(f'{where}: числа {raw} нет в фактах — проверьте, откуда оно')
-    from_okr = objectives or any('kr' in st for st in biz.get('streams', {}).values()) or biz.get('risks')
+    from_okr = objectives or any('kr' in st for st in biz.get('streams', {}).values()) or biz.get('risks') or biz.get('roadmap')
     if from_okr and not biz.get('goalsSource'):
         warnings.append(f'[{slug}] цели OKR и риски без goalsSource — укажите, откуда они (OKR, roadmap, со слов PO)')
 
