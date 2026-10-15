@@ -73,6 +73,31 @@ class CheckTest(unittest.TestCase):
         errors, _ = self.check(self.doc)
         self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
 
+    def test_roadmap_checked(self):
+        """Роадмап: строка — эпик команды или своя строка с названием; фазы — из словаря, 6 недель."""
+        rm = self.doc['teams']['platform']['roadmap']
+        self.assertEqual(([], []), self.check(self.doc))
+        rm['rows'].append({'epic': 'INIT-55555', 'cells': ['бек']})
+        rm['rows'].append({'cells': ['qa']})
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any('roadmap #5: эпика INIT-55555 нет' in e for e in errors), errors)
+        self.assertTrue(any('roadmap #6: нужен epic' in e for e in errors), errors)
+        rm['rows'] = [{'epic': 'INIT-101', 'cells': ['бек'] * 7}]
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+        rm['rows'] = [{'epic': 'INIT-101', 'cells': ['кодинг']}]
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+
+    def test_risk_kind_checked(self):
+        """«Риски и проблемы»: метка — external / resource / general / deadline, без метки — можно."""
+        risks = self.doc['teams']['platform']['risks']
+        risks[0]['kind'] = 'внешнее'
+        errors, _ = self.check(self.doc)
+        self.assertTrue(any(e.startswith('схема:') for e in errors), errors)
+        risks[0].pop('kind')
+        self.assertEqual(([], []), self.check(self.doc))
+
     def test_stream_summary_checked(self):
         """Строка = эпик: сводка «итог · блокер · след. шаг» — под длину слайда, ключи из данных."""
         s = self.biz()['streams']['INIT-125']
