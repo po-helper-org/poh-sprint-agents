@@ -158,14 +158,15 @@ class EvidenceTest(unittest.TestCase):
     def test_comment_at_wait_start_comes_first_and_long_ones_are_trimmed(self):
         comments = [{'at': f'2026-09-{d:02d}T12:00:00+03:00', 'author': 'Участник А', 'body': f'заметка {d} ' + 'x' * 400}
                     for d in (14, 12, 10, 9)]
-        comments.append({'at': '2026-09-07T10:39:00+03:00', 'author': 'Участник А', 'body': 'Ждём права от админов'})
+        comments.append({'at': '2026-09-07T10:39:00+03:00', 'author': 'Участник А',
+                         'body': 'Ждём права от админов: ' + 'подробности ' * 25 + 'хвост причины'})
         it = issue('DEMO-24', [('2026-09-07T10:38:00+03:00', 'In progress', 'On Hold'),
                                ('2026-09-15T10:00:00+03:00', 'On Hold', 'In progress')], comments=comments)
         (w,) = self.facts(it)['waits']
         texts = [c['text'] for c in w['evidence']['comments']]
         self.assertEqual(4, len(texts))
-        self.assertEqual('Ждём права от админов', texts[0])
-        self.assertTrue(all(len(t) <= 220 for t in texts))
+        self.assertTrue(texts[0].startswith('Ждём права от админов') and texts[0].endswith('хвост причины'), texts[0])
+        self.assertTrue(all(len(t) <= 200 for t in texts[1:]))
 
     def test_wait_words_without_wait_status_are_weak_signals(self):
         it = issue('DEMO-22', [], status='В работе',
@@ -319,6 +320,17 @@ class CheckTest(unittest.TestCase):
         _, _, view = report.check(doc, f)
         (side,) = view['sides']
         self.assertEqual(({'q': 4, 'm': 0}, {'q': 8, 'm': 0}), (side['win'], side['taskDays']))
+
+    def test_case_started_before_quarter_counts_only_period_days(self):
+        old = issue('DEMO-70', [('2026-03-02T10:00:00+03:00', 'In progress', 'On Hold'),
+                                ('2026-07-15T10:00:00+03:00', 'On Hold', 'In progress')])
+        f = waits.facts(snapshot(old), waits.period('2026Q3', to='2026-10-14'), {})
+        doc = doc_for(f, sides=[{'id': 'ops', 'name': 'DevOps', 'what': 'Стенда'}],
+                      cases=[{'waits': ['w1'], 'side': 'ops', 'what': 'Стенд', 'evidence': 'weak', 'basis': 'статус'}])
+        _, _, view = report.check(doc, f)
+        (case,) = view['cases']
+        self.assertEqual((f['waits'][0]['days']['total'], 10, '02.03–15.07'),
+                         (case['days'], case['win']['q'], case['when']))
 
     def test_every_wait_must_be_decided(self):
         f = two_waits()

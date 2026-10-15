@@ -184,8 +184,9 @@ def print_tables(view):
     """Числа страницы — агент пишет по ним вывод (lead, sections)."""
     wins = view['period']['windows']
     head = ' | '.join(f'{w["label"]} (из {w["workdays"]})' for w in wins)
-    print(f'\nдней хотя бы с одним ожиданием: ' + ' | '.join(
-        f'{w["label"]} {view["kpi"][w["id"]]["any"]}, внешних {view["kpi"][w["id"]]["external"]}' for w in wins))
+    print('\nрабочих дней, когда стояла хотя бы одна задача (любая сторона / только другие команды): ' + ' | '.join(
+        f'{w["label"]} {view["kpi"][w["id"]]["any"]} / {view["kpi"][w["id"]]["external"]} из {w["workdays"]}'
+        for w in wins))
     print('задаче-дней ожидания: ' + ' | '.join(
         f'{w["label"]} всего {view["kpi"][w["id"]]["taskDays"]}, других команд {view["kpi"][w["id"]]["externalTaskDays"]}'
         for w in wins))

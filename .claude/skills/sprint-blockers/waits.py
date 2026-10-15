@@ -47,6 +47,8 @@ BLOCKING_LINKS = ['is blocked by', 'depends on', 'to be done after']
 QUEUE_MIN_DAYS = 5      # очередь короче недели — обычный ход процесса, не случай
 EVIDENCE_COMMENTS = 4
 SNIPPET = 220
+FIRST_SNIPPET = 400   # комментарий у начала ожидания — главное основание, режем меньше
+OTHER_SNIPPET = 200
 SIGNALS_MAX = 40
 # комментарий «ждём / нет доступа», а статуса ожидания рядом нет — слабый сигнал
 WAIT_WORDS = re.compile(r'жд[её]м|ожида|блок|нет доступ|не можем|зависим|не работает стенд|'
@@ -304,12 +306,15 @@ def evidence(item, items, since, until, rl):
         for c in src.get('comments') or []:
             at = parse_ts(c.get('at'), tz)
             if at and lo <= at <= hi:
-                entry = {'at': at.isoformat(timespec='minutes'), 'text': trim(c.get('body'))}
+                entry = {'at': at.isoformat(timespec='minutes'), 'text': c.get('body') or ''}
                 if via:
                     entry['on'] = via
                 comments.append(entry)
     # первым — комментарий у начала ожидания: в нём обычно и написано, чего ждут
     comments.sort(key=lambda c: abs((parse_ts(c['at'], tz) - since).total_seconds()))
+    comments = comments[:EVIDENCE_COMMENTS]
+    for n, c in enumerate(comments):
+        c['text'] = trim(c['text'], FIRST_SNIPPET if n == 0 else OTHER_SNIPPET)
     links = []
     for src in (item, items.get(item.get('parent') or '')):
         for ln in (src or {}).get('links') or []:
@@ -318,7 +323,7 @@ def evidence(item, items, since, until, rl):
                               'status': ln.get('status'), 'from': src['key']})
     out = {}
     if comments:
-        out['comments'] = comments[:EVIDENCE_COMMENTS]
+        out['comments'] = comments
     if links:
         out['links'] = links
     return out

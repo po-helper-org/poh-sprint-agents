@@ -40,7 +40,8 @@ def wait_days(w, per):
     """Рабочие дни ожидания по окнам: те же правила, что в waits.facts."""
     hol = {date.fromisoformat(h) for h in per.get('holidays', [])}
     to_d = date.fromisoformat(per['to'])
-    start = date.fromisoformat(w['from'])
+    # дни — только внутри периода отчёта, как в waits.facts; даты случая — как в JIRA
+    start = max(date.fromisoformat(w['from']), date.fromisoformat(per['from']))
     end = date.fromisoformat(w['to']) if w['to'] else to_d + timedelta(days=1)
     days = set(waits_mod.workdays(start, min(end, to_d + timedelta(days=1)), hol))
     out = {}
