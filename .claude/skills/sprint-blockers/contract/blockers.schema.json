@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Разбор блокеров команды — файл агента",
+  "description": "Агент раскладывает ожидания из фактов (blockers.py facts) по сторонам: кого и чего ждали. Числа считает скрипт; в файле только классификация и текст.",
+  "type": "object",
+  "required": ["version", "factsHash", "lead", "sides", "cases", "notBlockers"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "factsHash": { "type": "string", "pattern": "^[0-9a-f]{16}$", "description": "Как в фактах, без изменений." },
+    "author": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "lead": {
+      "type": "array", "minItems": 1, "maxItems": 3,
+      "items": { "type": "string", "minLength": 20 },
+      "description": "Вывод наверху страницы: где и почему команда теряла время, главные узкие места. Абзац до 450 знаков."
+    },
+    "sections": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "sides": { "type": "string" }, "stages": { "type": "string" }, "cases": { "type": "string" }
+      },
+      "description": "Вывод одной фразой под заголовком раздела, до 220 знаков."
+    },
+    "sides": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "required": ["id", "name", "what"], "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$" },
+          "name": { "type": "string", "minLength": 2, "description": "Кого ждали: «Команда БД», «Партнёр», «Ревью своей команды»." },
+          "what": { "type": "string", "minLength": 3, "description": "Чего ждали от этой стороны, до 160 знаков." },
+          "internal": { "type": "boolean", "description": "Своя команда (ревью, тест): узкое место внутри, а не внешняя зависимость." }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["waits", "side", "what", "evidence", "basis"], "additionalProperties": false,
+        "properties": {
+          "waits": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^w[0-9]+$" },
+                     "description": "id ожиданий из фактов; одно и то же ожидание у нескольких задач — один случай." },
+          "side": { "type": "string" },
+          "what": { "type": "string", "minLength": 3, "description": "Чего ждали, до 160 знаков." },
+          "evidence": { "enum": ["strong", "weak"], "description": "strong — причина названа в комментарии или связи; weak — выведена по косвенным признакам." },
+          "basis": { "type": "string", "minLength": 3, "description": "На чём основан вывод: цитата комментария или связь, до 240 знаков." },
+          "workaround": { "type": "boolean", "description": "Закрыли обходом, а не дождались." }
+        }
+      }
+    },
+    "notBlockers": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["waits", "why"], "additionalProperties": false,
+        "properties": {
+          "waits": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^w[0-9]+$" } },
+          "why": { "type": "string", "minLength": 3, "description": "Почему не ожидание других: пауза по приоритету, своя ошибка, требования." }
+        }
+      }
+    },
+    "limits": { "type": "array", "items": { "type": "string" }, "description": "Чего отчёт не видит — дополнительно к тому, что пишет скрипт." }
+  }
+}
