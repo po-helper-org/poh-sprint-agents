@@ -189,7 +189,7 @@ class BusinessTemplateTest(unittest.TestCase):
         for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function behindLabel(',
                      'blk-badge', '🛑 блокаторы: ', 'function openBlockers(', 'Эскалирует:', "'эпик завершён'",
                      'function roadmapSlide(', 'function roadmapRows(', 'function nextSprints(', 'function epicPhase(',
-                     "Инициативы по спринтам до ' + ddmm(sp[2].to)", 'RM_ROWS = 14', 'class="rm-sprint"',
+                     "Инициативы по спринтам до ' + dayMon(sp[2].to)", 'function sprintCode(', 'RM_ROWS = 14', 'class="rm-sprint"',
                      'function risksSlide(t, streams)', 'function teamRisks(', "external: 'Внешнее'", "deadline: 'Срок'", 'RK_ROWS = 5',
                      'html += roadmapSlide(x.t, x.streams);', 'html += risksSlide(x.t, x.streams);'):
             self.assertIn(part, self.html)
