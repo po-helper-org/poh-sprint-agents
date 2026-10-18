@@ -56,7 +56,21 @@ def attach_notes(teams, notes):
 
 # Поля, которые runner кладёт поверх данных сборщика: в хеш данных они не входят,
 # иначе инсайды «устаревали» бы от собственного встраивания и от правки заметок.
-OVERLAY_FIELDS = ('notes', 'insights', 'business')
+OVERLAY_FIELDS = ('notes', 'insights', 'business', 'blockers')
+
+
+def attach_blockers(teams):
+    """Раздел «✋ Блокаторы»: что стоит в спринте каждой команды (runner/blockers.py).
+
+    Считается при каждой сборке страницы из данных команды — и в страницу, и в снимок
+    (по снимку блокаторы читают агенты). Возвращает, сколько блокаторов всего.
+    """
+    import blockers
+    total = 0
+    for team in teams:
+        team['blockers'] = blockers.team_blockers(team)
+        total += len(team['blockers']['items'])
+    return total
 
 
 def team_digest(team):

@@ -137,6 +137,16 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(where, self.html)
 
 
+    def test_blockers_first_before_epics(self):
+        """«✋ Блокаторы» — первым разделом main, до таблицы эпиков; заметка — kind blocker."""
+        main = self.html[self.html.index('<main>'):self.html.index('</main>')]
+        self.assertLess(main.index('id="blockers"'), main.index('<table>'))
+        self.assertIn("blocker: 'Блокатор'", self.html)
+        self.assertIn("kind: 'blocker'", self.html)
+        for part in ('renderBlockers()', 'data-blk-who', 'data-blk-epic', 'data-cmark'):
+            self.assertIn(part, self.html)
+
+
 class BusinessTemplateTest(unittest.TestCase):
     """Бизнес-отчёт (навык sprint-business): свой шаблон, тот же общий движок."""
     @classmethod
@@ -280,6 +290,16 @@ class BusinessTemplateTest(unittest.TestCase):
 
 
 class DemoPageTest(unittest.TestCase):
+    def test_demo_page_carries_blockers(self):
+        """Демо-страница собрана с наложением блокаторов — раздел не пустой."""
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'demo.html'
+            subprocess.run([sys.executable, str(DEMO), '--html', str(out)], check=True, capture_output=True)
+            html = out.read_text(encoding='utf-8')
+            teams = json.loads(html[html.index('var TEAMS = ') + 12:html.index(';\n', html.index('var TEAMS = '))])
+        self.assertTrue(all(t['blockers']['items'] for t in teams))
+        self.assertTrue(all(b['why'] in ('wait', 'stale') for t in teams for b in t['blockers']['items']))
+
     def test_demo_has_priorities_on_every_level(self):
         out = Path(tempfile.mkdtemp()) / 'demo.json'
         subprocess.run([sys.executable, str(DEMO), '--out', str(out)], check=True, capture_output=True)

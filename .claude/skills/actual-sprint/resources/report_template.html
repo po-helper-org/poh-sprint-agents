@@ -38,6 +38,9 @@
 </div>
 
 <main>
+  <!-- «✋ Блокаторы»: что стоит в спринте — первым, до эпиков (runner/blockers.py → team.blockers).
+       Тап по строке — заметка к блокатору в корзину; её разбирает ИИ-агент отчёта. -->
+  <section class="blockers" id="blockers" hidden></section>
   <table>
     <tbody id="tableBody"></tbody>
   </table>
@@ -410,12 +413,112 @@
     });
   }
 
+  // ------------------------- ✋ Блокаторы -------------------------
+  // Группы по длительности стоянки (рабочие дни): дольше стоит — выше. В группе
+  // видно BLK_SHOW строк, остальное — по «ещё N». Под списком — где стоим: дни
+  // в блоке по инициативам (эпикам) и по людям; тап по человеку — только его блокаторы.
+  var BLK_GROUPS = [
+    { id: 'g10', label: '10+ дней', test: function (d) { return d >= 10; } },
+    { id: 'g5', label: '5–10 дней', test: function (d) { return d >= 5 && d < 10; } },
+    { id: 'g3', label: '3–5 дней', test: function (d) { return d >= 3 && d < 5; } },
+    { id: 'g0', label: 'до 3 дней', test: function (d) { return d < 3; } },
+    { id: 'gx', label: 'начало неизвестно', test: function (d) { return d == null; } }
+  ];
+  var BLK_SHOW = 5, BLK_TOP = 5;
+  var blkState = { who: null, open: {} };
+
+  function shortName(name) {   // «Парфило Сергей Иванович» → «Парфило С.»
+    var p = String(name || '').trim().split(/\s+/);
+    return p.length > 1 ? p[0] + ' ' + p[1].charAt(0) + '.' : (p[0] || 'Не назначен');
+  }
+
+  function blockerTarget(b) {
+    return { kind: 'blocker', key: b.key, title: b.title, status: b.status, assignee: b.assignee,
+             epicKey: b.epicKey, epicTitle: b.epicTitle, rowId: b.rowId, why: b.why, days: b.days };
+  }
+
+  function daysText(d) { return d == null ? '?' : d + ' ' + plural(d, 'день', 'дня', 'дней'); }
+
+  function blkRow(b) {
+    var why = b.why === 'stale' ? 'без движения' : 'в ожидании';
+    var link = b.url ? '<a class="blk-key" href="' + esc(b.url) + '" target="_blank" rel="noopener">' + esc(b.key) + '</a>'
+      : '<span class="blk-key">' + esc(b.key) + '</span>';
+    return '<li class="blk-row ' + (b.why === 'stale' ? 'stale' : 'wait') + '" data-blk="' + esc(b.key) + '"' + ctxAttr(blockerTarget(b)) +
+      ' title="' + esc(b.comment ? 'Последний комментарий — ' + (b.comment.by || '') + ': ' + b.comment.text : 'Тап — комментарий для ИИ-агента') + '">' +
+      '<div class="blk-main"><div class="blk-title">' + esc(b.title) + '</div>' +
+      '<div class="blk-sub">' + esc(shortName(b.assignee)) + ' · ' + why + ' · ' + link +
+        '<span class="blk-cm" data-cmark="' + esc(b.key) + '"></span></div></div>' +
+      '<div class="blk-days">' + esc(daysText(b.days)) + '</div></li>';
+  }
+
+  function blkBars(title, rows, kind) {
+    if (!rows.length) return '';
+    var max = Math.max.apply(null, rows.map(function (r) { return r.days || 0; })) || 1;
+    return '<div class="blk-bars"><h3>' + title + '</h3>' + rows.slice(0, BLK_TOP).map(function (r) {
+      var label = kind === 'epic' ? r.title : shortName(r.name);
+      var on = kind === 'person' && blkState.who === r.name;
+      var attr = kind === 'epic' ? ' data-blk-epic="' + esc(r.rowId || '') + '"' : ' data-blk-who="' + esc(r.name) + '"';
+      return '<button type="button" class="blk-bar' + (on ? ' on' : '') + '"' + attr + ' title="' +
+        esc(label + ': ' + r.count + ' ' + plural(r.count, 'задача', 'задачи', 'задач') + ', ' + r.days + ' раб. ' + plural(r.days, 'день', 'дня', 'дней')) + '">' +
+        '<span class="blk-bar-label">' + esc(label) + '</span>' +
+        '<span class="blk-bar-track"><span style="width:' + Math.max(4, Math.round(100 * (r.days || 0) / max)) + '%"></span></span>' +
+        '<span class="blk-bar-n">' + r.days + '</span></button>';
+    }).join('') + '</div>';
+  }
+
+  function renderBlockers() {
+    var box = document.getElementById('blockers');
+    var data = team.blockers;
+    if (!data) { box.hidden = true; return; }   // страница без наложения (старый runner)
+    box.hidden = false;
+    var all = data.items || [];
+    if (blkState.who && !all.some(function (b) { return (b.assignee || 'Не назначен') === blkState.who; })) blkState.who = null;
+    var items = blkState.who ? all.filter(function (b) { return (b.assignee || 'Не назначен') === blkState.who; }) : all;
+    var head = '<div class="blk-head"><h2>✋ Блокаторы' + (all.length ? '<span class="n">' + all.length + '</span>' : '') + '</h2>' +
+      (blkState.who ? '<button type="button" class="blk-reset" data-blk-who="">' + esc(shortName(blkState.who)) + ' ✕</button>' : '') +
+      '<small>' + (all.length ? 'тап по строке — комментарий для ИИ-агента' : '') + '</small></div>';
+    if (!all.length) {
+      box.innerHTML = head + '<p class="blk-empty">Ничего не стоит: ни «в ожидании», ни без движения ' + data.staleDays + '+ раб. дня.</p>';
+      return;
+    }
+    var groups = BLK_GROUPS.map(function (g) {
+      var list = items.filter(function (b) { return g.test(b.days); });
+      if (!list.length) return '';
+      var open = blkState.open[g.id], shown = open ? list : list.slice(0, BLK_SHOW);
+      return '<div class="blk-group"><h3>' + g.label + '<span class="n">' + list.length + '</span></h3><ul>' +
+        shown.map(blkRow).join('') + '</ul>' +
+        (list.length > shown.length ? '<button type="button" class="blk-more" data-blk-more="' + g.id + '">ещё ' + (list.length - shown.length) + '</button>' : '') +
+        '</div>';
+    }).join('');
+    box.innerHTML = head + '<div class="blk-groups">' + groups + '</div>' +
+      '<div class="blk-sum">' + blkBars('Инициативы · дней в блоке', data.byEpic || [], 'epic') +
+        blkBars('Люди · дней в блоке', data.byPerson || [], 'person') + '</div>';
+    refreshComments();
+  }
+
+  document.getElementById('blockers').addEventListener('click', function (e) {
+    if (e.target.closest('a[href]')) return;   // ключ задачи — ссылка в Jira
+    var more = e.target.closest('[data-blk-more]');
+    if (more) { blkState.open[more.dataset.blkMore] = true; renderBlockers(); return; }
+    var who = e.target.closest('[data-blk-who]');
+    if (who) { blkState.who = who.dataset.blkWho && who.dataset.blkWho !== blkState.who ? who.dataset.blkWho : null; renderBlockers(); return; }
+    var ep = e.target.closest('[data-blk-epic]');
+    if (ep) { if (ep.dataset.blkEpic) openPanels(ep.dataset.blkEpic); return; }
+    var row = e.target.closest('.blk-row[data-ctx]');
+    if (row && ctxTargets[row.dataset.ctx]) {
+      var r = row.getBoundingClientRect();
+      openCommentPopup(ctxTargets[row.dataset.ctx], r.left + 12, r.bottom + 4);
+    }
+  });
+
   function switchTeam(slug) {
     closePanels();
     useTeam(slug);
     migrateNotes();
     fillRefList();
     renderHero();
+    blkState = { who: null, open: {} };
+    renderBlockers();
     renderTable();
     renderMetricsLink();
   }
@@ -424,6 +527,7 @@
   migrateNotes();
   fillRefList();
   renderHero();
+  renderBlockers();
   renderTable();
   renderMetricsLink();
   document.getElementById('logsBtn').addEventListener('click', openLogs);

@@ -324,6 +324,7 @@ def cmd_run(args):
     # порядок команд в файле = порядок в конфиге = порядок вкладок
     order = {t.slug: i for i, t in enumerate(teams)}
     collected.sort(key=lambda d: order.get(d['slug'], 0))
+    build.attach_blockers(collected)
     out = build.write_page(collected, config_mod.TEMPLATE_PATH, cfg.output)
     # снимок пишется только вместе со страницей: у текста и HTML одни и те же цифры
     build.write_atomic(cfg.data, build.snapshot(collected))
@@ -410,6 +411,7 @@ def cmd_merge(args):
     picked = build.attach_notes(collected, notes)
     ins_line = build.insights_line(*build.attach_insights(collected, build.read_insights(cfg.insights)))
     out = Path(args.output).resolve() if args.output else cfg.output
+    build.attach_blockers(collected)
     written = build.write_page(collected, config_mod.TEMPLATE_PATH, out)
     # снимок для /sprint-status — рядом со страницей, как у run: иначе PDF показывал
     # бы прошлый сбор, а страница — склейку из сайдкаров
@@ -449,6 +451,7 @@ def cmd_render(args):
             return EXIT_ERROR
     attached, stale = build.attach_insights(teams, build.read_insights(cfg.insights))
     out = Path(args.output).resolve() if args.output else cfg.output
+    build.attach_blockers(teams)
     written = build.write_page(teams, config_mod.TEMPLATE_PATH, out)
     print(f'страница из снимка: команд {len(teams)}   ' +
           (build.insights_line(attached, stale) or f'инсайдов нет ({cfg.insights.name} не найден)'))

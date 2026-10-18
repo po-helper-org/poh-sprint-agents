@@ -626,6 +626,7 @@ def main():
         if a.html:
             page = copy.deepcopy(teams)
             build_mod.attach_insights(page, example('sprint-insights/examples/demo-insights.json'))
+            build_mod.attach_blockers(page)
             build_mod.write_page(page, here / 'resources' / 'report_template.html', a.html)
             print('отчёт PO:', a.html)
         if a.business:
