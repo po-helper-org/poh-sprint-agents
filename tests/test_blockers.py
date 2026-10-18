@@ -93,6 +93,19 @@ class BlockersTest(unittest.TestCase):
         self.assertEqual(got[0]['title'], 'Подзадача A-3')
         self.assertEqual(got[0]['assignee'], 'Петрова Анна')
 
+    def test_story_with_open_subtasks_is_not_counted_twice(self):
+        """Стоят подзадачи — в списке они; история с открытыми подзадачами «без движения» не дублирует их дни."""
+        t = team(epic('E-1', story('A-1', 'В работе', changed='2026-09-01T10:00:00+03:00',
+                                   subtasks=[sub('A-2', 'В работе', changed='2026-09-08T11:00:00+03:00')])))
+        got = bl.team_blockers(t)
+        self.assertEqual([(b['key'], b['why']) for b in got['items']], [('A-2', 'stale')])
+        self.assertEqual(got['byEpic'][0]['days'], 8)
+
+    def test_story_stale_when_all_subtasks_done(self):
+        t = team(epic('E-1', story('A-1', 'Ревью', changed='2026-09-01T10:00:00+03:00',
+                                   subtasks=[sub('A-2', 'Готово', changed='2026-09-02T11:00:00+03:00', category='Выполнено')])))
+        self.assertEqual([(b['key'], b['days']) for b in bl.team_blockers(t)['items']], [('A-1', 12)], 'движение — последнее у истории и её подзадач (02.09)')
+
     def test_done_never_blocks(self):
         t = team(epic('E-1', story('A-1', 'Закрыт', changed='2026-08-01T10:00:00+03:00', category='Выполнено')))
         self.assertEqual(bl.team_blockers(t)['items'], [])

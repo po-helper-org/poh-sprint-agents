@@ -5,7 +5,8 @@
   · wait  — «в ожидании»: статус в бакете blocked; стоит с последней смены статуса;
   · stale — «без движения»: задача в работе / тесте / ревью, по которой STALE_DAYS+
             рабочих дней ни смены статуса, ни комментария. История движется вместе
-            со своими подзадачами — пока они меняются, история не стоит.
+            со своими подзадачами; если у истории есть подзадачи в работе или в ожидании,
+            «без движения» считаются они, а не история (дни не задваиваются).
 
 Дни — рабочие (пн–пт) от начала стоянки до дня сбора (_meta.collectedAt), не системные
 часы: страница, пересобранная завтра из того же снимка, покажет те же числа.
@@ -51,23 +52,13 @@ def workdays(a, b):
     return n
 
 
-def _rules():
-    try:
-        return buckets_mod.load()
-    except (buckets_mod.RulesNotFound, OSError, ValueError):
-        return None
-
-
 def _bucketer(team):
+    """Бакет статуса: statusMap команды, иначе правила контракта. Нет правил — ошибка, а не «всё в работе»."""
     smap = team.get('statusMap') or {}
-    rules = _rules()
+    rules = buckets_mod.load()
 
     def bucket(status, category):
-        if status in smap:
-            return smap[status]
-        if rules is None:
-            return 'progress'
-        return rules.bucket(status, category)
+        return smap[status] if status in smap else rules.bucket(status, category)
     return bucket
 
 
@@ -94,6 +85,7 @@ def team_blockers(team, stale_days=STALE_DAYS):
         for st in epic.get('stories') or []:
             events = [e for e in st.get('events') or [] if isinstance(e, dict)]
             subs = [s for s in st.get('subtasks') or [] if isinstance(s, dict) and s.get('key')]
+            open_subs = [s for s in subs if bucket(s.get('status'), s.get('category')) in ACTIVE + ('blocked',)]
             entries = [(st, 'story', events, st.get('title'))]
             entries += [(s, 'subtask', [e for e in events if e.get('key') == s['key']], s.get('summary'))
                         for s in subs]
@@ -104,6 +96,8 @@ def team_blockers(team, stale_days=STALE_DAYS):
                 if b == 'blocked':
                     why, since = 'wait', _day(it.get('statusChanged'))
                 elif b in ACTIVE:
+                    if kind == 'story' and open_subs:
+                        continue   # работу ведут подзадачи — стоят они, а не история (иначе дни считались бы дважды)
                     stamps = [it.get('statusChanged')] + [e.get('at') for e in own]
                     if kind == 'story':   # движение подзадач — движение истории
                         stamps += [s.get('statusChanged') for s in subs]

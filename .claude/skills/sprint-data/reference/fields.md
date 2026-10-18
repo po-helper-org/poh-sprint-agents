@@ -284,6 +284,7 @@ stats — `{ "mean": число, "median": число, "count": целое }`, �
 |---|---|---|
 | `notes` | runner из `notes` конфига | заметки прошлой версии страницы, переезжают в корзину |
 | `insights` | runner из `reports/sprint-insights.json` (навык `sprint-insights`) | наблюдения и интерпретация ИИ, только при совпавшем `dataHash`; форма — `contract/insights.schema.json` |
+| `blockers` | runner (`runner/blockers.py`) при каждой сборке страницы и снимка | что стоит в спринте: `items[]` (`key`, `kind` story/subtask, `why` wait/stale, `since`, `days` — рабочие до `collectedAt`, `assignee`, эпик, `url`, последний `comment`), `byEpic[]`, `byPerson[]` (`count`, `days`), `asOf`, `staleDays` |
 | `business` | `business.py` из `reports/sprint-business.json` (навык `sprint-business`) | цели, KR, формулировки строк, риски, планы — только в презентации, только при совпавшем `dataHash`; форма — `sprint-business/contract/business.schema.json` |
 
 ## Что добавляла каждая версия базового сборщика
