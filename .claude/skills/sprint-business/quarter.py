@@ -313,7 +313,8 @@ def render_html(view, link=DEFAULT_LINK, script=''):
            f'<header><h1>Риски квартала {safe(view["quarter"])}</h1>'
            f'<div class="sub">неделя с {_d(view["monday"], view)} · данные Jira {safe(fetched)} · до конца квартала '
            f'({_d(view["deadline"], view)}) — {view["weeksLeft"]} нед.</div><div class="chips">{chips}</div>'
-           + (f'<div class="actions"><button type="button" class="primary" data-act="copy">Скопировать для CPO</button>'
+           # кнопки скрыты, пока скрипт не решит: в оболочке виджета у неё свои — без мелькания
+           + (f'<div class="actions" style="display:none"><button type="button" class="primary" data-act="copy">Скопировать для CPO</button>'
               f'<button type="button" data-act="refresh">Обновить данные</button></div>' if script else '') + '</header>']
     out.append('<section><h2>Нужно решение</h2>')
     if view['escalations']:
