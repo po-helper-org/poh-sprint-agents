@@ -435,6 +435,10 @@
   /* правки к колоде — та же корзина, что у отчёта PO, поверх слайдов */
   body.deck-open .promptbox { z-index: 45; top: calc(52px + env(safe-area-inset-top)); }
   body.deck-open .promptbox .pb-row { display: none; }
+  body.deck-open.has-burger .promptbox { top: calc(64px + env(safe-area-inset-top)); }
+  .has-burger .deck-bar { display: none; }
+  body.deck-open .burger { z-index: 41; }   /* над колодой (40), под панелью задачи (overlay 41 позже в DOM, панель 42) */
+  .has-burger .deck-slides { padding-top: calc(68px + env(safe-area-inset-top)); }
   body.deck-open .cpop { z-index: 50; }
 
   /* узкий экран: слайд во всю ширину, светофор и таблица остаются */
@@ -498,7 +502,8 @@
   }
 </style>
 </head>
-<body>
+<body class="has-burger">
+<!--#include shared/burger.html-->
 <!-- Бизнес-отчёт «ФАКТ | спринт» (навык sprint-business): колода для управляющего
      комитета. Общий движок с отчётом PO — actual-sprint/resources/shared. -->
 
@@ -2338,6 +2343,26 @@
     openGenPrompt('Промт: отчёт для техлидов', 'Скопируйте и отправьте агенту — он соберёт отчёт PO навыком /actual-sprint на тех же данных.', techPrompt());
   });
 
+  // ------------------------- меню бургера (вместо панели колоды) -------------------------
+  // Панель .deck-bar скрыта стилем has-burger; пункты меню нажимают её кнопки (логика колоды та же).
+  burger.label = function () { return document.getElementById('deckTitle').textContent; };
+  if (burgerBtn) document.getElementById('bmTitle').textContent = 'Бизнес-отчёт';
+  burger.build = function () {
+    var deck = document.getElementById('deck'), stage = deck.classList.contains('stage');
+    var editing = document.getElementById('deckEdit').getAttribute('aria-pressed') === 'true';
+    var n = +document.getElementById('cCount').textContent || 0;
+    return bmSection(document.getElementById('deckTitle').textContent,
+        bmItem('data-bm-click="' + (stage ? 'deckSideTab' : 'deckTocBtn') + '"', 'Слайды', 'оглавление колоды') +
+        (stage ? bmItem('data-bm-click="deckFull"', 'На весь экран', 'клавиша F') : '')) +
+      bmSection('Действия',
+        bmItem('data-bm-click="deckNotes"', 'Комментарии', n ? n + ' ' + plural(n, 'заметка', 'заметки', 'заметок') + ' · правый клик по строке или слайду' : 'правый клик по строке или слайду',
+          n ? '<span class="bm-n">' + n + '</span>' : null) +
+        bmItem('data-bm-click="deckEdit"', editing ? 'Закончить правку текста' : 'Редактировать текст', 'правки прямо на слайдах, сохраняются в браузере') +
+        (document.getElementById('deckReset').hidden ? '' : bmItem('data-bm-click="deckReset"', 'Вернуть текст', 'исходный текст на всех слайдах')) +
+        bmItem('data-bm-click="techBtn"', 'Для техлидов', 'промт на технический отчёт PO') +
+        bmItem('data-bm-click="deckPrint"', 'PDF', 'печать или «Сохранить как PDF», по слайду на страницу'));
+  };
+
   useTeam(TEAMS[0].slug);
   migrateNotes();
   fillRefList();
@@ -2346,6 +2371,7 @@
   // корзина и метки — сразу при открытии: без этого после перезагрузки на кнопке
   // «Комментарии (0)», хотя всё сохранено (выглядело как сброс комментариев)
   refreshComments();
+  refreshBurger();
 </script>
 
 </body>

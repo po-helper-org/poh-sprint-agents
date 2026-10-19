@@ -25,6 +25,12 @@ const { defaultBrowserType, ...iphone } = devices['iPhone 15 Pro'];
 // экран целиком: в режиме PWA панелей Safari нет
 const ctx = await browser.newContext({ ...iphone, viewport: { width: 393, height: 852 } });
 const p = await ctx.newPage();
+// шапка — в меню бургера (shared/burger.html): прежние кнопки скрыты, пункт меню нажимает их
+const viaMenu = async (id, tap = false) => {
+  const hit = (sel) => (tap ? p.tap(sel) : p.click(sel));
+  await hit('#burgerBtn');
+  await hit(`#burgerBody [data-bm-click="${id}"]`);
+};
 const cdp = await ctx.newCDPSession(p);
 await cdp.send('Emulation.setEmulatedMedia', {
   features: [{ name: 'hover', value: 'none' }, { name: 'pointer', value: 'coarse' }] });
@@ -95,9 +101,9 @@ await p.tap('.sidebar-close');
 await p.waitForTimeout(300);
 
 // «!» — интерпретация ИИ на весь экран
-const ib = await p.locator('#interpBtn').boundingBox();
-check(ib.width >= 28 && ib.x + ib.width <= 393, '«!» рядом с названием команды, в пределах экрана');
-await p.tap('#interpBtn');
+const bb = await p.locator('#burgerBtn').boundingBox();
+check(bb.height >= 40 && bb.x >= 0 && bb.x + bb.width <= 393, 'бургер вместо шапки — в пределах экрана, палец попадает');
+await viaMenu('interpBtn', true);
 await p.waitForTimeout(350);
 check(await panelOpen() && (await p.locator('#storiesBody .interp-sec').count()) === 3 && await noSideScroll(),
       'тап по «!» — интерпретация из трёх разделов, без горизонтальной прокрутки');
@@ -105,7 +111,7 @@ await p.tap('.sidebar-close');
 await p.waitForTimeout(300);
 
 // метрики: подсказка «i» по тапу, шторкой снизу
-await p.tap('#metricsLink');
+await viaMenu('metricsLink', true);
 await p.waitForTimeout(400);
 check(await noSideScroll(), 'сводный отчёт без горизонтальной прокрутки');
 const info = '.metrics-section >> nth=0 >> .info';
@@ -128,7 +134,7 @@ await p.tap('.sidebar-close');
 await p.waitForTimeout(300);
 
 // корзина: карандаш и мусорка видны без наведения
-await p.tap('#notesToggle');
+await viaMenu('notesToggle', true);
 const acts = await p.locator('.nrow .nacts').first().evaluate(el => getComputedStyle(el).opacity);
 check(acts === '1', 'карандаш и мусорка видны без наведения');
 const fontSize = await p.locator('#nText').evaluate(el => parseFloat(getComputedStyle(el).fontSize));
@@ -136,8 +142,8 @@ check(fontSize >= 16, 'поле ввода 16px — iOS не увеличива�
 check(await noSideScroll(), 'корзина без горизонтальной прокрутки');
 
 // «Бизнес-отчёт» — окно с промтом в пределах экрана
-await p.tap('#notesToggle');
-await p.tap('#bizBtn');
+await p.tap('#notesClose');
+await viaMenu('bizBtn', true);
 await p.waitForTimeout(200);
 const gen = await p.locator('.genbox').boundingBox();
 check(gen.x >= 0 && gen.x + gen.width <= 393 && await noSideScroll(), 'окно промта бизнес-отчёта помещается в экран');

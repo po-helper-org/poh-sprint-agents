@@ -137,6 +137,15 @@ class TemplateTest(unittest.TestCase):
             self.assertIn(where, self.html)
 
 
+    def test_header_is_burger_menu(self):
+        """Шапка — бургер «☰ команда · спринт» и меню; прежние кнопки скрыты, меню нажимает их."""
+        self.assertIn('<body class="has-burger">', self.html)
+        for part in ('id="burgerBtn"', 'id="burgerMenu"', 'id="burgerBody"', 'id="notesClose"',
+                     'data-bm-click="notesToggle"', 'data-bm-click="metricsLink"', 'data-bm-click="interpBtn"',
+                     'data-bm-click="teamLink"', 'data-bm-click="logsBtn"', 'data-bm-click="bizBtn"', 'data-bm-team'):
+            self.assertIn(part, self.html)
+        self.assertIn('.has-burger .hero, .has-burger .promptbox .pb-row { display: none; }', self.html)
+
     def test_blockers_first_before_epics(self):
         """«✋ Блокаторы» — первым разделом main, до таблицы эпиков; заметка — kind blocker."""
         main = self.html[self.html.index('<main>'):self.html.index('</main>')]
@@ -287,6 +296,16 @@ class BusinessTemplateTest(unittest.TestCase):
         for part in ('overflow-y: auto; overscroll-behavior: contain;', 'function scrollInside(', 'function updateScrollHint(',
                      'id="deckMore"', 'scrollInside(1)'):
             self.assertIn(part, self.html)
+
+
+class BusinessBurgerTest(unittest.TestCase):
+    def test_deck_bar_is_burger_menu(self):
+        html = build_mod.assemble(BUSINESS_TEMPLATE)
+        self.assertIn('<body class="has-burger">', html)
+        self.assertIn('.has-burger .deck-bar { display: none; }', html)
+        for part in ('data-bm-click="deckNotes"', 'data-bm-click="deckEdit"', 'data-bm-click="techBtn"',
+                     'data-bm-click="deckPrint"', "'Бизнес-отчёт'"):
+            self.assertIn(part, html)
 
 
 class DemoPageTest(unittest.TestCase):

@@ -20,6 +20,12 @@ const check = (ok, what) => { console.log((ok ? '✓ ' : '✗ ') + what); if (!o
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const p = await ctx.newPage();
+// шапка — в меню бургера (shared/burger.html): прежние кнопки скрыты, пункт меню нажимает их
+const viaMenu = async (id, tap = false) => {
+  const hit = (sel) => (tap ? p.tap(sel) : p.click(sel));
+  await hit('#burgerBtn');
+  await hit(`#burgerBody [data-bm-click="${id}"]`);
+};
 const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 await p.goto(pathToFileURL(page).href);
@@ -579,7 +585,7 @@ await p.press('#cpopText', 'Enter');
 check(await p.evaluate(() => document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]').classList.contains('commented')),
       'строка с комментарием помечена');
 // редактирование текста
-await p.click('#deckEdit');
+await viaMenu('deckEdit');
 const edEl = p.locator('[data-edit="sdone:platform:INIT-125"]');
 await edEl.click();
 // курсор — в конец всего текста: в многострочной сводке End уводит лишь в конец видимой строки
@@ -588,14 +594,14 @@ await edEl.evaluate(el => { const r = document.createRange(); r.selectNodeConten
 await p.keyboard.type(' Показали PO.');
 await p.keyboard.press('Enter');
 check(!(await p.isVisible('#panelStack.open')), 'в режиме правки клик не открывает сайдбар');
-await p.click('#deckEdit');
+await viaMenu('deckEdit');
 await p.reload();
 await p.waitForTimeout(300);
 await goTo('[data-edit="sdone:platform:INIT-125"]');
 await p.waitForTimeout(300);
 check((await p.textContent('[data-edit="sdone:platform:INIT-125"]')).endsWith('Показали PO.'), 'правка текста сохраняется и переживает перезагрузку');
 p.once('dialog', d => d.accept());
-await p.click('#deckReset');
+await viaMenu('deckReset');
 await p.waitForTimeout(200);
 check((await p.textContent('[data-edit="sdone:platform:INIT-125"]')).endsWith('приём не включён.'), '«Вернуть текст» возвращает исходный');
 await p.keyboard.press('Escape');
@@ -620,7 +626,7 @@ await p.reload();
 await p.waitForTimeout(400);
 
 // «Для техлидов» — промт на отчёт PO с вопросами с бизнес-отчёта
-await p.click('#techBtn');
+await viaMenu('techBtn');
 await p.waitForTimeout(150);
 const techPrompt = await p.inputValue('#genText');
 check(await p.isVisible('#genWrap') && techPrompt.includes('/actual-sprint') && techPrompt.includes('Уточнить дату выкатки'),

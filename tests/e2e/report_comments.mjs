@@ -22,13 +22,32 @@ const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 },
                                        permissions: ['clipboard-read', 'clipboard-write'] });
 const p = await ctx.newPage();
+// шапка — в меню бургера (shared/burger.html): прежние кнопки скрыты, пункт меню нажимает их
+const closeLayers = async () => {   // бургер — под панелями: сначала снять открытые слои (как Esc у человека)
+  for (let i = 0; i < 4 && await p.evaluate(() => document.getElementById('overlay')?.classList.contains('open')); i++) {
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(100);
+  }
+};
+const pickTeam = async (slug) => {   // вкладки команд — в меню
+  await closeLayers();
+  await p.click('#burgerBtn');
+  await p.click(`#burgerBody [data-bm-team="${slug}"]`);
+  await p.click('#burgerClose');
+};
+const viaMenu = async (id, tap = false) => {
+  const hit = (sel) => (tap ? p.tap(sel) : p.click(sel));
+  await closeLayers();
+  await hit('#burgerBtn');
+  await hit(`#burgerBody [data-bm-click="${id}"]`);
+};
 const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 await p.goto(pathToFileURL(page).href);
 
 const TEAMS_N = (info) => info.teams.split('|').length;
 const count = async () => (await p.textContent('#cCount')).trim();
-const openBasket = async () => { if (!(await p.isVisible('#notesPanel'))) await p.click('#notesToggle'); };
+const openBasket = async () => { if (!(await p.isVisible('#notesPanel'))) await viaMenu('notesToggle'); };
 
 // корзина в правом верхнем углу; файлов и лога над таблицей больше нет
 check(await p.$('#notesExport') === null && await p.$('#clog') === null && await p.$('.note-area') === null,
@@ -57,22 +76,22 @@ check(prompt.includes('[Вне отчёта SEO-77 «перелинковка»]
 check(prompt.includes('[без привязки] Истории по SEO нет в спринте'), 'заметка без привязки помечена в промте');
 
 // правка: текст и привязка
-await p.hover('.nrow:last-child');
-await p.click('.nrow:last-child [data-edit]');
+await p.hover('.nrow >> nth=-1');
+await p.click('.nrow >> nth=-1 >> [data-edit]');
 await p.fill('.nedit-text', 'Истории SEO-77 нет в спринте — завести');
 await p.fill('.nedit-ref', '');
 await p.press('.nedit-text', 'Enter');
 prompt = await p.inputValue('#promptOut');
 check(prompt.includes('[без привязки] Истории SEO-77 нет в спринте — завести') && !prompt.includes('Вне отчёта'),
       'заметку можно отредактировать и отвязать');
-check((await p.getAttribute('.nrow:last-child', 'title')).includes('изменено'), 'у изменённой заметки время правки в подсказке');
-check(await p.$('.nrow:last-child .nref-line') === null, 'у заметки без привязки нет подписи сущности');
-check((await p.textContent('.nrow:first-child .nref-line')).startsWith(epicKey), 'у привязанной заметки подпись с ключом');
-const hidden = await p.$eval('.nrow:first-child .nacts', el => getComputedStyle(el).opacity);
-await p.hover('.nrow:first-child'); await p.waitForTimeout(200);
-const shown = await p.$eval('.nrow:first-child .nacts', el => getComputedStyle(el).opacity);
+check((await p.getAttribute('.nrow >> nth=-1', 'title')).includes('изменено'), 'у изменённой заметки время правки в подсказке');
+check(await p.$('.nrow >> nth=-1 >> .nref-line') === null, 'у заметки без привязки нет подписи сущности');
+check((await p.textContent('.nrow >> nth=0 >> .nref-line')).startsWith(epicKey), 'у привязанной заметки подпись с ключом');
+const hidden = await p.$eval('.nrow >> nth=0 >> .nacts', el => getComputedStyle(el).opacity);
+await p.hover('.nrow >> nth=0'); await p.waitForTimeout(200);
+const shown = await p.$eval('.nrow >> nth=0 >> .nacts', el => getComputedStyle(el).opacity);
 check(hidden === '0' && shown === '1', 'карандаш и мусорка проявляются при наведении');
-check(await p.$eval('.nrow:first-child [data-edit] svg', el => !!el) && await p.$eval('.nrow:first-child [data-del] svg', el => !!el), 'действия — иконки');
+check(await p.$eval('.nrow >> nth=0 >> [data-edit] svg', el => !!el) && await p.$eval('.nrow >> nth=0 >> [data-del] svg', el => !!el), 'действия — иконки');
 
 // правый клик по строке → заметка с привязкой; «Уже оставлено» для той же сущности
 await p.keyboard.press('Escape');
@@ -108,8 +127,8 @@ check(/\[История INIT-\d+ «.+» · эпик .* · приоритет \S+
       'у задачи в промте эпик, приоритет, статус, исполнитель; строки сохраняются');
 
 // удаление и перезагрузка
-await p.hover('.nrow:first-child');
-await p.click('.nrow:first-child [data-del]');
+await p.hover('.nrow >> nth=0');
+await p.click('.nrow >> nth=0 >> [data-del]');
 check(await count() === '6', 'заметка удаляется');
 await p.reload();
 check(await count() === '6', 'корзина переживает перезагрузку, перенос не повторяется');
@@ -187,7 +206,7 @@ check((await p.textContent('#scopeBtn')) === 'Смотреть весь эпик
 await p.keyboard.press('Escape');
 
 // сводный отчёт: под графиками только легенда, расшифровка — в «i», инсайды ИИ — разделом внизу
-await p.click('#metricsLink');
+await viaMenu('metricsLink');
 await p.waitForTimeout(300);
 check(!(await p.textContent('#storiesBody')).includes('Зелёная точка'), 'под диаграммами нет длинной расшифровки');
 check((await p.$$('.metrics-section h3 .info')).length === 4, 'у каждого графика иконка «i»');
@@ -229,22 +248,23 @@ for (let i = 0; i < 4 && await p.evaluate(() => document.getElementById('overlay
   await p.keyboard.press('Escape');
   await p.waitForTimeout(100);
 }
-await p.click('[data-team="mobile"]');
-await p.click('#metricsLink');
+await pickTeam('mobile');
+await viaMenu('metricsLink');
 await p.waitForTimeout(300);
 check((await p.textContent('#aiInsights')).includes('/sprint-insights') && !(await p.$('#aiInsights .ai-item')),
       'нет инсайдов для сбора — раздел на месте и говорит, как их получить');
 await p.keyboard.press('Escape');
-await p.click('[data-team="platform"]');
+await pickTeam('platform');
 
-// у каждой команды своя корзина
+// корзина общая на все команды (renderNotes: группы по командам) — счётчик не сбрасывается сменой команды
 await p.keyboard.press('Escape');
-await p.click('[data-team="catalog"]');
-check(await count() === '0', 'у другой команды своя корзина');
+const before = await count();
+await pickTeam('catalog');
+check(await count() === before && before !== '0', 'корзина общая на все команды: счётчик тот же после смены команды');
 
 // «!» в шапке — интерпретация ИИ: динамика, внимание, рекомендации
 await p.keyboard.press('Escape');
-await p.click('#interpBtn');
+await viaMenu('interpBtn');
 await p.waitForTimeout(300);
 const interp = await p.evaluate(() => ({ open: document.getElementById('panelStack').classList.contains('open'),
   heads: [...document.querySelectorAll('#storiesBody .interp-sec h3')].map(h => h.textContent),
@@ -254,22 +274,22 @@ check(interp.open && interp.heads.join('|') === 'Что можно сказат�
       '«!» открывает сайдбар интерпретации из трёх разделов');
 check(interp.items >= 3 && interp.by.startsWith('Интерпретация ИИ, не данные'), 'пункты интерпретации и подпись «не данные»');
 await p.keyboard.press('Escape');
-await p.click('[data-team="mobile"]');
-await p.click('#interpBtn');
+await pickTeam('mobile');
+await viaMenu('interpBtn');
 await p.waitForTimeout(300);
 check(await p.evaluate(() => document.getElementById('interpBtn').classList.contains('empty')) &&
       (await p.textContent('#storiesBody')).includes('/actual-sprint'), 'нет интерпретации — серая «!» и объяснение, откуда она');
 await p.keyboard.press('Escape');
-await p.click('[data-team="catalog"]');
+await pickTeam('catalog');
 
 // «Команда: N» в шапке — участники за 3 спринта; названия команды заголовком нет
 await p.keyboard.press('Escape');
-await p.click('[data-team="platform"]');
+await pickTeam('platform');
 const hero = await p.evaluate(() => ({ h1: !!document.querySelector('.hero h1'), kicker: !!document.querySelector('.hero .team'),
   meta: document.querySelector('.hero .meta').textContent, link: document.getElementById('teamLink').textContent }));
 check(!hero.h1 && !hero.kicker && !/Спринт:/.test(hero.meta) && /^Команда: \d+ участник/.test(hero.meta.trim()),
       'в шапке ни «Команда» с названием, ни «Спринт:» — вместо него «Команда: N участников»');
-await p.click('#teamLink');
+await viaMenu('teamLink');
 await p.waitForTimeout(300);
 const team = await p.evaluate(() => {
   const b = document.getElementById('storiesBody');
@@ -313,12 +333,12 @@ await p.click('[data-team-back]');
 await p.waitForTimeout(200);
 check(await p.isVisible('#storiesBody table.mtab'), '«← Команда» возвращает к таблице участников');
 await p.keyboard.press('Escape');
-await p.click('[data-team="catalog"]');
+await pickTeam('catalog');
 
 // «Бизнес-отчёт» — не колода на этой странице, а промт для навыка sprint-business
 await p.keyboard.press('Escape');
 check(await p.$('#deck') === null, 'колоды в отчёте PO нет: бизнес-отчёт — отдельный файл');
-await p.click('#bizBtn');
+await viaMenu('bizBtn');
 await p.waitForTimeout(150);
 const bizPrompt = await p.inputValue('#genText');
 check(await p.isVisible('#genWrap') && bizPrompt.includes('/sprint-business') && bizPrompt.includes('sprint-report.data.json') &&

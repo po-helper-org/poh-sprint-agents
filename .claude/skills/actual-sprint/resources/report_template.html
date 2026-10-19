@@ -7,7 +7,8 @@
 /*#include shared/core.css*/
 </style>
 </head>
-<body>
+<body class="has-burger">
+<!--#include shared/burger.html-->
 <!-- Отчёт PO (навык actual-sprint): эпики спринта, сводный отчёт, интерпретация ИИ.
      Общий движок — resources/shared; бизнес-отчёт — отдельный навык sprint-business. -->
 
@@ -508,6 +509,39 @@
     }
   });
 
+  // ------------------------- меню бургера (вместо шапки) -------------------------
+  // Шапка (.hero, кнопки корзины) скрыта стилем has-burger; пункты меню нажимают её кнопки.
+  // Команда — через скрытую вкладку .team-tab: оболочка виджета слушает именно её.
+  burger.label = function () { return team.team + (team.sprintName ? ' · ' + team.sprintName : ''); };
+  burger.build = function () {
+    var m = outputModel(team);
+    var people = m ? m.rows.filter(function (r) { return r.name !== NOBODY; }).length : 0;
+    var it = interpretation(), n = +document.getElementById('cCount').textContent || 0;
+    var teams = TEAMS.length > 1 ? bmSection('Команда', '<div class="bm-teams">' + TEAMS.map(function (t) {
+      return '<button type="button" class="bm-team' + (t.slug === team.slug ? ' on' : '') + '" data-bm-team="' + esc(t.slug) + '">' + esc(t.team) + '</button>';
+    }).join('') + '</div>') : '';
+    var board = team.boardUrl ? '<a class="bm-item" href="' + esc(team.boardUrl) + '" target="_blank" rel="noopener"><span class="bm-main">' +
+      '<span class="bm-label">Доска</span><span class="bm-sub">' + esc(team.boardName || 'JIRA') + '</span></span><span class="bm-go">↗</span></a>' : '';
+    return teams +
+      bmSection(/^спринт/i.test(team.sprintName || '') ? team.sprintName : 'Спринт' + (team.sprintName ? ' ' + team.sprintName : ''),
+        bmItem('data-bm-click="teamLink"', 'Команда', m ? people + ' ' + plural(people, 'участник', 'участника', 'участников') + ' · выработка за 3 спринта' : 'нет данных') +
+        board +
+        bmItem('data-bm-click="metricsLink"', 'Lead Time за 3 спринта', document.getElementById('metricsLink').textContent + ' · среднее / медиана / кол-во · сводный отчёт') +
+        bmItem('data-bm-click="interpBtn"', 'Интерпретация ИИ', !it ? 'по этому сбору нет' : team.insights.stale ? 'написана по прошлому сбору' : 'динамика команды, на что обратить внимание, рекомендации')) +
+      bmSection('Действия',
+        bmItem('data-bm-click="notesToggle"', 'Комментарии', n ? n + ' ' + plural(n, 'заметка', 'заметки', 'заметок') + ' · промт для ИИ' : 'заметки к спринту и промт для ИИ',
+          n ? '<span class="bm-n">' + n + '</span>' : null) +
+        bmItem('data-bm-click="logsBtn"', 'Logs', 'кто что менял за спринт') +
+        bmItem('data-bm-click="bizBtn"', 'Бизнес-отчёт', 'промт для презентации «ФАКТ | спринт»'));
+  };
+  if (burgerBtn) document.getElementById('burgerBody').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-bm-team]');
+    if (!b) return;
+    var tab = document.querySelector('#teamSwitch .team-tab[data-team="' + b.dataset.bmTeam + '"]');
+    if (tab) tab.click();
+    renderBurger();
+  });
+
   function switchTeam(slug) {
     closePanels();
     useTeam(slug);
@@ -518,6 +552,7 @@
     renderBlockers();
     renderTable();
     renderMetricsLink();
+    refreshBurger();
   }
 
   useTeam(TEAMS[0].slug);
@@ -527,6 +562,7 @@
   renderBlockers();
   renderTable();
   renderMetricsLink();
+  refreshBurger();
   document.getElementById('logsBtn').addEventListener('click', openLogs);
   document.getElementById('metricsLink').addEventListener('click', function (e) {
     e.preventDefault();
