@@ -439,6 +439,8 @@
   .has-burger .deck-bar { display: none; }
   body.deck-open .burger { z-index: 41; }   /* над колодой (40), под панелью задачи (overlay 41 позже в DOM, панель 42) */
   .has-burger .deck-slides { padding-top: calc(68px + env(safe-area-inset-top)); }
+  /* сцена: слайд от верха окна, бургер (низ ~54px экрана) налезал на заголовок — отступ в единицах слайда */
+  .has-burger .deck.stage .deck-slides > .fslide { padding-top: calc((64px + env(safe-area-inset-top)) / var(--k, 1)); }
   body.deck-open .cpop { z-index: 50; }
 
   /* узкий экран: слайд во всю ширину, светофор и таблица остаются */
