@@ -244,7 +244,8 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
         counted = [epics[k] for k, _ in keys if k in epics and k not in skip]
         raw_pace = team_samples(counted, monday)
         pace = [c / max(1, open_count) for c in raw_pace]
-        agent = (((block or {}).get('teams') or {}).get(slug) or {}).get('initiatives') or {}
+        agent_t = ((block or {}).get('teams') or {}).get(slug) or {}
+        agent = agent_t.get('initiatives') or {}
         rows = []
         for key, obj in keys:
             row = build_row(slug, team.get('name') or slug.upper(), key, obj, goals_t, epics.get(key),
@@ -262,7 +263,8 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
                 continue
             esc = None
             if mine.get('escalation'):
-                esc = {**mine['escalation'], 'by': day(mine['escalation'].get('by')), 'source': 'agent'}
+                esc = {**mine['escalation'], 'by': day(mine['escalation'].get('by')), 'source': 'agent',
+                       'author': agent_t.get('author') or (block or {}).get('author'), 'writtenAt': day(agent_t.get('updatedAt'))}
             elif row['status'] in ('red', 'yellow') and (row['blockers'] or (row['chance'] is not None and row['chance'] < EVEN)):
                 esc = {**auto_escalation(row, deadline, monday, today), 'source': 'data'}
             if esc:

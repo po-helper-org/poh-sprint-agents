@@ -470,5 +470,130 @@ class CliTest(unittest.TestCase):
         self.assertEqual(0, self.run_cli('check'))
 
 
+# ------------------------------------------------------------------ агенты команд пишут каждый свою часть
+
+ESC = {'ask': 'Дать решение партнёра по протоколу', 'who': 'CPO', 'by': '2026-10-26',
+       'ifNot': 'с 85% — не раньше 07.02.2027', 'why': 'ждём партнёра 9 раб. дн.'}
+
+
+class AgentPutTest(unittest.TestCase):
+    """quarter.py put: агент PO-команды пишет только свою команду — по понедельникам их три подряд."""
+
+    def setUp(self):
+        self.dir = Path(tempfile.mkdtemp())
+        goals_a, data_a = world([epic('E-1', done_items('E1', 1) + open_items('E1', 40)),
+                                 epic('E-2', done_items('E2', 2) + open_items('E2', 4))])
+        goals_b = {'team-b': {'quarter': '2026Q4', 'objectives': {'OBJ 1': 'Цель Б'},
+                              'epics': {'B-1': 'OBJ 1'}, 'kr': {'B-1': 'KR 2.1'}}}
+        data_a['teams'].append({'slug': 'team-b', 'name': 'Команда Б',
+                                'epics': [epic('B-1', done_items('B1', 1) + open_items('B1', 30))]})
+        (self.dir / 'sprint-goals.json').write_text(json.dumps({'version': 1, 'teams': {**goals_a, **goals_b}}), encoding='utf-8')
+        (self.dir / 'quarter-risks.data.json').write_text(json.dumps(data_a), encoding='utf-8')
+        self.block = self.dir / 'quarter-risks.json'
+        self.block.write_text(json.dumps({'version': 1, 'generatedAt': '2026-10-12T09:00', 'teams': {
+            'team-a': {'initiatives': {'E-2': {'override': {'status': 'green', 'reason': 'PO: партнёр подтвердил срок'},
+                                               'note': 'старая заметка агента'}}},
+            'team-b': {'author': 'агент Б', 'initiatives': {'B-1': {'escalation': dict(ESC, ask='Чужая просьба')}}}}}),
+            encoding='utf-8')
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.dir)
+
+    def draft(self, doc):
+        path = self.dir / 'draft.json'
+        path.write_text(json.dumps(doc), encoding='utf-8')
+        return str(path)
+
+    def put(self, doc, *extra):
+        return qr.main(['put', '--team', 'team-a', '--file', self.draft(doc), '--author', 'po-a',
+                        '--reports', str(self.dir), *extra])
+
+    def test_put_replaces_own_team_keeps_other_teams_and_po_assessment(self):
+        code = self.put({'initiatives': {'E-1': {'escalation': ESC,
+                                                 'risks': [{'title': 'Отпуск аналитика', 'roam': 'Owned', 'owner': 'Тимлид'}]}}})
+        self.assertEqual(0, code)
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        self.assertEqual('Чужая просьба', doc['teams']['team-b']['initiatives']['B-1']['escalation']['ask'])
+        mine = doc['teams']['team-a']
+        self.assertEqual('po-a', mine['author'])
+        self.assertRegex(mine['updatedAt'], r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}')
+        self.assertEqual(ESC, mine['initiatives']['E-1']['escalation'])
+        # оценку PO агент не ставит и не снимает; свою прошлую заметку — переписывает целиком
+        self.assertEqual({'override': {'status': 'green', 'reason': 'PO: партнёр подтвердил срок'}}, mine['initiatives']['E-2'])
+        self.assertEqual(0, qr.main(['check', '--reports', str(self.dir)]))
+
+    def test_put_takes_draft_in_full_block_form_too(self):
+        self.assertEqual(0, self.put({'version': 1, 'teams': {'team-a': {'initiatives': {'E-1': {'note': 'ок'}}}}}))
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        self.assertEqual('ок', doc['teams']['team-a']['initiatives']['E-1']['note'])
+
+    def test_put_refuses_po_assessment_from_agent_and_bad_drafts_without_writing(self):
+        before = self.block.read_text(encoding='utf-8')
+        self.assertEqual(1, self.put({'initiatives': {'E-1': {'override': {'status': 'red', 'reason': 'агент так думает'}}}}))
+        self.assertEqual(1, self.put({'initiatives': {'X-404': {'note': 'чужой эпик'}}}))
+        self.assertEqual(1, self.put({'initiatives': {'E-1': {'escalation': dict(ESC, ask='а' * 161)}}}))
+        self.assertEqual(1, self.put({'version': 1, 'teams': {'team-b': {'initiatives': {}}}}))
+        self.assertEqual(before, self.block.read_text(encoding='utf-8'))
+
+    def test_po_assessment_goes_in_only_when_po_said_so_and_keeps_earlier_ones(self):
+        override = {'status': 'red', 'reason': 'PO: команда в отпусках до ноября'}
+        self.assertEqual(0, self.put({'initiatives': {'E-1': {'override': override}}}, '--with-override'))
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        self.assertEqual(override, doc['teams']['team-a']['initiatives']['E-1']['override'])
+        self.assertEqual('green', doc['teams']['team-a']['initiatives']['E-2']['override']['status'])
+
+    def test_malformed_or_empty_drafts_are_refused_with_a_reason_not_a_traceback(self):
+        before = self.block.read_text(encoding='utf-8')
+        for doc in ({'initiatives': [{'note': 'x'}]}, {'initiatives': {'E-1': 'текст'}}, {'initiatives': {'E-1': None}},
+                    {'teams': [{'initiatives': {}}]}, {'initiatives': {}}, {'initiatives': None}, {}, ['E-1']):
+            self.assertEqual(1, self.put(doc), doc)
+        self.assertEqual(before, self.block.read_text(encoding='utf-8'))
+
+    def test_quarter_rollover_leftovers_do_not_lock_out_the_agents(self):
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        doc['teams']['team-a']['initiatives']['OLD-1'] = {'override': {'status': 'red', 'reason': 'прошлый квартал'}}
+        doc['teams']['team-b']['initiatives']['OLD-2'] = {'note': 'прошлый квартал'}
+        doc['teams']['team-gone'] = {'initiatives': {}}
+        self.block.write_text(json.dumps(doc), encoding='utf-8')
+        self.assertEqual(0, self.put({'initiatives': {'E-1': {'note': 'новый квартал'}}}))
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        self.assertEqual(['team-a', 'team-b'], sorted(doc['teams']))
+        self.assertNotIn('OLD-1', doc['teams']['team-a']['initiatives'])
+        self.assertEqual(['B-1'], list(doc['teams']['team-b']['initiatives']))
+        self.assertEqual(0, qr.main(['check', '--reports', str(self.dir)]))
+
+    def test_put_starts_the_file_when_nobody_wrote_it_yet(self):
+        self.block.unlink()
+        self.assertEqual(0, self.put({'initiatives': {'E-1': {'escalation': ESC}}}))
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        self.assertEqual(['team-a'], list(doc['teams']))
+        self.assertEqual(1, doc['version'])
+
+    def test_facts_for_one_team_carry_only_its_rows_and_candidates(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(0, qr.main(['facts', '--team', 'team-b', '--reports', str(self.dir)]))
+        facts = json.loads(out.getvalue())
+        self.assertEqual(['team-b'], [t['slug'] for t in facts['teams']])
+        self.assertTrue(all(c['team'] == 'team-b' for c in facts['candidates'] + facts['escalations']))
+        # итоги — тоже только своей команды: агент пишет PO «под риском N» про себя, а не про всех
+        self.assertEqual(1, sum(facts['counts'].values()))
+        self.assertEqual(1, qr.main(['facts', '--team', 'team-x', '--reports', str(self.dir)]))
+
+    def test_page_names_the_agent_and_date_of_its_text(self):
+        self.assertEqual(0, self.put({'initiatives': {'E-1': {'escalation': ESC}}}))
+        view = qr.make_view(qr.Reports(self.dir), today=MONDAY, quiet=True)
+        esc = row_of(view, 'E-1')['escalation']
+        self.assertEqual('agent', esc['source'])
+        html = qr.render_html(view)
+        self.assertIn('текст агента po-a', html)
+        self.assertIn('Дать решение партнёра по протоколу', html)
+        # чужой текст — со своим автором; текст из данных — по-прежнему с пометкой
+        self.assertIn('текст агента агент Б', html)
+
+
 if __name__ == '__main__':
     unittest.main()

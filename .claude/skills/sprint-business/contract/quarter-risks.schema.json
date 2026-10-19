@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://po-helper-org/poh-sprint-agents/sprint-business/quarter-risks.schema.json",
   "title": "Блок агента для страницы «Риски квартала» (/business/risks)",
-  "description": "Файл reports/quarter-risks.json. Пишет ИИ-агент PO-команды по фактам quarter.py facts и словам PO: тексты эскалаций для CPO, риски с метками ROAM, оценка PO вместо расчётного статуса. Цифры (шанс, прогноз, блокаторы) здесь не хранятся — их считает quarter.py. Ключ инициативы — эпик из sprint-goals.json.",
+  "description": "Файл reports/quarter-risks.json. Пишет ИИ-агент PO-команды по фактам quarter.py facts и словам PO: тексты эскалаций для CPO, риски с метками ROAM, оценка PO вместо расчётного статуса. Цифры (шанс, прогноз, блокаторы) здесь не хранятся — их считает quarter.py. Ключ инициативы — эпик из sprint-goals.json. Агенты команд пишут каждый свою команду через quarter.py put — чужие команды и оценки PO не трогаются.",
   "type": "object",
   "required": ["version", "generatedAt", "teams"],
   "additionalProperties": false,
@@ -17,6 +17,8 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "author": {"type": "string", "minLength": 1, "description": "кто последним писал часть команды (профиль агента) — quarter.py put"},
+          "updatedAt": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}"},
           "initiatives": {"type": "object", "additionalProperties": {"$ref": "#/definitions/initiative"}}
         }
       }

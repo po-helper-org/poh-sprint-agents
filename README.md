@@ -141,10 +141,13 @@ python3 .claude/skills/sprint-business/business.py apply   # проверка + 
 
 ```bash
 python3 .claude/skills/sprint-business/quarter.py fetch    # эпики квартала из JIRA (только чтение) → reports/quarter-risks.data.json
-python3 .claude/skills/sprint-business/quarter.py facts    # статусы, шанс, кандидаты в эскалацию → агенту
-# агент пишет reports/quarter-risks.json: эскалации, риски ROAM, оценка PO (только с причиной)
+python3 .claude/skills/sprint-business/quarter.py facts --team gds   # статусы, шанс, кандидаты в эскалацию → агенту команды
+python3 .claude/skills/sprint-business/quarter.py put --team gds --author po-gds --file черновик.json
+# агент пишет свою команду в reports/quarter-risks.json: эскалации, риски ROAM; чужие команды и оценки PO не трогает
 python3 .claude/skills/sprint-business/quarter.py render   # страница, текст для CPO, недельный снимок — без JIRA
 ```
+
+По понедельникам тексты пишут сами Hermes-агенты PO-команд — задача cron с навыком `hermes/quarter-risks/SKILL.md`, ставит `hermes/install-quarter-risks.sh` (подробно — «Тексты агентов по понедельникам» в [docs/quarter-risks.md](docs/quarter-risks.md)).
 
 ### Блокеры команды — `/sprint-blockers`
 

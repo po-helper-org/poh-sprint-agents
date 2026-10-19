@@ -132,14 +132,16 @@ python3 .claude/skills/sprint-business/business.py apply
 Отдельный подотчёт к колоде для синка с CPO: по каждой инициативе квартала (эпики из `sprint-goals.json`, не только из спринта) — шанс дойти к концу квартала, блокаторы, путь в зелёный; наверху — до 3 эскалаций с ✅ PO. Правила и термины — `docs/quarter-risks.md`, `GLOSSARY.md`, ADR 0001–0003.
 
 1. `python3 quarter.py fetch --config …` — эпики квартала из Jira (делает таймер виджета по будням 08:45, руками — только по просьбе PO).
-2. `python3 quarter.py facts --config …` — статусы, шанс, блокаторы, кандидаты в эскалацию с текстами из данных.
-3. По каждому кандидату и каждой 🔴/🟡 инициативе запиши `reports/quarter-risks.json` (`contract/quarter-risks.schema.json`):
+2. `python3 quarter.py facts --config … [--team slug]` — статусы, шанс, блокаторы, кандидаты в эскалацию с текстами из данных (`--team` — только своя команда).
+3. По каждому кандидату и каждой 🔴/🟡 инициативе напиши черновик `{"initiatives": {эпик: …}}` и запиши его `python3 quarter.py put --team slug --author <кто> --file черновик` — в `reports/quarter-risks.json` (`contract/quarter-risks.schema.json`) меняется только часть твоей команды, под замком; чужие команды и прежние оценки PO остаются. Руками файл не правь — агенты трёх команд пишут его по очереди:
    - `escalation {ask, who, by, ifNot, why}` — что прошу у CPO (одно действие), у кого, до какой даты, что будет, если нет. Опирайся на `facts`: «до» — не позже `okUntil`, «если нет» — прогноз 85% или «сколько успеем»;
    - `risks [{title, roam, owner, due, text}]` — то, что может случиться: Owned / Mitigated / Accepted (Resolved — не показывается);
-   - `override {status, reason}` — оценка PO вместо расчёта, **только со слов PO** и с причиной.
+   - `override {status, reason}` — оценка PO вместо расчёта, **только со слов PO** и с причиной (`put … --with-override`; без флага `put` оценку из черновика не примет).
    Цифр не пиши — их считает `quarter.py`. Неподтверждённые и снятые инициативы — списки `unconfirmed` / `dropped` в `sprint-goals.json` команды (со слов PO).
-4. `python3 quarter.py check --config …`, затем страница: в каталоге виджета PO-Sprint-business `python3 -m business risks --no-fetch` (или `quarter.py render`).
+4. `put` уже проверил блок (как `quarter.py check --config …`), дальше страница: в каталоге виджета PO-Sprint-business `python3 -m business risks --no-fetch` (или `quarter.py render`).
 5. В чат — сколько кандидатов и что предлагаешь поднять; ✅ ставит PO на странице, не агент.
+
+**По понедельникам сами:** у Hermes-агентов PO-команд это задача cron `quarter-risks-<команда>` с навыком-обёрткой `hermes/quarter-risks/SKILL.md` (Jira только чтение, без `override`); ставит `hermes/install-quarter-risks.sh [--check|--replace|--remove]`. На странице у такого текста — «текст агента <профиль>, <дата>».
 
 ## Что где лежит
 ```
@@ -147,7 +149,7 @@ business.py                      facts | check | apply | render
 contract/business.schema.json    форма reports/sprint-business.json
 resources/business_template.html страница: колода, сцена, сайдбары, «Для техлидов»
 examples/demo-business.json      пример блока на демо-данных
-quarter.py                       fetch | render | check | facts — «Риски квартала» (/business/risks)
+quarter.py                       fetch | render | check | facts | put — «Риски квартала» (/business/risks)
 quarter_model.py                 статусы, эскалации, путь в зелёный, смещение — чистая функция build()
 forecast.py                      Monte Carlo по недельному темпу: шанс к дате, прогноз 85%
 contract/quarter-risks.schema.json  форма reports/quarter-risks.json (эскалации, риски ROAM, оценка PO)
