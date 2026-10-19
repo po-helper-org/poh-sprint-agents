@@ -269,7 +269,7 @@ check(await p.isVisible('#storiesBody .cbig svg'), 'вкладка «Подза�
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // роадмап «Инициативы по спринтам»: 3 следующих спринта по 2 недели, строки — инициативы, в ячейках — фазы
-const PHASES = ['аналитика', 'дизайн', 'бек', 'фронт', 'разработка', 'qa', 'приёмка', 'релиз', 'контент'];
+const PHASES = ['аналитика', 'дизайн', 'бек', 'фронт', 'разработка', 'в работе', 'qa', 'приёмка', 'релиз', 'контент'];
 const rm = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.roadmap')].map(sl => {
   const t = TEAMS.find(x => x.slug === sl.dataset.team);
   return { team: t.slug, title: sl.querySelector('.slide-title').textContent, end: t.burndown.end, agent: !!(t.business && t.business.roadmap),
@@ -303,6 +303,10 @@ check(!!agentRm && agentRm.rows.length === agentRm.ai.length && agentRm.rows.eve
 check(!!autoRm && autoRm.rows.length === Math.min(autoRm.openEpics, 14) &&
       autoRm.rows.every(x => !x.cells.some(c => c) || (x.cells[0] && x.cells.join('|').replace(/^(.*?)(\|+)?$/, '$1').split('|').every(Boolean))),
       'без агента — каркас из данных: открытые эпики, полоса с текущей недели без разрывов');
+const neutral = c => { const a = c.filter(Boolean), k = a.length;
+  return k > 0 && a.slice(0, k - 1).every(x => x === 'в работе') && (k === 6 ? ['в работе', 'приёмка'].includes(a[k - 1]) : a[k - 1] === 'приёмка'); };
+check(autoRm.rows.every(x => neutral(x.cells)),
+      'без агента фазы не угадываются: «в работе», а полоса, что кончается в горизонте, — «приёмкой» в последней неделе');
 await goTo('#deckSlides .fslide.roadmap .rm-row[data-key]');
 await p.click('#deckSlides .fslide.roadmap .rm-row[data-key] .rm-name >> nth=0');
 await p.waitForTimeout(300);
@@ -320,6 +324,8 @@ const rk = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fs
       text: r.querySelector('.rk-text').textContent })) };
 }));
 const KIND_RU = { external: 'Внешнее', resource: 'Ресурс', general: 'Общее', deadline: 'Срок' };
+check(await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.risks')].every(s => !s.querySelector('.slide-sub'))),
+      'под заголовком «Рисков и проблем» подписи нет');
 check(rk.every(r => r.title === 'Риски и проблемы' && r.rows.length <= 5 && r.rows.every(x => KINDS.includes(x.kind) && x.title && x.text)),
       '«Риски и проблемы»: до 5 строк — метка (Внешнее / Ресурс / Общее / Срок), проблема, что будет или какая помощь');
 const agentRk = rk.find(r => r.agent);
