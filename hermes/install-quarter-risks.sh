@@ -40,7 +40,7 @@ try:
 except (OSError, ValueError):
     sys.exit(0)
 jobs = doc.get('jobs', []) if isinstance(doc, dict) else doc
-print(next((j['id'] for j in jobs if j.get('name') == sys.argv[2]), ''))
+print(next((j.get('id') or '' for j in jobs if isinstance(j, dict) and j.get('name') == sys.argv[2]), ''))
 PY
 }
 
@@ -78,8 +78,9 @@ for spec in "${SPECS[@]}"; do
       echo "$profile: $s, $c"
       ;;
     remove)
-      [ -n "$id" ] && "$HERMES" -p "$profile" cron remove "$id" >/dev/null && echo "$profile: cron $name снят"
-      [ -f "$skill" ] && rm -f "$skill" && rmdir "$(dirname "$skill")" 2>/dev/null; echo "$profile: навык снят"
+      if [ -n "$id" ]; then "$HERMES" -p "$profile" cron remove "$id" >/dev/null; echo "$profile: cron $name снят"; fi
+      if [ -f "$skill" ]; then rm -f "$skill"; rmdir "$(dirname "$skill")" 2>/dev/null || true; fi
+      echo "$profile: навык снят"
       ;;
     install|replace)
       tmp="$(mktemp)"
@@ -99,7 +100,9 @@ PY
       if [ -n "$id" ] && [ "$MODE" = install ]; then
         echo "$profile: cron $name уже есть ($id) — пропуск (--replace — пересоздать)"; continue
       fi
-      [ -n "$id" ] && "$HERMES" -p "$profile" cron remove "$id" >/dev/null && echo "$profile: старый cron $name снят"
+      if [ -n "$id" ]; then  # не снялся — set -e остановит до create: двух задач не будет
+        "$HERMES" -p "$profile" cron remove "$id" >/dev/null; echo "$profile: старый cron $name снят"
+      fi
       "$HERMES" -p "$profile" cron create "$schedule" "$(prompt_for "$profile" "$team")" \
         --name "$name" --skill quarter-risks --deliver local \
         --workdir "$AGENTS_DIR/.claude/skills/sprint-business" >/dev/null

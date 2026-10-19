@@ -536,11 +536,32 @@ class AgentPutTest(unittest.TestCase):
         self.assertEqual(1, self.put({'version': 1, 'teams': {'team-b': {'initiatives': {}}}}))
         self.assertEqual(before, self.block.read_text(encoding='utf-8'))
 
-    def test_po_assessment_goes_in_only_when_po_said_so(self):
+    def test_po_assessment_goes_in_only_when_po_said_so_and_keeps_earlier_ones(self):
         override = {'status': 'red', 'reason': 'PO: команда в отпусках до ноября'}
         self.assertEqual(0, self.put({'initiatives': {'E-1': {'override': override}}}, '--with-override'))
         doc = json.loads(self.block.read_text(encoding='utf-8'))
         self.assertEqual(override, doc['teams']['team-a']['initiatives']['E-1']['override'])
+        self.assertEqual('green', doc['teams']['team-a']['initiatives']['E-2']['override']['status'])
+
+    def test_malformed_or_empty_drafts_are_refused_with_a_reason_not_a_traceback(self):
+        before = self.block.read_text(encoding='utf-8')
+        for doc in ({'initiatives': [{'note': 'x'}]}, {'initiatives': {'E-1': 'текст'}}, {'initiatives': {'E-1': None}},
+                    {'teams': [{'initiatives': {}}]}, {'initiatives': {}}, {'initiatives': None}, {}, ['E-1']):
+            self.assertEqual(1, self.put(doc), doc)
+        self.assertEqual(before, self.block.read_text(encoding='utf-8'))
+
+    def test_quarter_rollover_leftovers_do_not_lock_out_the_agents(self):
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        doc['teams']['team-a']['initiatives']['OLD-1'] = {'override': {'status': 'red', 'reason': 'прошлый квартал'}}
+        doc['teams']['team-b']['initiatives']['OLD-2'] = {'note': 'прошлый квартал'}
+        doc['teams']['team-gone'] = {'initiatives': {}}
+        self.block.write_text(json.dumps(doc), encoding='utf-8')
+        self.assertEqual(0, self.put({'initiatives': {'E-1': {'note': 'новый квартал'}}}))
+        doc = json.loads(self.block.read_text(encoding='utf-8'))
+        self.assertEqual(['team-a', 'team-b'], sorted(doc['teams']))
+        self.assertNotIn('OLD-1', doc['teams']['team-a']['initiatives'])
+        self.assertEqual(['B-1'], list(doc['teams']['team-b']['initiatives']))
+        self.assertEqual(0, qr.main(['check', '--reports', str(self.dir)]))
 
     def test_put_starts_the_file_when_nobody_wrote_it_yet(self):
         self.block.unlink()
@@ -558,6 +579,8 @@ class AgentPutTest(unittest.TestCase):
         facts = json.loads(out.getvalue())
         self.assertEqual(['team-b'], [t['slug'] for t in facts['teams']])
         self.assertTrue(all(c['team'] == 'team-b' for c in facts['candidates'] + facts['escalations']))
+        # итоги — тоже только своей команды: агент пишет PO «под риском N» про себя, а не про всех
+        self.assertEqual(1, sum(facts['counts'].values()))
         self.assertEqual(1, qr.main(['facts', '--team', 'team-x', '--reports', str(self.dir)]))
 
     def test_page_names_the_agent_and_date_of_its_text(self):

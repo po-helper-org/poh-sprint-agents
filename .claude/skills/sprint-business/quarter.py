@@ -572,9 +572,11 @@ def cmd_facts(args):
         if args.team not in {t['slug'] for t in slim['teams']}:
             raise QuarterError(f'команды {args.team} нет в кэше целей; есть: {", ".join(t["slug"] for t in slim["teams"])}')
         slim['teams'] = [t for t in slim['teams'] if t['slug'] == args.team]
-        for group in ('candidates', 'escalations', 'escalationsMore', 'unconfirmed', 'dropped', 'shifted'):
-            if isinstance(slim.get(group), list):
-                slim[group] = [x for x in slim[group] if not isinstance(x, dict) or x.get('team') in (None, args.team)]
+        for group in ('candidates', 'escalations', 'escalationsMore', 'unconfirmed', 'dropped'):
+            slim[group] = [x for x in slim.get(group) or [] if x.get('team') == args.team]
+        rows = slim['teams'][0]['rows']
+        slim['counts'] = {s: sum(1 for r in rows if r['status'] == s) for s in qm.STATUSES}
+        slim['shifted'] = sum(1 for r in rows if r.get('delta') and (r['delta'].get('p85Days') or 0) > 0)
     for t in slim['teams']:
         t['rows'] = [{k: v for k, v in r.items() if k != 'items'} for r in t['rows']]
     print(json.dumps(_jsonable(slim), ensure_ascii=False, indent=1))
@@ -582,38 +584,58 @@ def cmd_facts(args):
 
 
 def draft_of(doc, slug):
-    """Черновик агента: {"initiatives": …} или целый блок, где есть только его команда."""
+    """Черновик агента: {"initiatives": {эпик: {…}}} или целый блок, где есть только его команда."""
     if not isinstance(doc, dict):
         raise QuarterError('черновик — не объект JSON')
     if 'teams' in doc:
-        teams = doc.get('teams') or {}
-        if set(teams) != {slug}:
-            raise QuarterError(f'в черновике команды {", ".join(teams) or "—"}, а пишем только {slug}')
-        doc = teams[slug] or {}
+        teams = doc.get('teams')
+        if not isinstance(teams, dict) or set(teams) != {slug}:
+            raise QuarterError(f'в черновике teams должен быть объект только с командой {slug}')
+        doc = teams[slug]
+        if not isinstance(doc, dict):
+            raise QuarterError(f'teams.{slug} в черновике — не объект')
     extra = set(doc) - {'initiatives'}
     if extra:
         raise QuarterError(f'в черновике команды лишние поля: {", ".join(sorted(extra))} (нужно только initiatives)')
-    return doc.get('initiatives') or {}
+    initiatives = doc.get('initiatives')
+    # пустой черновик стёр бы все тексты команды — это почти всегда сбой агента, а не решение
+    if not isinstance(initiatives, dict) or not initiatives:
+        raise QuarterError('initiatives в черновике — непустой объект {эпик: {escalation, risks, note}}')
+    bad = [k for k, v in initiatives.items() if not isinstance(v, dict)]
+    if bad:
+        raise QuarterError(f'initiatives: не объект у {", ".join(bad)}')
+    return initiatives
 
 
-def merge_team(current, slug, initiatives, author, now, with_override=False):
+def merge_team(current, slug, initiatives, author, now, goals, with_override=False):
     """Новый блок: часть команды slug — из черновика, чужие команды — как были. Оценку PO (override) агент
-    не ставит и не снимает: прежняя переносится, новая принимается только с with_override (PO сказал сам)."""
+    не ставит и не снимает: прежние переносятся всегда, новая для эпика из черновика — только с with_override
+    (PO сказал сам). Эпики и команды, которых больше нет в кэше целей (смена квартала), выпадают с
+    предупреждением — иначе один старый ключ закрыл бы запись всем трём агентам."""
     if not with_override:
-        said = [k for k, ini in initiatives.items() if isinstance(ini, dict) and 'override' in ini]
+        said = [k for k, ini in initiatives.items() if 'override' in ini]
         if said:
             raise QuarterError(f'оценку PO (override) агент сам не ставит: {", ".join(said)}. '
                                'Только со слов PO — тогда --with-override')
     doc = current if isinstance(current, dict) else {}
-    old = ((doc.get('teams') or {}).get(slug) or {}).get('initiatives') or {}
+    old_teams = doc.get('teams') if isinstance(doc.get('teams'), dict) else {}
+    dropped = []
+    teams = {}
+    for t_slug, team in old_teams.items():
+        known = (goals.get(t_slug) or {}).get('epics') or {}
+        if t_slug not in goals or not isinstance(team, dict):
+            dropped.append(t_slug)
+            continue
+        inis = team.get('initiatives') if isinstance(team.get('initiatives'), dict) else {}
+        dropped += [f'{t_slug}/{k}' for k in inis if k not in known]
+        teams[t_slug] = {**team, 'initiatives': {k: v for k, v in inis.items() if k in known}}
     merged = {k: dict(v) for k, v in initiatives.items()}
-    if not with_override:
-        for key, ini in old.items():
-            if isinstance(ini, dict) and ini.get('override'):
-                merged.setdefault(key, {})['override'] = ini['override']
-    teams = dict(doc.get('teams') or {})
+    for key, ini in ((teams.get(slug) or {}).get('initiatives') or {}).items():
+        if isinstance(ini, dict) and ini.get('override') and 'override' not in merged.get(key, {}):
+            merged.setdefault(key, {})['override'] = ini['override']
     teams[slug] = {'author': author, 'updatedAt': now, 'initiatives': merged}
-    return {**{k: v for k, v in doc.items() if k != 'teams'}, 'version': 1, 'generatedAt': now, 'teams': teams}
+    out = {**{k: v for k, v in doc.items() if k != 'teams'}, 'version': 1, 'generatedAt': now, 'teams': teams}
+    return out, dropped
 
 
 def cmd_put(args):
@@ -627,8 +649,8 @@ def cmd_put(args):
     # агенты трёх команд пишут по очереди, но cron может их свести — файл меняется только под замком
     with open(rep.dir / 'quarter-risks.json.lock', 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        doc = merge_team(read_json(rep.block, 'блока агента', required=False), args.team, initiatives,
-                         args.author, now, args.with_override)
+        doc, dropped = merge_team(read_json(rep.block, 'блока агента', required=False), args.team, initiatives,
+                                  args.author, now, goals, args.with_override)
         errors = check_block(doc, goals)
         if errors:
             for line in errors:
@@ -636,6 +658,8 @@ def cmd_put(args):
             print(f'черновик не принят: ошибок {len(errors)}; {rep.block.name} не менялся. Поправьте {Path(args.file).name}.')
             return EXIT_ERROR
         write_text(rep.block, json.dumps(doc, ensure_ascii=False, indent=1) + '\n')
+    if dropped:
+        print(f'⚠ выпали записи, которых нет в кэше целей: {", ".join(dropped)}')
     esc = sum(1 for v in initiatives.values() if v.get('escalation'))
     risks = sum(len(v.get('risks') or []) for v in initiatives.values())
     print(f'[{args.team}] инициатив {len(initiatives)}, эскалаций {esc}, рисков {risks} → {rep.block}')
