@@ -449,10 +449,10 @@ class Collector110Test(unittest.TestCase):
 
     def test_offboard_is_period_activity_minus_sprint(self):
         def api(path, **p):
-            return {'total': 2, 'issues': [{'key': 'GDS-1', 'fields': {
+            return {'total': 2, 'issues': [{'key': 'ALP-1', 'fields': {
                 'summary': 'задача спринта', 'issuetype': {'name': 'История'}, 'status': {'name': 'В работе', 'id': '2'},
                 'assignee': {'name': 'ivanov', 'displayName': 'Иванов Иван'}, 'updated': '2026-10-02T12:00:00.000+0300'},
-                'changelog': {'histories': []}}, {'key': 'MRS-7', 'fields': {
+                'changelog': {'histories': []}}, {'key': 'UNB-7', 'fields': {
                 'summary': 'Помощь смежникам', 'issuetype': {'name': 'Задача'}, 'status': {'name': 'Закрыт', 'id': '1'},
                 'assignee': {'name': 'ivanov', 'displayName': 'Иванов Иван'}, 'resolutiondate': '2026-10-02T12:00:00.000+0300',
                 'updated': '2026-10-02T12:00:00.000+0300', 'comment': {'comments': [
@@ -460,23 +460,23 @@ class Collector110Test(unittest.TestCase):
                 'changelog': {'histories': []}}]}
         c = self.collector(api=api)
         out = c.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'},
-                               [self.issue('GDS-1', 'История', login='ivanov', name='Иванов Иван'), self.issue('GDS-2', 'Задача')])
+                               [self.issue('ALP-1', 'История', login='ivanov', name='Иванов Иван'), self.issue('ALP-2', 'Задача')])
         path, params = c.jira.calls[0]
         self.assertEqual('/rest/api/2/search', path)
         self.assertIn('assignee in ("ivanov")', params['jql'])
         self.assertNotIn('project', params['jql'], 'вычитается спринт, а не проекты: чужие проекты бывают и в спринте')
         self.assertIn('updated >= "2026-09-23"', params['jql'])
-        self.assertEqual(['GDS'], out['projects'])
-        self.assertEqual([{'name': 'Иванов Иван', 'keys': ['MRS-7']}],   # GDS-1 — задача спринта, вычтена
+        self.assertEqual(['ALP'], out['projects'])
+        self.assertEqual([{'name': 'Иванов Иван', 'keys': ['UNB-7']}],   # ALP-1 — задача спринта, вычтена
                          [{'name': m['name'], 'keys': [i['key'] for i in m['items']]} for m in out['members']])
         item = out['members'][0]['items'][0]
-        self.assertEqual(('MRS', 'done', '2026-10-02', 1), (item['project'], item['bucket'], item['doneAt'], len(item['comments'])))
+        self.assertEqual(('UNB', 'done', '2026-10-02', 1), (item['project'], item['bucket'], item['doneAt'], len(item['comments'])))
 
     def test_offboard_failure_is_a_warning_not_a_crash(self):
         def api(path, **p):
             raise self.mod.JiraProblem('JIRA вернула HTTP 400')
         c = self.collector(api=api)
-        out = c.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'}, [self.issue('GDS-1', 'История', login='ivanov', name='И')])
+        out = c.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'}, [self.issue('ALP-1', 'История', login='ivanov', name='И')])
         self.assertEqual([], out['members'])
         self.assertTrue(any('вне доски' in w for w in c.warnings))
         self.assertIsNone(self.collector({'offboard': False}).build_offboard({}, []), 'выключается params.offboard')

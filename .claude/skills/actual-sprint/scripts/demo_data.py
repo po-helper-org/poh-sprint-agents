@@ -283,7 +283,7 @@ def demo_output(slug, epics, sprint_names):
         for _ in range(r2.choice([0, 1, 2, 3])):
             b = r2.choice(['done', 'done', 'progress', 'review'])
             status = 'Закрыт' if b == 'done' else r2.choice(by_bucket[b])
-            proj = r2.choice(['OPS', 'MRS', 'SUP'])
+            proj = r2.choice(['OPS', 'UNB', 'SUP'])
             off.setdefault(who, []).append({
                 'key': f'{proj}-{r2.randint(100, 999)}', 'title': r2.choice(STORIES), 'project': proj,
                 'type': r2.choice(['Задача', 'Ошибка']), 'status': status, 'bucket': b,

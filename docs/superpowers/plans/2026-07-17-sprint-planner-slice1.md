@@ -56,7 +56,7 @@ poh-sprint-agents/
 - [ ] **Step 1: Инициализировать репозиторий и структуру каталогов**
 
 ```bash
-cd /Users/aleksishmanov/projects/poh-org/poh-sprint-agents
+cd /Users/you/projects/poh-org/poh-sprint-agents
 git init
 mkdir -p .claude/commands .claude/skills/sprint-planner/resources .claude/skills/sprint-planner/examples tests/fixtures/demo-domain
 ```
@@ -206,7 +206,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - [ ] **Step 1: Порт четырёх файлов из upstream**
 
 ```bash
-cd /Users/aleksishmanov/projects/poh-org/poh-sprint-agents
+cd /Users/you/projects/poh-org/poh-sprint-agents
 base="repos/po-helper-org/poh-helper/contents"
 gh api "$base/.claude/skills/sprint-planner/resources/sprint_standards.md" --jq '.content' | base64 -d > .claude/skills/sprint-planner/resources/sprint_standards.md
 gh api "$base/.claude/skills/sprint-planner/resources/sync_questions.md"   --jq '.content' | base64 -d > .claude/skills/sprint-planner/resources/sync_questions.md
@@ -477,7 +477,7 @@ updated: 2026-07-17            # НФТ-SP-3: дата актуализации 
 ### {Исполнитель} ({role_title})
 | История | Роль/фаза | Ожидаемая дата | Ожидаемый результат (коммит текстом) |
 |---------|-----------|----------------|--------------------------------------|
-| BE: Загрузка P24→UMC | [BE] | 2026-07-24 | endpoint UMC в staging, демо |
+| BE: Загрузка SrcP→UnitA | [BE] | 2026-07-24 | endpoint UnitA в staging, демо |
 ```
 
 ## Правила
@@ -496,14 +496,14 @@ updated: 2026-07-17            # НФТ-SP-3: дата актуализации 
 ### BE-2 (Backend)
 | История | Роль/фаза | Ожидаемая дата | Ожидаемый результат (коммит текстом) |
 |---------|-----------|----------------|--------------------------------------|
-| BE: Загрузка P24 → UMC → web_db | [BE] | 2026-07-24 | endpoint UMC: кино из P24 в web_db, демо в staging |
-| BE: Загрузка P24 → UMC → web_db | [QA] | 2026-07-29 | отладка в staging завершена |
+| BE: Загрузка SrcP → UnitA → store_db | [BE] | 2026-07-24 | endpoint UnitA: кино из SrcP в store_db, демо в staging |
+| BE: Загрузка SrcP → UnitA → store_db | [QA] | 2026-07-29 | отладка в staging завершена |
 
 ### BE-1 (Backend)
 | История | Роль/фаза | Ожидаемая дата | Ожидаемый результат (коммит текстом) |
 |---------|-----------|----------------|--------------------------------------|
-| BE: POST order/pay через extapi_go | [BE] | 2026-07-22 | pay через Go, дебаг завершён |
-| BE: POST order/pay через extapi_go | [REL] | 2026-07-25 | раскатка 1%→100% |
+| BE: POST order/pay через api_go | [BE] | 2026-07-22 | pay через Go, дебаг завершён |
+| BE: POST order/pay через api_go | [REL] | 2026-07-25 | раскатка 1%→100% |
 | BE: Кэш заказов (datarace) | [BE] | 2026-07-29 | datarace устранён |
 ```
 
@@ -531,9 +531,9 @@ updated: 2026-07-17            # НФТ-SP-3: дата актуализации 
 Группировка по историям; карточка подзадачи с бейджами `@исполнитель` и `SP`; легенда суммарных SP по исполнителю (сверка с capacity `/sm-load`).
 
 ```
-## История: BE: Загрузка P24 → UMC → web_db  (BE-2, 8 SP)
-- [SA] Изучить контракт P24            @BE-2  ·  2 SP
-- [BE] Endpoint в UMC                   @BE-2  ·  4 SP
+## История: BE: Загрузка SrcP → UnitA → store_db  (BE-2, 8 SP)
+- [SA] Изучить контракт SrcP            @BE-2  ·  2 SP
+- [BE] Endpoint в UnitA                   @BE-2  ·  4 SP
 - [QA] Отладка в staging                @BE-2  ·  2 SP
 
 ### Легенда SP: BE-2 = 8/8 · FE-1 = 5/8 …
@@ -848,15 +848,15 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Consumes: форматы из `sprint_standards.md` (roadmap-матрица), `availability.md` (реестр).
 - Produces: полный вход для прогона пайплайна на S7 (cold-start: ФАКТ отсутствует намеренно).
 
-- [ ] **Step 1: Написать fixture-файлы** (Ticketland-домен, согласован с `ideal_sprint_plan.md`)
+- [ ] **Step 1: Написать fixture-файлы** (Acme Tickets-домен, согласован с `ideal_sprint_plan.md`)
 
 `team.md`:
 ```markdown
 # team (demo)
 | Исполнитель | role_title | expertise |
 |-------------|-----------|-----------|
-| BE-1 | Backend | GDS, extapi_go |
-| BE-2 | Backend | UMC, web_db |
+| BE-1 | Backend | TeamA, api_go |
+| BE-2 | Backend | UnitA, store_db |
 | FE-1 | Frontend | PHP-витрина |
 | SA-1 | System Analyst | требования, фильтры |
 ```
