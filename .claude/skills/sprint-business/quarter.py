@@ -171,7 +171,7 @@ details.row>summary::-webkit-details-marker{display:none}details.row[open]>summa
 .st b{font-weight:600}.kr b{display:block}.num{font-variant-numeric:tabular-nums}
 .more{padding:6px 12px 14px 140px;display:grid;gap:8px}.more ul{margin:2px 0;padding-left:18px}
 a{color:inherit}.late{color:var(--red)}.better{color:var(--green)}
-.method{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:10px}
+.team-sum{margin:0 0 8px;color:var(--muted)}.method{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:10px}
 @media (max-width:820px){.head{display:none}.grid{grid-template-columns:1fr 1fr;gap:4px 10px}
 .grid .kr,.grid .blk,.grid .path{grid-column:1/-1}.more{padding:6px 12px 14px}}
 @media print{button,.actions,details.cands{display:none}details.row>summary{background:none}}
@@ -321,6 +321,8 @@ def render_html(view, link=DEFAULT_LINK):
     out.append('<section><h2>Инициативы квартала</h2>')
     for team in view['teams']:
         out.append(f'<h3>{e(team["name"])}</h3>')
+        if team['summary']['total']:
+            out.append(f'<p class="team-sum">{e(team_line(team, view))}</p>')
         for w in team['warnings']:
             out.append(f'<p class="late"><small>⚠ {e(w)}</small></p>')
         out.append(f'<div class="table"><div class="grid head"><span>Статус</span><span>Инициатива</span>'
@@ -345,10 +347,26 @@ def render_html(view, link=DEFAULT_LINK):
     return ''.join(out)
 
 
+def num(x):
+    return f'{round(x, 1):g}'.replace('.', ',')
+
+
+def team_line(team, view):
+    """Сводка квартального объёма команды одной строкой."""
+    s = team['summary']
+    thin = f' (ориентировочно: история {s["points"]} нед.)' if s['thin'] else ''
+    head = f'{team["name"]}: открыто {s["open"]} из {s["total"]} задач · темп {num(s["pace"])} в нед.{thin}'
+    if s['chance'] is None:
+        return head + (' · всё закрыто' if not s['open'] else ' · прогноза нет: истории меньше 3 недель')
+    return (head + f' · к {qm.ddmm(view["deadline"])} с 85% закроем {s["howMany85"]} из {s["open"]}'
+            f' · шанс закрыть всё — {qm.pct(s["chance"])}')
+
+
 def cpo_text(view):
     c = view['counts']
     lines = [f'Риски квартала {view["quarter"]} · {qm.ddmm(view["monday"])} · до конца квартала {view["weeksLeft"]} нед.',
-             ' · '.join(f'{qm.TITLES[s]} {c[s]}' for s in qm.STATUSES), '']
+             ' · '.join(f'{qm.TITLES[s]} {c[s]}' for s in qm.STATUSES)]
+    lines += [team_line(t, view) for t in view['teams'] if t['summary']['total']] + ['']
     if view['escalations']:
         lines.append('Нужно решение:')
         for i, x in enumerate(view['escalations'], 1):
@@ -363,7 +381,8 @@ def cpo_text(view):
         lines += ['', 'Под угрозой (без эскалации):']
         for r in at_risk:
             extra = f', путь в зелёный: {r["path"]}' if r.get('path') else ''
-            lines.append(f'- {r["teamName"]} · {r["kr"] or r["key"]} «{r["title"]}» — {qm.TITLES[r["status"]]}, '
+            why = f' (блокатор {r["blockers"][0]["days"]} раб. дн.)' if r['blockers'] else ''
+            lines.append(f'- {r["teamName"]} · {r["kr"] or r["title"]} — {qm.TITLES[r["status"]]}{why}, '
                          f'шанс {qm.pct(r["chance"])}{extra}')
     return '\n'.join(lines) + '\n'
 

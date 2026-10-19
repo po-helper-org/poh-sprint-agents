@@ -252,6 +252,34 @@ class QuarterModelTest(unittest.TestCase):
                          view['snapshot']['rows']['E-1'])
 
 
+class TeamSummaryAndWordingTest(unittest.TestCase):
+    def test_team_summary_forecasts_whole_quarter_scope_even_with_short_history(self):
+        young = '2026-10-01'
+        goals, data = world([epic('E-1', done_items('E1', 1, weeks=3, created=young) + open_items('E1', 10, created=young)),
+                             epic('E-2', open_items('E2', 5, created=young))])
+        view = qm.build(goals, data)
+        self.assertEqual(['none', 'none'], [r['status'] for r in view['teams'][0]['rows']])
+        s = view['teams'][0]['summary']
+        # 3 недели по 1 задаче: к 31.12 (10 недель) закроем 10 из 15 — весь объём не успеваем
+        self.assertEqual((15, 3, 1.0, 10, 0.0, True), (s['open'], s['points'], s['pace'], s['howMany85'], s['chance'], s['thin']))
+
+    def test_no_pace_at_all_asks_whether_initiative_stays_in_quarter(self):
+        items = done_items('E1', 0, weeks=12) + [{'key': 'E1-OLD', 'title': 'давно', 'status': 'Готово', 'bucket': 'done',
+                                                  'created': '2026-07-01', 'doneAt': '2026-08-05', 'statusChanged': '2026-08-05'}]
+        goals, data = world([epic('E-1', items + open_items('E1', 13))])
+        r = row_of(qm.build(goals, data), 'E-1')
+        self.assertEqual((0, 'red'), (r['howMany85'], r['status']))
+        self.assertEqual('по нынешнему темпу к 31.12 не закроется ни одной задачи — решить, остаётся ли в квартале', r['path'])
+
+    def test_cpo_text_names_kr_once_and_says_why_red(self):
+        items = done_items('E1', 2) + open_items('E1', 5) + \
+            open_items('E1B', 1, status='В ожидании', bucket='blocked', changed='2026-10-05')
+        goals, data = world([epic('E-1', items)])
+        text = qr.cpo_text(qm.build(goals, data))
+        self.assertIn('- GDS · KR 1.1 — Не успевает (блокатор 10 раб. дн.), шанс 100%, путь в зелёный: снять блокатор до 07.12', text)
+        self.assertIn('GDS: открыто 6 из 30 задач · темп 2 в нед. · к 31.12 с 85% закроем 6 из 6', text)
+
+
 # ------------------------------------------------------------------ сбор из Jira
 
 def raw_issue(key, epic_key, status, category, created, resolved=None, changes=(), assignee='Иван Тестов'):

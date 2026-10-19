@@ -122,7 +122,7 @@ def pct(p):
     return '—' if p is None else f'{round(p * 100)}%'
 
 
-def path_to_green(row, monday):
+def path_to_green(row, monday, deadline):
     if row['status'] in ('green', 'done'):
         return ''
     if row['note']:
@@ -134,17 +134,37 @@ def path_to_green(row, monday):
         return f'снять блокатор до {ddmm(by)}'
     if row['chance'] is None:
         return f'нужна история темпа: {row["points"]} нед. из {fc.MIN_POINTS}'
+    if row['chance'] < ON_TRACK and row['howMany85'] == 0:
+        return f'по нынешнему темпу к {ddmm(deadline)} не закроется ни одной задачи — решить, остаётся ли в квартале'
     if row['chance'] < ON_TRACK and row['howMany85'] < row['open']:
         cut = row['open'] - row['howMany85']
         return f'снять {cut} из {row["open"]} {plural(row["open"], "задачи", "задач", "задач")} из квартала или сдвинуть срок'
+    if row['chance'] < ON_TRACK and row['growth']:
+        return 'заморозить объём: новые задачи в эпике снижают шанс'
     return ''
 
 
-def team_samples(epics, monday, open_count):
+TEAM_MIN_POINTS = 3   # сводке по команде хватает 3 недель — с пометкой «ориентировочно» (Magennis)
+
+
+def team_samples(epics, monday):
+    """Задачи, закрытые командой по инициативам квартала, по полным неделям."""
     done = [day(it.get('doneAt')) for e in epics for it in e.get('items', []) if it.get('doneAt')]
     created = [day(it.get('created')) for e in epics for it in e.get('items', []) if it.get('created')]
-    counts = fc.weekly_throughput(done, monday, WINDOW, since=min(created) if created else None)
-    return [c / max(1, open_count) for c in counts]
+    return fc.weekly_throughput(done, monday, WINDOW, since=min(created) if created else None)
+
+
+def team_summary(slug, epics, samples, monday, deadline, today):
+    """Весь квартальный объём команды: сколько открыто, темп и сколько закроем к концу квартала."""
+    items = [it for e in epics for it in e.get('items', []) if not it.get('subtask')]
+    open_n = sum(1 for it in items if not it.get('doneAt') and it.get('bucket') != 'done')
+    out = {'open': open_n, 'total': len(items), 'points': len(samples), 'thin': len(samples) < fc.MIN_POINTS,
+           'pace': (sum(samples) / len(samples)) if samples else 0.0, 'chance': None, 'howMany85': 0, 'p85': None}
+    f = fc.forecast(open_n, samples, monday, deadline, min_points=TEAM_MIN_POINTS,
+                    seed=zlib.crc32(f'{slug}:{today.isoformat()}'.encode())) if open_n else {'status': 'done'}
+    if f['status'] in ('ok', 'thin'):
+        out.update({'chance': f['chance'], 'howMany85': min(open_n, int(f['howMany85'])), 'p85': f['p85']})
+    return out
 
 
 def build_row(slug, team_name, key, obj, goals_t, epic, today, monday, q_start, deadline, team_pace):
@@ -202,7 +222,9 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
         skip = set(goals_t.get('unconfirmed') or []) | set(goals_t.get('dropped') or [])
         open_count = sum(1 for k, _ in keys if k not in skip and any(
             not it.get('doneAt') and it.get('bucket') != 'done' for it in (epics.get(k) or {}).get('items', [])))
-        pace = team_samples([epics[k] for k, _ in keys if k in epics], monday, open_count)
+        counted = [epics[k] for k, _ in keys if k in epics and k not in skip]
+        raw_pace = team_samples(counted, monday)
+        pace = [c / max(1, open_count) for c in raw_pace]
         agent = (((block or {}).get('teams') or {}).get(slug) or {}).get('initiatives') or {}
         rows = []
         for key, obj in keys:
@@ -212,7 +234,7 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
             row['risks'] = [r for r in mine.get('risks') or [] if r.get('roam') != 'Resolved']
             if mine.get('override'):
                 row['status'], row['override'] = mine['override']['status'], mine['override'].get('reason', '')
-            row['path'] = path_to_green(row, monday)
+            row['path'] = path_to_green(row, monday, deadline)
             if key in (goals_t.get('dropped') or []):
                 dropped.append({**row, 'status': 'dropped'})
                 continue
@@ -236,7 +258,8 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
         rows.sort(key=lambda r: (STATUSES.index(r['status']), -(r['blockers'][0]['days'] if r['blockers'] else 0),
                                  r['chance'] if r['chance'] is not None else 2))
         teams.append({'slug': slug, 'name': team.get('name') or slug.upper(), 'rows': rows,
-                      'warnings': team.get('warnings') or []})
+                      'warnings': team.get('warnings') or [],
+                      'summary': team_summary(slug, counted, raw_pace, monday, deadline, today)})
     approved.sort(key=lambda e: (e['by'] or date.max, e['key']))
     candidates.sort(key=lambda e: (STATUSES.index(e['status']), e['by'] or date.max, e['key']))
     all_rows = [r for t in teams for r in t['rows']]
