@@ -7,9 +7,9 @@
 Группировка по историям; карточка подзадачи с бейджами `@исполнитель` и `SP`; легенда суммарных SP по исполнителю (сверка с capacity `/sm-load`).
 
 ```
-## История: BE: Загрузка P24 → UMC → web_db  (BE-2, 8 SP)
-- [SA] Изучить контракт P24            @BE-2  ·  2 SP
-- [BE] Endpoint в UMC                   @BE-2  ·  4 SP
+## История: BE: Загрузка SrcP → UnitA → store_db  (BE-2, 8 SP)
+- [SA] Изучить контракт SrcP            @BE-2  ·  2 SP
+- [BE] Endpoint в UnitA                   @BE-2  ·  4 SP
 - [QA] Отладка в staging                @BE-2  ·  2 SP
 
 ### Легенда SP: BE-2 = 8/8 · FE-1 = 5/8 …

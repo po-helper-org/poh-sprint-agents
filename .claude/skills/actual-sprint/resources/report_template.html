@@ -585,7 +585,7 @@
   var BLK_SHOW = 5, BLK_TOP = 5;
   var blkState = { who: null, open: {} };
 
-  // имя — shortName() общего движка: «Парфило Сергей Иванович» → «Парфило С. И.»; без исполнителя — NOBODY
+  // имя — shortName() общего движка: «Иванов Пётр Сергеевич» → «Иванов П. С.»; без исполнителя — NOBODY
   var NOBODY = 'Не назначен';
   function blockerTarget(b) {
     return { kind: 'blocker', key: b.key, title: b.title, status: b.status, assignee: b.assignee,

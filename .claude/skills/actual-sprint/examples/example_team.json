@@ -1,9 +1,9 @@
 {
   "_comment": "Образец ОДНОГО элемента массива TEAMS — то, что отдаёт сборщик команды (contract/team.schema.json). Реальный срез демо-команды, укорочен до трёх эпиков. Тяжёлые наборы (metrics, burndown, control, velocity, logs) показаны формой, а не полными данными. Образец намеренно БЕЗ statusMap: так видно, что объект старого вида рендерится по classifyBucket, как раньше. _meta обязательно — это паспорт сбора.",
   "slug": "gds-live",
-  "team": "GDS / Live",
+  "team": "TeamA / TeamB",
   "boardId": 16383,
-  "boardName": "Scrum Board GDS",
+  "boardName": "Scrum Board TeamA",
   "boardUrl": "https://jira.example.com/secure/RapidBoard.jspa?rapidView=16383",
   "jiraBase": "https://jira.example.com",
   "sprintName": "2026Q3-S6",
@@ -63,14 +63,14 @@
       "stories": [
         {
           "key": "INIT-1921",
-          "title": "Спека Тбанк: переход на схему Яндекса",
+          "title": "Спека банка-партнёра: переход на новую схему",
           "status": "Бэклог",
           "category": "К выполнению",
           "subtasks": []
         },
         {
           "key": "INIT-1928",
-          "title": "extapigo: отключение фискализации (Т-Банк)",
+          "title": "apigo: отключение фискализации (банк-партнёр)",
           "status": "В работе",
           "category": "В работе",
           "subtasks": []
@@ -167,7 +167,7 @@
       "points": [
         {
           "key": "INIT-1365",
-          "title": "Переключить трафик в ExtapiGo",
+          "title": "Переключить трафик в ApiGo",
           "status": "Закрыт",
           "category": "Выполнено",
           "doneAt": "2026-09-02",
