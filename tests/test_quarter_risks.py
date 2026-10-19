@@ -107,11 +107,11 @@ def epic(key, items, title=None, due=None, status='В работе', bucket='pro
 
 def world(epics, goals_extra=None):
     keys = [e['key'] for e in epics]
-    goals = {'gds': {'quarter': '2026Q4', 'objectives': {'OBJ 1': 'Цель один'},
+    goals = {'team-a': {'quarter': '2026Q4', 'objectives': {'OBJ 1': 'Цель один'},
                      'epics': {k: 'OBJ 1' for k in keys}, 'kr': {k: f'KR 1.{i}' for i, k in enumerate(keys, 1)},
                      **(goals_extra or {})}}
     data = {'version': 1, 'quarter': '2026Q4', 'fetchedAt': '2026-10-19T08:40:00+03:00',
-            'teams': [{'slug': 'gds', 'name': 'GDS', 'epics': epics}]}
+            'teams': [{'slug': 'team-a', 'name': 'Команда А', 'epics': epics}]}
     return goals, data
 
 
@@ -144,8 +144,9 @@ class QuarterModelTest(unittest.TestCase):
         cand = view['candidates'][0]
         self.assertEqual('E-1', cand['key'])
         self.assertEqual('решение по объёму или сроку: к 31.12 с 85% успеем 20 из 60 задач', cand['ask'])
-        self.assertEqual(date(2026, 10, 26), cand['by'])
-        self.assertEqual('снять 40 из 60 задач из квартала, сдвинуть срок или дать людей', r['path'])
+        self.assertEqual(date(2026, 10, 19), cand['by'])     # понедельник синка — решение нужно сегодня
+        self.assertTrue(r['path'].startswith('снять 40 из 60 задач из квартала, сдвинуть срок на '), r['path'])
+        self.assertTrue(r['path'].endswith(' или дать людей'), r['path'])
         self.assertEqual([], view['escalations'])
 
     def test_blocker_age_in_working_days_sets_the_colour(self):
@@ -166,7 +167,7 @@ class QuarterModelTest(unittest.TestCase):
         goals, data = world([epic('E-1', items)])
         view = qm.build(goals, data)
         cand = view['candidates'][0]
-        self.assertEqual('снять блокатор E1B-O0: «В ожидании» 4 раб. дн.', cand['ask'])
+        self.assertEqual('снять блокатор E1B-O0: стоит в «В ожидании» 4 раб. дн.', cand['ask'])
         # 6 задач по 2 — 3 недели из 10: начать можно не позже чем через 7 недель — 07.12
         self.assertEqual(date(2026, 12, 7), cand['by'])
         self.assertEqual('снять блокатор до 07.12', row_of(view, 'E-1')['path'])
@@ -177,7 +178,7 @@ class QuarterModelTest(unittest.TestCase):
         view = qm.build(goals, data, approvals={'E-1': h})
         self.assertEqual(['E-1'], [e['key'] for e in view['escalations']])
         self.assertEqual([], view['candidates'])
-        block = {'teams': {'gds': {'initiatives': {'E-1': {'escalation': {
+        block = {'teams': {'team-a': {'initiatives': {'E-1': {'escalation': {
             'ask': 'снять 30 задач второй волны', 'who': 'CPO', 'by': '2026-10-26', 'ifNot': 'уйдёт в Q1'}}}}}}
         view = qm.build(goals, data, block=block, approvals={'E-1': h})
         self.assertEqual([], view['escalations'])
@@ -188,12 +189,12 @@ class QuarterModelTest(unittest.TestCase):
         eps = [epic(f'E-{i}', done_items(f'E{i}', 2) + open_items(f'E{i}', 60)) for i in range(1, 5)]
         goals, data = world(eps)
         dates = {'E-1': '2026-11-02', 'E-2': '2026-10-26', 'E-3': '2026-11-09', 'E-4': '2026-10-28'}
-        block = {'teams': {'gds': {'initiatives': {k: {'escalation': {'ask': 'решение', 'who': 'CPO', 'by': d,
+        block = {'teams': {'team-a': {'initiatives': {k: {'escalation': {'ask': 'решение', 'who': 'CPO', 'by': d,
                                                                        'ifNot': 'не успеем'}} for k, d in dates.items()}}}}
         hashes = {c['key']: c['hash'] for c in qm.build(goals, data, block=block)['candidates']}
         view = qm.build(goals, data, block=block, approvals=hashes)
         self.assertEqual(['E-2', 'E-4', 'E-1'], [e['key'] for e in view['escalations']])
-        self.assertEqual(1, view['moreEscalations'])
+        self.assertEqual(['E-3'], [x['key'] for x in view['escalationsMore']])
 
     def test_young_initiative_borrows_team_pace(self):
         young = epic('E-2', done_items('E2', 1, weeks=2, created='2026-10-05') + open_items('E2', 3, created='2026-10-05'))
@@ -209,14 +210,14 @@ class QuarterModelTest(unittest.TestCase):
 
     def test_initiative_missing_from_jira_data_is_reported_not_dropped(self):
         goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
-        goals['gds']['epics']['E-9'] = 'OBJ 1'
+        goals['team-a']['epics']['E-9'] = 'OBJ 1'
         r = row_of(qm.build(goals, data), 'E-9')
         self.assertEqual('none', r['status'])
         self.assertEqual('нет данных из Jira', r['note'])
 
     def test_po_assessment_overrides_status_and_keeps_calculation(self):
         goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
-        block = {'teams': {'gds': {'initiatives': {'E-1': {'override': {'status': 'yellow', 'reason': 'ждём юристов'}}}}}}
+        block = {'teams': {'team-a': {'initiatives': {'E-1': {'override': {'status': 'yellow', 'reason': 'ждём юристов'}}}}}}
         r = row_of(qm.build(goals, data, block=block), 'E-1')
         self.assertEqual(('yellow', 'green', 'ждём юристов'), (r['status'], r['computedStatus'], r['override']))
 
@@ -276,8 +277,65 @@ class TeamSummaryAndWordingTest(unittest.TestCase):
             open_items('E1B', 1, status='В ожидании', bucket='blocked', changed='2026-10-05')
         goals, data = world([epic('E-1', items)])
         text = qr.cpo_text(qm.build(goals, data))
-        self.assertIn('- GDS · KR 1.1 — Не успевает (блокатор 10 раб. дн.), шанс 100%, путь в зелёный: снять блокатор до 07.12', text)
-        self.assertIn('GDS: открыто 6 из 30 задач · темп 2 в нед. · к 31.12 с 85% закроем 6 из 6', text)
+        self.assertIn('- Команда А · KR 1.1 — Не успевает (блокатор 10 раб. дн.), шанс 100%, путь в зелёный: снять блокатор до 07.12', text)
+        self.assertIn('Команда А: открыто 6 из 30 задач · темп 2 в нед. · к 31.12 с 85% закроем 6 из 6', text)
+
+
+class ReviewFixesTest(unittest.TestCase):
+    """Расхождения со спекой, найденные ревью 2026-10-19."""
+
+    def test_stalled_initiative_with_full_history_is_off_track_not_borrowing_team_pace(self):
+        stalled = epic('E-2', done_items('E2', 0) + open_items('E2', 4))
+        goals, data = world([epic('E-1', done_items('E1', 3) + open_items('E1', 3)), stalled])
+        r = row_of(qm.build(goals, data), 'E-2')
+        self.assertEqual(('red', 0.0, 'own'), (r['status'], r['chance'], r['method']))
+
+    def test_approval_survives_next_day_when_only_numbers_moved(self):
+        items = done_items('E1', 2) + open_items('E1', 5) + \
+            open_items('E1B', 1, status='В ожидании', bucket='blocked', changed='2026-10-13')
+        goals, data = world([epic('E-1', items)])
+        h = qm.build(goals, data)['candidates'][0]['hash']
+        tuesday = qm.build(goals, data, approvals={'E-1': h}, today=date(2026, 10, 20))
+        self.assertEqual(['E-1'], [x['key'] for x in tuesday['escalations']])   # 5 раб. дн. вместо 4 — тот же ✅
+
+    def test_unblock_deadline_can_be_this_monday(self):
+        # 6 задач по 2 в неделю — 3 недели, до конца квартала ровно 3 полные недели: снимать нужно сейчас
+        items = done_items('E1', 2) + open_items('E1', 5) + \
+            open_items('E1B', 1, status='В ожидании', bucket='blocked', changed='2026-10-13')
+        goals, data = world([epic('E-1', items)])
+        view = qm.build(goals, data, today=date(2026, 12, 7))
+        self.assertEqual(date(2026, 12, 7), view['candidates'][0]['by'])
+
+    def test_tiny_growth_does_not_add_a_whole_task(self):
+        base = fc.forecast(2, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0], MONDAY, date(2026, 11, 1), seed=3)
+        tiny = fc.forecast(2, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0], MONDAY, date(2026, 11, 1), growth=0.01, seed=3)
+        self.assertAlmostEqual(base['chance'], tiny['chance'], delta=0.03)
+
+    def test_closed_epic_is_done_even_with_leftover_tasks(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 3), status='Закрыт', bucket='done')])
+        self.assertEqual('done', row_of(qm.build(goals, data), 'E-1')['status'])
+
+    def test_working_days_count_after_status_change_like_sprints_blockers(self):
+        # смена статуса в субботу 10.10 → среда 14.10: пн, вт, ср — 3 дня (как runner/blockers.py)
+        items = done_items('E1', 2) + open_items('E1', 5) + \
+            open_items('E1B', 1, status='В ожидании', bucket='blocked', changed='2026-10-10')
+        goals, data = world([epic('E-1', items)])
+        r = row_of(qm.build(goals, data, today=date(2026, 10, 14)), 'E-1')
+        self.assertEqual(3, r['blockers'][0]['days'])
+
+    def test_cpo_text_says_how_many_forecasts_moved(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
+        prev = {'week': '2026-10-12', 'rows': {'E-1': {'status': 'green', 'p85': '2026-11-01', 'chance': 1.0, 'blockers': []}}}
+        self.assertIn('прогноз сдвинулся позже: 1', qr.cpo_text(qm.build(goals, data, history=prev)).splitlines()[1])
+
+    def test_escalations_beyond_three_stay_reachable_to_unapprove(self):
+        eps = [epic(f'E-{i}', done_items(f'E{i}', 2) + open_items(f'E{i}', 60)) for i in range(1, 5)]
+        goals, data = world(eps)
+        hashes = {c['key']: c['hash'] for c in qm.build(goals, data)['candidates']}
+        view = qm.build(goals, data, approvals=hashes)
+        self.assertEqual(1, len(view['escalationsMore']))
+        html = qr.render_html(view, script='/x.js')
+        self.assertEqual(4, html.count('data-on="0"'))
 
 
 # ------------------------------------------------------------------ сбор из Jira
@@ -311,7 +369,7 @@ class FakeJira:
         jql = params['jql']
         if jql.startswith('key in'):
             return {'total': 1, 'issues': [{'key': 'E-1', 'fields': {
-                'summary': 'Витрина без БАЗИС', 'status': {'name': 'В работе', 'statusCategory': {'name': 'В работе'}},
+                'summary': 'Витрина без старого ядра', 'status': {'name': 'В работе', 'statusCategory': {'name': 'В работе'}},
                 'customfield_10925': '2026-11-15T00:00:00.000+0300', 'duedate': None}}]}
         start = int(params.get('startAt', 0))
         return {'total': len(self.scope), 'issues': self.scope[start:start + 1]}
@@ -319,15 +377,15 @@ class FakeJira:
 
 class FetchTest(unittest.TestCase):
     def fetch(self):
-        goals = {'gds': {'quarter': '2026Q4', 'epics': {'E-1': 'OBJ 1', 'E-2': 'OBJ 1'}}}
-        teams = [{'slug': 'gds', 'name': 'GDS', 'params': {}}]
+        goals = {'team-a': {'quarter': '2026Q4', 'epics': {'E-1': 'OBJ 1', 'E-2': 'OBJ 1'}}}
+        teams = [{'slug': 'team-a', 'name': 'Команда А', 'params': {}}]
         return qr.fetch(FakeJira(), teams, goals, '2026-10-19T08:40:00+03:00', page=1)
 
     def test_quarter_epics_come_with_all_their_tasks_and_status_history(self):
         data = self.fetch()
         self.assertEqual('2026Q4', data['quarter'])
         epic = data['teams'][0]['epics'][0]
-        self.assertEqual(('E-1', 'Витрина без БАЗИС', '2026-11-15', 'progress'),
+        self.assertEqual(('E-1', 'Витрина без старого ядра', '2026-11-15', 'progress'),
                          (epic['key'], epic['title'], epic['due'], epic['bucket']))
         by_key = {it['key']: it for it in epic['items']}
         self.assertEqual({'status': 'В ожидании', 'bucket': 'blocked', 'created': '2026-07-01', 'doneAt': None,
@@ -371,8 +429,8 @@ class PageTest(unittest.TestCase):
         lines = text.splitlines()
         self.assertEqual('Риски квартала 2026Q4 · 19.10 · до конца квартала 10 нед.', lines[0])
         self.assertIn('Нужно решение:', text)
-        self.assertIn('1. GDS · KR 1.1 «Инициатива E-1» — шанс к 31.12: 0%', text)
-        self.assertIn('Прошу: решение по объёму или сроку: к 31.12 с 85% успеем 20 из 60 задач · у кого: CPO · до 26.10', text)
+        self.assertIn('1. Команда А · KR 1.1 «Инициатива E-1» — шанс к 31.12: 0%', text)
+        self.assertIn('Прошу: решение по объёму или сроку: к 31.12 с 85% успеем 20 из 60 задач · у кого: CPO · до 19.10', text)
 
     def test_text_without_approved_escalations_says_so(self):
         goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
@@ -402,11 +460,11 @@ class CliTest(unittest.TestCase):
         self.assertIn('к прошлому понедельнику', (self.dir / 'quarter-risks.html').read_text(encoding='utf-8'))
 
     def test_check_rejects_unknown_initiative_and_override_without_reason(self):
-        bad = {'version': 1, 'generatedAt': '2026-10-19T09:00', 'teams': {'gds': {'initiatives': {
+        bad = {'version': 1, 'generatedAt': '2026-10-19T09:00', 'teams': {'team-a': {'initiatives': {
             'X-404': {'note': 'чужой эпик'}, 'E-1': {'override': {'status': 'green'}}}}}}
         (self.dir / 'quarter-risks.json').write_text(json.dumps(bad), encoding='utf-8')
         self.assertEqual(1, self.run_cli('check'))
-        good = {'version': 1, 'generatedAt': '2026-10-19T09:00', 'teams': {'gds': {'initiatives': {
+        good = {'version': 1, 'generatedAt': '2026-10-19T09:00', 'teams': {'team-a': {'initiatives': {
             'E-1': {'risks': [{'title': 'Отпуск аналитика', 'roam': 'Owned', 'owner': 'Тимлид'}]}}}}}
         (self.dir / 'quarter-risks.json').write_text(json.dumps(good), encoding='utf-8')
         self.assertEqual(0, self.run_cli('check'))

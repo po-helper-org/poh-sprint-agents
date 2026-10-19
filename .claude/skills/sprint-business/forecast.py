@@ -63,7 +63,8 @@ def forecast(remaining, samples, monday, deadline, growth=0.0, trials=TRIALS, se
     left = weeks_until(monday, deadline)
     weeks = []
     for _ in range(trials):
-        target = math.ceil(remaining * rng.uniform(1.0, 1.0 + growth)) if growth else remaining
+        # округление к ближайшему: рост 1% не добавляет каждому прогону целую задачу
+        target = max(remaining, int(remaining * rng.uniform(1.0, 1.0 + growth) + 0.5)) if growth else remaining
         done, w = 0, 0
         while done < target and w <= max_weeks:
             done += rng.choice(samples)

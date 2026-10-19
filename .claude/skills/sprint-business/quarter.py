@@ -15,6 +15,7 @@
 import argparse
 import html
 import json
+import re
 import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -35,6 +36,7 @@ EXIT_OK, EXIT_ERROR, EXIT_CONFIG = 0, 1, 2
 PAGE = 50
 BATCH = 50
 DEFAULT_LINK = '/jira/?key={key}'
+KEY_RE = re.compile(r'^[A-Z][A-Z0-9_]*-\d+$')
 ISSUE_FIELDS = 'summary,status,issuetype,assignee,created,resolutiondate'
 LIMITS = {'ask': 160, 'who': 60, 'ifNot': 160, 'why': 200, 'title': 80, 'text': 200, 'reason': 160, 'note': 200}
 
@@ -90,6 +92,10 @@ def fetch(transport, teams, goals, now, page=PAGE):
         rules = _rules(params)
         keys = list(((goals.get(team['slug']) or {}).get('epics') or {}))
         warnings, epics = [], {}
+        bad = [k for k in keys if not KEY_RE.match(k)]
+        if bad:
+            warnings.append(f'в кэше целей ключи не вида ABC-123, пропущены: {", ".join(bad)}')
+            keys = [k for k in keys if k not in bad]
         for batch in _chunks(keys, BATCH):
             found = transport.get('/rest/api/2/search', jql='key in (' + ','.join(batch) + ')',
                                   fields=','.join(['summary', 'status'] + due_ids), maxResults=len(batch))
@@ -142,7 +148,11 @@ def fetch(transport, teams, goals, now, page=PAGE):
 ICON = {'red': '🔴', 'yellow': '🟡', 'none': '⚪', 'green': '🟢', 'done': '✅', 'dropped': '✖'}
 COUNT_LABEL = {'red': 'не успевают', 'yellow': 'под риском', 'none': 'без прогноза', 'green': 'в срок', 'done': 'готово'}
 CIRCLED = '①②③④⑤⑥⑦⑧⑨'
-e = html.escape
+
+
+def safe(value):
+    """Текст из Jira и от агента — в HTML только экранированным; None — пусто."""
+    return '' if value is None else html.escape(str(value))
 
 CSS = """
 :root{--bg:#f6f7f9;--card:#fff;--fg:#14171c;--muted:#5d6673;--line:#e1e5ea;--red:#d92b3a;--red-bg:#fdecee;
@@ -183,27 +193,22 @@ def _d(value, view):
 
 
 def _link(key, link):
-    return f'<a href="{e(link.replace("{key}", key))}" target="_blank" rel="noopener">{e(key)}</a>'
-
-
-def _who(row):
-    head = f'{row["teamName"]} · {row["kr"]}' if row.get('kr') else row['teamName']
-    return head
+    return f'<a href="{safe(link.replace("{key}", key))}" target="_blank" rel="noopener">{safe(key)}</a>'
 
 
 def _esc_card(esc, view, link, i=None, candidate=False):
     st = esc['status'] if esc['status'] in ('red', 'yellow') else 'red'
     num = f'<b>{CIRCLED[i]}</b> ' if i is not None and i < len(CIRCLED) else ''
     src = '' if esc['source'] == 'agent' else ' <small>· текст из данных — агент уточнит</small>'
-    button = (f'<button type="button" class="primary" data-approve="{e(esc["key"])}" data-hash="{e(esc["hash"])}" data-on="1">'
+    button = (f'<button type="button" class="primary" data-approve="{safe(esc["key"])}" data-hash="{safe(esc["hash"])}" data-on="1">'
               f'✅ В эскалацию</button>' if candidate else
-              f'<button type="button" data-approve="{e(esc["key"])}" data-hash="{e(esc["hash"])}" data-on="0">Снять ✅</button>')
-    why = f'<div class="muted">{e(esc["why"])}</div>' if esc.get('why') else ''
-    return (f'<article class="esc s-{st}"><div class="esc-head">{num}<b>{e(esc["teamName"])} · {e(esc.get("kr") or esc["key"])}</b>'
-            f'<span>«{e(esc["title"])}»</span> {_link(esc["key"], link)}'
+              f'<button type="button" data-approve="{safe(esc["key"])}" data-hash="{safe(esc["hash"])}" data-on="0">Снять ✅</button>')
+    why = f'<div class="muted">{safe(esc["why"])}</div>' if esc.get('why') else ''
+    return (f'<article class="esc s-{st}"><div class="esc-head">{num}<b>{safe(esc["teamName"])} · {safe(esc.get("kr") or esc["key"])}</b>'
+            f'<span>«{safe(esc["title"])}»</span> {_link(esc["key"], link)}'
             f'<span class="chip c-{st}">шанс к {_d(view["deadline"], view)} — {qm.pct(esc["chance"])}</span></div>'
-            f'<dl><dt>Прошу</dt><dd>{e(esc["ask"])}</dd><dt>У кого</dt><dd>{e(esc["who"])}</dd>'
-            f'<dt>До</dt><dd>{_d(esc["by"], view)}</dd><dt>Если нет</dt><dd>{e(esc["ifNot"])}</dd></dl>'
+            f'<dl><dt>Прошу</dt><dd>{safe(esc["ask"])}</dd><dt>У кого</dt><dd>{safe(esc["who"])}</dd>'
+            f'<dt>До</dt><dd>{_d(esc["by"], view)}</dd><dt>Если нет</dt><dd>{safe(esc["ifNot"])}</dd></dl>'
             f'<div class="foot">{why}<span>{src}</span>{button}</div></article>')
 
 
@@ -218,7 +223,7 @@ def _delta_html(row, view):
     elif d.get('p85Days') == 0:
         parts.append('<span class="muted">=</span>')
     if d.get('statusWas'):
-        parts.append(f'<small>было: {e(qm.TITLES.get(d["statusWas"], d["statusWas"]))}</small>')
+        parts.append(f'<small>было: {safe(qm.TITLES.get(d["statusWas"], d["statusWas"]))}</small>')
     if d.get('newBlockers'):
         parts.append(f'<small class="late">+{len(d["newBlockers"])} блок.</small>')
     if d.get('resolvedBlockers'):
@@ -229,7 +234,7 @@ def _delta_html(row, view):
 def _row_html(row, view, link):
     st = row['status']
     title = qm.TITLES.get(st, st)
-    po = f'<br><small>оценка PO · расчёт: {e(qm.TITLES[row["computedStatus"]])}</small>' if row.get('override') else ''
+    po = f'<br><small>оценка PO · расчёт: {safe(qm.TITLES[row["computedStatus"]])}</small>' if row.get('override') else ''
     due_late = row['due'] and row['due'] < view['today'] and st != 'done'
     due = f'<span class="late" title="Target end прошёл">{_d(row["due"], view)}</span>' if due_late else _d(row['due'], view)
     dates = f'{due} → {_d(row["p85"], view)}' if row['p85'] or row['due'] else '—'
@@ -242,21 +247,21 @@ def _row_html(row, view, link):
     week = f'<br><small>+{row["lastWeek"]:g} за нед.</small>' if row['total'] and row.get('lastWeek') else ''
     if row['blockers']:
         b = row['blockers'][0]
-        blk = f'⛔\u00a0{b["days"]} раб. дн. — {e(b["key"])} «{e(b["status"])}»'
+        blk = f'⛔\u00a0{b["days"]} раб. дн. — {safe(b["key"])} «{safe(b["status"])}»'
         if len(row['blockers']) > 1:
             blk += f' <small>и ещё {len(row["blockers"]) - 1}</small>'
     elif row['risks']:
         r = row['risks'][0]
-        blk = f'{e(r["roam"])}: {e(r["title"])}'
+        blk = f'{safe(r["roam"])}: {safe(r["title"])}'
     else:
-        blk = f'<span class="muted">{e(row["note"]) or "—"}</span>'
-    path = e(row['path']) if row.get('path') else '<span class="muted">—</span>'
+        blk = f'<span class="muted">{safe(row["note"]) or "—"}</span>'
+    path = safe(row['path']) if row.get('path') else '<span class="muted">—</span>'
     if row.get('escalation') and row['escalation']['approved']:
         path += ' <small>· в эскалации</small>'
     deadline = _d(view['deadline'], view)
-    summary = (f'<summary class="grid"><span class="st"><span class="chip c-{st}">{ICON.get(st, "")}\u00a0{e(title)}</span>{po}</span>'
-               f'<span class="kr"><b>{e(row["kr"] or row["key"])}</b>{e(row["title"])}'
-               f'<br><small>{e(row["obj"] or "")} · {e(row["key"])}</small></span>'
+    summary = (f'<summary class="grid"><span class="st"><span class="chip c-{st}">{ICON.get(st, "")}\u00a0{safe(title)}</span>{po}</span>'
+               f'<span class="kr"><b>{safe(row["kr"] or row["key"])}</b>{safe(row["title"])}'
+               f'<br><small>{safe(row["obj"] or "")} · {safe(row["key"])}</small></span>'
                f'<span class="num" data-l="Target end → 85%">{dates}</span>'
                f'<span class="num" data-l="Шанс к {deadline}">{chance}</span>'
                f'<span class="num" data-l="Прогресс">{prog}{week}</span>'
@@ -264,7 +269,7 @@ def _row_html(row, view, link):
                f'<span class="num" data-l="За неделю">{_delta_html(row, view)}</span></summary>')
     more = []
     if row.get('override'):
-        more.append(f'<div><b>Оценка PO:</b> {e(row["override"])}</div>')
+        more.append(f'<div><b>Оценка PO:</b> {safe(row["override"])}</div>')
     if row['p85']:
         method = 'по темпу команды (своей истории меньше 7 недель)' if row['method'] == 'team' else \
             f'по своему темпу за {row["points"]} нед.'
@@ -276,23 +281,23 @@ def _row_html(row, view, link):
                     + (' — уже прошёл, обновить в Jira' if row['due'] < view['today'] and st != 'done' else '') + '</div>')
     if row['blockers']:
         more.append('<div><b>Блокаторы</b><ul>' + ''.join(
-            f'<li>{_link(b["key"], link)} «{e(b["title"])}» — {e(b["status"])} с {_d(b["since"], view)}, {b["days"]} раб. дн.'
-            + (f' · {e(b["assignee"])}' if b.get('assignee') else '') + '</li>' for b in row['blockers']) + '</ul></div>')
+            f'<li>{_link(b["key"], link)} «{safe(b["title"])}» — {safe(b["status"])} с {_d(b["since"], view)}, {b["days"]} раб. дн.'
+            + (f' · {safe(b["assignee"])}' if b.get('assignee') else '') + '</li>' for b in row['blockers']) + '</ul></div>')
     if row['risks']:
         more.append('<div><b>Риски</b><ul>' + ''.join(
-            f'<li><b>{e(r["roam"])}</b> · {e(r["title"])} — {e(r["owner"])}'
-            + (f', решить до {_d(qm.day(r["due"]), view)}' if r.get('due') else '') + (f'. {e(r["text"])}' if r.get('text') else '')
+            f'<li><b>{safe(r["roam"])}</b> · {safe(r["title"])} — {safe(r["owner"])}'
+            + (f', решить до {_d(qm.day(r["due"]), view)}' if r.get('due') else '') + (f'. {safe(r["text"])}' if r.get('text') else '')
             + '</li>' for r in row['risks']) + '</ul></div>')
     if row['items']:
         shown = row['items'][:15]
         more.append(f'<div><b>Открытые задачи ({row["open"]})</b><ul>' + ''.join(
-            f'<li>{_link(it["key"], link)} {e(it.get("title", ""))} <small>· {e(it.get("status") or "")}'
-            + (f' · {e(it["assignee"])}' if it.get('assignee') else '') + '</small></li>' for it in shown)
+            f'<li>{_link(it["key"], link)} {safe(it.get("title", ""))} <small>· {safe(it.get("status") or "")}'
+            + (f' · {safe(it["assignee"])}' if it.get('assignee') else '') + '</small></li>' for it in shown)
             + (f'<li class="muted">и ещё {row["open"] - len(shown)}</li>' if row['open'] > len(shown) else '') + '</ul></div>')
     return f'<details class="row s-{st}">{summary}<div class="more">{"".join(more)}</div></details>'
 
 
-def render_html(view, link=DEFAULT_LINK):
+def render_html(view, link=DEFAULT_LINK, script=''):
     counts = view['counts']
     chips = ''.join(f'<span class="chip c-{s}">{ICON[s]}\u00a0{counts[s]} {COUNT_LABEL[s]}</span>' for s in qm.STATUSES if counts.get(s))
     if view['previousWeek']:
@@ -304,17 +309,18 @@ def render_html(view, link=DEFAULT_LINK):
         pass
     out = [f'<!doctype html><html lang="ru"><head><meta charset="utf-8">'
            f'<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">'
-           f'<title>Риски квартала {e(view["quarter"])}</title><style>{CSS}</style></head><body><main>'
-           f'<header><h1>Риски квартала {e(view["quarter"])}</h1>'
-           f'<div class="sub">неделя с {_d(view["monday"], view)} · данные Jira {e(fetched)} · до конца квартала '
+           f'<title>Риски квартала {safe(view["quarter"])}</title><style>{CSS}</style></head><body><main>'
+           f'<header><h1>Риски квартала {safe(view["quarter"])}</h1>'
+           f'<div class="sub">неделя с {_d(view["monday"], view)} · данные Jira {safe(fetched)} · до конца квартала '
            f'({_d(view["deadline"], view)}) — {view["weeksLeft"]} нед.</div><div class="chips">{chips}</div>'
-           f'<div class="actions"><button type="button" class="primary" data-act="copy">Скопировать для CPO</button>'
-           f'<button type="button" data-act="refresh">Обновить данные</button></div></header>']
+           + (f'<div class="actions"><button type="button" class="primary" data-act="copy">Скопировать для CPO</button>'
+              f'<button type="button" data-act="refresh">Обновить данные</button></div>' if script else '') + '</header>']
     out.append('<section><h2>Нужно решение</h2>')
     if view['escalations']:
         out += [_esc_card(x, view, link, i) for i, x in enumerate(view['escalations'])]
-        if view['moreEscalations']:
-            out.append(f'<p class="muted">Ещё {view["moreEscalations"]} эскалации с ✅ — наверху только ближайшие три.</p>')
+        if view['escalationsMore']:
+            out.append(f'<details class="cands"><summary>Ещё эскалации с ✅: {len(view["escalationsMore"])} — наверху только '
+                       f'ближайшие три</summary>' + ''.join(_esc_card(x, view, link) for x in view['escalationsMore']) + '</details>')
     else:
         out.append('<p class="muted">Эскалаций нет. Кандидаты ниже — отметьте ✅ те, что нужно поднять на синке.</p>')
     out.append('</section>')
@@ -326,11 +332,11 @@ def render_html(view, link=DEFAULT_LINK):
         'За неделю <small>сравнение — со следующего понедельника</small>'
     out.append('<section><h2>Инициативы квартала</h2>')
     for team in view['teams']:
-        out.append(f'<h3>{e(team["name"])}</h3>')
+        out.append(f'<h3>{safe(team["name"])}</h3>')
         if team['summary']['total']:
-            out.append(f'<p class="team-sum">{e(team_line(team, view))}</p>')
+            out.append(f'<p class="team-sum">{safe(team_line(team, view))}</p>')
         for w in team['warnings']:
-            out.append(f'<p class="late"><small>⚠ {e(w)}</small></p>')
+            out.append(f'<p class="late"><small>⚠ {safe(w)}</small></p>')
         out.append(f'<div class="table"><div class="grid head"><span>Статус</span><span>Инициатива</span>'
                    f'<span>Target end → 85%</span><span>Шанс к {_d(view["deadline"], view)}</span><span>Прогресс</span>'
                    f'<span>Блокатор / риск</span><span>Путь в зелёный</span><span>{week_head}</span></div>')
@@ -340,7 +346,7 @@ def render_html(view, link=DEFAULT_LINK):
     for label, rows in (('Вхождение в квартал не решено', view['unconfirmed']), ('Сняты из квартала', view['dropped'])):
         if rows:
             out.append(f'<section><h2>{label}</h2><ul>' + ''.join(
-                f'<li>{e(r["teamName"])} · {e(r["kr"] or r["key"])} «{e(r["title"])}» {_link(r["key"], link)}</li>' for r in rows)
+                f'<li>{safe(r["teamName"])} · {safe(r["kr"] or r["key"])} «{safe(r["title"])}» {_link(r["key"], link)}</li>' for r in rows)
                 + '</ul></section>')
     out.append(
         f'<footer class="method"><b>Как считается.</b> Инициатива — эпик из карты целей квартала. Шанс — доля из 10 000 прогонов '
@@ -349,7 +355,7 @@ def render_html(view, link=DEFAULT_LINK):
         f'доля темпа команды. Блокатор — задача в ожидании без движения 3+ рабочих дня. Статус: '
         f'🔴 шанс &lt; 50% или блокатор ≥ 10 раб. дн.; 🟡 шанс &lt; 85% или блокатор ≥ 3; 🟢 шанс ≥ 85%. '
         f'Target end — веха команды, на цвет не влияет.</footer>')
-    out.append('</main><script src="/business/risks-page.js" defer></script></body></html>')
+    out.append('</main>' + (f'<script src="{safe(script)}" defer></script>' if script else '') + '</body></html>')
     return ''.join(out)
 
 
@@ -371,7 +377,8 @@ def team_line(team, view):
 def cpo_text(view):
     c = view['counts']
     lines = [f'Риски квартала {view["quarter"]} · {qm.ddmm(view["monday"])} · до конца квартала {view["weeksLeft"]} нед.',
-             ' · '.join(f'{qm.TITLES[s]} {c[s]}' for s in qm.STATUSES)]
+             ' · '.join(f'{qm.TITLES[s]} {c[s]}' for s in qm.STATUSES)
+             + (f' · прогноз сдвинулся позже: {view["shifted"]}' if view['previousWeek'] else '')]
     lines += [team_line(t, view) for t in view['teams'] if t['summary']['total']] + ['']
     if view['escalations']:
         lines.append('Нужно решение:')
@@ -473,8 +480,7 @@ def make_view(rep, today=None, quiet=False):
     raw = read_json(rep.approvals, '✅ PO', required=False) or {}
     approvals = {k: (v.get('hash') if isinstance(v, dict) else v) for k, v in raw.items()}
     today = today or qm.day(data.get('fetchedAt')) or date.today()
-    from forecast import week_monday
-    history = load_history(rep, week_monday(today))
+    history = load_history(rep, qm.fc.week_monday(today))
     return qm.build(goals, data, block=block, approvals=approvals, history=history, today=today)
 
 
@@ -530,7 +536,7 @@ def cmd_fetch(args):
 def cmd_render(args):
     rep = reports_of(args)
     view = make_view(rep, qm.day(args.today) if args.today else None)
-    write_text(rep.page, render_html(view, args.link or DEFAULT_LINK))
+    write_text(rep.page, render_html(view, args.link or DEFAULT_LINK, args.script or ''))
     write_text(rep.text, cpo_text(view))
     write_text(rep.history / f'{view["snapshot"]["week"]}.json', json.dumps(view['snapshot'], ensure_ascii=False, indent=1) + '\n')
     c = view['counts']
@@ -575,6 +581,7 @@ def main(argv=None):
             p.add_argument('--today', default=None, help='дата снимка ГГГГ-ММ-ДД (по умолчанию — дата сбора)')
         if name == 'render':
             p.add_argument('--link', default=None, help=f'ссылка на задачу с {{key}}, по умолчанию {DEFAULT_LINK}')
+            p.add_argument('--script', default=None, help='скрипт кнопок страницы (✅, «Скопировать»), путь на сайте; нет — без кнопок')
         if name == 'check':
             p.add_argument('--file', default=None, help='блок агента (по умолчанию reports/quarter-risks.json)')
     args = ap.parse_args(argv)

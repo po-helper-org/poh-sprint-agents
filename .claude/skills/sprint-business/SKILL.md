@@ -138,7 +138,7 @@ python3 .claude/skills/sprint-business/business.py apply
    - `risks [{title, roam, owner, due, text}]` — то, что может случиться: Owned / Mitigated / Accepted (Resolved — не показывается);
    - `override {status, reason}` — оценка PO вместо расчёта, **только со слов PO** и с причиной.
    Цифр не пиши — их считает `quarter.py`. Неподтверждённые и снятые инициативы — списки `unconfirmed` / `dropped` в `sprint-goals.json` команды (со слов PO).
-4. `python3 quarter.py check --config …`, затем страница: `cd ~/Projects/poh-widget-sprint-business && python3 -m business risks --no-fetch`.
+4. `python3 quarter.py check --config …`, затем страница: в каталоге виджета PO-Sprint-business `python3 -m business risks --no-fetch` (или `quarter.py render`).
 5. В чат — сколько кандидатов и что предлагаешь поднять; ✅ ставит PO на странице, не агент.
 
 ## Что где лежит

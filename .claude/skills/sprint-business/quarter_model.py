@@ -41,12 +41,22 @@ def day(value):
 
 
 def workdays_between(start, end):
-    """Рабочие дни (пн–пт) в [start, end)."""
+    """Рабочие дни (пн–пт) в (start, end] — как «✋ Блокаторы» в /sprints: пт → пн = 1, тот же день = 0."""
     n, d = 0, start
     while d < end:
-        n += d.weekday() < 5
         d += timedelta(days=1)
+        n += d.weekday() < 5
     return n
+
+
+def next_sync(today, monday):
+    """Ближайший синк с CPO: сегодня, если сегодня понедельник, иначе следующий понедельник."""
+    return today if today.weekday() == 0 else monday + timedelta(weeks=1)
+
+
+def unblock_by(row, today, monday):
+    """До какой даты снять блокатор: последний понедельник с шансом ≥ 50% (не раньше сегодня), иначе ближайший синк."""
+    return max(row['okUntil'], today) if row['okUntil'] else next_sync(today, monday)
 
 
 def ddmm(d, today=None):
@@ -63,7 +73,12 @@ def plural(n, one, few, many):
 
 
 def text_hash(esc):
-    raw = '|'.join(str(esc.get(k) or '') for k in ('ask', 'who', 'by', 'ifNot'))
+    """Хеш, под который PO ставит ✅. Текст агента — по словам: переписал — нужен новый ✅. Текст из данных — по
+    смыслу (какой блокатор или «решение по объёму»): дни и даты в нём растут каждый день, а ✅ не должен слетать."""
+    if esc.get('source') == 'data':
+        raw = 'data|' + esc['identity']
+    else:
+        raw = '|'.join(str(esc.get(k) or '') for k in ('ask', 'who', 'by', 'ifNot'))
     return hashlib.sha1(raw.encode('utf-8')).hexdigest()[:12]
 
 
@@ -102,18 +117,17 @@ def status_of(fcast, blockers, has_items):
 
 def auto_escalation(row, deadline, monday, today):
     """Текст эскалации из данных — пока агент не написал свой."""
-    nxt = monday + timedelta(weeks=1)
     if row['blockers']:
         b = row['blockers'][0]
-        by = row['okUntil'] if row['okUntil'] and row['okUntil'] > monday else nxt
         if_not = (f'с 85% — не раньше {ddmm(row["p85"], today)}' if row['p85'] else
                   'шанс дойти к концу квартала продолжит падать')
-        return {'ask': f'снять блокатор {b["key"]}: «{b["status"]}» {b["days"]} раб. дн.',
-                'who': 'уточнить, кого ждём', 'by': by, 'ifNot': if_not,
-                'why': f'стоит {b["days"]} раб. дн., шанс к {ddmm(deadline)} — {pct(row["chance"])}'}
+        return {'ask': f'снять блокатор {b["key"]}: стоит в «{b["status"]}» {b["days"]} раб. дн.',
+                'who': 'уточнить, кого ждём', 'by': unblock_by(row, today, monday), 'ifNot': if_not,
+                'why': f'стоит {b["days"]} раб. дн., шанс к {ddmm(deadline)} — {pct(row["chance"])}',
+                'identity': f'blocker|{b["key"]}'}
     return {'ask': f'решение по объёму или сроку: к {ddmm(deadline)} с 85% успеем '
                    f'{row["howMany85"]} из {row["open"]} {plural(row["open"], "задачи", "задач", "задач")}',
-            'who': 'CPO', 'by': nxt,
+            'who': 'CPO', 'by': next_sync(today, monday), 'identity': 'scope',
             'ifNot': (f'с 85% — не раньше {ddmm(row["p85"], today)}' if row['p85'] else 'инициатива не закончится в квартале'),
             'why': f'шанс к {ddmm(deadline)} — {pct(row["chance"])}'}
 
@@ -122,7 +136,7 @@ def pct(p):
     return '—' if p is None else f'{round(p * 100)}%'
 
 
-def path_to_green(row, monday, deadline):
+def path_to_green(row, today, monday, deadline):
     if row['status'] in ('green', 'done'):
         return ''
     if row['note']:
@@ -130,15 +144,15 @@ def path_to_green(row, monday, deadline):
     if not row['total']:
         return 'декомпозировать эпик: задач нет'
     if row['blockers']:
-        by = row['okUntil'] if row['okUntil'] and row['okUntil'] > monday else monday + timedelta(weeks=1)
-        return f'снять блокатор до {ddmm(by)}'
+        return f'снять блокатор до {ddmm(unblock_by(row, today, monday))}'
     if row['chance'] is None:
         return f'нужна история темпа: {row["points"]} нед. из {fc.MIN_POINTS}'
     if row['chance'] < ON_TRACK and row['howMany85'] == 0:
         return f'по нынешнему темпу к {ddmm(deadline)} не закроется ни одной задачи — решить, остаётся ли в квартале'
     if row['chance'] < ON_TRACK and row['howMany85'] < row['open']:
         cut = row['open'] - row['howMany85']
-        return f'снять {cut} из {row["open"]} {plural(row["open"], "задачи", "задач", "задач")} из квартала, сдвинуть срок или дать людей'
+        shift = f'сдвинуть срок на {ddmm(row["p85"], today)}' if row['p85'] else 'сдвинуть срок'
+        return f'снять {cut} из {row["open"]} {plural(row["open"], "задачи", "задач", "задач")} из квартала, {shift} или дать людей'
     if row['chance'] < ON_TRACK and row['growth']:
         return 'заморозить объём: новые задачи в эпике снижают шанс'
     return ''
@@ -186,13 +200,18 @@ def build_row(slug, team_name, key, obj, goals_t, epic, today, monday, q_start, 
     row = {**base, 'items': open_items, 'total': len(items), 'open': len(open_items), 'done': len(items) - len(open_items),
            'lastWeek': own[-1] if own else 0, 'growth': growth_of(items, q_start),
            'blockers': blockers_of(open_items, today)}
-    if items and not open_items or (epic.get('bucket') == 'done' and not open_items):
+    if (items and not open_items) or epic.get('bucket') == 'done':
         return {**row, 'status': 'done', 'computedStatus': 'done'}
-    samples, method = own, 'own'
-    if len(own) < fc.MIN_POINTS or not any(own):
-        samples, method = team_pace, 'team'
+    # своя история — от 7 недель, даже если все они нулевые: стоящая инициатива не берёт чужой темп
+    samples, method = (own, 'own') if len(own) >= fc.MIN_POINTS else (team_pace, 'team')
     seed = zlib.crc32(f'{key}:{today.isoformat()}'.encode())
-    f = fc.forecast(len(open_items), samples, monday, deadline, growth=row['growth'], seed=seed) if open_items else {'status': 'no_data'}
+    if not open_items:
+        f = {'status': 'no_data'}
+    elif len(samples) >= fc.MIN_POINTS and not any(samples):
+        f = {'status': 'ok', 'points': len(samples), 'chance': 0.0, 'p50': None, 'p85': None, 'p95': None,
+             'okUntil': None, 'howMany85': 0}
+    else:
+        f = fc.forecast(len(open_items), samples, monday, deadline, growth=row['growth'], seed=seed)
     if f['status'] in ('ok', 'thin'):
         row.update({k: f[k] for k in ('chance', 'p50', 'p85', 'p95', 'okUntil')})
         row.update({'howMany85': min(len(open_items), int(f['howMany85'])), 'method': method,
@@ -234,7 +253,7 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
             row['risks'] = [r for r in mine.get('risks') or [] if r.get('roam') != 'Resolved']
             if mine.get('override'):
                 row['status'], row['override'] = mine['override']['status'], mine['override'].get('reason', '')
-            row['path'] = path_to_green(row, monday, deadline)
+            row['path'] = path_to_green(row, today, monday, deadline)
             if key in (goals_t.get('dropped') or []):
                 dropped.append({**row, 'status': 'dropped'})
                 continue
@@ -250,6 +269,7 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
                 esc.update({'key': key, 'team': slug, 'teamName': row['teamName'], 'kr': row['kr'],
                             'title': row['title'], 'status': row['status'], 'chance': row['chance']})
                 esc['hash'] = text_hash({**esc, 'by': esc['by'].isoformat() if esc['by'] else ''})
+                esc.pop('identity', None)
                 esc['approved'] = approvals.get(key) == esc['hash']
                 row['escalation'] = esc
                 (approved if esc['approved'] else candidates).append(esc)
@@ -268,7 +288,7 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
         'quarter': quarter, 'today': today, 'monday': monday, 'qStart': q_start, 'deadline': deadline,
         'weeksLeft': fc.weeks_until(monday, deadline), 'fetchedAt': data.get('fetchedAt'),
         'teams': teams, 'unconfirmed': unconfirmed, 'dropped': dropped, 'counts': counts,
-        'escalations': approved[:TOP_ESCALATIONS], 'moreEscalations': max(0, len(approved) - TOP_ESCALATIONS),
+        'escalations': approved[:TOP_ESCALATIONS], 'escalationsMore': approved[TOP_ESCALATIONS:],
         'candidates': candidates,
         'shifted': sum(1 for r in all_rows if r['delta'] and (r['delta'].get('p85Days') or 0) > 0),
         'previousWeek': (history or {}).get('week'),
