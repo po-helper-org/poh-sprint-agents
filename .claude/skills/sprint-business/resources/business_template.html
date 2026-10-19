@@ -1512,33 +1512,16 @@
   // ---------- роадмап «Инициативы по спринтам»: квартальный план команды на 3 следующих спринта ----------
   // Каркас — из данных: колонки — 3 спринта после текущего (длина и даты — от текущего), по 2 недели;
   // строки — открытые эпики команды, номер цели (01 = OBJ 1) и срок (Target end). Фазы в ячейках
-  // пишет агент (roadmap в бизнес-блоке) по OKR и плану PO; без него — полоса с текущей недели до
-  // срока или прогноза, фаза — по задачам эпика ([SA]/[BE]/[FE]/[QA], тест, ревью), в последней
-  // неделе — приёмка. Любую ячейку PO правит на слайде («Редактировать текст»).
-  var RM_PHASES = ['аналитика', 'дизайн', 'бек', 'фронт', 'разработка', 'qa', 'приёмка', 'релиз', 'контент'];
+  // пишет агент (roadmap в бизнес-блоке) по OKR и плану PO; без него фазы не угадываем — нейтральная
+  // полоса «в работе» с текущей недели до срока или прогноза, в последней неделе — приёмка (решение
+  // владельца 2026-10-19: угаданная по задачам «разработка» выглядела как план). Любую ячейку PO правит
+  // на слайде («Редактировать текст»).
+  var RM_PHASES = ['аналитика', 'дизайн', 'бек', 'фронт', 'разработка', 'в работе', 'qa', 'приёмка', 'релиз', 'контент'];
+  var RM_AUTO = 'в работе';
   var RM_COLOR = { 'аналитика': '#f5dcc6', 'дизайн': '#f5dcc6', 'контент': '#f5dcc6', 'бек': '#cfdcf3', 'фронт': '#d9e4f6',
-                   'разработка': '#cfdcf3', 'qa': '#e3ecf8', 'приёмка': '#d4ead7', 'релиз': '#d4ead7' };
+                   'разработка': '#cfdcf3', 'в работе': '#e6e9ee', 'qa': '#e3ecf8', 'приёмка': '#d4ead7', 'релиз': '#d4ead7' };
   var RM_ROWS = 14, RM_WEEKS = 6;
 
-  function itemPhase(it) {
-    var title = String(it.title || it.summary || ''), b = classifyBucket(it.status, it.category);
-    if (b === 'testing') return 'qa';
-    if (b === 'review') return 'приёмка';
-    if (/\[(SA|BA|ADR|RND|R&D|аналитика)[\]\s+]/i.test(title) || /^(SA|ADR)\s*:/i.test(title)) return 'аналитика';
-    if (/\[(QA|AT|тест)[\]\s+]/i.test(title)) return 'qa';
-    if (/\[(FE|UI)[\]\s+]/i.test(title)) return 'фронт';
-    if (/\[(DESIGN|UX|дизайн)[\]\s+]/i.test(title)) return 'дизайн';
-    if (/\[(BE|PHP|DB|DEV|GO)[\]\s+]/i.test(title)) return 'бек';
-    return 'разработка';
-  }
-  // фаза эпика сейчас: самая частая у задач в работе (нет таких — у открытых)
-  function epicPhase(e) {
-    var open = (e.scope || []).filter(function (it) { return classifyBucket(it.status, it.category) !== 'done'; });
-    var active = open.filter(function (it) { return classifyBucket(it.status, it.category) !== 'open'; });
-    var n = {};
-    (active.length ? active : open).forEach(function (it) { var ph = itemPhase(it); n[ph] = (n[ph] || 0) + 1; });
-    return Object.keys(n).sort(function (a, b) { return n[b] - n[a] || RM_PHASES.indexOf(a) - RM_PHASES.indexOf(b); })[0] || 'разработка';
-  }
   // 3 спринта после текущего, по 2 недели (у текущего в JIRA бывает 8 или 15 дней — не берём);
   // каждый — две недели-ячейки
   var RM_SPRINT_DAYS = 14;
@@ -1578,14 +1561,14 @@
       .map(function (s, i) { return { s: s, i: i, num: objNum(s.ai.obj) }; })
       .sort(function (a, b) { return (a.num || '99').localeCompare(b.num || '99') || a.i - b.i; });
     return { agent: false, more: Math.max(0, open.length - RM_ROWS), rows: open.slice(0, RM_ROWS).map(function (x) {
-      var g = x.s.init, endAt = g.forecast || g.due, ph = epicPhase(x.s.epic);
+      var g = x.s.init, endAt = g.forecast || g.due, ph = RM_AUTO;
       // срок или прогноз внутри горизонта — полоса до него, последняя неделя — приёмка;
       // срок уже прошёл, а прогноза нет — добиваем в первом спринте; ни срока, ни прогноза — весь горизонт
       var stop = !endAt ? null : endAt < weeks[0][0] ? weeks[1][1] : endAt;
       var cells = weeks.map(function (w) {
         if (!stop || stop > weeks[RM_WEEKS - 1][1]) return ph;
         if (w[0] > stop) return '';
-        return stop <= w[1] && ph !== 'приёмка' ? 'приёмка' : ph;
+        return stop <= w[1] ? 'приёмка' : ph;
       });
       return { id: x.s.epic.epicKey, s: x.s, num: x.num, name: streamName(x.s), cells: cells };
     }) };
@@ -1661,7 +1644,6 @@
   function risksSlide(t, streams) {
     var rk = teamRisks(t, streams);
     return slide('risks', '<h1 class="slide-title">Риски и проблемы</h1>' +
-      '<div class="slide-sub">' + esc(t.team) + (rk.agent ? '' : ' · из данных: блокеры и сроки, агент дополнит со слов PO') + '</div>' +
       (rk.list.length ? '<div class="rk-list">' + rk.list.map(function (x, i) {
         var id = 'rk:' + t.slug + ':' + i;
         return '<div class="rk-row"><div class="rk-kind k-' + x.kind + '">' + RK_KIND[x.kind] + '</div>' +

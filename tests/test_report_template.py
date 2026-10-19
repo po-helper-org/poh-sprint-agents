@@ -207,7 +207,7 @@ class BusinessTemplateTest(unittest.TestCase):
         команды — роадмап «Инициативы по спринтам» и «Риски и проблемы» вместо «Планов»."""
         for part in ('function teamStats(', 't-cards', 'h-kpis', 'h-goals', 'function behindLabel(',
                      'blk-badge', '🛑 блокаторы: ', 'function openBlockers(', 'Эскалирует:', "'эпик завершён'",
-                     'function roadmapSlide(', 'function roadmapRows(', 'function nextSprints(', 'function epicPhase(',
+                     'function roadmapSlide(', 'function roadmapRows(', 'function nextSprints(', "RM_AUTO = 'в работе'",
                      "Инициативы по спринтам до ' + dayMon(sp[2].to)", 'function sprintCode(', 'RM_ROWS = 14', 'class="rm-sprint"',
                      'function risksSlide(t, streams)', 'function teamRisks(', "external: 'Внешнее'", "deadline: 'Срок'", 'RK_ROWS = 5',
                      'html += roadmapSlide(x.t, x.streams);', 'html += risksSlide(x.t, x.streams);'):
