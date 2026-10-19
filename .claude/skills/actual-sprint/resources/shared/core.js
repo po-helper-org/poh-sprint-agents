@@ -344,7 +344,8 @@
 
   var GENERAL = { kind: 'general' };
   var KIND_NAME = { epic: 'Эпик', story: 'История', subtask: 'Подзадача', event: 'Задача',
-                    ref: 'Вне отчёта', chart: 'График', insight: 'Инсайд ИИ', slide: 'Слайд презентации' };
+                    ref: 'Вне отчёта', chart: 'График', insight: 'Инсайд ИИ', slide: 'Слайд презентации',
+                    blocker: 'Блокатор' };
 
   // все сущности текущей команды по ключу: для привязки из корзины и подсказок
   function entityIndex() {
@@ -386,12 +387,15 @@
     if (!t || t.kind === 'general') return 'без привязки' + (t && t.title ? ' · ' + t.title : '');
     var head = KIND_NAME[t.kind] + (t.key ? ' ' + t.key : '') + (t.title ? ' «' + t.title + '»' : '');
     var parts = [head];
-    if ((t.kind === 'story' || t.kind === 'subtask') && t.epicTitle) {
+    if ((t.kind === 'story' || t.kind === 'subtask' || t.kind === 'blocker') && t.epicTitle) {
       parts.push('эпик ' + (t.epicKey ? t.epicKey + ' ' : '') + '«' + t.epicTitle + '»');
     }
     if (t.priority) parts.push('приоритет ' + t.priority);
     if (t.status) parts.push('статус ' + t.status);
     if (t.assignee) parts.push('исполнитель ' + t.assignee);
+    // блокатор: агенту сразу видно, что задача стоит и сколько (раздел «✋ Блокаторы»)
+    if (t.kind === 'blocker') parts.push('стоит: ' + (t.why === 'stale' ? 'без движения' : 'в ожидании') +
+      (t.days != null ? ' ' + t.days + ' раб. ' + plural(t.days, 'день', 'дня', 'дней') : ''));
     return parts.join(' · ');
   }
 

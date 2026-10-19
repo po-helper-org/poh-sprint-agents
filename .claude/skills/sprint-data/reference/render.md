@@ -18,6 +18,7 @@
 
 | Экран | Поля | Что считает страница | Без данных |
 |---|---|---|---|
+| «✋ Блокаторы» (первый раздел) | `blockers` (наложение runner из `epics[].stories[]`: `status`, `statusChanged`, `events[]`, `subtasks[]`) | группы по дням стоянки, полосы по инициативам и людям, фильтр по человеку | «Ничего не стоит»; нет поля (старая страница) — раздела нет |
 | таблица эпиков, панель эпика | `epics[]`, `epics[].stories[]`, `epics[].stories[].subtasks[]` | счётчики `open/blocked/progress/testing/review/done` по всей иерархии: история и каждая её подзадача — единица (`tallyEpic`) | таблица пуста |
 | исполнитель и возраст статуса в панели | `stories[].assignee`, `stories[].statusChanged`, `subtasks[].assignee`, `subtasks[].statusChanged` | инициалы «ФИ» (`whoHtml`); дни без смены статуса, красным дольше 3 дней, у готовых — зелёным (`ageHtml`) | «—» |
 | приоритет задач и эпиков | `stories[].priority`, `subtasks[].priority`, `epics[].epicPriority` | глиф `⇈ ↑ = ↓ ⇊` по имени приоритета (`prioHtml`) | «·» |
