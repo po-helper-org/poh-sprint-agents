@@ -270,6 +270,13 @@ await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 // роадмап «Инициативы по спринтам»: 3 следующих спринта по 2 недели, строки — инициативы, в ячейках — фазы
 const PHASES = ['аналитика', 'дизайн', 'бек', 'фронт', 'разработка', 'в работе', 'qa', 'приёмка', 'релиз', 'контент'];
+await goTo('#deckSlides .fslide.roadmap');
+const clash = await p.evaluate(() => {
+  const b = document.getElementById('burgerBtn').getBoundingClientRect();
+  const t = document.querySelector('#deckSlides > .fslide.cur .slide-title').getBoundingClientRect();
+  return { burger: Math.round(b.bottom), title: Math.round(t.top) };
+});
+check(clash.title >= clash.burger + 4, `на сцене бургер не налезает на заголовок слайда (бургер до ${clash.burger}, заголовок с ${clash.title})`);
 const rm = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.roadmap')].map(sl => {
   const t = TEAMS.find(x => x.slug === sl.dataset.team);
   return { team: t.slug, title: sl.querySelector('.slide-title').textContent, end: t.burndown.end, agent: !!(t.business && t.business.roadmap),

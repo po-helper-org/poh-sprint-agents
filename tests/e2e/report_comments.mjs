@@ -45,6 +45,45 @@ const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 await p.goto(pathToFileURL(page).href);
 
+// главный экран: сначала «успеваем ли спринт», под ним блокаторы | инициативы
+{
+  const sum = await p.evaluate(() => {
+    let done = 0, total = 0;
+    team.epics.forEach(e => { const c = tallyEpic(e); done += c.done; total += c.total; });
+    return { done, total, big: document.querySelector('#sprintSum .t-done .t-big')?.textContent || '',
+             fc: document.querySelector('#sprintSum .t-fc .t-note')?.textContent || '',
+             head: document.querySelector('#sprintSum .sum-head')?.textContent || '' };
+  });
+  check(await p.isVisible('#sprintSum'), 'сводка спринта — первой на главном экране');
+  check(sum.big.replace(/\s+/g, ' ').startsWith(`${sum.done} из ${sum.total} · `), `«Сделано» = сумма готовых по эпикам (${sum.big})`);
+  check(/успеваем|не успеваем ≈ \d+/.test(sum.fc) && /темп [\d,]+ в день/.test(sum.fc), `прогноз со словом и темпом (${sum.fc})`);
+  check(/\d+ \S+ – \d+ \S+/.test(sum.head) && /данные/.test(sum.head), `даты спринта и свежесть данных (${sum.head})`);
+  const rows = await p.$$eval('#tableBody tr', trs => trs.map(tr => ({ bar: !!tr.querySelector('.sbar i'), pct: tr.querySelector('.epct')?.textContent || '',
+    btn: !!tr.querySelector('button'), tip: tr.querySelector('.eprog')?.title || '' })));
+  check(rows.length > 0 && rows.every(r => r.bar && /^\d+%$/.test(r.pct)), 'у каждого эпика полоса статусов и «N%»');
+  check(rows.every(r => !r.btn) && !(await p.textContent('#tableBody')).includes('Статус'), 'кнопки «Статус» и счётчиков «1/5/0…» в строках нет');
+  check(rows.every(r => /всего \d+|Задач нет/.test(r.tip)), 'раскладка по статусам — в подсказке строки');
+  check((await p.textContent('#initsN')).trim() === String(rows.length), 'в заголовке «Инициативы» — число эпиков');
+  // блокаторы есть → широкий экран делится на две колонки, плитка ведёт к разделу
+  await p.evaluate(() => {
+    team.blockers = { staleDays: 3, items: [
+      { key: 'INIT-1', title: 'Ждём контракт', status: 'В ожидании', assignee: 'Участник А', why: 'wait', days: 12 },
+      { key: 'INIT-2', title: 'Нет ответа', status: 'В работе', assignee: 'Участник Б', why: 'stale', days: 4 }],
+      byEpic: [], byPerson: [{ name: 'Участник А', count: 1, days: 12 }] };
+    renderSummary(); renderBlockers();
+  });
+  const cols = await p.evaluate(() => [document.getElementById('blockers'), document.getElementById('inits')].map(el => el.getBoundingClientRect()));
+  check(Math.abs(cols[0].top - cols[1].top) < 2 && cols[1].left > cols[0].right, 'широкий экран: блокаторы и инициативы — две колонки');
+  const tile = (await p.textContent('#sprintSum .t-blk')).replace(/\s+/g, ' ');
+  check(tile.includes('2') && tile.includes('1 стоит 10+ дней') && tile.includes('Участник А'), `плитка «Блокаторы»: число, 10+ дней, у кого (${tile})`);
+  await p.click('#sprintSum .t-blk');
+  await p.waitForTimeout(600);
+  check(await p.evaluate(() => { const top = document.getElementById('blockers').getBoundingClientRect().top;
+    return Math.abs(top) < 120 || (top > 0 && top < innerHeight && scrollY >= document.documentElement.scrollHeight - innerHeight - 2); }),
+    'тап по плитке — к разделу «Блокаторы» (наверх экрана или до конца страницы)');
+  await p.evaluate(() => { delete team.blockers; renderSummary(); renderBlockers(); scrollTo(0, 0); });
+}
+
 const TEAMS_N = (info) => info.teams.split('|').length;
 const count = async () => (await p.textContent('#cCount')).trim();
 const openBasket = async () => { if (!(await p.isVisible('#notesPanel'))) await viaMenu('notesToggle'); };

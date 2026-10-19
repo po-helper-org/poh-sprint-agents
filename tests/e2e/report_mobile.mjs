@@ -69,6 +69,10 @@ check(await noSideScroll(), 'главный экран без горизонта
 const row = await p.locator('#tableBody tr').first().boundingBox();
 const title = await p.locator('#tableBody td.epic').first().boundingBox();
 check(title.width > row.width * 0.8, 'название эпика во всю ширину строки, а не узкой колонкой');
+const prog = await p.locator('#tableBody td.prog').first().boundingBox();
+check(prog.y >= title.y + title.height - 2 && prog.width > row.width * 0.6, 'полоса и % — второй строкой под названием, почти во всю ширину');
+const tiles = await p.$$eval('#sprintSum .tile', ts => ts.map(t => t.getBoundingClientRect()).map(r => ({ x: r.x, w: r.width })));
+check(tiles.length >= 2 && tiles[0].w > 340 && tiles[1].w < 200, 'сводка: «Сделано» во всю ширину, остальные плитки парой');
 check(await p.locator('.team-switch').evaluate(el => getComputedStyle(el).flexWrap === 'nowrap'),
       'вкладки команд — в одну строку с прокруткой');
 

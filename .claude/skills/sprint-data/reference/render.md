@@ -19,10 +19,11 @@
 | Экран | Поля | Что считает страница | Без данных |
 |---|---|---|---|
 | «✋ Блокаторы» (первый раздел) | `blockers` (наложение runner из `epics[].stories[]`: `status`, `statusChanged`, `events[]`, `subtasks[]`) | группы по дням стоянки, полосы по инициативам и людям, фильтр по человеку | «Ничего не стоит»; нет поля (старая страница) — раздела нет |
-| таблица эпиков, панель эпика | `epics[]`, `epics[].stories[]`, `epics[].stories[].subtasks[]` | счётчики `open/blocked/progress/testing/review/done` по всей иерархии: история и каждая её подзадача — единица (`tallyEpic`) | таблица пуста |
+| таблица эпиков, панель эпика | `epics[]`, `epics[].stories[]`, `epics[].stories[].subtasks[]` | счётчики `open/blocked/progress/testing/review/done` по всей иерархии: история и каждая её подзадача — единица (`tallyEpic`); строка эпика — полоса статусов и % готовых, сводка — сумма по эпикам | таблица пуста |
 | исполнитель и возраст статуса в панели | `stories[].assignee`, `stories[].statusChanged`, `subtasks[].assignee`, `subtasks[].statusChanged` | инициалы «ФИ» (`whoHtml`); дни без смены статуса, красным дольше 3 дней, у готовых — зелёным (`ageHtml`) | «—» |
 | приоритет задач и эпиков | `stories[].priority`, `subtasks[].priority`, `epics[].epicPriority` | глиф `⇈ ↑ = ↓ ⇊` по имени приоритета (`prioHtml`) | «·» |
 | Lead Time в шапке | `metrics.overall.lead` | `среднее / медиана / кол-во` как есть | «—» |
+| сводка спринта: даты, прогноз | `burndown.start/end/days[]`, `_meta.collectedAt` | «осталось N рабочих дней» — от сегодня до `end`; прогноз = готово + темп × будущие рабочие дни снимка, темп = (`closed` последнего не-`future` дня − первого) / прошедшие рабочие дни; данные старше суток — «не обновлялись» (`sprintSummary`) | без `days` — только «Сделано» |
 | метрики: burndown спринта | `burndown.days[]` | идеальная прямая от объёма первого дня с задачами до нуля к `end`; факт `remaining` до последнего не-`future` дня; выходные затенены (`burndownChart`) | «Нет данных по спринту» |
 | метрики: производительность | `velocity.sprints[]`, `velocity.avgDone` | пара столбцов на спринт: `planned` стопкой по `split`, `done`; пунктир — `avgDone` (`velocityChart`) | график пуст |
 | метрики: диаграммы управления | `control.stories`, `control.subtasks` | точки `doneAt × cycle`, выбросы (`outlier`), скользящее среднее по 5 задачам и коридор ±σ, порог `limit`, зона риска `risks` у правого края; списки выбросов и риска (`controlChart`) | «Нет закрытых …» |

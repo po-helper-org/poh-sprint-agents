@@ -5,6 +5,61 @@
 <title>Отчёт по спринтам команд</title>
 <style>
 /*#include shared/core.css*/
+  /* ---------- главный экран отчёта PO: сводка → блокаторы | инициативы ---------- */
+  .sprint-sum { margin: 0 0 32px; }
+  .sum-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+  .sum-dates { color: var(--fg); font-weight: 600; }
+  .sum-at.stale { color: #b45309; }
+  .sum-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .tile { display: block; width: 100%; text-align: left; font: inherit; color: var(--fg); background: #f7f7f8;
+    border: none; border-radius: 12px; padding: 14px 16px 12px; min-width: 0; }
+  .tile .t-label { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .tile .t-big { font-size: 28px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .tile .t-big small { font-size: 14px; font-weight: 400; color: var(--muted); }
+  .tile .t-note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .tile .t-note b { font-weight: 600; }
+  .t-fc.ok .t-note b { color: var(--c-done); }
+  .t-fc.warn .t-note b { color: #b45309; }
+  .t-fc.bad .t-note b { color: var(--c-blocked); }
+  .t-blk { cursor: pointer; }
+  .t-blk:not(.none) .t-big { color: var(--c-blocked); }
+  .t-blk:hover { background: #efeff1; }
+  .t-legend { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .t-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+  .sbar { display: flex; gap: 2px; height: 6px; border-radius: 3px; overflow: hidden; background: var(--hover-bg); }
+  .sbar i { display: block; min-width: 3px; }
+  .sbar.big { height: 8px; margin-top: 10px; }
+
+  .main-cols { display: block; }
+  @media (min-width: 1280px) {
+    .main-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 56px; align-items: start; }
+    .main-cols:has(> .blockers[hidden]) { grid-template-columns: minmax(0, 1fr); }
+    .main-cols .blockers { margin-bottom: 0; }
+  }
+  .inits-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .inits-head h2 { margin: 0; font-size: 20px; }
+  .inits-head h2 .n { color: var(--muted); font-weight: 400; margin-left: 8px; font-variant-numeric: tabular-nums; }
+  .inits-head small { color: var(--muted); font-size: 12px; }
+  #tableBody td { padding: 11px 8px; }
+  #tableBody td:first-child { padding-left: 0; }
+  td.prog { width: 1%; white-space: nowrap; }
+  .eprog { display: inline-grid; grid-template-columns: 120px 3em 2.6em; align-items: center; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .epct { text-align: right; font-weight: 600; }
+  .eblk { color: var(--c-blocked); font-size: 12px; }
+  td.go { width: 1%; padding-right: 0; }
+  .row-go { color: var(--muted); font-size: 20px; line-height: 1; }
+  .row-go.has-note::before { content: "●"; font-size: 9px; color: var(--fg); vertical-align: 4px; margin-right: 6px; }
+  @media (max-width: 640px) {
+    .sprint-sum { margin-bottom: 24px; }
+    .sum-tiles { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .t-done { grid-column: 1 / -1; }
+    .tile { padding: 12px 14px 10px; }
+    .tile .t-big { font-size: 24px; }
+    #tableBody td.prog { padding: 0 0 0 22px; }
+    #tableBody td.go { padding: 0; }
+    .eprog { grid-template-columns: minmax(80px, 1fr) 3em 2.6em; width: 100%; }
+    #tableBody td.prog { width: auto; }
+  }
 </style>
 </head>
 <body class="has-burger">
@@ -39,12 +94,20 @@
 </div>
 
 <main>
-  <!-- «✋ Блокаторы»: что стоит в спринте — первым, до эпиков (runner/blockers.py → team.blockers).
-       Тап по строке — заметка к блокатору в корзину; её разбирает ИИ-агент отчёта. -->
-  <section class="blockers" id="blockers" hidden></section>
-  <table>
-    <tbody id="tableBody"></tbody>
-  </table>
+  <!-- Главный экран: сначала «успеваем ли спринт» (сводка), под ней — что стоит и как идут инициативы.
+       Широкий экран — две колонки (блокаторы | инициативы), телефон — одна. -->
+  <section class="sprint-sum" id="sprintSum" hidden></section>
+  <div class="main-cols">
+    <!-- «✋ Блокаторы»: что стоит в спринте (runner/blockers.py → team.blockers).
+         Тап по строке — заметка к блокатору в корзину; её разбирает ИИ-агент отчёта. -->
+    <section class="blockers" id="blockers" hidden></section>
+    <section class="inits" id="inits">
+      <div class="inits-head"><h2>Инициативы<span class="n" id="initsN"></span></h2><small>тап — истории эпика</small></div>
+      <table>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </section>
+  </div>
 </main>
 
 
@@ -63,23 +126,116 @@
     return parts.join(', ') + ' · всего ' + counts.total;
   }
 
-  function tallyHtml(counts) {
-    var nums = BUCKETS.map(function (b) {
-      var n = counts[b.id];
-      return '<span class="n ' + b.cls + (n ? '' : ' zero') + '">' + n + '</span>';
-    }).join('<span class="sep">/</span>');
-    return '<span class="tally-box">' + nums + '<span class="tip">' + esc(tallyTip(counts)) + '</span></span>';
+  // Полоса статусов — одна на сводку и строки эпиков: слева готовое, дальше проверка,
+  // в работе, в ожидании, не начато. Те же цвета, что в «Весь эпик» и бизнес-колоде.
+  var BAR_ORDER = ['done', 'review', 'testing', 'progress', 'blocked', 'open'];
+  function statusBar(counts, cls) {
+    return '<span class="sbar' + (cls ? ' ' + cls : '') + '">' + BAR_ORDER.filter(function (id) { return counts[id]; }).map(function (id) {
+      return '<i style="flex:' + counts[id] + ';background:' + BUCKET_COLOR[id] + '"></i>';
+    }).join('') + '</span>';
+  }
+  function donePct(counts) { return counts.total ? Math.round(100 * counts.done / counts.total) : 0; }
+
+  // строка эпика: полоса + «N%» вместо счётчиков «1/5/0/0/0/5»; «в ожидании» — красным числом
+  // (блокаторы шире: ещё и задачи без движения — они в своём разделе)
+  function epicProgress(counts) {
+    return '<span class="eprog" title="' + esc(tallyTip(counts)) + '">' + statusBar(counts) +
+      '<span class="epct">' + donePct(counts) + '%</span>' +
+      (counts.blocked ? '<span class="eblk" title="В ожидании: ' + counts.blocked + '">✋' + counts.blocked + '</span>' : '') + '</span>';
   }
 
   // метки заметок у строк эпиков
   function pageMarks(counts) {
     tableBody.querySelectorAll('tr[data-row]').forEach(function (tr) {
-      var btn = tr.querySelector('.action-btn');
+      var mark = tr.querySelector('.row-go');
       var n = counts.byRow[tr.dataset.row] || 0;
-      btn.classList.toggle('has-note', !!n);
-      btn.title = n ? 'Заметок по эпику: ' + n : '';
+      mark.classList.toggle('has-note', !!n);
+      mark.title = n ? 'Заметок по эпику: ' + n : '';
     });
   }
+
+  // ------------------------- сводка спринта: успеваем ли -------------------------
+  // Сделано — по статусам задач сейчас (как в строках эпиков), прогноз — по темпу закрытия
+  // из burndown: (закрыто в последний день − в первый) / прошедшие рабочие дни × оставшиеся.
+  var MON = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  function dMon(iso) { return iso ? +iso.slice(8, 10) + ' ' + MON[+iso.slice(5, 7) - 1] : '—'; }
+  function isoDay(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+  // рабочие дни с сегодняшнего по последний день спринта включительно (праздники не учитываем)
+  function workdaysLeft(end, now) {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate()), n = 0;
+    while (isoDay(d) <= end) { if (d.getDay() % 6) n++; d.setDate(d.getDate() + 1); }
+    return n;
+  }
+
+  function sprintSummary(t, now) {
+    var c = { total: 0 };
+    BUCKETS.forEach(function (b) { c[b.id] = 0; });
+    (t.epics || []).forEach(function (e) {
+      var x = tallyEpic(e);
+      BUCKETS.forEach(function (b) { c[b.id] += x[b.id]; });
+      c.total += x.total;
+    });
+    var bd = t.burndown || {}, days = bd.days || [];
+    var act = days.filter(function (d) { return !d.future; });
+    var fc = null;
+    if (act.length > 1 && c.total) {
+      var worked = act.filter(function (d) { return !d.weekend; }).length - 1;
+      var pace = Math.max(0, act[act.length - 1].closed - act[0].closed) / Math.max(1, worked);
+      var ahead = days.filter(function (d) { return d.future && !d.weekend; }).length;
+      var proj = Math.min(c.total, c.done + Math.round(pace * ahead));
+      var gap = c.total - proj;
+      fc = { pace: pace, proj: proj, gap: gap, level: gap <= 0 ? 'ok' : gap <= Math.ceil(c.total * 0.1) ? 'warn' : 'bad' };
+    }
+    var blk = t.blockers && t.blockers.items || null;
+    var at = t._meta && t._meta.collectedAt;
+    var ageH = at ? (now - parseTs(at)) / 36e5 : null;
+    return { c: c, start: bd.start, end: bd.end, left: bd.end ? workdaysLeft(bd.end, now) : null, fc: fc,
+             blk: blk, long: blk ? blk.filter(function (b) { return b.days >= 10; }).length : 0,
+             who: t.blockers && t.blockers.byPerson && t.blockers.byPerson[0] || null,
+             at: at, stale: ageH != null && ageH > 24 };
+  }
+
+  function leftText(n) {
+    return n == null ? '' : n <= 0 ? 'спринт завершён' : n === 1 ? 'последний день' : 'осталось ' + n + ' ' + plural(n, 'рабочий день', 'рабочих дня', 'рабочих дней');
+  }
+
+  function renderSummary() {
+    var box = document.getElementById('sprintSum');
+    var s = sprintSummary(team, new Date()), c = s.c;
+    if (!c.total && !s.end) { box.hidden = true; return; }
+    box.hidden = false;
+    var at = s.at ? String(s.at) : '';
+    var head = '<div class="sum-head">' +
+      (s.start ? '<span class="sum-dates">' + dMon(s.start) + ' – ' + dMon(s.end) + '</span>' : '') +
+      (s.left != null ? '<span class="sum-left">' + leftText(s.left) + '</span>' : '') +
+      (at ? '<span class="sum-at' + (s.stale ? ' stale' : '') + '" title="Когда собраны данные из JIRA">' +
+        (s.stale ? 'данные от ' : 'данные ') + dMon(at.slice(0, 10)) + ' ' + at.slice(11, 16) + (s.stale ? ' — не обновлялись' : '') + '</span>' : '') +
+      '</div>';
+    var legend = [['progress', 'в работе'], ['blocked', 'в ожидании'], ['check', 'на проверке'], ['open', 'не начато']].map(function (p) {
+      var n = p[0] === 'check' ? c.testing + c.review : c[p[0]];
+      return n ? '<span><i style="background:' + BUCKET_COLOR[p[0] === 'check' ? 'review' : p[0]] + '"></i>' + p[1] + ' ' + n + '</span>' : '';
+    }).join('');
+    var done = '<div class="tile t-done"><div class="t-label">Сделано</div>' +
+      '<div class="t-big">' + c.done + '<small> из ' + c.total + ' · ' + donePct(c) + '%</small></div>' +
+      statusBar(c, 'big') + '<div class="t-legend">' + legend + '</div></div>';
+    var fc = s.fc ? '<div class="tile t-fc ' + s.fc.level + '" title="Темп — закрытые задачи в рабочий день по burndown спринта' +
+        (s.stale ? '; прогноз на день сбора данных' : '') + '"><div class="t-label">Прогноз к ' + dMon(s.end) + '</div>' +
+      '<div class="t-big">≈ ' + s.fc.proj + '<small> из ' + c.total + '</small></div>' +
+      '<div class="t-note"><b>' + (s.fc.level === 'ok' ? 'успеваем' : 'не успеваем ≈ ' + s.fc.gap) + '</b> · темп ' +
+        fmt(Math.round(s.fc.pace * 10) / 10) + ' в день</div></div>' : '';
+    var blk = s.blk ? '<button type="button" class="tile t-blk' + (s.blk.length ? '' : ' none') + '" data-go="blockers">' +
+      '<div class="t-label">Блокаторы</div><div class="t-big">' + s.blk.length + '</div>' +
+      '<div class="t-note">' + (!s.blk.length ? 'ничего не стоит' :
+        (s.long ? s.long + ' ' + plural(s.long, 'стоит', 'стоят', 'стоят') + ' 10+ дней' : 'все моложе 10 дней') +
+        (s.who ? ' · больше всего у ' + esc(shortName(s.who.name)) : '')) + '</div></button>' : '';
+    box.innerHTML = head + '<div class="sum-tiles">' + done + fc + blk + '</div>';
+  }
+
+  document.getElementById('sprintSum').addEventListener('click', function (e) {
+    var go = e.target.closest('[data-go]');
+    if (go) document.getElementById(go.dataset.go).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   function renderTable() {
 
@@ -92,11 +248,12 @@
       return (
         '<tr data-row="' + esc(e.rowId) + '"' + ctxAttr(epicTarget(e)) + '>' +
           '<td class="epic">' + epicCell + '</td>' +
-          '<td class="tally">' + tallyHtml(tallyEpic(e)) + '</td>' +
-          '<td class="actions"><button class="action-btn" data-open="' + esc(e.rowId) + '">Статус</button></td>' +
+          '<td class="prog">' + epicProgress(tallyEpic(e)) + '</td>' +
+          '<td class="go"><span class="row-go" aria-hidden="true">›</span></td>' +
         '</tr>'
       );
     }).join('');
+    document.getElementById('initsN').textContent = EPICS.length;
 
     // клик по любому месту строки открывает панель
     tableBody.querySelectorAll('tr').forEach(function (tr) {
@@ -549,6 +706,7 @@
     fillRefList();
     renderHero();
     blkState = { who: null, open: {} };
+    renderSummary();
     renderBlockers();
     renderTable();
     renderMetricsLink();
@@ -559,6 +717,7 @@
   migrateNotes();
   fillRefList();
   renderHero();
+  renderSummary();
   renderBlockers();
   renderTable();
   renderMetricsLink();
