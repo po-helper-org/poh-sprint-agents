@@ -20,6 +20,12 @@ const check = (ok, what) => { console.log((ok ? '✓ ' : '✗ ') + what); if (!o
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const p = await ctx.newPage();
+// шапка — в меню бургера (shared/burger.html): прежние кнопки скрыты, пункт меню нажимает их
+const viaMenu = async (id, tap = false) => {
+  const hit = (sel) => (tap ? p.tap(sel) : p.click(sel));
+  await hit('#burgerBtn');
+  await hit(`#burgerBody [data-bm-click="${id}"]`);
+};
 const errors = [];
 p.on('pageerror', e => errors.push(e.message));
 const open = async () => { await p.goto(pathToFileURL(page).href); await p.waitForTimeout(500); };
@@ -80,7 +86,7 @@ s = await panel();
 check(s.n === before && s.text.includes('Комментарий ко второй команде'), 'после очистки localStorage комментарии восстановлены из IndexedDB');
 
 // удаление — только руками: удалённый комментарий не воскресает из копии
-await p.click('#deckNotes');
+await viaMenu('deckNotes');
 await p.waitForTimeout(150);
 const delText = await p.evaluate(() => document.querySelector('#itemsList .nrow .ntext').textContent);
 await p.click('#itemsList .nrow [data-del]');
@@ -93,7 +99,7 @@ check(s.n === before - 1 && !s.text.includes(delText.slice(0, 20)), 'удалё�
 // «Очистить комментарии» — стирает всё, после подтверждения; копия в IndexedDB их не возвращает
 await open();
 await p.waitForTimeout(300);
-await p.click('#deckNotes');
+await viaMenu('deckNotes');
 await p.waitForTimeout(150);
 let asked = '';
 p.once('dialog', d => { asked = d.message(); d.accept(); });

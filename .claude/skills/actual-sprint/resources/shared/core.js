@@ -609,6 +609,60 @@
   // копия в IndexedDB догоняет localStorage, а очищенный localStorage — восстанавливается из неё
   restoreComments(function (restored) { if (restored) refreshComments(); });
 
+  // ------------------------- бургер вместо шапки -------------------------
+  // Кнопка «☰ команда · спринт» и меню с подробностями (shared/burger.html). Шаблон задаёт
+  // burger.build() — разметку меню (bmSection/bmItem) и burger.label() — подпись кнопки.
+  // Пункт data-bm-click="<id>" нажимает прежнюю кнопку страницы (она скрыта, логика та же).
+  // Оболочка виджета (тот же origin) добавляет свои пункты: window.REPORT_MENU_EXTRA = [{label, sub, run}].
+  var burger = { build: null, label: null };
+  var burgerBtn = document.getElementById('burgerBtn');
+  function bmItem(attr, label, sub, tail) {
+    return '<button type="button" class="bm-item" ' + attr + '><span class="bm-main"><span class="bm-label">' + esc(label) + '</span>' +
+      (sub ? '<span class="bm-sub">' + esc(sub) + '</span>' : '') + '</span>' + (tail == null ? '<span class="bm-go">›</span>' : tail) + '</button>';
+  }
+  function bmSection(title, html) { return '<section class="bm-sec">' + (title ? '<h3>' + esc(title) + '</h3>' : '') + html + '</section>'; }
+  function burgerExtra() { var x = window.REPORT_MENU_EXTRA; return Array.isArray(x) ? x : []; }
+  function burgerIsOpen() { return !!burgerBtn && !document.getElementById('burgerMenu').hidden; }
+  function renderBurger() {
+    if (!burgerBtn || !burger.build) return;
+    var extra = burgerExtra();
+    document.getElementById('burgerBody').innerHTML = burger.build() + (extra.length ? bmSection('Виджет', extra.map(function (x, i) {
+      return bmItem('data-bm-extra="' + i + '"', x.label, x.sub); }).join('')) : '');
+  }
+  function refreshBurger() {
+    if (!burgerBtn) return;
+    document.getElementById('burgerLabel').textContent = burger.label ? burger.label() : '';
+    var n = +(document.getElementById('cCount') || {}).textContent || 0, badge = document.getElementById('burgerBadge');
+    badge.hidden = !n;
+    badge.textContent = n;
+    badge.title = n ? 'Комментариев: ' + n : '';
+    if (burgerIsOpen()) renderBurger();
+  }
+  function setBurgerOpen(open) {
+    if (!burgerBtn) return;
+    if (open) renderBurger();
+    document.getElementById('burgerMenu').hidden = !open;
+    document.getElementById('burgerScrim').hidden = !open;
+    burgerBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    document.body.classList.toggle('burger-open', open);
+  }
+  if (burgerBtn) {
+    burgerBtn.addEventListener('click', function () { setBurgerOpen(!burgerIsOpen()); });
+    document.getElementById('burgerClose').addEventListener('click', function () { setBurgerOpen(false); });
+    document.getElementById('burgerScrim').addEventListener('click', function () { setBurgerOpen(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && burgerIsOpen()) setBurgerOpen(false); });
+    document.getElementById('burgerBody').addEventListener('click', function (e) {
+      var x = e.target.closest('[data-bm-extra]');
+      if (x) { setBurgerOpen(false); var it = burgerExtra()[+x.dataset.bmExtra]; if (it && it.run) it.run(); return; }
+      var c = e.target.closest('[data-bm-click]');
+      if (!c) return;
+      var target = document.getElementById(c.dataset.bmClick);
+      if (!c.hasAttribute('data-bm-stay')) setBurgerOpen(false);
+      if (target) target.click();
+      if (c.hasAttribute('data-bm-stay')) renderBurger();
+    });
+  }
+
   function refreshComments() {
     renderNotes();
     var counts = commentCounts();
@@ -616,6 +670,7 @@
     document.querySelectorAll('[data-cmark]').forEach(function (el) {
       el.innerHTML = cmarkHtml(counts.byKey[el.dataset.cmark] || 0);
     });
+    refreshBurger();
   }
 
   // --- поле заметки по правому клику: сразу с привязкой к строке
@@ -1518,6 +1573,7 @@
   });
 
   // корзина: открыть/закрыть, новая заметка, промт
+  document.getElementById('notesClose').addEventListener('click', function () { setNotesOpen(false); });
   notesToggle.addEventListener('click', function () {
     setNotesOpen(!notesPanel.classList.contains('open'));
     if (notesPanel.classList.contains('open')) { renderNotes(); document.getElementById('nText').focus(); }

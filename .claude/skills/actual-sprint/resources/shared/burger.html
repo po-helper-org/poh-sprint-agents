@@ -1,0 +1,11 @@
+<!-- Бургер вместо шапки (общий движок): кнопка «☰ команда · спринт» и меню с подробностями.
+     Содержимое меню собирает шаблон (burger.build); прежние кнопки шапки остаются скрытыми —
+     пункты меню нажимают их, логика страниц не меняется. -->
+<button class="burger" id="burgerBtn" type="button" aria-label="Меню отчёта" aria-expanded="false" aria-controls="burgerMenu">
+  <span class="burger-ico" aria-hidden="true"><i></i><i></i><i></i></span><span class="burger-label" id="burgerLabel"></span><span class="burger-badge" id="burgerBadge" hidden></span>
+</button>
+<div class="burger-scrim" id="burgerScrim" hidden></div>
+<aside class="burger-menu" id="burgerMenu" hidden aria-label="Меню отчёта">
+  <div class="bm-head"><b id="bmTitle">Отчёт по спринту</b><button class="bm-close" id="burgerClose" type="button" aria-label="Закрыть меню">✕</button></div>
+  <div class="bm-body" id="burgerBody"></div>
+</aside>
