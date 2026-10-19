@@ -145,7 +145,7 @@ class QuarterModelTest(unittest.TestCase):
         self.assertEqual('E-1', cand['key'])
         self.assertEqual('решение по объёму или сроку: к 31.12 с 85% успеем 20 из 60 задач', cand['ask'])
         self.assertEqual(date(2026, 10, 26), cand['by'])
-        self.assertEqual('снять 40 из 60 задач из квартала или сдвинуть срок', r['path'])
+        self.assertEqual('снять 40 из 60 задач из квартала, сдвинуть срок или дать людей', r['path'])
         self.assertEqual([], view['escalations'])
 
     def test_blocker_age_in_working_days_sets_the_colour(self):
@@ -358,6 +358,8 @@ class PageTest(unittest.TestCase):
         self.assertLess(html.index('Нужно решение'), html.index('Инициатива E-2'))
         self.assertIn('<details', html)
         self.assertIn('/jira/?key=E1-O0', html)
+        # на телефоне шапки таблицы нет — у каждой ячейки своя подпись
+        self.assertIn('data-l="Шанс к 31.12"', html)
 
     def test_page_has_no_inline_scripts_and_escapes_jira_text(self):
         html = qr.render_html(approved_view(title='<img src=x onerror=alert(1)>'))

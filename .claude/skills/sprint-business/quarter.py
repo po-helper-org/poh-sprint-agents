@@ -173,7 +173,7 @@ details.row>summary::-webkit-details-marker{display:none}details.row[open]>summa
 a{color:inherit}.late{color:var(--red)}.better{color:var(--green)}
 .team-sum{margin:0 0 8px;color:var(--muted)}.method{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:10px}
 @media (max-width:820px){.head{display:none}.grid{grid-template-columns:1fr 1fr;gap:4px 10px}
-.grid .kr,.grid .blk,.grid .path{grid-column:1/-1}.more{padding:6px 12px 14px}}
+.grid .kr,.grid .blk,.grid .path{grid-column:1/-1}.more{padding:6px 12px 14px}[data-l]::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted)}}
 @media print{button,.actions,details.cands{display:none}details.row>summary{background:none}}
 """
 
@@ -230,7 +230,9 @@ def _row_html(row, view, link):
     st = row['status']
     title = qm.TITLES.get(st, st)
     po = f'<br><small>оценка PO · расчёт: {e(qm.TITLES[row["computedStatus"]])}</small>' if row.get('override') else ''
-    dates = f'{_d(row["due"], view)} → {_d(row["p85"], view)}' if row['p85'] or row['due'] else '—'
+    due_late = row['due'] and row['due'] < view['today'] and st != 'done'
+    due = f'<span class="late" title="Target end прошёл">{_d(row["due"], view)}</span>' if due_late else _d(row['due'], view)
+    dates = f'{due} → {_d(row["p85"], view)}' if row['p85'] or row['due'] else '—'
     chance = qm.pct(row['chance'])
     if row.get('method') == 'team':
         chance += '<br><small>по темпу команды</small>'
@@ -240,7 +242,7 @@ def _row_html(row, view, link):
     week = f'<br><small>+{row["lastWeek"]:g} за нед.</small>' if row['total'] and row.get('lastWeek') else ''
     if row['blockers']:
         b = row['blockers'][0]
-        blk = f'⛔ {b["days"]} раб. дн. — {e(b["key"])} «{e(b["status"])}»'
+        blk = f'⛔\u00a0{b["days"]} раб. дн. — {e(b["key"])} «{e(b["status"])}»'
         if len(row['blockers']) > 1:
             blk += f' <small>и ещё {len(row["blockers"]) - 1}</small>'
     elif row['risks']:
@@ -251,11 +253,15 @@ def _row_html(row, view, link):
     path = e(row['path']) if row.get('path') else '<span class="muted">—</span>'
     if row.get('escalation') and row['escalation']['approved']:
         path += ' <small>· в эскалации</small>'
-    summary = (f'<summary class="grid"><span class="st"><span class="chip c-{st}">{ICON.get(st, "")} {e(title)}</span>{po}</span>'
+    deadline = _d(view['deadline'], view)
+    summary = (f'<summary class="grid"><span class="st"><span class="chip c-{st}">{ICON.get(st, "")}\u00a0{e(title)}</span>{po}</span>'
                f'<span class="kr"><b>{e(row["kr"] or row["key"])}</b>{e(row["title"])}'
                f'<br><small>{e(row["obj"] or "")} · {e(row["key"])}</small></span>'
-               f'<span class="num">{dates}</span><span class="num">{chance}</span><span class="num">{prog}{week}</span>'
-               f'<span class="blk">{blk}</span><span class="path">{path}</span><span class="num">{_delta_html(row, view)}</span></summary>')
+               f'<span class="num" data-l="Target end → 85%">{dates}</span>'
+               f'<span class="num" data-l="Шанс к {deadline}">{chance}</span>'
+               f'<span class="num" data-l="Прогресс">{prog}{week}</span>'
+               f'<span class="blk" data-l="Блокатор / риск">{blk}</span><span class="path" data-l="Путь в зелёный">{path}</span>'
+               f'<span class="num" data-l="За неделю">{_delta_html(row, view)}</span></summary>')
     more = []
     if row.get('override'):
         more.append(f'<div><b>Оценка PO:</b> {e(row["override"])}</div>')
@@ -288,7 +294,7 @@ def _row_html(row, view, link):
 
 def render_html(view, link=DEFAULT_LINK):
     counts = view['counts']
-    chips = ''.join(f'<span class="chip c-{s}">{ICON[s]} {counts[s]} {COUNT_LABEL[s]}</span>' for s in qm.STATUSES if counts.get(s))
+    chips = ''.join(f'<span class="chip c-{s}">{ICON[s]}\u00a0{counts[s]} {COUNT_LABEL[s]}</span>' for s in qm.STATUSES if counts.get(s))
     if view['previousWeek']:
         chips += f'<span class="chip{" c-red" if view["shifted"] else ""}">прогноз сдвинулся позже: {view["shifted"]}</span>'
     fetched = view.get('fetchedAt') or ''

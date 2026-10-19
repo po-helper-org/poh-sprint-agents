@@ -138,7 +138,7 @@ def path_to_green(row, monday, deadline):
         return f'по нынешнему темпу к {ddmm(deadline)} не закроется ни одной задачи — решить, остаётся ли в квартале'
     if row['chance'] < ON_TRACK and row['howMany85'] < row['open']:
         cut = row['open'] - row['howMany85']
-        return f'снять {cut} из {row["open"]} {plural(row["open"], "задачи", "задач", "задач")} из квартала или сдвинуть срок'
+        return f'снять {cut} из {row["open"]} {plural(row["open"], "задачи", "задач", "задач")} из квартала, сдвинуть срок или дать людей'
     if row['chance'] < ON_TRACK and row['growth']:
         return 'заморозить объём: новые задачи в эпике снижают шанс'
     return ''
