@@ -320,35 +320,36 @@ await p.waitForTimeout(300);
 check(await p.evaluate(() => (document.querySelector('.side-tab.active') || {}).dataset?.tab) === 'scope', 'клик по инициативе — сайдбар «Весь эпик»');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
-// «Риски и проблемы»: метка, проблема, что будет или где нужна помощь — у каждой команды
-const KINDS = ['Внешнее', 'Ресурс', 'Общее', 'Срок'];
-const rk = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.risks')].map(sl => {
-  const t = TEAMS.find(x => x.slug === sl.dataset.team), b = t.business || {};
-  return { team: t.slug, title: sl.querySelector('.slide-title').textContent, agent: (b.risks || []).length,
-    agentKinds: (b.risks || []).map(r => r.kind || 'general'),
-    blocked: t.epics.some(e => e.stories.some(st => classifyBucket(st.status, st.category) === 'blocked')),
-    rows: [...sl.querySelectorAll('.rk-row')].map(r => ({ kind: r.querySelector('.rk-kind').textContent, title: r.querySelector('.rk-title').textContent,
-      text: r.querySelector('.rk-text').textContent })) };
-}));
-const KIND_RU = { external: 'Внешнее', resource: 'Ресурс', general: 'Общее', deadline: 'Срок' };
+// «Риски и проблемы»: три столбца — инициатива · история (из данных) · комментарий (агента или из данных)
+const rk = await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.risks')].map(sl => ({
+  team: sl.dataset.team, title: sl.querySelector('.slide-title').textContent,
+  head: [...(sl.querySelector('.rk-head') || { children: [] }).children].map(c => c.textContent),
+  rows: [...sl.querySelectorAll('.rk-row:not(.rk-head)')].map(r => ({ story: r.querySelector('.rk-st').textContent,
+    meta: r.querySelector('.rk-meta').textContent, note: r.querySelector('.rk-note').textContent, auto: r.querySelector('.rk-note').classList.contains('auto') })),
+})));
 check(await p.evaluate(() => [...document.querySelectorAll('#deckSlides .fslide.risks')].every(s => !s.querySelector('.slide-sub'))),
       'под заголовком «Рисков и проблем» подписи нет');
-check(rk.every(r => r.title === 'Риски и проблемы' && r.rows.length <= 5 && r.rows.every(x => KINDS.includes(x.kind) && x.title && x.text)),
-      '«Риски и проблемы»: до 5 строк — метка (Внешнее / Ресурс / Общее / Срок), проблема, что будет или какая помощь');
-const agentRk = rk.find(r => r.agent);
-check(!!agentRk && agentRk.rows.length === agentRk.agent && agentRk.rows.every((x, i) => x.kind === KIND_RU[agentRk.agentKinds[i]]),
-      'риски агента — с его метками (без метки — «Общее»)');
-const autoRk = await p.evaluate(() => {
-  // команда с блокерами, но без рисков агента: блок агента на время убираем
-  const t = TEAMS.find(x => x.epics.some(e => e.stories.some(st => /ожида|блок/i.test(st.status))));
+check(rk.every(r => r.title === 'Риски и проблемы' && r.rows.length <= 10 && (!r.rows.length || r.head.join('|') === 'Инициатива|История|Комментарий')),
+      '«Риски и проблемы»: до 10 строк, столбцы Инициатива · История · Комментарий');
+check(rk.some(r => r.rows.some(x => /«[^»]+» с \d\d\.\d\d/.test(x.meta) && /эскалирует/i.test(x.note))),
+      'заблокированная история — строка: статус с даты, комментарий из данных — кто эскалирует');
+check(rk.some(r => r.rows.some(x => x.story === 'Инициатива целиком' && /срок \d\d\.\d\d прош|не успеваем к/.test(x.meta))),
+      'сдвиг срока — строка «Инициатива целиком» со сроком');
+const noteRk = await p.evaluate(() => {
+  // комментарий агента: показывается, пока состояние задачи то же (sig), иначе — текст из данных
+  const t = TEAMS.find(x => x.epics.some(e => e.stories.some(st => classifyBucket(st.status, st.category) === 'blocked')));
+  const st = t.epics.flatMap(e => e.stories).find(s => classifyBucket(s.status, s.category) === 'blocked');
   const saved = t.business;
-  t.business = {};
-  try { return withTeam(t, () => teamRisks(t, teamStreams(t))); } finally { t.business = saved; }
+  t.business = Object.assign({}, saved, { riskNotes: { [st.key]: { text: 'Ждём доступ от смежной команды. Нужно согласовать до пятницы.', sig: st.status + '@' + (st.statusChanged || '') } } });
+  try {
+    const fresh = withTeam(t, () => teamRisks(t, teamStreams(t))).list.find(x => x.key === st.key);
+    t.business.riskNotes[st.key].sig = 'другой@статус';
+    const old = withTeam(t, () => teamRisks(t, teamStreams(t))).list.find(x => x.key === st.key);
+    return { fresh: fresh && fresh.note, old: old && old.note };
+  } finally { t.business = saved; }
 });
-check(!autoRk.agent && autoRk.list.some(x => x.kind === 'external' && /нужна помощь — эскалирует/i.test(x.text)),
-      'без агента — из данных: блокеры → «Внешнее» с тем, кто эскалирует');
-check(rk.some(r => !r.agent && r.rows.some(x => x.kind === 'Срок' && /по темпу/i.test(x.text))),
-      'без агента — сдвиг сроков из данных: «Срок», по темпу сгорания — к дд.мм');
+check(noteRk.fresh === 'Ждём доступ от смежной команды. Нужно согласовать до пятницы.' && noteRk.old === '',
+      'комментарий агента — пока статус задачи тот же; сменился — текст из данных');
 await goTo('#deckSlides tr.erow[data-key="INIT-125"]');
 const rowCheck = await p.evaluate(() => {
   const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-125"]');

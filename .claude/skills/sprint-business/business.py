@@ -9,6 +9,8 @@
     business.py check [--file путь]          схема, хеш данных, эпики и истории, длины, числа
     business.py apply [--file путь]          check, затем render
     business.py render [--output путь]       sprint-business.html из снимка, без JIRA
+    business.py risk-todo [--team slug]      строки «Рисков и проблем» без свежего комментария агента
+    business.py risk-put --team slug --author кто --file черновик   комментарии к ним (risk_notes.py)
 
 Коды выхода: 0 — успех, 1 — блок не принят, 2 — нет конфига или снимка.
 """
@@ -25,6 +27,7 @@ import build as build_mod  # noqa: E402
 import buckets as buckets_mod  # noqa: E402
 import schema as schema_mod  # noqa: E402
 import validate as validate_mod  # noqa: E402
+import risk_notes as notes_mod  # noqa: E402
 
 SCHEMA_PATH = HERE / 'contract' / 'business.schema.json'
 TEMPLATE_PATH = HERE / 'resources' / 'business_template.html'
@@ -211,6 +214,7 @@ def render(cfg, data=None, file=None, output=None):
     teams = load_snapshot(Path(data).resolve() if data else cfg.data)
     path = Path(file).resolve() if file else cfg.business_data
     attached, stale = attach(teams, read_doc(path, required=False), read_goals(path.parent / 'sprint-goals.json'))
+    notes_mod.attach(teams, notes_mod.path_for(cfg.business_data))
     out = build_mod.write_page(teams, TEMPLATE_PATH, Path(output).resolve() if output else cfg.business)
     parts = [f'бизнес-отчёт из снимка: команд {len(teams)}']
     if attached:
@@ -264,6 +268,48 @@ def cmd_render(args, cfg):
     return render(cfg, args.data, args.file, args.output)
 
 
+def _risk_rows(cfg, args, slug):
+    teams = load_snapshot(Path(args.data).resolve() if args.data else cfg.data)
+    attach(teams, read_doc(cfg.business_data, required=False))
+    rules = buckets_mod.load()
+    team = next((t for t in teams if t['slug'] == slug), None) if slug else None
+    if slug and team is None:
+        raise BusinessError(f'команды {slug} нет в снимке; есть: {", ".join(t["slug"] for t in teams)}')
+    return teams, {t['slug']: notes_mod.candidates(t, rules) for t in ([team] if team else teams)}
+
+
+def cmd_risk_todo(args, cfg):
+    _, rows = _risk_rows(cfg, args, args.team)
+    doc = notes_mod.read(notes_mod.path_for(cfg.business_data))
+    out = {}
+    for slug, items in rows.items():
+        have = (doc['teams'].get(slug) or {}).get('notes') or {}
+        for r in items:
+            n = have.get(r['key'])
+            r['note'] = n['text'] if n and n.get('sig') == r['sig'] else None
+        out[slug] = [r for r in items if args.all or not r['note']]
+    print(json.dumps({'teams': out, 'limit': {'chars': notes_mod.TEXT_LIMIT, 'sentences': notes_mod.SENTENCES}},
+                     ensure_ascii=False, indent=1))
+    return EXIT_OK
+
+
+def cmd_risk_put(args, cfg):
+    _, rows = _risk_rows(cfg, args, args.team)
+    try:
+        draft = json.loads(Path(args.file).read_text(encoding='utf-8'))
+        n, errors = notes_mod.put(notes_mod.path_for(cfg.business_data), args.team, args.author, draft, rows[args.team])
+    except (OSError, ValueError, notes_mod.NotesError) as exc:
+        print(f'✗ {exc}')
+        return EXIT_ERROR
+    for line in errors:
+        print(f'✗ {line}')
+    if errors:
+        print('комментарии не приняты — файл не изменён')
+        return EXIT_ERROR
+    print(f'комментарии к рискам ✓   {args.team}: {n}   → {notes_mod.path_for(cfg.business_data)}')
+    return EXIT_OK
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description='Бизнес-отчёт «ФАКТ | спринт» (навык sprint-business)')
     ap.add_argument('--config', default=ins.DEFAULT_CONFIG, help=f'по умолчанию {ins.DEFAULT_CONFIG}')
@@ -278,10 +324,18 @@ def main(argv=None):
         p.add_argument('--file', default=None, help='бизнес-блок (по умолчанию business_data конфига)')
         if name != 'check':
             p.add_argument('--output', default=None, help='куда писать HTML (по умолчанию business конфига)')
+    p_todo = sub.add_parser('risk-todo', help='строки «Рисков и проблем» без свежего комментария агента')
+    p_todo.add_argument('--team', default=None, help='slug одной команды')
+    p_todo.add_argument('--all', action='store_true', help='и строки, у которых комментарий уже есть')
+    p_put = sub.add_parser('risk-put', help='записать комментарии агента к рискам своей команды')
+    p_put.add_argument('--team', required=True, help='slug команды')
+    p_put.add_argument('--author', required=True, help='кто пишет (профиль агента)')
+    p_put.add_argument('--file', required=True, help='черновик {"КЛЮЧ": "комментарий"}')
     args = ap.parse_args(argv)
     try:
         cfg = ins.load_config(args.config)
-        return {'facts': cmd_facts, 'check': cmd_check, 'apply': cmd_apply, 'render': cmd_render}[args.cmd](args, cfg)
+        return {'facts': cmd_facts, 'check': cmd_check, 'apply': cmd_apply, 'render': cmd_render,
+                'risk-todo': cmd_risk_todo, 'risk-put': cmd_risk_put}[args.cmd](args, cfg)
     except (ins.InsightsError, build_mod.BuildError) as exc:
         print(f'✗ {exc}')
         return getattr(exc, 'code', EXIT_ERROR)
