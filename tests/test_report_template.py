@@ -209,12 +209,13 @@ class BusinessTemplateTest(unittest.TestCase):
                      'blk-badge', '🛑 блокаторы: ', 'function openBlockers(', 'Эскалирует:', "'эпик завершён'",
                      'function roadmapSlide(', 'function roadmapRows(', 'function nextSprints(', "RM_AUTO = 'в работе'",
                      "Инициативы по спринтам до ' + dayMon(sp[2].to)", 'function sprintCode(', 'RM_ROWS = 14', 'class="rm-sprint"',
-                     'function risksSlide(t, streams)', 'function teamRisks(', "external: 'Внешнее'", "deadline: 'Срок'", 'RK_ROWS = 5',
+                     'function risksSlide(t, streams)', 'function teamRisks(', 'RK_ROWS = 10', 'function rkSig(', '<div>Инициатива</div><div>История</div><div>Комментарий</div>',
+                     'Инициатива целиком', 'Из данных — агент уточнит',
                      'html += roadmapSlide(x.t, x.streams);', 'html += risksSlide(x.t, x.streams);'):
             self.assertIn(part, self.html)
         for gone in ('ИИ-агент PO по данным спринта', "' · эпик «'", "'Sprint Goal: '", 'PLAN_ROWS', 'class="pr-key"',
                      'class="h-panels"', 'Заблокированы · ', '⏳ не закрыто ', 'function plansSlide(', 'function openPlans(',
-                     'data-plancol', 'html += risksSlide();', 'РИСКИ'):
+                     'data-plancol', 'html += risksSlide();', 'РИСКИ', 'rk-kind', 'RK_KIND'):
             self.assertNotIn(gone, self.html)
 
     def test_story_calendar_and_feed(self):

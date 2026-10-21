@@ -375,12 +375,16 @@
   .rm-cell.empty { background: none; }
   .rm-more, .rm-empty { margin-top: 10px; font-size: 12px; color: var(--muted); grid-column: 1 / -1; }
   /* «Риски и проблемы»: метка · проблема · что будет / где нужна помощь */
-  .rk-list { margin-top: 28px; border-top: 1px solid #e5e5e5; }
-  .rk-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1.15fr); gap: 28px; padding: 16px 0; border-bottom: 1px solid #e5e5e5; align-items: baseline; }
-  .rk-kind { font-size: 12px; font-weight: 600; color: #888; }
-  .rk-kind.k-external { color: #b91c1c; } .rk-kind.k-deadline { color: #b45309; } .rk-kind.k-resource { color: #2563eb; }
-  .rk-title { font-size: 17px; font-weight: 700; line-height: 1.35; }
-  .rk-text { font-size: 15px; line-height: 1.45; color: #555; }
+  .rk-list { margin-top: 24px; border-top: 1px solid #e5e5e5; }
+  .rk-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1.2fr); gap: 24px; padding: 10px 0; align-items: baseline; }
+  .rk-row.rk-first { border-top: 1px solid #e5e5e5; padding-top: 14px; }
+  .rk-row.rk-head { padding: 8px 0; font-size: 12px; font-weight: 600; color: #888; border-top: 0; }
+  .rk-name { font-size: 16px; font-weight: 700; line-height: 1.3; }
+  .rk-key, .rk-meta { font-size: 12px; color: #888; margin-top: 3px; }
+  .rk-meta.k-external { color: #b91c1c; } .rk-meta.k-deadline { color: #b45309; }
+  .rk-st { font-size: 15px; line-height: 1.35; } .rk-st.rk-whole { color: #555; }
+  .rk-note { font-size: 14px; line-height: 1.45; color: #222; } .rk-note.auto { color: #666; }
+  .rk-more { margin-top: 10px; font-size: 12px; color: var(--muted); }
   .rk-empty { margin-top: 28px; font-size: 15px; color: #777; }
   .metric-card .chart-legend { font-size: 11px; color: #555; margin-top: 6px; }
   .metric-card p { font-size: 11.5px; color: #555; margin: 8px 0 0; line-height: 1.5; }
@@ -453,7 +457,7 @@
     .title-slide, .hero-slide { padding: 24px 18px; min-height: 60vh; }
     .hero-slide h1 { font-size: 40px; }
     .t-cards[class*="n"], .h-goals[class*="n"] { grid-template-columns: 1fr; }
-    .rk-row { grid-template-columns: 1fr; gap: 4px; }
+    .rk-row { grid-template-columns: 1fr; gap: 4px; } .rk-row.rk-head { display: none; }
     .h-kpis > div { padding: 0 14px; } .h-kpis b { font-size: 26px; }
     .fslide h1.slide-title { font-size: 22px; }
     table.rep col.c1, table.rep.epics col.c1 { width: 32%; } table.rep col.c2, table.rep.epics col.c2 { width: 46%; }
@@ -1606,51 +1610,73 @@
   }
 
   // ---------- «Риски и проблемы» команды: коммуникация с внешними командами и руководителями ----------
-  // Источник: риски агента (risks: метка, суть, что будет / где нужна помощь) → его прежняя колонка
-  // «Эскалировать» → данные: блокеры (ждём других — «Внешнее», кто эскалирует), просроченные
-  // эпики и прогноз позже срока («Срок»). До пяти строк — слайд краткий.
-  var RK_KIND = { external: 'Внешнее', resource: 'Ресурс', general: 'Общее', deadline: 'Срок' };
-  var RK_ROWS = 5;
+  // Три столбца: инициатива · история · комментарий. Первые два — из данных, детерминированно:
+  // заблокированные истории (каждая — строка) и эпики со сроком, который прошёл или не успеваем по темпу.
+  // Комментарий — агента (riskNotes: «почему стоим, что сделать», до трёх предложений, risk_notes.py),
+  // пока состояние задачи то же (sig); нет — короткий текст из данных.
+  var RK_ROWS = 10;
+  function rkSig(x) { return x.story ? (x.story.status || '') + '@' + (x.story.statusChanged || '') : 'due@' + (x.epic.epicDue || ''); }
   function teamRisks(t, streams) {
-    var b = biz(t);
-    if ((b.risks || []).length) return { agent: true, list: b.risks.slice(0, RK_ROWS).map(function (r) {
-      return { kind: RK_KIND[r.kind] ? r.kind : 'general', title: r.title, text: r.text };
-    }) };
-    var asks = (b.plans || {}).escalate || [];
-    if (asks.length) return { agent: true, list: asks.slice(0, RK_ROWS).map(function (c) {
-      return { kind: 'external', title: c.title, text: c.text || 'Нужна помощь извне.' };
-    }) };
-    var owner = b.escalation || 'PO команды', out = [];
+    var b = biz(t), notes = b.riskNotes || {}, owner = String(b.escalation || 'PO команды').replace(/\.+$/, ''), out = [];
     streams.forEach(function (s) {
-      if (!s.blocked.length) return;
-      var r = s.blocked[0], age = ageAtCollect(t, r.st.statusChanged), who = String(((b.rows || {})[r.st.key] || {}).escalate || owner).replace(/\.+$/, '');
-      out.push({ kind: 'external', title: clip(streamName(s), 60) + ': ' + clip(r.blocker || cleanTitle(r.st.title), 80),
-        text: (s.blocked.length > 1 ? 'Стоят ' + s.blocked.length + ' ' + plural(s.blocked.length, 'задача', 'задачи', 'задач') + ', первая — '
-          : '') + '«' + r.st.status + '» с ' + ddmm(r.st.statusChanged) + (age !== null ? ' (' + age + ' дн.)' : '') + '. Нужна помощь — эскалирует ' + who + '.' });
-    });
-    streams.forEach(function (s) {
-      var g = s.init;
-      if (!g || !g.due) return;
+      var name = streamName(s), epicKey = s.epic.epicKey || '', g = s.init;
+      s.blocked.slice().sort(function (x, y) { return String(x.st.statusChanged || '').localeCompare(String(y.st.statusChanged || '')); })
+        .forEach(function (r) {
+          var age = ageAtCollect(t, r.st.statusChanged), who = String(((b.rows || {})[r.st.key] || {}).escalate || owner).replace(/\.+$/, '');
+          out.push({ kind: 'external', name: name, epicKey: epicKey, epic: s.epic, story: r.st, key: r.st.key,
+            meta: '«' + r.st.status + '» с ' + ddmm(r.st.statusChanged) + (age !== null ? ' · ' + age + ' дн.' : ''),
+            auto: (r.blocker ? r.blocker.replace(/\.+$/, '') + '.' : (age !== null && age < 2 ? 'Встала в ожидание только что' : 'Стоит без движения' + (age !== null ? ' ' + age + ' дн.' : '')) + ', кого ждём — не записано.') +
+              ' Нужно снять блокер — эскалирует ' + who + '.' });
+        });
+      if (!g || !g.due || !epicKey) return;
+      var left = g.total - g.n.done;
       if (g.overdue) {
-        out.push({ kind: 'deadline', title: clip(streamName(s), 60) + ': срок ' + ddmm(g.due) + ' прошёл',
-          text: 'Сделано ' + g.pct + '%, осталось ' + (g.total - g.n.done) + ' ' + plural(g.total - g.n.done, 'задача', 'задачи', 'задач') +
-            (g.forecast ? '; по темпу — к ' + ddmm(g.forecast) : '') + '.' });
+        out.push({ kind: 'deadline', name: name, epicKey: epicKey, epic: s.epic, key: epicKey,
+          meta: 'срок ' + ddmm(g.due) + ' прошёл · сделано ' + g.pct + '%',
+          auto: 'Осталось ' + left + ' ' + plural(left, 'задача', 'задачи', 'задач') + (g.forecast ? ', по темпу — к ' + ddmm(g.forecast) : '') +
+            '. Нужно перенести срок или сократить объём.' });
       } else if (g.late) {
-        out.push({ kind: 'deadline', title: clip(streamName(s), 60) + ': не успеваем к ' + ddmm(g.due),
-          text: 'По темпу сгорания — к ' + ddmm(g.forecast) + ' (+' + Math.round((dayMs(g.forecast) - dayMs(g.due)) / 86400000) + ' дн.).' });
+        out.push({ kind: 'deadline', name: name, epicKey: epicKey, epic: s.epic, key: epicKey,
+          meta: 'не успеваем к ' + ddmm(g.due) + ' · сделано ' + g.pct + '%',
+          auto: 'По темпу — к ' + ddmm(g.forecast) + ' (+' + Math.round((dayMs(g.forecast) - dayMs(g.due)) / 86400000) + ' дн.).' +
+            ' Нужно сократить объём, добавить людей или перенести срок.' });
       }
     });
-    return { agent: false, list: out.slice(0, RK_ROWS) };
+    // сначала инициативы с заблокированными историями (дольше стоят — выше), затем только со сроком;
+    // внутри инициативы — истории по давности, строка срока последней
+    var groups = {}, order = [];
+    out.forEach(function (x) {
+      if (!groups[x.name]) { groups[x.name] = []; order.push(x.name); }
+      groups[x.name].push(x);
+    });
+    var oldest = function (rows) { return rows.filter(function (x) { return x.story; }).map(function (x) { return String(x.story.statusChanged || '9'); }).sort()[0] || '~'; };
+    order.sort(function (a, b) { var x = oldest(groups[a]), y = oldest(groups[b]); return x < y ? -1 : x > y ? 1 : 0; });
+    out = [].concat.apply([], order.map(function (k) { return groups[k]; }));
+    out.forEach(function (x) {
+      var n = notes[x.key];
+      x.note = n && n.text && n.sig === rkSig(x) ? n.text : '';
+    });
+    return { list: out.slice(0, RK_ROWS), more: Math.max(0, out.length - RK_ROWS), by: b.riskNotesBy || '' };
   }
 
   function risksSlide(t, streams) {
-    var rk = teamRisks(t, streams);
+    var rk = teamRisks(t, streams), prev = null;
+    var rows = rk.list.map(function (x, i) {
+      var id = 'rk:' + t.slug + ':' + x.key, first = x.name !== prev;
+      prev = x.name;
+      return '<div class="rk-row' + (first ? ' rk-first' : '') + '">' +
+        '<div class="rk-init">' + (first ? '<div class="rk-name">' + esc(clip(x.name, 90)) + '</div>' +
+          (x.epicKey ? '<div class="rk-key">' + keyLink(x.epicKey) + '</div>' : '') : '') + '</div>' +
+        '<div class="rk-story">' + (x.story
+          ? '<div class="rk-st">' + esc(clip(cleanTitle(x.story.title), 110)) + '</div><div class="rk-meta k-external">' + keyLink(x.key) + ' · ' + esc(x.meta) + '</div>'
+          : '<div class="rk-st rk-whole">Инициатива целиком</div><div class="rk-meta k-deadline">' + esc(x.meta) + '</div>') + '</div>' +
+        '<div class="rk-note' + (x.note ? '' : ' auto') + '"' + (x.note ? '' : ' title="Из данных — агент уточнит"') + '>' +
+          ed(id, x.note || x.auto) + '</div></div>';
+    }).join('');
     return slide('risks', '<h1 class="slide-title">Риски и проблемы</h1>' +
-      (rk.list.length ? '<div class="rk-list">' + rk.list.map(function (x, i) {
-        var id = 'rk:' + t.slug + ':' + i;
-        return '<div class="rk-row"><div class="rk-kind k-' + x.kind + '">' + RK_KIND[x.kind] + '</div>' +
-          '<div class="rk-title">' + ed(id + ':t', x.title) + '</div><div class="rk-text">' + ed(id + ':x', x.text) + '</div></div>';
-      }).join('') + '</div>' : '<div class="rk-empty">Блокеров и сдвигов сроков по данным нет.</div>'),
+      (rk.list.length ? '<div class="rk-list"><div class="rk-row rk-head"><div>Инициатива</div><div>История</div><div>Комментарий</div></div>' +
+        rows + '</div>' + (rk.more ? '<div class="rk-more">ещё ' + rk.more + ' — в отчёте PO</div>' : '')
+        : '<div class="rk-empty">Блокеров и сдвигов сроков по данным нет.</div>'),
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Риски и проблемы · ' + t.team }));
   }
 

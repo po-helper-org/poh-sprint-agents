@@ -284,3 +284,54 @@ class PageTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class RiskNotesTest(unittest.TestCase):
+    """«Риски и проблемы»: строки — из данных, комментарий агента — risk-put, привязан к состоянию задачи."""
+
+    def setUp(self):
+        self.ws = BizWorkspace()
+        self.addCleanup(self.ws.cleanup)
+        self.notes = self.ws.dir / 'reports' / 'sprint-risk-notes.json'
+
+    def todo(self, *args):
+        p = self.ws.bcli('risk-todo', *args)
+        self.assertEqual(0, p.returncode, p.stdout + p.stderr)
+        return json.loads(p.stdout)['teams']
+
+    def put(self, slug, draft):
+        f = self.ws.dir / 'draft.json'
+        f.write_text(json.dumps(draft, ensure_ascii=False), encoding='utf-8')
+        return self.ws.bcli('risk-put', '--team', slug, '--author', 'po-test', '--file', str(f))
+
+    def blocked_row(self):
+        for slug, rows in self.todo().items():
+            for r in rows:
+                if r['kind'] == 'blocked':
+                    return slug, r
+        self.fail('в демо-данных нет заблокированной истории')
+
+    def test_todo_lists_blocked_stories_and_dated_epics(self):
+        rows = [r for rs in self.todo().values() for r in rs]
+        self.assertTrue(any(r['kind'] == 'blocked' and r['sig'].startswith(r['status'] + '@') for r in rows))
+        self.assertTrue(all(r['note'] is None for r in rows))
+
+    def test_put_then_render_attaches_notes(self):
+        slug, row = self.blocked_row()
+        p = self.put(slug, {row['key']: 'Ждём доступ от смежной команды. Нужно согласовать до пятницы.'})
+        self.assertEqual(0, p.returncode, p.stdout)
+        doc = json.loads(self.notes.read_text(encoding='utf-8'))
+        self.assertEqual(row['sig'], doc['teams'][slug]['notes'][row['key']]['sig'])
+        self.assertNotIn(row['key'], [r['key'] for r in self.todo('--team', slug)[slug]])
+        self.assertEqual(0, self.ws.bcli('render').returncode)
+        team = next(t for t in self.ws.page_teams_of(self.ws.biz_page) if t['slug'] == slug)
+        self.assertEqual('po-test', team['business']['riskNotesBy'])
+        self.assertIn(row['key'], team['business']['riskNotes'])
+
+    def test_put_rejects_long_text_extra_sentences_and_foreign_keys(self):
+        slug, row = self.blocked_row()
+        for draft in ({row['key']: 'а' * 241}, {row['key']: 'Раз. Два. Три. Четыре.'}, {'NOPE-1': 'Ждём.'}):
+            p = self.put(slug, draft)
+            self.assertEqual(1, p.returncode, p.stdout)
+            self.assertIn('не приняты', p.stdout)
+        self.assertFalse(self.notes.exists())
