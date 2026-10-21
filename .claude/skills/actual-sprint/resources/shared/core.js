@@ -479,7 +479,11 @@
       return '<div class="nrow editing" data-id="' + esc(c.id) + '"' + dt + '>' +
         '<textarea class="nedit-text" title="Enter — сохранить, Esc — отмена">' + esc(c.text) + '</textarea>' +
         '<input class="nref nedit-ref" list="refList" autocomplete="off" value="' + esc(refValue(c.target)) + '"' +
-        ' placeholder="К чему — ключ эпика или задачи, необязательно"></div>';
+        ' placeholder="К чему — ключ эпика или задачи, необязательно">' +
+        '<div class="nedit-actions">' +
+          '<button class="nclear" type="button" data-cancel>Отмена</button>' +
+          '<button class="action-btn" type="button" data-save>Сохранить</button>' +
+        '</div></div>';
     }
     var tip = 'Добавлено ' + stamp(c.at, true) + (c.editedAt ? ', изменено ' + stamp(c.editedAt, true) : '') +
       (c.migrated ? ' · перенесено из заметки' : '') + (c.sprint ? ' · спринт ' + c.sprint : '');
@@ -555,6 +559,9 @@
             if (e.key === 'Escape') { e.stopPropagation(); cancel(); }
           });
         });
+        // тачпад/мышь без уверенного Enter: те же действия явными кнопками
+        if (q('[data-save]')) q('[data-save]').addEventListener('click', save);
+        if (q('[data-cancel]')) q('[data-cancel]').addEventListener('click', cancel);
       }
     });
   }
@@ -1595,6 +1602,8 @@
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); addFromBasket(); }
     });
   });
+  // тачпад/мышь: заметку добавляет и явная кнопка — не только Enter
+  document.getElementById('nAdd').addEventListener('click', addFromBasket);
 
   var copyBtn = document.getElementById('copyBtn');
   copyBtn.addEventListener('click', function () {

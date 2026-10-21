@@ -97,8 +97,12 @@ check(await count() === '2', 'заметки прошлой версии пер�
 // заметка без привязки — из корзины
 await openBasket();
 await p.fill('#nText', 'Истории по SEO нет в спринте');
-await p.press('#nText', 'Enter');
-check(await count() === '3', 'заметка без привязки добавляется из корзины');
+// тачпад/мышь без hover: заметку добавляет явная кнопка «Добавить», не только Enter
+check(await p.isVisible('#nAdd'), 'у поля заметки есть кнопка «Добавить» (одиночный клик, без Enter)');
+const nAddBox = await p.locator('#nAdd').boundingBox();
+check(nAddBox && nAddBox.height >= 32, `кнопка «Добавить» не меньше 32px по высоте (${nAddBox && nAddBox.height})`);
+await p.click('#nAdd');
+check(await count() === '3', 'заметка без привязки добавляется из корзины (кнопкой)');
 check((await p.inputValue('#nText')) === '', 'поле очищается после добавления');
 
 // привязка из корзины: ключ из отчёта и ключ вне отчёта
@@ -119,7 +123,12 @@ await p.hover('.nrow >> nth=-1');
 await p.click('.nrow >> nth=-1 >> [data-edit]');
 await p.fill('.nedit-text', 'Истории SEO-77 нет в спринте — завести');
 await p.fill('.nedit-ref', '');
-await p.press('.nedit-text', 'Enter');
+// правка без Enter: явные кнопки «Сохранить» и «Отмена» в режиме правки
+check(await p.isVisible('.nrow.editing [data-save]'), 'в правке есть кнопка «Сохранить» (одиночный клик)');
+check(await p.isVisible('.nrow.editing [data-cancel]'), 'в правке есть кнопка «Отмена»');
+const saveBox = await p.locator('.nrow.editing [data-save]').boundingBox();
+check(saveBox && saveBox.height >= 32, `кнопка «Сохранить» не меньше 32px (${saveBox && saveBox.height})`);
+await p.click('.nrow.editing [data-save]');
 prompt = await p.inputValue('#promptOut');
 check(prompt.includes('[без привязки] Истории SEO-77 нет в спринте — завести') && !prompt.includes('Вне отчёта'),
       'заметку можно отредактировать и отвязать');
@@ -127,9 +136,10 @@ check((await p.getAttribute('.nrow >> nth=-1', 'title')).includes('измене�
 check(await p.$('.nrow >> nth=-1 >> .nref-line') === null, 'у заметки без привязки нет подписи сущности');
 check((await p.textContent('.nrow >> nth=0 >> .nref-line')).startsWith(epicKey), 'у привязанной заметки подпись с ключом');
 const hidden = await p.$eval('.nrow >> nth=0 >> .nacts', el => getComputedStyle(el).opacity);
-await p.hover('.nrow >> nth=0'); await p.waitForTimeout(200);
-const shown = await p.$eval('.nrow >> nth=0 >> .nacts', el => getComputedStyle(el).opacity);
-check(hidden === '0' && shown === '1', 'карандаш и мусорка проявляются при наведении');
+check(hidden === '1', 'карандаш и мусорка видны всегда (тачпад RDP: hover есть, тап неточный)');
+// тачпад RDP (hover есть, но тап неточным): кнопки 36×36 и в фокусе с клавиатуры
+const editBox = await p.locator('.nrow >> nth=0 >> [data-edit]').boundingBox();
+check(editBox && editBox.width >= 34 && editBox.height >= 34, `иконки правки/удаления крупные (≥34px: ${editBox && editBox.width}×${editBox && editBox.height})`);
 check(await p.$eval('.nrow >> nth=0 >> [data-edit] svg', el => !!el) && await p.$eval('.nrow >> nth=0 >> [data-del] svg', el => !!el), 'действия — иконки');
 
 // правый клик по строке → заметка с привязкой; «Уже оставлено» для той же сущности
