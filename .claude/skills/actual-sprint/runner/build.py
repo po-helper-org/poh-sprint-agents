@@ -56,7 +56,7 @@ def attach_notes(teams, notes):
 
 # Поля, которые runner кладёт поверх данных сборщика: в хеш данных они не входят,
 # иначе инсайды «устаревали» бы от собственного встраивания и от правки заметок.
-OVERLAY_FIELDS = ('notes', 'insights', 'business', 'blockers')
+OVERLAY_FIELDS = ('notes', 'insights', 'business', 'blockers', 'groom')
 
 
 def attach_blockers(teams):
@@ -174,7 +174,10 @@ def render(teams, template_path):
     tpl = assemble(template_path)
     if PLACEHOLDER not in tpl:
         raise BuildError(f'в шаблоне {template_path} нет плейсхолдера {PLACEHOLDER}')
-    return tpl.replace(PLACEHOLDER, script_json(teams))
+    # `groom` (вкладка «Груминг», сборщик 1.12.0+) читает только poh-sprint-report из sprint-report.data.json:
+    # в страницу отчёта весь объём эпиков вне спринта не нужен — он утяжелил бы её на сотни КБ
+    page = [{k: v for k, v in t.items() if k != 'groom'} for t in teams]
+    return tpl.replace(PLACEHOLDER, script_json(page))
 
 
 def write_page(teams, template_path, path):

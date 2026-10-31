@@ -330,3 +330,16 @@ class RunnerTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class GroomStaysOutOfThePage(unittest.TestCase):
+    """1.12.0: `groom` — данные вкладки «Груминг»; страницы отчёта их не встраивают, дайджест инсайдов не от них зависит."""
+
+    def test_render_drops_groom_but_data_keeps_it(self):
+        import build
+        teams = [{'slug': 'a', 'epics': [], 'groom': {'epics': [{'epicKey': 'X-1'}], 'cards': {}}}]
+        tpl = Path(support.HERE).parent / '.claude' / 'skills' / 'actual-sprint' / 'resources' / 'report_template.html'
+        page = build.render(teams, tpl)
+        self.assertNotIn('"groom"', page)
+        self.assertIn('groom', teams[0], 'исходные данные не тронуты')
+        self.assertEqual(build.team_digest(teams[0]), build.team_digest({k: v for k, v in teams[0].items() if k != 'groom'}))
