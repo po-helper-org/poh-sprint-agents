@@ -263,6 +263,27 @@ class ParamsTest(unittest.TestCase):
         only = due(collect_in_process(params={'epic_due_field': 'duedate'}))
         self.assertEqual(('2026-10-15', None), (only['INIT-900'], only['INIT-901']))
 
+    def test_groom_off_by_default(self):
+        """1.12.0: без params.groom сборщик не ходит за эпиками доски и не отдаёт `groom`."""
+        self.assertNotIn('groom', support.collect_ok())
+
+    def test_groom_all_board_epics(self):
+        """1.12.0: «Груминг» — эпики доски без задач в спринте, карточки эпиков, квартал, метки, связи."""
+        data = collect_in_process(params={'groom': True})
+        groom = data['groom']
+        self.assertEqual('customfield_10930', groom['quarterField'])
+        self.assertEqual(['INIT-950'], [e['epicKey'] for e in groom['epics']], 'только эпики вне спринта')
+        backlog = groom['epics'][0]
+        self.assertEqual([], backlog['stories'])
+        self.assertEqual({'INIT-3900': None, 'INIT-3901': '2027Q1'}, {i['key']: i['quarter'] for i in backlog['scope']})
+        self.assertEqual({'INIT-900', 'INIT-901', 'INIT-902', 'INIT-950'}, set(groom['cards']))
+        self.assertEqual('2026Q4', groom['cards']['INIT-900']['quarter'])
+        self.assertEqual('Бэклог', groom['cards']['INIT-950']['status'])
+        scope = [i for e in data['epics'] for i in e.get('scope', [])]
+        linked = [i for i in scope if i.get('links')]
+        self.assertEqual({'type': 'is blocked by', 'key': 'INIT-900', 'status': 'В работе'}, linked[0]['links'][0])
+        self.assertTrue(all('quarter' in i and 'labels' in i and 'updated' in i for i in scope))
+
     def test_sprints_back_changes_depth(self):
         two = support.collect_ok(req=support.request(params={'sprints_back': 2}))
         self.assertEqual(2, len(two['metrics']['sprints']))

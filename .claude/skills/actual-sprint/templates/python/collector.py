@@ -38,6 +38,12 @@
     epic_due_field   "auto"             целевая дата эпика: «Target end» (Advanced Roadmaps), нет — duedate;
                                         или customfield_XXXXX / duedate — только это поле
     epic_due_names   ["target end", "целевая дата окончания"]  по каким именам искать поле
+    groom            false              данные для вкладки «Груминг» (1.12.0+): все незакрытые эпики доски,
+                                        не только эпики спринта, и по каждой задаче объёма — квартал, метки,
+                                        связи, дата правки
+    groom_max        3000               сколько задач объёма эпиков забирать для «Груминга»
+    quarter_field    "auto"             поле «квартал исполнения» (customfield_XXXXX); auto — по имени
+    quarter_names    ["квартал исполнения", "квартал", "quarter"]  по каким именам искать поле
 
 Точки, которые обычно правят под команду, помечены «# TEAM RULE:».
 """
@@ -56,7 +62,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 PROTOCOL = 1
-VERSION = '1.11.0'
+VERSION = '1.12.0'
 NAME = 'base'
 
 EXIT_OK, EXIT_ERROR, EXIT_CONFIG, EXIT_JIRA = 0, 1, 2, 3
@@ -230,6 +236,29 @@ def stats(vals):
             'count': len(vals)}
 
 
+def field_text(value):
+    """Значение пользовательского поля как текст: строка, {value}/{name}, список — через запятую."""
+    if value is None or value == '':
+        return None
+    if isinstance(value, list):
+        return ', '.join(t for t in (field_text(v) for v in value) if t) or None
+    if isinstance(value, dict):
+        return field_text(value.get('value') or value.get('name') or value.get('title'))
+    return str(value)
+
+
+def issue_links(fields):
+    """Связи задачи: [{type: «is blocked by», key, status}] — как их называет JIRA со стороны этой задачи."""
+    out = []
+    for ln in (fields or {}).get('issuelinks') or []:
+        other, way = (ln.get('outwardIssue'), 'outward') if ln.get('outwardIssue') else (ln.get('inwardIssue'), 'inward')
+        if not other:
+            continue
+        out.append({'type': (ln.get('type') or {}).get(way) or (ln.get('type') or {}).get('name') or '',
+                    'key': other['key'], 'status': (((other.get('fields') or {}).get('status')) or {}).get('name')})
+    return out
+
+
 def priority_name(fields):
     """Имя приоритета как в JIRA; поле выключено в схеме проекта → None."""
     return ((fields or {}).get('priority') or {}).get('name')
@@ -360,6 +389,9 @@ class Collector:
         self.epic_scope = bool(p.get('epic_scope', True))
         self.epic_scope_max = int(p.get('epic_scope_max', 2000))
         self.sp_id = None   # поле Story Points; находится в collect()
+        self.groom = bool(p.get('groom', False))
+        self.groom_max = int(p.get('groom_max', 3000))
+        self.quarter_id = None   # поле «квартал исполнения»; находится в collect(), если включён groom
 
     # ---------------------------------------------------------- инфраструктура
 
@@ -419,6 +451,19 @@ class Collector:
         self.warn('поле Story Points не найдено — выработка участников в задачах. Задайте params.sp_field.')
         return None
 
+    def quarter_field(self):
+        """TEAM RULE: поле «квартал исполнения» для «Груминга». Нет его — колонка квартала пустая."""
+        explicit = self.params.get('quarter_field', 'auto')
+        if explicit and explicit != 'auto':
+            return explicit
+        names = [n.lower() for n in (self.params.get('quarter_names')
+                                     or ('квартал исполнения', 'квартал', 'quarter'))]
+        for f in self.jira.api('/rest/api/2/field'):
+            if f['name'].strip().lower() in names:
+                return f['id']
+        self.warn('поле «квартал исполнения» не найдено — в «Груминге» квартал пуст. Задайте params.quarter_field.')
+        return None
+
     def epic_due_fields(self):
         """TEAM RULE: где команда держит целевую дату эпика — по порядку, первое заполненное.
         Чаще всего это «Target end» (Advanced Roadmaps), а не «Срок исполнения» (duedate)."""
@@ -438,6 +483,9 @@ class Collector:
         epic_field = self.epic_link_field()
         self.sp_id = self.sp_field()
         self.due_ids = self.epic_due_fields()
+        if self.groom:
+            self.quarter_id = self.quarter_field()
+            self.epic_scope = True   # «Груминг» без объёма эпиков не имеет смысла
 
         board_name = self.board_name(board_id)
 
@@ -471,6 +519,7 @@ class Collector:
         epics = self.build_epics(issues, epic_field)
         self.attach_story_events(epics, issues, with_comments[active['id']])
         self.build_scope(epics, epic_field, last, per_sprint, active)
+        groom = self.build_groom(epics, epic_field, last, per_sprint, active)
         metrics, velocity = self.build_metrics(last, per_sprint)
         burndown = self.build_burndown(active, issues)
         control = self.build_control(last, per_sprint)
@@ -480,7 +529,7 @@ class Collector:
         if offboard is not None:
             output['offboard'] = offboard
 
-        return {
+        out = {
             'slug': self.team['slug'], 'team': self.team['name'], 'boardId': board_id,
             'boardName': board_name,
             'boardUrl': f'{self.jira.base}/secure/RapidBoard.jspa?rapidView={board_id}',
@@ -489,6 +538,9 @@ class Collector:
             'velocity': velocity, 'output': output, 'logs': logs,
             'statusMap': dict(sorted(self.status_map.items())),
         }
+        if groom is not None:
+            out['groom'] = groom
+        return out
 
     def attach_story_events(self, epics, issues, commented):
         """Хронология истории за всё время: создание, смены статуса и комментарии самой
@@ -617,24 +669,38 @@ class Collector:
         keys = [e['epicKey'] for e in epics if e['epicKey']]
         if not (self.epic_scope and epic_field and keys):
             return
-        # в каком спринте отчёта задача была: «в спринте», имя прошлого спринта или ничего
+        by_epic = self.fetch_scope(keys, epic_field, self.sprint_of(sprints, per_sprint), active,
+                                   self.epic_scope_max)
+        for e in epics:
+            if e['epicKey']:
+                e['scope'] = by_epic.get(e['epicKey'], [])
+
+    @staticmethod
+    def sprint_of(sprints, per_sprint):
+        """В каком спринте отчёта задача была: имя спринта; нет в спринтах отчёта — ключа нет."""
         where = {}
         for s in sprints:
             for i in per_sprint[s['id']]:
                 where[i['key']] = s['name']
+        return where
+
+    def fetch_scope(self, keys, epic_field, where, active, limit):
+        """Задачи (без подзадач) эпиков keys → {ключ эпика: [объём]}; подзадачи — внутри задач."""
         # TEAM RULE: как в JQL сослаться на поле связи с эпиком
         m = re.match(r'customfield_(\d+)$', epic_field)
         field_ref = f'cf[{m.group(1)}]' if m else f'"{epic_field}"'
         fields = f'summary,status,issuetype,assignee,priority,subtasks,created,resolutiondate,{epic_field}'
         if self.sp_id:
             fields += ',' + self.sp_id
+        if self.groom:
+            fields += ',labels,issuelinks,updated' + (',' + self.quarter_id if self.quarter_id else '')
         chunk = int(self.params.get('epic_batch', 50))
         by_epic, seen = {k: [] for k in keys}, 0
         for start in range(0, len(keys), chunk):
             batch = keys[start:start + chunk]
             jql = f'{field_ref} in ({",".join(batch)}) ORDER BY Rank ASC'
             at = 0
-            while seen < self.epic_scope_max:
+            while seen < limit:
                 page = self.jira.api('/rest/api/2/search', jql=jql, fields=fields,
                                      startAt=at, maxResults=100)
                 found = page.get('issues', [])
@@ -663,6 +729,10 @@ class Collector:
                         'sp': f.get(self.sp_id) if self.sp_id and isinstance(f.get(self.sp_id), (int, float)) else None,
                         'subtasks': [],
                     }
+                    if self.groom:
+                        item.update(quarter=field_text(f.get(self.quarter_id)) if self.quarter_id else None,
+                                    labels=list(f.get('labels') or []), updated=(f.get('updated') or '')[:10] or None,
+                                    links=issue_links(f))
                     for sub in f.get('subtasks') or []:
                         sf = sub['fields']
                         sub_cat = sf['status'].get('statusCategory', {}).get('name', '')
@@ -674,15 +744,62 @@ class Collector:
                 at += len(found)
                 if not found or at >= page.get('total', 0):
                     break
-            if seen >= self.epic_scope_max:
-                self.warn(f'объём эпиков обрезан на {self.epic_scope_max} задачах — '
-                          f'поднимите params.epic_scope_max')
+            if seen >= limit:
+                self.warn(f'объём эпиков обрезан на {limit} задачах — '
+                          f'поднимите params.{"groom_max" if self.groom else "epic_scope_max"}')
                 break
         if self.params.get('epic_scope_subtasks', True):
             self.scope_subtask_dates([it for items in by_epic.values() for it in items])
-        for e in epics:
-            if e['epicKey']:
-                e['scope'] = by_epic.get(e['epicKey'], [])
+        return by_epic
+
+    def build_groom(self, epics, epic_field, sprints, per_sprint, active):
+        """Данные вкладки «Груминг»: все незакрытые эпики доски, не только эпики спринта.
+
+        Эпики спринта уже с объёмом (`scope` в `epics`); здесь — остальные эпики доски с таким же
+        объёмом и карточки всех эпиков: статус, исполнитель, приоритет, квартал, метки. Отчёт спринта
+        эти эпики не видит: у них в спринте ничего нет.
+        """
+        if not (self.groom and epic_field):
+            return None
+        sprint_keys = [e['epicKey'] for e in epics if e['epicKey']]
+        listed = self.jira.paged(f'/rest/agile/1.0/board/{self.team["board"]}/epic', done='false')
+        extra = [e['key'] for e in listed if e['key'] not in sprint_keys]
+        info = self.epic_cards(sprint_keys + extra)
+        scope = self.fetch_scope(extra, epic_field, self.sprint_of(sprints, per_sprint), active,
+                                 self.groom_max) if extra else {}
+        rows = []
+        for k in extra:
+            card = info.get(k) or {}
+            rows.append({'rowId': k, 'epicKey': k, 'epicTitle': card.get('title') or k,
+                         'epicPriority': card.get('priority'), 'epicDue': card.get('due'),
+                         'stories': [], 'scope': scope.get(k, [])})
+        return {'quarterField': self.quarter_id, 'epics': rows, 'cards': info}
+
+    def epic_cards(self, keys):
+        """Карточки эпиков одним пакетом на пачку: {ключ: {title, status, category, priority, assignee,
+        due, quarter, labels, updated}}."""
+        due_ids = getattr(self, 'due_ids', None) or ['duedate']
+        fields = ['summary', 'status', 'priority', 'assignee', 'labels', 'updated'] + due_ids
+        if self.quarter_id:
+            fields.append(self.quarter_id)
+        chunk = int(self.params.get('epic_batch', 50))
+        out = {}
+        for start in range(0, len(keys), chunk):
+            batch = keys[start:start + chunk]
+            found = self.jira.api('/rest/api/2/search', jql='key in (' + ','.join(batch) + ')',
+                                  fields=','.join(fields), maxResults=len(batch))['issues']
+            for i in found:
+                f = i['fields']
+                category = self.cats.get(str(f['status']['id'])) or \
+                    f['status'].get('statusCategory', {}).get('name', '')
+                self.bucket(f['status']['name'], category)
+                out[i['key']] = {
+                    'title': f['summary'], 'status': f['status']['name'], 'category': category,
+                    'priority': priority_name(f), 'assignee': (f.get('assignee') or {}).get('displayName'),
+                    'due': next((str(f[d])[:10] for d in due_ids if f.get(d)), None),
+                    'quarter': field_text(f.get(self.quarter_id)) if self.quarter_id else None,
+                    'labels': list(f.get('labels') or []), 'updated': (f.get('updated') or '')[:10] or None}
+        return out
 
     def scope_subtask_dates(self, items):
         """Даты и исполнители подзадач объёма эпиков: пакетный поиск по родителям, без

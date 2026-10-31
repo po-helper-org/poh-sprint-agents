@@ -21,6 +21,8 @@ OTHER_BOARD_ID = 777
 EPIC_FIELD = 'customfield_10101'
 SP_FIELD = 'customfield_10106'
 TARGET_END_FIELD = 'customfield_10925'   # Advanced Roadmaps: целевая дата окончания
+QUARTER_FIELD = 'customfield_10930'      # «Квартал исполнения» (список значений) — для «Груминга»
+BACKLOG_EPIC = ('INIT-950', 'Резерв: интеграция с партнёром')   # эпик доски без задач в спринтах
 
 PEOPLE = ['Участник ' + c for c in 'АБВГДЕ']
 
@@ -287,7 +289,28 @@ def epic_scope(ds):
                 'subtasks': [{'key': sub_key, 'fields': {'summary': 'Проверка на стенде',
                                                          'status': status_obj(status),
                                                          'priority': priority_obj(sub_key)}}],
+                'labels': ['groom'] if j == 0 else [], 'updated': iso(NOW - timedelta(days=40 + j)),
+                QUARTER_FIELD: {'value': '2026Q4'} if j == 0 else None,
+                'issuelinks': [{'type': {'name': 'Blocks', 'inward': 'is blocked by', 'outward': 'blocks'},
+                                'inwardIssue': {'key': 'INIT-900', 'fields': {'status': status_obj('В работе')}}}]
+                if j == 0 else [],
             }})
+    return out
+
+
+def backlog_scope():
+    """Задачи эпика доски, которого нет в спринтах: одна в бэклоге без квартала, одна на следующий квартал."""
+    out = []
+    for j, (status, title, quarter) in enumerate((('Бэклог', 'Подключить партнёра', None),
+                                                  ('Открыто', 'Контракт обмена', {'value': '2027Q1'}))):
+        key = f'INIT-{3900 + j}'
+        out.append({'key': key, 'parent': None, 'changelog': {'histories': []}, 'fields': {
+            'summary': title, 'status': status_obj(status),
+            'issuetype': {'name': 'История', 'subtask': False}, 'assignee': None,
+            'priority': priority_obj(key), EPIC_FIELD: BACKLOG_EPIC[0],
+            'created': iso(NOW - timedelta(days=120 + j)), 'resolutiondate': None, 'subtasks': [],
+            'labels': [], 'updated': iso(NOW - timedelta(days=90)), QUARTER_FIELD: quarter, 'issuelinks': [],
+        }})
     return out
 
 
@@ -304,6 +327,7 @@ def make_api(dataset=None):
                     {'id': EPIC_FIELD, 'name': 'Ссылка на эпик'},
                     {'id': SP_FIELD, 'name': 'Story Points'},
                     {'id': TARGET_END_FIELD, 'name': 'Target end'},
+                    {'id': QUARTER_FIELD, 'name': 'Квартал исполнения'},
                     {'id': 'customfield_10100', 'name': 'Sprint'}]
         if path == '/rest/agile/1.0/board':
             return {'values': [{'id': BOARD_ID, 'name': BOARD_NAME},
@@ -315,6 +339,10 @@ def make_api(dataset=None):
             if wanted not in known:
                 raise HttpError(404, f'board {wanted} does not exist')
             return {'id': wanted, 'name': known[wanted], 'type': 'scrum'}
+        if path == f'/rest/agile/1.0/board/{BOARD_ID}/epic':
+            eps = [{'id': n, 'key': k, 'name': t, 'summary': t, 'done': False}
+                   for n, (k, t) in enumerate(list(EPICS) + [BACKLOG_EPIC], 1)]
+            return {'values': eps, 'isLast': True}
         if path == f'/rest/agile/1.0/board/{BOARD_ID}/sprint':
             wanted = set((params.get('state') or 'active').split(','))
             return {'values': [s for s in ds.sprints if s['state'] in wanted], 'isLast': True}
@@ -351,19 +379,23 @@ def make_api(dataset=None):
             if jql.startswith('cf['):
                 # весь объём эпиков: задачи всех спринтов набора плюс вне спринтов
                 wanted = set(keys)
-                scope = [i for i in epic_scope(ds) if i['fields'].get(EPIC_FIELD) in wanted]
+                scope = [i for i in epic_scope(ds) + backlog_scope() if i['fields'].get(EPIC_FIELD) in wanted]
                 start = int(params.get('startAt', 0))
                 page = scope[start:start + int(params.get('maxResults', 50))]
                 return {'issues': [project(i, params.get('fields', ''), None) for i in page],
                         'total': len(scope), 'startAt': start}
-            titles = dict(EPICS)
+            titles = dict(list(EPICS) + [BACKLOG_EPIC])
             want = params.get('fields', 'summary').split(',')
             return {'issues': [{'key': k, 'fields': {f: v for f, v in
                                                      (('summary', titles.get(k, 'Эпик ' + k)),
                                                       ('priority', priority_obj(k)),
                                                       ('duedate', '2026-10-15' if k == EPICS[0][0] else None),
                                                       # целевая дата Advanced Roadmaps — у второго эпика, без duedate
-                                                      (TARGET_END_FIELD, '2026-11-20' if k == EPICS[1][0] else None))
+                                                      (TARGET_END_FIELD, '2026-11-20' if k == EPICS[1][0] else None),
+                                                      ('status', status_obj('В работе' if k != BACKLOG_EPIC[0] else 'Бэклог')),
+                                                      ('assignee', {'displayName': PEOPLE[0]} if k == EPICS[0][0] else None),
+                                                      ('labels', []), ('updated', iso(NOW - timedelta(days=3))),
+                                                      (QUARTER_FIELD, {'value': '2026Q4'} if k != BACKLOG_EPIC[0] else None))
                                                      if f in want}}
                                for k in keys if k in titles],
                     'total': len(keys)}
