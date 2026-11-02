@@ -848,7 +848,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 - Consumes: форматы из `sprint_standards.md` (roadmap-матрица), `availability.md` (реестр).
 - Produces: полный вход для прогона пайплайна на S7 (cold-start: ФАКТ отсутствует намеренно).
 
-- [ ] **Step 1: Написать fixture-файлы** (Acme Tickets-домен, согласован с `ideal_sprint_plan.md`)
+- [ ] **Step 1: Написать fixture-файлы** (StoreA-домен, согласован с `ideal_sprint_plan.md`)
 
 `team.md`:
 ```markdown

@@ -3,7 +3,8 @@
 #
 #   hermes/install-sprint-risk-notes.sh [--check | --remove | --replace] [профиль:команда:"cron" …]
 #
-# По умолчанию — po-gds:gds, po-live:live, po-mrs:mrs по будням в 09:40 / 09:45 / 09:50
+# Без аргументов — строки из hermes/sprint-risk-notes.specs (не в git; образец — sprint-risk-notes.specs.example):
+# агенты команд по будням в 09:40 / 09:45 / 09:50
 # (после утреннего сбора спринта в 08:30 и рисков квартала по понедельникам; агенты идут по очереди —
 # одновременная запись в sprint-risk-notes.json всё равно защищена замком business.py risk-put).
 # Навык ставится копией (install -m 644) в ~/.hermes/profiles/<профиль>/skills/sprint-risk-notes/ с подставленными
@@ -30,7 +31,12 @@ TEMPLATE="$HERE/sprint-risk-notes/SKILL.md"
 MODE=install
 case "${1:-}" in --check|--remove|--replace) MODE="${1#--}"; shift ;; esac
 SPECS=("$@")
-[ ${#SPECS[@]} -gt 0 ] || SPECS=("po-gds:gds:40 9 * * 1-5" "po-live:live:45 9 * * 1-5" "po-mrs:mrs:50 9 * * 1-5")
+CONF="$HERE/sprint-risk-notes.specs"
+if [ ${#SPECS[@]} -eq 0 ]; then
+  [ -f "$CONF" ] || { echo "✗ нет $CONF — скопируй $CONF.example и впиши профили или передай профиль:команда:\"cron\" аргументами" >&2; exit 2; }
+  while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|'#'*) ;; *) SPECS+=("$line") ;; esac; done <"$CONF"
+  [ ${#SPECS[@]} -gt 0 ] || { echo "✗ в $CONF нет ни одной строки профиль:команда:cron" >&2; exit 2; }
+fi
 
 job_id() { # профиль имя → id задачи cron с этим именем (или пусто)
   python3 - "$HERMES_HOME/profiles/$1/cron/jobs.json" "$2" <<'PY'

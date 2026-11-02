@@ -1,0 +1,5 @@
+# профиль:команда:cron — по строке на Hermes-агента PO-команды.
+# Скопируй в hermes/sprint-risk-notes.specs (файл не в git) и впиши свои профили.
+po-team-a:team-a:40 9 * * 1-5
+po-team-b:team-b:45 9 * * 1-5
+po-team-c:team-c:50 9 * * 1-5

@@ -1,4 +1,4 @@
-# demo-domain — golden fixture (Acme Tickets)
+# demo-domain — golden fixture (StoreA)
 
 Golden fixture для прогона `/sm-sync … /sm-consensus` (полный пайплайн sprint-planner) на **2026Q3-S7**.
 

@@ -1,10 +1,10 @@
 {
-  "_comment": "Образец ОДНОГО элемента массива TEAMS — то, что отдаёт сборщик команды (contract/team.schema.json). Реальный срез демо-команды, укорочен до трёх эпиков. Тяжёлые наборы (metrics, burndown, control, velocity, logs) показаны формой, а не полными данными. Образец намеренно БЕЗ statusMap: так видно, что объект старого вида рендерится по classifyBucket, как раньше. _meta обязательно — это паспорт сбора.",
-  "slug": "gds-live",
+  "_comment": "Образец ОДНОГО элемента массива TEAMS — то, что отдаёт сборщик команды (contract/team.schema.json). Обезличенный срез демо-команды, укорочен до трёх эпиков. Тяжёлые наборы (metrics, burndown, control, velocity, logs) показаны формой, а не полными данными. Образец намеренно БЕЗ statusMap: так видно, что объект старого вида рендерится по classifyBucket, как раньше. _meta обязательно — это паспорт сбора.",
+  "slug": "team-a",
   "team": "TeamA / TeamB",
-  "boardId": 16383,
+  "boardId": 101,
   "boardName": "Scrum Board TeamA",
-  "boardUrl": "https://jira.example.com/secure/RapidBoard.jspa?rapidView=16383",
+  "boardUrl": "https://jira.example.com/secure/RapidBoard.jspa?rapidView=101",
   "jiraBase": "https://jira.example.com",
   "sprintName": "2026Q3-S6",
   "epics": [
@@ -22,7 +22,7 @@
         },
         {
           "key": "INIT-1798",
-          "title": "AI-тематика от Васи (архитектура Харнесса под Юру и Егора)",
+          "title": "AI-тематика от коллеги (архитектура Харнесса под двух PO)",
           "status": "Бэклог",
           "category": "К выполнению",
           "subtasks": []

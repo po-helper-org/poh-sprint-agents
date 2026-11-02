@@ -50,3 +50,6 @@ tests/fixtures/**/output/
 # E2E страницы: зависимости ставятся npm install в tests/e2e
 tests/e2e/node_modules/
 tests/e2e/package-lock.json
+
+# профили Hermes-агентов команд для hermes/install-*.sh — только на сервере
+hermes/*.specs
