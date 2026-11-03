@@ -905,7 +905,7 @@
     if (!epic.stories || !epic.stories.length) {
       var empty = document.createElement('div');
       empty.className = 'sidebar-empty';
-      empty.textContent = 'Историй нет.';
+      empty.textContent = 'Историй нет';
       storiesBody.appendChild(empty);
       return;
     }
@@ -1175,7 +1175,7 @@
     storiesBody.insertAdjacentHTML('beforeend', epicBurnHtml(team, epic));
 
     if (!items.length) {
-      storiesBody.insertAdjacentHTML('beforeend', '<div class="sidebar-empty">Задач в эпике нет.</div>');
+      storiesBody.insertAdjacentHTML('beforeend', '<div class="sidebar-empty">Задач в эпике нет</div>');
       return;
     }
 
@@ -1223,7 +1223,7 @@
   // вынесенные из спринта задачи видны как ступеньки серой линии объёма.
   function burndownChart() {
     var b = BURNDOWN;
-    if (!b || !b.days || !b.days.length) return '<div class="m-muted">Нет данных по спринту.</div>';
+    if (!b || !b.days || !b.days.length) return '<div class="m-muted">Нет данных по спринту</div>';
 
     var days = b.days;
     var W = (CHART_BOX && CHART_BOX.W) || 560, H = (CHART_BOX && CHART_BOX.H) || 210, padL = 34, padR = 14, padT = 12, padB = 30;
@@ -1330,7 +1330,7 @@
 
   function controlChart(c, label, kind) {
     if (!c || !c.points || !c.points.length) {
-      return '<div class="m-muted">Нет закрытых ' + esc(label) + ' за период.</div>';
+      return '<div class="m-muted">Нет закрытых ' + esc(label) + ' за период</div>';
     }
 
     var pts = c.points;
@@ -1442,7 +1442,7 @@
   // Плановый столбец разложен по текущим статусам — видно, где осело незакрытое.
   function velocityChart(data) {
     var v = data || VELOCITY;
-    if (!v || !v.sprints || !v.sprints.length) return '<div class="m-muted">Нет данных по спринтам.</div>';
+    if (!v || !v.sprints || !v.sprints.length) return '<div class="m-muted">Нет данных по спринтам</div>';
 
     var rows = v.sprints;
     var W = (CHART_BOX && CHART_BOX.W) || 560, H = (CHART_BOX && CHART_BOX.H) || 210, padL = 34, padR = 14, padT = 12, padB = 30;
@@ -1845,7 +1845,7 @@
     var ev = (it.history || []).map(function (h) { return { at: h.at, by: h.by, h: h }; })
       .concat((it.comments || []).map(function (c) { return { at: c.at, by: c.by, c: c }; }))
       .sort(function (a, b) { return a.at < b.at ? -1 : 1; });
-    if (!ev.length) return '<div class="mi-act-empty">За спринт ни смен статуса, ни комментариев.</div>';
+    if (!ev.length) return '<div class="mi-act-empty">За спринт ни смен статуса, ни комментариев</div>';
     return '<ol class="mi-act">' + ev.map(function (e) {
       var when = e.at.slice(8, 10) + '.' + e.at.slice(5, 7) + ' ' + e.at.slice(11, 16);
       var what = e.c ? '<span class="mi-c">«' + esc(e.c.body) + '»</span>'
@@ -1873,7 +1873,7 @@
     sideTabs(tabs, active, function (id, body) {
       var mem = r.members[+id];
       var items = (mem && mem.items) || [];
-      if (!items.length) { body.innerHTML = '<div class="sidebar-empty">' + (mem ? 'Список задач в данных нет: нужен сборщик 1.4.0+.' : 'В этом спринте задач нет.') + '</div>'; return; }
+      if (!items.length) { body.innerHTML = '<div class="sidebar-empty">' + (mem ? 'Список задач в данных нет: нужен сборщик 1.4.0+.' : 'В этом спринте задач нет') + '</div>'; return; }
       // клик по задаче раскрывает под ней её историю за спринт, на том же экране
       body.innerHTML = memberItemsHtml(items, m.sp);
       body.querySelectorAll('.mi-row').forEach(function (b) {

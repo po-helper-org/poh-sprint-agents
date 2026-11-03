@@ -49,6 +49,32 @@ KEY_RE = re.compile(r'\b[A-Z][A-Z0-9_]*-\d+\b')
 NUM_RE = re.compile(r'(?<![\w.,-])\d+(?:[.,]\d+)?(?![\w-])')
 DATE_RE = re.compile(r'\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\.\d{1,2}(?:\.\d{2,4})?\b')
 FREE_INTS = 5           # «2 задачи», «за 3 дня» — мелкие счёты агент выводит сам
+# AI-слоп в текстах агента (unslop, pass «Copy»): восклицания, канцелярит, хайп.
+# Срабатывание — ошибка: текст переписывается, а не игнорируется.
+SLOP_EXCL_RE = re.compile(r'[а-яёА-ЯЁ]!')
+SLOP_OFFICE_RE = re.compile(
+    r'важно отметить|следует отметить|стоит отметить|необходимо отметить|'
+    r'обратите внимание|заметим, что|в целом,|осуществля\w+|обеспечива\w+|'
+    r'представляет собой|с целью|в рамках данного|в настоящее время|'
+    r'настоящим (?:сообщаем|документом)')
+SLOP_HYPE_RE = re.compile(
+    r'[Уу]никальн|[Кк]омплексн|[Ии]нновационн|[Бб]есшовн|[Уу]спешн|'
+    r'[Ээ]ффективн|[Оо]птимальн|[Гг]армоничн|[Дд]инамичн|[Пп]рорывн|'
+    r'по-настоящему|поистине|максимально|значительно|существенно')
+
+
+def slop_errors(where, text):
+    """Ошибки unslop-стиля для одного текста агента (наблюдение/пункт)."""
+    out = []
+    if SLOP_EXCL_RE.search(text):
+        out.append(f'{where}: восклицательный знак — убери, утверждение вместо эмоции')
+    m = SLOP_OFFICE_RE.search(text.lower())
+    if m:
+        out.append(f'{where}: канцелярит «{m.group(0)}» — прямое сказуемое без воды')
+    m = SLOP_HYPE_RE.search(text.lower())
+    if m:
+        out.append(f'{where}: оценочное слово «{m.group(0)}» — замени цифрой из фактов')
+    return out
 
 
 class InsightsError(Exception):
@@ -366,6 +392,8 @@ def check(doc, teams):
                 errors.append(f'{where}: text длиннее {TEXT_MAX} знаков ({len(item["text"])})')
             if len(item.get('action', '')) > ACTION_MAX:
                 errors.append(f'{where}: action длиннее {ACTION_MAX} знаков')
+            errors.extend(slop_errors(where, item['text']))
+            errors.extend(slop_errors(where, item.get('action', '')))
             body = item['text'] + ' ' + item.get('action', '')
             for key in sorted(set(item.get('keys', [])) | set(KEY_RE.findall(body))):
                 if key not in keys:
@@ -385,6 +413,7 @@ def check_interpretation(slug, interp, keys, allowed, errors, warnings):
             where = f'[{slug}] interpretation.{part} #{n}'
             if len(text) > INTERP_MAX:
                 errors.append(f'{where}: длиннее {INTERP_MAX} знаков ({len(text)})')
+            errors.extend(slop_errors(where, text))
             for key in sorted(set(KEY_RE.findall(text))):
                 if key not in keys:
                     errors.append(f'{where}: задачи {key} нет в данных команды')

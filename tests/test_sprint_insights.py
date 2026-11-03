@@ -226,6 +226,60 @@ class CheckTest(unittest.TestCase):
         self.assertEqual([], warnings)
 
 
+class UnslopStyleTest(unittest.TestCase):
+    """Стиль unslop (pass «Copy»): восклицания, канцелярит и хайп — ошибки check."""
+
+    def setUp(self):
+        self.ws = Workspace()
+        self.addCleanup(self.ws.cleanup)
+        self.doc = self.ws.example()
+
+    def check(self, doc=None):
+        return insights_mod.check(doc or self.doc, self.ws.teams)
+
+    def obs(self, n=0):
+        return self.doc['teams']['platform']['observations'][n]
+
+    def test_example_has_no_slop(self):
+        errors, _ = self.check()
+        self.assertEqual([], [e for e in errors if 'unslop' not in e and 'слоп' not in e],
+                         'демо-пример — уже в целевом стиле')
+
+    def test_exclamation_mark_rejected(self):
+        self.obs(0)['text'] = 'Спринт не успевает: осталось 43 из 48 задач!'
+        errors, _ = self.check()
+        self.assertTrue(any('восклицательный знак' in e for e in errors), errors)
+
+    def test_office_speak_rejected(self):
+        self.obs(0)['text'] = 'Важно отметить, что команда осуществляет закрытие задач медленнее.'
+        errors, _ = self.check()
+        self.assertTrue(any('канцелярит' in e for e in errors), errors)
+        self.assertTrue(any('восклицательный знак' not in e for e in errors))
+
+    def test_hype_word_rejected(self):
+        self.obs(0)['text'] = 'Команда показывает эффективный рост производительности.'
+        errors, _ = self.check()
+        self.assertTrue(any('оценочное слово' in e for e in errors), errors)
+
+    def test_action_text_checked_too(self):
+        self.obs(0)['action'] = 'Существенно ускорить ревью до конца спринта.'
+        errors, _ = self.check()
+        self.assertTrue(any('оценочное слово' in e for e in errors), errors)
+
+    def test_interpretation_checked_for_slop(self):
+        interp = self.doc['teams']['platform']['interpretation']
+        interp['dynamics'][0] = 'Команда успешно закрывает задачи!'
+        errors, _ = self.check()
+        joined = ' '.join(errors)
+        self.assertIn('восклицательный знак', joined)
+        self.assertIn('оценочное слово', joined)
+
+    def test_clean_text_passes(self):
+        self.obs(0)['text'] = 'Спринт не успевает: закрыто 5 из 48, осталось 20 задач до идеальной линии.'
+        errors, _ = self.check()
+        self.assertEqual([], [e for e in errors if 'наблюдение #1' in e], errors)
+
+
 class ApplyTest(unittest.TestCase):
     def setUp(self):
         self.ws = Workspace()

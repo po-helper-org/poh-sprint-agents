@@ -380,7 +380,7 @@ check(typo.lines.length === 2 && typo.lines.every(l => l.same) && /^Дальше
       '«Дальше:» и «Блокер:» — обычный текст в строку: тот же цвет, кегль и начертание, без капса');
 check(rowCheck.done.startsWith('Метрики загрузчика собраны и на ревью') && rowCheck.blk === 'нет доступа к очереди событий смежной команды' &&
       rowCheck.next === 'эскалация на синке команд в четверг', 'сводка агента: итог, блокер, след. шаг');
-check(/^(Закрыто|В работе): .+\.$|^Работа не начата\.$/.test(rowCheck.autoDone), 'без агента сводка — из данных: закрытые истории или что в работе');
+check(/^(Закрыто|В работе): .+\.$|^Работа не начата$/.test(rowCheck.autoDone), 'без агента сводка — из данных: закрытые истории или что в работе');
 check(rowCheck.kr === 'KR 3.1 — платформа выдерживает пиковый сезон', 'строка — KR');
 const po = await p.evaluate(() => { const tr = document.querySelector('#deckSlides tr.erow[data-key="INIT-111"]');
   return { res: tr.querySelector('.result > span').textContent, tag: !!tr.querySelector('.res-po'), how: tr.querySelector('.result > span').title }; });

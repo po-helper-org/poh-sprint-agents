@@ -634,10 +634,10 @@
     var closed = subs.filter(function (s) { return bucketOf(s) === 'done'; });
     var open = subs.filter(function (s) { return bucketOf(s) !== 'done'; });
     var done;
-    if (r.bucket === 'done') done = closed.length ? 'Сделано: ' + listTitles(closed) + '.' : 'История закрыта.';
+    if (r.bucket === 'done') done = closed.length ? 'Сделано: ' + listTitles(closed) + '.' : 'История закрыта';
     else if (closed.length) done = 'Сделано: ' + listTitles(closed) + ' (' + closed.length + ' из ' + subs.length + ' подзадач).';
     else if (r.bucket === 'blocked') done = 'Стоит с ' + ddmm(st.statusChanged) + ': статус «' + st.status + '».';
-    else if (r.bucket === 'open') done = 'Не начата.';
+    else if (r.bucket === 'open') done = 'Не начата';
     else done = (STAGE_SINCE[r.bucket] || 'В работе с ') + ddmm(st.statusChanged) + '.';
     var next = '';
     if (r.bucket === 'blocked') next = 'снять блокер';
@@ -692,7 +692,7 @@
     }
     s.cls = s.pct >= 100 ? 'stat-green' : s.pct >= 50 ? 'stat-yellow' : 'stat-red';
     var autoDone = done.length ? 'Закрыто: ' + titlesOf(done, 2) + '.'
-      : active.length ? 'В работе: ' + titlesOf(active, 2) + '.' : 'Работа не начата.';
+      : active.length ? 'В работе: ' + titlesOf(active, 2) + '.' : 'Работа не начата';
     var autoBlk = blocked.map(function (r) {
       return clip(cleanTitle(r.st.title), 50) + ' — ' + (r.blocker || '«' + r.st.status + '» с ' + ddmm(r.st.statusChanged));
     }).slice(0, 2).join('; ') + (blocked.length > 2 ? ' и ещё ' + (blocked.length - 2) : '');
@@ -1030,7 +1030,7 @@
       return Object.assign({ pts: pts, roll: roll, sd: sd }, st);
     });
     var all = streams[0].pts.concat(streams[1].pts);
-    if (!all.length) return '<div class="ops-empty">За три спринта закрытых задач нет.</div>';
+    if (!all.length) return '<div class="ops-empty">За три спринта закрытых задач нет</div>';
     var W = box.W, H = box.H, padL = 34, padR = 128, padT = 26, padB = 22;
     var t0 = new Date(from + 'T00:00:00').getTime(), t1 = new Date(today + 'T23:59:59').getTime();
     var maxY = Math.max.apply(null, all.map(function (p) { return p.cycle; })) * 1.06 || 1;
@@ -1138,7 +1138,7 @@
               { id: 'stories', label: 'Истории', n: data.stories.points.length },
               { id: 'subtasks', label: 'Подзадачи', n: data.subtasks.points.length }], 'all', function (id, body) {
       var c = data[id], gen = id === 'stories' ? 'историй' : id === 'subtasks' ? 'подзадач' : 'задач';
-      if (!c.points.length) { body.innerHTML = '<div class="sidebar-empty">Закрытых ' + gen + ' за 3 спринта нет.</div>'; return; }
+      if (!c.points.length) { body.innerHTML = '<div class="sidebar-empty">Закрытых ' + gen + ' за 3 спринта нет</div>'; return; }
       var kpi = function (v, l, tip) { return '<div class="ck"' + (tip ? ' title="' + esc(tip) + '"' : '') + '><b>' + v + '</b><span>' + l + '</span></div>'; };
       var pct = Math.round(100 * c.outliers / c.points.length);
       var rows = sprints.map(function (s, i) {
@@ -1329,7 +1329,7 @@
   // не уже 16% — заголовок читается.
   function memberMatrixHtml(t) {
     var rows = memberRows(t);
-    if (!rows.length) return '<div class="ops-empty">В спринте нет задач.</div>';
+    if (!rows.length) return '<div class="ops-empty">В спринте нет задач</div>';
     var prev = prevSprintKeys(t);
     rows.forEach(function (r) {
       var all = sprintBlocks(t, r.name);
@@ -1378,7 +1378,7 @@
       return '<div class="es-row ' + (it.bucket === 'done' ? 'stat-green' : 'stat-yellow') + '"><div class="es-top"><span class="es-title">' + esc(it.title) + '</span>' +
         '<span class="es-pct">' + (it.doneAt ? 'закрыта ' + ddmm(it.doneAt) : esc(it.status)) + '</span></div>' +
         '<div class="es-meta">' + keyLink(it.key) + ' · ' + esc(it.project || '') + (it.type ? ' · ' + esc(it.type) : '') + '</div>' + hist + com + '</div>';
-    }).join('') : '<div class="sidebar-empty">Задач вне доски за период нет.</div>';
+    }).join('') : '<div class="sidebar-empty">Задач вне доски за период нет</div>';
     openPanel();
   }
 
@@ -1388,7 +1388,7 @@
   // part: 'all' — все задачи; 'story' — без подзадач (поля storyScope/storyClosed).
   function bizBurnChart(t, part, box) {
     var b = t.burndown || {}, days = b.days || [];
-    if (!days.length) return '<div class="ops-empty">Нет данных по спринту.</div>';
+    if (!days.length) return '<div class="ops-empty">Нет данных по спринту</div>';
     if (part === 'story' && !days.some(function (d) { return typeof d.storyScope === 'number'; })) {
       return '<div class="ops-empty">Сборщик не отдал сгорание без подзадач (нужна версия 1.10.0) — пересоберите данные.</div>';
     }
@@ -1604,7 +1604,7 @@
         }).join('') + '</div>';
     }).join('');
     return slide('roadmap', '<h1 class="slide-title">Инициативы по спринтам до ' + dayMon(sp[2].to) + '</h1>' +
-      '<div class="rm-wrap"><div class="rm">' + head + (body || '<div class="rm-empty">Открытых инициатив в данных нет.</div>') + '</div></div>' +
+      '<div class="rm-wrap"><div class="rm">' + head + (body || '<div class="rm-empty">Открытых инициатив в данных нет</div>') + '</div></div>' +
       (rm.more ? '<div class="rm-more">ещё ' + rm.more + ' — в отчёте PO</div>' : ''),
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Инициативы по спринтам · ' + t.team }));
   }
@@ -1676,7 +1676,7 @@
     return slide('risks', '<h1 class="slide-title">Риски и проблемы</h1>' +
       (rk.list.length ? '<div class="rk-list"><div class="rk-row rk-head"><div>Инициатива</div><div>История</div><div>Комментарий</div></div>' +
         rows + '</div>' + (rk.more ? '<div class="rk-more">ещё ' + rk.more + ' — в отчёте PO</div>' : '')
-        : '<div class="rk-empty">Блокеров и сдвигов сроков по данным нет.</div>'),
+        : '<div class="rk-empty">Блокеров и сдвигов сроков по данным нет</div>'),
       ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Риски и проблемы · ' + t.team }));
   }
 
@@ -2015,7 +2015,7 @@
           (r.blocker ? '<div class="ln ln-blk"><span class="lbl">Блокер:</span> ' + esc(r.blocker) + '</div>' : '') +
           cboxHtml(r.target) +
           '<div class="kd-act">' + withTeam(ref.team, function () { return storyCalendar(r.st, ev) + storyFeedHtml(r.st, ev); }) + '</div>';
-      })(cur.r) : '<div class="sidebar-empty">Выберите задачу слева.</div>';
+      })(cur.r) : '<div class="sidebar-empty">Выберите задачу слева</div>';
       body.innerHTML = '<div class="kr2"><div class="kr-list">' + list + '</div><div class="kr-detail">' + detail + '</div></div>';
       body.querySelectorAll('.kl-item').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -2103,7 +2103,7 @@
   }
 
   function storyFeedHtml(st, list) {
-    if (!list.length) return '<div class="sidebar-empty">Событий нет.</div>';
+    if (!list.length) return '<div class="sidebar-empty">Событий нет</div>';
     var subTitle = {};
     (st.subtasks || []).forEach(function (sb) { subTitle[sb.key] = sb.summary || sb.title || ''; });
     var html = '<ol class="sf">', last = null;
@@ -2343,7 +2343,7 @@
       '- Бизнес-отчёт «ФАКТ | спринт» по этим данным уже показан комитету; технический отчёт — те же цифры для техлидов:',
       '  эпики и статусы задач, сводный отчёт (burndown, производительность, Cycle Time), интерпретация ИИ по «!».',
       '',
-      notes.length ? 'Вопросы и комментарии с бизнес-отчёта — разобрать с техлидами, привязать к эпикам и задачам:' : 'Комментариев с бизнес-отчёта нет.'
+      notes.length ? 'Вопросы и комментарии с бизнес-отчёта — разобрать с техлидами, привязать к эпикам и задачам:' : 'Комментариев с бизнес-отчёта нет'
     ]).concat(notes).concat([
       '',
       'Выход: reports/sprint-report.html. Данные не выдумывать: только сборщики и снимок.'
