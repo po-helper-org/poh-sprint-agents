@@ -228,6 +228,10 @@ await p.click('#deckSlides .fslide.members .sb.off >> nth=0');
 await p.waitForTimeout(300);
 check((await p.textContent('#stackKey')).startsWith('Вне доски') && await p.locator('#storiesBody .es-row').count() > 0,
       'клик по блоку «вне спринта» — сайдбар задач вне спринта с активностью');
+const oc = await cbox('#storiesBody .es-row:nth-child(1)', 'Взять в спринт, привязать к эпику');
+const ocKind = await p.evaluate(() => { const l = loadComments(); return l[l.length - 1].target.kind; });
+check(oc.added && oc.target === oc.key && oc.shown && oc.empty && ocKind === 'ref',
+      'у задачи вне спринта — комментарий ИИ-агенту с привязкой «Вне отчёта»');
 await p.keyboard.press('Escape');
 await p.waitForTimeout(200);
 await goTo('#deckSlides .fslide.ops:not(.cycle):not(.members)');
