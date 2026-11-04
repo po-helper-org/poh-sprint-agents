@@ -8,6 +8,8 @@
     business.py facts [--team slug]          факты из снимка (те же, что у sprint-insights)
     business.py check [--file путь]          схема, хеш данных, эпики и истории, длины, числа
     business.py apply [--file путь]          check, новый слой в истории блока, затем render
+        --draft черновик                     блок — из черновика, история и итог — у основного блока
+                                             (--file или business_data): так пишет правки PO виджет колоды
     business.py history [--file путь]        версии блока: кто, когда, сколько полей поменял
     business.py render [--output путь]       sprint-business.html из снимка, без JIRA
     business.py risk-todo [--team slug]      строки «Рисков и проблем» без свежего комментария агента
@@ -296,9 +298,12 @@ def cmd_facts(args, cfg):
     return EXIT_OK
 
 
-def prepare(teams, path):
-    """Запись агента → слой: что он поменял к своей базе, итог всех слоёв, ошибки и предупреждения."""
-    doc = read_doc(path)
+def prepare(teams, path, draft=None):
+    """Запись агента → слой: что он поменял к своей базе, итог всех слоёв, ошибки и предупреждения.
+
+    draft — запись лежит в отдельном файле (черновик), а история и итог — у основного блока path:
+    так правку PO на слайде пишет виджет колоды, не трогая файл, который читают агенты."""
+    doc = read_doc(draft or path)
     store = layers_mod.Store(path)
     patch, merged, overridden, base_n, no_base = store.plan(doc)
     # первая запись (истории ещё нет): весь файл — «изменение», в том числе строки прошлых
@@ -327,29 +332,36 @@ def _report(errors, warnings):
         print(f'⚠ {line}')
 
 
+def _paths(args, cfg):
+    """(основной блок — его история и итог, файл записи: черновик из --draft или сам блок)."""
+    path = Path(args.file).resolve() if args.file else cfg.business_data
+    draft = Path(args.draft).resolve() if getattr(args, 'draft', None) else None
+    return path, draft
+
+
 def cmd_check(args, cfg, quiet=False):
     teams = ins.load_teams(Path(args.data).resolve() if args.data else cfg.data)
-    path = Path(args.file).resolve() if args.file else cfg.business_data
-    _, _, patch, _, errors, warnings = prepare(teams, path)
+    path, draft = _paths(args, cfg)
+    _, _, patch, _, errors, warnings = prepare(teams, path, draft)
     _report(errors, warnings)
     if errors:
-        print(f'бизнес-блок не принят: ошибок {len(errors)}. Поправьте {path.name} и проверьте снова.')
+        print(f'бизнес-блок не принят: ошибок {len(errors)}. Поправьте {(draft or path).name} и проверьте снова.')
         return EXIT_ERROR
     if not quiet:
-        print(f'бизнес-блок ✓   полей изменено {len(patch)}   предупреждений {len(warnings)}   ← {path}')
+        print(f'бизнес-блок ✓   полей изменено {len(patch)}   предупреждений {len(warnings)}   ← {draft or path}')
     return EXIT_OK
 
 
 def cmd_apply(args, cfg):
     """check → слой в историю → итог в файл блока → страница. Под замком: записи по очереди."""
     teams = ins.load_teams(Path(args.data).resolve() if args.data else cfg.data)
-    path = Path(args.file).resolve() if args.file else cfg.business_data
+    path, draft = _paths(args, cfg)
     store = layers_mod.Store(path)
     with store.lock():
-        store, doc, patch, base_n, errors, warnings = prepare(teams, path)
+        store, doc, patch, base_n, errors, warnings = prepare(teams, path, draft)
         _report(errors, warnings)
         if errors:
-            print(f'бизнес-блок не принят: ошибок {len(errors)}. Поправьте {path.name} и проверьте снова. '
+            print(f'бизнес-блок не принят: ошибок {len(errors)}. Поправьте {(draft or path).name} и проверьте снова. '
                   f'Колода и история не тронуты.')
             return EXIT_ERROR
         n = store.record(patch, base_n, doc.get('author'), doc.get('generatedAt'))
@@ -428,6 +440,9 @@ def main(argv=None):
                        ('render', 'собрать страницу из снимка')):
         p = sub.add_parser(name, help=text)
         p.add_argument('--file', default=None, help='бизнес-блок (по умолчанию business_data конфига)')
+        if name != 'render':
+            p.add_argument('--draft', default=None,
+                           help='запись из этого файла; история версий и итог — у основного блока (--file)')
         if name != 'check':
             p.add_argument('--output', default=None, help='куда писать HTML (по умолчанию business конфига)')
     p_hist = sub.add_parser('history', help='версии бизнес-блока: кто, когда, что поменял')

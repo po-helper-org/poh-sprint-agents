@@ -5,7 +5,7 @@
 // Страница собирается из demo_data.py --business, в JIRA не ходим.
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -651,6 +651,48 @@ check(await p.isVisible('#genWrap') && techPrompt.includes('/actual-sprint') && 
       '«Для техлидов» — промт на технический отчёт с комментариями со слайдов');
 await p.keyboard.press('Escape');
 check(await p.isHidden('#genWrap') && await p.isVisible('#deck'), 'Esc закрывает окно промта, колода на месте');
+
+// колода во фрейме виджета PO-Sprint-business: правка текста и «Вернуть текст» уходят родителю сообщением —
+// виджет пишет их версией бизнес-блока с автором PO (сама колода на сервер не ходит: CSP connect-src 'none')
+const host = join(dirname(page), 'host.html');
+writeFileSync(host, '<!doctype html><meta charset="utf-8"><script>window.msgs = [];' +
+  'addEventListener("message", e => msgs.push(e.data));</script>' +
+  '<iframe src="business.html" style="width:1400px;height:860px;border:0"></iframe>');
+const hp = await ctx.newPage();
+hp.on('pageerror', e => errors.push(e.message));
+await hp.goto(pathToFileURL(host).href);
+await hp.waitForTimeout(600);
+const fr = hp.frames().find(f => f.url().endsWith('/business.html'));
+const edSel = '[data-edit="sdone:platform:INIT-125"]';
+await fr.evaluate(sel => {
+  document.getElementById('deckEdit').click();
+  const s = document.querySelector(sel).closest('#deckSlides > .fslide');
+  document.querySelectorAll('#deckTocList a')[[...document.querySelectorAll('#deckSlides > .fslide')].indexOf(s)].click();
+}, edSel);
+await hp.waitForTimeout(200);
+await fr.locator(edSel).click();
+await fr.locator(edSel).evaluate(el => { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); });
+await hp.keyboard.type(' Для агентов.');
+check(await hp.evaluate(() => msgs.length) === 0, 'во фрейме: пока PO набирает текст, родителю ничего не уходит');
+await hp.keyboard.press('Enter');
+await hp.waitForTimeout(200);
+const sent = await hp.evaluate(() => msgs.slice());
+const teamsOf = await fr.evaluate(() => TEAMS.map(t => ({ slug: t.slug, sprintName: t.sprintName })));
+check(sent.length === 1 && sent[0].type === 'business-deck-edit' && sent[0].id === 'sdone:platform:INIT-125' &&
+      sent[0].text.endsWith('Для агентов.') && JSON.stringify(sent[0].teams) === JSON.stringify(teamsOf),
+      'во фрейме: правка поля уходит родителю — business-deck-edit {id, text, teams}');
+await fr.locator(edSel).click();
+await hp.keyboard.press('Enter');
+await hp.waitForTimeout(150);
+check(await hp.evaluate(() => msgs.length) === 1, 'во фрейме: поле без изменений повторно не отправляется');
+hp.once('dialog', d => d.accept());
+await fr.evaluate(() => document.getElementById('deckReset').click());
+await hp.waitForTimeout(200);
+const back = await hp.evaluate(() => msgs[msgs.length - 1]);
+check(back.type === 'business-deck-edit' && back.id === 'sdone:platform:INIT-125' && back.text === null,
+      'во фрейме: «Вернуть текст» — text: null по каждому изменённому полю');
+await hp.close();
 
 check(!errors.length, 'ошибок JavaScript нет' + (errors.length ? ': ' + errors.join('; ') : ''));
 await browser.close();
