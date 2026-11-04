@@ -7,7 +7,8 @@
 
     business.py facts [--team slug]          факты из снимка (те же, что у sprint-insights)
     business.py check [--file путь]          схема, хеш данных, эпики и истории, длины, числа
-    business.py apply [--file путь]          check, затем render
+    business.py apply [--file путь]          check, новый слой в истории блока, затем render
+    business.py history [--file путь]        версии блока: кто, когда, сколько полей поменял
     business.py render [--output путь]       sprint-business.html из снимка, без JIRA
     business.py risk-todo [--team slug]      строки «Рисков и проблем» без свежего комментария агента
     business.py risk-put --team slug --author кто --file черновик   комментарии к ним (risk_notes.py)
@@ -28,6 +29,7 @@ import buckets as buckets_mod  # noqa: E402
 import schema as schema_mod  # noqa: E402
 import validate as validate_mod  # noqa: E402
 import risk_notes as notes_mod  # noqa: E402
+import layers as layers_mod  # noqa: E402
 
 SCHEMA_PATH = HERE / 'contract' / 'business.schema.json'
 TEMPLATE_PATH = HERE / 'resources' / 'business_template.html'
@@ -63,9 +65,10 @@ def check(doc, teams):
             errors.append(f'[{slug}] такой команды нет в снимке; есть: {", ".join(by_slug)}')
             continue
         if entry['dataHash'] != build_mod.team_digest(team):
-            errors.append(f'[{slug}] dataHash не совпадает с данными: снимок пересобран после facts. '
-                          f'Снова business.py facts и перепишите блок по новым цифрам')
-            continue
+            # не ошибка: observe пересобирает снимок несколько раз в день, а цели и формулировки
+            # от этого не устаревают; ключи и числа ниже сверяются с текущим снимком
+            warnings.append(f'[{slug}] блок написан по прошлому снимку (dataHash другой) — '
+                            f'проверьте тексты по свежим фактам: business.py facts')
         allowed = ins._numbers(ins.team_facts(team, rules), set())
         check_team(slug, entry, team, ins.team_keys(team), allowed, errors, warnings)
     return errors, warnings
@@ -171,23 +174,60 @@ def read_goals(path):
     return teams if isinstance(teams, dict) else {}
 
 
-def attach(teams, doc, goals=None):
-    """Блок — в поле business команды, только если он написан по этим же данным.
+def team_keys(team):
+    """Эпики и истории спринта команды: к ним привязаны строки блока."""
+    epics = {e['epicKey'] for e in team['epics'] if e.get('epicKey')}
+    if any(not e.get('epicKey') and e['stories'] for e in team['epics']):
+        epics.add(NO_EPIC)
+    return epics, {st['key'] for e in team['epics'] for st in e['stories']}
 
-    Устаревший блок (observe пересобрал снимок) не даёт текстов, но состав команды, скрытые
-    ключи и эскалацию — даёт; состава нет в блоке — он из кэша целей (goals)."""
+
+def prune(doc, teams, keep=()):
+    """Блок под текущий снимок: строки эпиков и историй, которых в спринте уже нет, — прочь.
+
+    Они остаются в истории версий и вернутся, если задача снова в спринте. keep — пути,
+    которые автор пишет прямо сейчас: их не трогаем, о них скажет check."""
+    keep = {tuple(p) for p in keep}
+    kept_teams = {p[1] for p in keep if p[0] == 'teams'}
+    by_slug = {t['slug']: t for t in teams}
+    out = {k: v for k, v in (doc or {}).items() if k != 'teams'}
+    out['teams'] = {}
+    for slug, entry in ((doc or {}).get('teams') or {}).items():
+        team = by_slug.get(slug)
+        if team is None:
+            if slug in kept_teams:
+                out['teams'][slug] = entry
+            continue
+        epics, stories = team_keys(team)
+        entry = dict(entry)
+        for field, known in (('streams', epics), ('rows', stories)):
+            if isinstance(entry.get(field), dict):
+                entry[field] = {k: v for k, v in entry[field].items()
+                                if k in known or any(p[:4] == ('teams', slug, field, k) for p in keep)}
+        if isinstance(entry.get('hide'), list) and ('teams', slug, 'hide') not in keep:
+            entry['hide'] = [k for k in entry['hide'] if k in stories]
+        out['teams'][slug] = entry
+    return out
+
+
+def attach(teams, doc, goals=None):
+    """Блок — в поле business команды, даже если observe с тех пор пересобрал снимок.
+
+    Цели, KR, оценки PO и формулировки от пересборки данных не устаревают: раньше блок
+    с чужим dataHash выбрасывался целиком, и колода «теряла» направления после каждого
+    сбора. Строки эпиков и историй, которых в спринте уже нет, отсеивает prune.
+    → (с блоком, из них написанные по прошлому снимку)."""
     attached, stale = [], []
+    doc = prune(doc, teams) if doc else None
     for team in teams:
         team.pop('business', None)
         entry = (doc or {}).get('teams', {}).get(team['slug'])
         entry = entry if isinstance(entry, dict) else None
-        if entry and entry.get('dataHash') == build_mod.team_digest(team):
-            biz = {k: v for k, v in entry.items() if k != 'dataHash'}
+        biz = {k: v for k, v in (entry or {}).items() if k != 'dataHash'}
+        if entry:
             attached.append(team['slug'])
-        else:
-            if entry:
+            if entry.get('dataHash') != build_mod.team_digest(team):
                 stale.append(team['slug'])
-            biz = {k: entry[k] for k in ROSTER_FIELDS if entry and entry.get(k)}
         cached = ((goals or {}).get(team['slug']) or {}).get('members')
         if not biz.get('members') and cached:
             biz['members'] = cached
@@ -197,6 +237,14 @@ def attach(teams, doc, goals=None):
             biz['jiraNative'] = doc['jiraNative']
         team['business'] = biz
     return attached, stale
+
+
+def current_block(path):
+    """Итог слоёв, если история есть; иначе — сам файл (блок до версий)."""
+    store = layers_mod.Store(path)
+    if store.exists():
+        return store.materialize()
+    return read_doc(path, required=False)
 
 
 def load_snapshot(path):
@@ -213,14 +261,14 @@ def load_snapshot(path):
 def render(cfg, data=None, file=None, output=None):
     teams = load_snapshot(Path(data).resolve() if data else cfg.data)
     path = Path(file).resolve() if file else cfg.business_data
-    attached, stale = attach(teams, read_doc(path, required=False), read_goals(path.parent / 'sprint-goals.json'))
+    attached, stale = attach(teams, current_block(path), read_goals(path.parent / 'sprint-goals.json'))
     notes_mod.attach(teams, notes_mod.path_for(cfg.business_data))
     out = build_mod.write_page(teams, TEMPLATE_PATH, Path(output).resolve() if output else cfg.business)
     parts = [f'бизнес-отчёт из снимка: команд {len(teams)}']
     if attached:
         parts.append(f'цели и формулировки агента: {", ".join(attached)}')
     if stale:
-        parts.append(f'блок устарел (данные пересобраны): {", ".join(stale)} — /sprint-business')
+        parts.append(f'тексты по прошлому снимку: {", ".join(stale)} — /sprint-business освежит')
     if not attached and not stale:
         parts.append(f'блока агента нет ({path.name}) — текст строк из данных')
     print('   '.join(parts))
@@ -241,27 +289,69 @@ def cmd_facts(args, cfg):
     return EXIT_OK
 
 
-def cmd_check(args, cfg, quiet=False):
-    teams = ins.load_teams(Path(args.data).resolve() if args.data else cfg.data)
-    path = Path(args.file).resolve() if args.file else cfg.business_data
-    errors, warnings = check(read_doc(path), teams)
+def prepare(teams, path):
+    """Запись агента → слой: что он поменял к своей базе, итог всех слоёв, ошибки и предупреждения."""
+    doc = read_doc(path)
+    store = layers_mod.Store(path)
+    patch, merged, overridden, base_n, no_base = store.plan(doc)
+    errors, warnings = check(prune(merged, teams, [p for p, _ in patch]), teams)
+    if no_base and store.exists():
+        warnings.append(f'в файле нет revision — правки наложены поверх последней версии v{base_n}, '
+                        f'ничего не удалено; читайте {path.name} перед записью и не трогайте revision')
+    for n, author in overridden:
+        warnings.append(f'перекрыта правка v{n} ({author}) — те же поля поменяли и вы; '
+                        f'история: business.py history')
+    return store, doc, patch, base_n, errors, warnings
+
+
+def _report(errors, warnings):
     for line in errors:
         print(f'✗ {line}')
     for line in warnings:
         print(f'⚠ {line}')
+
+
+def cmd_check(args, cfg, quiet=False):
+    teams = ins.load_teams(Path(args.data).resolve() if args.data else cfg.data)
+    path = Path(args.file).resolve() if args.file else cfg.business_data
+    _, _, patch, _, errors, warnings = prepare(teams, path)
+    _report(errors, warnings)
     if errors:
         print(f'бизнес-блок не принят: ошибок {len(errors)}. Поправьте {path.name} и проверьте снова.')
         return EXIT_ERROR
     if not quiet:
-        print(f'бизнес-блок ✓   предупреждений {len(warnings)}   ← {path}')
+        print(f'бизнес-блок ✓   полей изменено {len(patch)}   предупреждений {len(warnings)}   ← {path}')
     return EXIT_OK
 
 
 def cmd_apply(args, cfg):
-    code = cmd_check(args, cfg, quiet=True)
-    if code != EXIT_OK:
-        return code
-    return render(cfg, args.data, args.file, getattr(args, 'output', None))
+    """check → слой в историю → итог в файл блока → страница. Под замком: записи по очереди."""
+    teams = ins.load_teams(Path(args.data).resolve() if args.data else cfg.data)
+    path = Path(args.file).resolve() if args.file else cfg.business_data
+    store = layers_mod.Store(path)
+    with store.lock():
+        store, doc, patch, base_n, errors, warnings = prepare(teams, path)
+        _report(errors, warnings)
+        if errors:
+            print(f'бизнес-блок не принят: ошибок {len(errors)}. Поправьте {path.name} и проверьте снова. '
+                  f'Колода и история не тронуты.')
+            return EXIT_ERROR
+        n = store.record(patch, base_n, doc.get('author'), doc.get('generatedAt'))
+        store.write_block(store.materialize())
+    print(f'версия v{n:04d}: полей изменено {len(patch)}' if patch else f'изменений нет — версия v{n:04d}')
+    return render(cfg, args.data, path, getattr(args, 'output', None))
+
+
+def cmd_history(args, cfg):
+    path = Path(args.file).resolve() if args.file else cfg.business_data
+    vs = layers_mod.Store(path).versions()
+    if not vs:
+        print(f'истории нет: {path.name} ещё не применялся через apply')
+    for v in vs[-args.last:]:
+        teams = sorted({p[1] for p, _ in v['patch'] if p[0] == 'teams'})
+        print(f'v{v["n"]:04d}  {v["at"][:16]}  {v.get("author", "?"):<20} база v{v["base"]:04d}  '
+              f'полей {len(v["patch"]):>3}  {", ".join(teams)}')
+    return EXIT_OK
 
 
 def cmd_render(args, cfg):
@@ -324,6 +414,9 @@ def main(argv=None):
         p.add_argument('--file', default=None, help='бизнес-блок (по умолчанию business_data конфига)')
         if name != 'check':
             p.add_argument('--output', default=None, help='куда писать HTML (по умолчанию business конфига)')
+    p_hist = sub.add_parser('history', help='версии бизнес-блока: кто, когда, что поменял')
+    p_hist.add_argument('--file', default=None, help='бизнес-блок (по умолчанию business_data конфига)')
+    p_hist.add_argument('--last', type=int, default=20, help='сколько последних версий')
     p_todo = sub.add_parser('risk-todo', help='строки «Рисков и проблем» без свежего комментария агента')
     p_todo.add_argument('--team', default=None, help='slug одной команды')
     p_todo.add_argument('--all', action='store_true', help='и строки, у которых комментарий уже есть')
@@ -335,8 +428,9 @@ def main(argv=None):
     try:
         cfg = ins.load_config(args.config)
         return {'facts': cmd_facts, 'check': cmd_check, 'apply': cmd_apply, 'render': cmd_render,
+                'history': cmd_history,
                 'risk-todo': cmd_risk_todo, 'risk-put': cmd_risk_put}[args.cmd](args, cfg)
-    except (ins.InsightsError, build_mod.BuildError) as exc:
+    except (ins.InsightsError, build_mod.BuildError, layers_mod.LayersError) as exc:
         print(f'✗ {exc}')
         return getattr(exc, 'code', EXIT_ERROR)
 

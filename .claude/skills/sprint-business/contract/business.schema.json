@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://po-helper-org/poh-sprint-agents/sprint-business/business.schema.json",
   "title": "Бизнес-блок отчёта «ФАКТ | спринт»",
-  "description": "Файл reports/sprint-business.json. Пишет ИИ-агент навыком sprint-business по фактам из общего снимка данных (тот же, что у отчёта PO): цели OBJ и KR эпиков — только из OKR/roadmap PO, Sprint Goal, формулировки строк «что сделано · след. шаг», изменения, демо, квартальные риски. business.py встраивает блок в sprint-business.html, только если dataHash команды совпал с её данными. Цифры отчёта здесь не хранятся.",
+  "description": "Файл reports/sprint-business.json. Пишет ИИ-агент навыком sprint-business по фактам из общего снимка данных (тот же, что у отчёта PO): цели OBJ и KR эпиков — только из OKR/roadmap PO, Sprint Goal, формулировки строк «что сделано · след. шаг», изменения, демо, квартальные риски. business.py встраивает блок в sprint-business.html; каждая запись через apply — слой в истории (<блок>.versions/), итог — наложение слоёв по хронологии. Цифры отчёта здесь не хранятся.",
   "type": "object",
   "required": [
     "version",
@@ -18,6 +18,11 @@
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}",
       "description": "Когда агент написал инсайды, ISO 8601."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Версия блока, которую агент прочитал перед записью (ставит business.py apply). Не трогай: по ней apply понимает, что ты поменял, и не затирает чужие правки, сделанные после."
     },
     "author": {
       "type": "string",
@@ -46,7 +51,7 @@
         "dataHash": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$",
-          "description": "Хеш данных команды из `business.py facts`: блок привязан к сбору; данные пересобрали — хеш другой, и страница блок не покажет."
+          "description": "Хеш данных команды из `business.py facts`: по какому снимку написан блок. Данные пересобрали — блок остаётся на колоде (строки исчезнувших из спринта задач отсеиваются), check предупреждает освежить тексты."
         },
         "objectives": {
           "type": "object",

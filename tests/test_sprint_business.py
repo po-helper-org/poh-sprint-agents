@@ -129,10 +129,13 @@ class CheckTest(unittest.TestCase):
         self.biz()['demo'] = [{'what': 'Дашборд метрик загрузчика'}]
         self.assertEqual(([], []), self.check(self.doc))
 
-    def test_stale_hash_rejected(self):
+    def test_stale_hash_only_warns(self):
+        # observe пересобирает снимок несколько раз в день: блок по прошлому снимку не брак,
+        # ключи и числа всё равно сверяются с текущим
         self.doc['teams']['platform']['dataHash'] = 'a' * 64
-        errors, _ = self.check(self.doc)
-        self.assertTrue(any('dataHash не совпадает' in e for e in errors), errors)
+        errors, warnings = self.check(self.doc)
+        self.assertEqual([], errors)
+        self.assertTrue(any('по прошлому снимку' in w for w in warnings), warnings)
 
     def biz(self, slug='platform'):
         return self.doc['teams'][slug]
@@ -225,9 +228,11 @@ class PageTest(unittest.TestCase):
         doc['teams']['platform']['dataHash'] = 'b' * 64
         self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
         proc = self.ws.bcli('render')
-        self.assertIn('блок устарел (данные пересобраны): platform — /sprint-business', proc.stdout)
+        self.assertIn('тексты по прошлому снимку: platform — /sprint-business освежит', proc.stdout)
         teams = {t['slug']: t for t in self.ws.page_teams_of(self.ws.biz_page)}
-        self.assertNotIn('objectives', teams['platform'].get('business', {}), 'тексты устаревшего блока не берутся')
+        # пересбор данных не стирает цели, KR и формулировки: колода не «теряет» направления
+        self.assertEqual(doc['teams']['platform']['objectives'], teams['platform']['business']['objectives'])
+        self.assertEqual('OBJ 1', teams['platform']['business']['streams']['INIT-101']['obj'])
         self.assertIn('objectives', teams['catalog']['business'])
 
     def test_roster_survives_stale_block(self):
@@ -242,10 +247,12 @@ class PageTest(unittest.TestCase):
             {'version': 1, 'teams': {'mobile': {'members': ['Сидоров Сидор']}}}, ensure_ascii=False), encoding='utf-8')
         proc = self.ws.bcli('render')
         self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
-        self.assertIn('блок устарел (данные пересобраны): platform', proc.stdout)
+        self.assertIn('тексты по прошлому снимку: platform', proc.stdout)
         teams = {t['slug']: t for t in self.ws.page_teams_of(self.ws.biz_page)}
-        self.assertEqual({'members': ['Иванов Иван'], 'hide': ['INIT-1'], 'escalation': 'Петров',
-                          'jiraNative': '/jira/?key={key}'}, teams['platform']['business'])
+        biz = teams['platform']['business']
+        self.assertEqual((['Иванов Иван'], 'Петров', '/jira/?key={key}'), (biz['members'], biz['escalation'], biz['jiraNative']))
+        self.assertEqual([], biz['hide'], 'INIT-1 нет в спринте — из hide отсеян')
+        self.assertIn('objectives', biz)
         self.assertEqual({'members': ['Сидоров Сидор'], 'jiraNative': '/jira/?key={key}'}, teams['mobile']['business'])
         self.assertIn('objectives', teams['catalog']['business'], 'свежий блок — целиком')
         for slug, t in teams.items():
@@ -335,3 +342,102 @@ class RiskNotesTest(unittest.TestCase):
             self.assertEqual(1, p.returncode, p.stdout)
             self.assertIn('не приняты', p.stdout)
         self.assertFalse(self.notes.exists())
+
+
+class LayersTest(unittest.TestCase):
+    """Версии блока: запись агента — слой с тем, что он поменял; итог — наложение по хронологии."""
+
+    def setUp(self):
+        self.ws = BizWorkspace()
+        self.addCleanup(self.ws.cleanup)
+
+    def write(self, doc):
+        self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
+
+    def read(self):
+        return json.loads(self.ws.biz_file.read_text(encoding='utf-8'))
+
+    def apply(self, doc):
+        self.write(doc)
+        proc = self.ws.bcli('apply')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        return proc
+
+    def page_biz(self, slug='platform'):
+        return {t['slug']: t for t in self.ws.page_teams_of(self.ws.biz_page)}[slug]['business']
+
+    def test_first_apply_is_v1_and_block_carries_revision(self):
+        proc = self.apply(self.ws.biz_example())
+        self.assertIn('версия v0001', proc.stdout)
+        self.assertEqual(1, self.read()['revision'])
+        self.assertTrue((self.ws.biz_file.parent / 'sprint-business.versions' / 'v0001.json').is_file())
+
+    def test_concurrent_writers_do_not_clobber(self):
+        # оба прочитали v1; первый поправил итог INIT-101, второй — следующий шаг INIT-111
+        self.apply(self.ws.biz_example())
+        base = self.read()
+        a, b = json.loads(json.dumps(base)), json.loads(json.dumps(base))
+        a['teams']['platform']['streams']['INIT-101']['done'] = 'Правка PO: итог для комитета.'
+        a['author'] = 'PO'
+        b['teams']['platform']['streams']['INIT-111']['next'] = 'выпуск в четверг'
+        b['author'] = 'PO-агент'
+        self.apply(a)
+        proc = self.apply(b)
+        self.assertNotIn('перекрыта', proc.stdout, 'поля разные — конфликта нет')
+        streams = self.page_biz()['streams']
+        self.assertEqual('Правка PO: итог для комитета.', streams['INIT-101']['done'], 'вторая запись не затёрла первую')
+        self.assertEqual('выпуск в четверг', streams['INIT-111']['next'])
+        self.assertEqual(3, self.read()['revision'])
+
+    def test_same_field_later_wins_with_warning(self):
+        self.apply(self.ws.biz_example())
+        base = self.read()
+        a, b = json.loads(json.dumps(base)), json.loads(json.dumps(base))
+        a['teams']['platform']['streams']['INIT-101']['done'] = 'Версия A.'
+        a['author'] = 'PO'
+        b['teams']['platform']['streams']['INIT-101']['done'] = 'Версия B.'
+        self.apply(a)
+        proc = self.apply(b)
+        self.assertIn('перекрыта правка v2 (PO)', proc.stdout)
+        self.assertEqual('Версия B.', self.page_biz()['streams']['INIT-101']['done'])
+
+    def test_removal_needs_known_base(self):
+        self.apply(self.ws.biz_example())
+        doc = self.read()
+        del doc['teams']['platform']['streams']['INIT-101']['shown']
+        self.apply(doc)
+        self.assertNotIn('shown', self.page_biz()['streams']['INIT-101'], 'с revision удаление — правка')
+        partial = {'version': 1, 'generatedAt': '2026-11-04T21:00:00+03:00', 'author': 'агент команды',
+                   'teams': {'catalog': {'dataHash': self.read()['teams']['catalog']['dataHash'],
+                                         'objectives': {'OBJ 9': 'Новая цель каталога'}}}}
+        proc = self.apply(partial)
+        self.assertIn('нет revision', proc.stdout)
+        self.assertIn('objectives', self.page_biz('platform'), 'запись без базы чужое не стирает')
+        self.assertEqual('Новая цель каталога', self.page_biz('catalog')['objectives']['OBJ 9'])
+        self.assertIn('INIT-208', self.page_biz('catalog')['streams'], 'и своё не стирает')
+
+    def test_refused_write_leaves_history_and_deck(self):
+        self.apply(self.ws.biz_example())
+        doc = self.read()
+        doc['teams']['platform']['rows']['INIT-99999'] = {'next': 'выдумка'}
+        doc['teams']['platform']['streams']['INIT-101']['done'] = 'не должно попасть'
+        self.write(doc)
+        proc = self.ws.bcli('apply')
+        self.assertEqual(1, proc.returncode)
+        self.assertNotIn('не должно попасть', json.dumps(self.page_biz(), ensure_ascii=False))
+        self.ws.bcli('render')   # пересборка на «свежих» читает историю, а не черновик в файле
+        self.assertNotIn('не должно попасть', json.dumps(self.page_biz(), ensure_ascii=False))
+
+    def test_history_lists_versions(self):
+        self.apply(self.ws.biz_example())
+        proc = self.ws.bcli('history')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        self.assertRegex(proc.stdout, r'v0001 .* база v0000 .*platform')
+
+    def test_layers_unit(self):
+        import layers
+        flat = layers.flatten({'jiraNative': 'x{key}', 'teams': {'t': {'objectives': {'OBJ 1': 'a'},
+                               'streams': {'E-1': {'done': 'd', 'obj': 'OBJ 1'}}, 'hide': ['E-2']}}})
+        self.assertEqual('d', flat[('teams', 't', 'streams', 'E-1', 'done')])
+        self.assertEqual(['E-2'], flat[('teams', 't', 'hide')])
+        self.assertEqual(flat, layers.flatten(layers.unflatten(flat)))
