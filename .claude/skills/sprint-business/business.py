@@ -294,7 +294,16 @@ def prepare(teams, path):
     doc = read_doc(path)
     store = layers_mod.Store(path)
     patch, merged, overridden, base_n, no_base = store.plan(doc)
-    errors, warnings = check(prune(merged, teams, [p for p, _ in patch]), teams)
+    # первая запись (истории ещё нет): весь файл — «изменение», в том числе строки прошлых
+    # спринтов; их отсеиваем молча, как при сборке, а не отказываем в записи
+    keep = [p for p, _ in patch] if store.exists() else []
+    view = prune(merged, teams, keep)
+    errors, warnings = check(view, teams)
+    if not keep:
+        gone = sorted({f'{slug}:{k}' for slug, t in (merged.get('teams') or {}).items() for f in ('streams', 'rows')
+                       for k in (t.get(f) or {}) if k not in ((view['teams'].get(slug) or {}).get(f) or {})})
+        if gone:
+            warnings.append(f'первая версия: строк нет в спринте — на колоду не идут: {", ".join(gone)}')
     if no_base and store.exists():
         warnings.append(f'в файле нет revision — правки наложены поверх последней версии v{base_n}, '
                         f'ничего не удалено; читайте {path.name} перед записью и не трогайте revision')

@@ -260,7 +260,10 @@ class PageTest(unittest.TestCase):
                              build_mod.team_digest(t), 'данные те же, что в снимке')
 
     def test_apply_refuses_bad_block(self):
-        doc = self.ws.biz_example()
+        self.ws.biz_file.write_text(json.dumps(self.ws.biz_example(), ensure_ascii=False), encoding='utf-8')
+        self.assertEqual(0, self.ws.bcli('apply').returncode)
+        self.ws.biz_page.unlink()
+        doc = json.loads(self.ws.biz_file.read_text(encoding='utf-8'))
         doc['teams']['platform']['rows']['INIT-99999'] = {'next': 'выдумка'}
         self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
         proc = self.ws.bcli('apply')
@@ -441,3 +444,15 @@ class LayersTest(unittest.TestCase):
         self.assertEqual('d', flat[('teams', 't', 'streams', 'E-1', 'done')])
         self.assertEqual(['E-2'], flat[('teams', 't', 'hide')])
         self.assertEqual(flat, layers.flatten(layers.unflatten(flat)))
+
+    def test_first_apply_drops_rows_of_past_sprints(self):
+        # блок до версий ссылается на эпики и истории прошлого спринта — первая запись не отказывает
+        doc = self.ws.biz_example()
+        doc['teams']['platform']['rows']['INIT-99999'] = {'next': 'из прошлого спринта'}
+        proc = self.apply(doc)
+        self.assertIn('на колоду не идут: platform:INIT-99999', proc.stdout)
+        self.assertNotIn('INIT-99999', self.page_biz()['rows'])
+        doc = self.read()
+        doc['teams']['platform']['rows']['INIT-99998'] = {'next': 'выдумка'}
+        self.write(doc)
+        self.assertEqual(1, self.ws.bcli('apply').returncode, 'дальше — ошибка, как раньше')
