@@ -431,6 +431,32 @@ class LayersTest(unittest.TestCase):
         self.ws.bcli('render')   # пересборка на «свежих» читает историю, а не черновик в файле
         self.assertNotIn('не должно попасть', json.dumps(self.page_biz(), ensure_ascii=False))
 
+    def test_apply_draft_layers_onto_main_block(self):
+        """Правка PO из виджета: запись — в черновике, версия и итог — у основного блока; автор — из черновика."""
+        self.apply(self.ws.biz_example())
+        draft = json.loads(json.dumps(self.read()))
+        draft['teams']['platform']['streams']['INIT-101']['done'] = 'Правка PO на слайде.'
+        draft['author'] = 'PO'
+        draft_file = self.ws.dir / 'own' / 'po-edit.json'
+        draft_file.parent.mkdir()
+        draft_file.write_text(json.dumps(draft, ensure_ascii=False), encoding='utf-8')
+        before = draft_file.read_text(encoding='utf-8')
+        proc = self.ws.bcli('check', '--draft', str(draft_file))
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        self.assertIn('полей изменено 1', proc.stdout)
+        proc = self.ws.bcli('apply', '--draft', str(draft_file))
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        self.assertIn('версия v0002: полей изменено 1', proc.stdout)
+        v2 = json.loads((self.ws.biz_file.parent / 'sprint-business.versions' / 'v0002.json').read_text(encoding='utf-8'))
+        self.assertEqual('PO', v2['author'])
+        self.assertEqual([[['teams', 'platform', 'streams', 'INIT-101', 'done'], 'Правка PO на слайде.']], v2['patch'])
+        block = self.read()
+        self.assertEqual((2, 'PO'), (block['revision'], block['author']), 'итог пересобран в основном файле')
+        self.assertEqual('Правка PO на слайде.', block['teams']['platform']['streams']['INIT-101']['done'])
+        self.assertEqual('Правка PO на слайде.', self.page_biz()['streams']['INIT-101']['done'])
+        self.assertEqual(before, draft_file.read_text(encoding='utf-8'), 'черновик не тронут')
+        self.assertFalse((draft_file.parent / 'po-edit.versions').exists(), 'истории у черновика нет')
+
     def test_history_lists_versions(self):
         self.apply(self.ws.biz_example())
         proc = self.ws.bcli('history')
