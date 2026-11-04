@@ -807,6 +807,19 @@
   function editsKey() { return 'actual-sprint:deck-text:' + TEAMS.map(function (t) { return t.slug + '@' + t.sprintName; }).join(','); }
   function loadEdits() { try { return JSON.parse(localStorage.getItem(editsKey()) || '{}') || {}; } catch (e) { return {}; } }
   function saveEdits(map) { try { localStorage.setItem(editsKey(), JSON.stringify(map)); } catch (e) { /* без хранилища правки живут до перезагрузки */ } }
+  // Правка PO — и агентам: колода во фрейме виджета PO-Sprint-business отдаёт её родителю сообщением,
+  // виджет пишет её версией бизнес-блока с автором PO. Сама колода на сервер не ходит (CSP connect-src 'none').
+  // text: null — «Вернуть текст». Открыта сама по себе (файл, вкладка) — правка только в браузере.
+  // Адресат — только свой origin (виджет того же origin); у файла с диска origin непрозрачный — тогда любой.
+  var editSent = {};
+  function postEdit(id, text) {
+    if (window.parent === window) return;
+    try {
+      window.parent.postMessage({ type: 'business-deck-edit', id: id, text: text,
+        teams: TEAMS.map(function (t) { return { slug: t.slug, sprintName: t.sprintName }; }) },
+        /^https?:$/.test(location.protocol) ? location.origin : '*');
+    } catch (e) { /* родитель недоступен — правка остаётся в браузере */ }
+  }
   function ed(id, text, tag) {
     tag = tag || 'span';
     return '<' + tag + ' class="ed" data-edit="' + esc(id) + '">' + esc(text) + '</' + tag + '>';
@@ -1754,6 +1767,9 @@
     var btn = document.getElementById('deckEdit');
     btn.textContent = on ? 'Готово' : 'Редактировать текст';
     btn.setAttribute('aria-pressed', String(on));
+    // выход из правки без клика мимо поля (печать) — правку в поле всё равно отдаём
+    var active = document.activeElement;
+    if (was && !on && active && active.closest && active.closest('[data-edit]')) active.blur();
     deckSlides.querySelectorAll('[data-edit]').forEach(function (el) {
       if (on) el.setAttribute('contenteditable', 'plaintext-only'); else el.removeAttribute('contenteditable');
       if (on && el.contentEditable !== 'plaintext-only') el.setAttribute('contenteditable', 'true');  // Firefox
@@ -1770,6 +1786,16 @@
     saveEdits(map);
     el.classList.toggle('edited', text !== el.dataset.orig);
     document.getElementById('deckReset').hidden = !Object.keys(map).length;
+  });
+  // поле дописано (Enter, клик мимо, Esc) — отдаём правку агентам; при наборе — только в браузер
+  deckSlides.addEventListener('focusout', function (e) {
+    var el = e.target.closest && e.target.closest('[data-edit]');
+    if (!el) return;
+    var id = el.dataset.edit, text = el.textContent;
+    var prev = Object.prototype.hasOwnProperty.call(editSent, id) ? editSent[id] : el.dataset.orig;
+    if (text === prev) return;
+    editSent[id] = text;
+    postEdit(id, text);
   });
   deckSlides.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && e.target.closest && e.target.closest('[data-edit]')) { e.preventDefault(); e.target.blur(); }
@@ -2269,7 +2295,10 @@
   document.getElementById('deckEdit').addEventListener('click', function () { setEditing(!deckEditing); });
   document.getElementById('deckReset').addEventListener('click', function () {
     if (!window.confirm('Вернуть исходный текст на всех слайдах? Ваши правки текста пропадут.')) return;
+    var reverted = Object.keys(loadEdits());
     saveEdits({});
+    editSent = {};
+    reverted.forEach(function (id) { postEdit(id, null); });
     buildDeck();
   });
   document.getElementById('deckTocBtn').addEventListener('click', function () {
