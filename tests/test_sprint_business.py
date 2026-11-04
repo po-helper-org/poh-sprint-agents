@@ -449,6 +449,8 @@ class LayersTest(unittest.TestCase):
         # блок до версий ссылается на эпики и истории прошлого спринта — первая запись не отказывает
         doc = self.ws.biz_example()
         doc['teams']['platform']['rows']['INIT-99999'] = {'next': 'из прошлого спринта'}
+        doc['teams']['platform']['plans']['take'][0]['keys'] = ['INIT-99997']
+        doc['teams']['platform']['roadmap']['rows'].append({'epic': 'INIT-99996', 'cells': ['бек', 'бек', 'бек', 'qa', 'приёмка', '']})
         proc = self.apply(doc)
         self.assertIn('на колоду не идут: platform:INIT-99999', proc.stdout)
         self.assertNotIn('INIT-99999', self.page_biz()['rows'])
