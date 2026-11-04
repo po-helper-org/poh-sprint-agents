@@ -3,7 +3,8 @@
 #
 #   hermes/install-quarter-risks.sh [--check | --remove | --replace] [профиль:команда:"cron" …]
 #
-# По умолчанию — po-gds:gds, po-live:live, po-mrs:mrs по понедельникам в 09:00 / 09:15 / 09:30
+# Без аргументов — строки из hermes/quarter-risks.specs (не в git; образец — quarter-risks.specs.example):
+# агенты команд по понедельникам в 09:00 / 09:15 / 09:30
 # (после сбора эпиков квартала таймером виджета в 08:45, до синка с CPO; агенты идут по очереди —
 # одновременная запись в quarter-risks.json всё равно защищена замком quarter.py put).
 # Навык ставится копией (install -m 644) в ~/.hermes/profiles/<профиль>/skills/quarter-risks/ с подставленными
@@ -30,7 +31,12 @@ TEMPLATE="$HERE/quarter-risks/SKILL.md"
 MODE=install
 case "${1:-}" in --check|--remove|--replace) MODE="${1#--}"; shift ;; esac
 SPECS=("$@")
-[ ${#SPECS[@]} -gt 0 ] || SPECS=("po-gds:gds:0 9 * * 1" "po-live:live:15 9 * * 1" "po-mrs:mrs:30 9 * * 1")
+CONF="$HERE/quarter-risks.specs"
+if [ ${#SPECS[@]} -eq 0 ]; then
+  [ -f "$CONF" ] || { echo "✗ нет $CONF — скопируй $CONF.example и впиши профили или передай профиль:команда:\"cron\" аргументами" >&2; exit 2; }
+  while IFS= read -r line || [ -n "$line" ]; do case "$line" in ''|'#'*) ;; *) SPECS+=("$line") ;; esac; done <"$CONF"
+  [ ${#SPECS[@]} -gt 0 ] || { echo "✗ в $CONF нет ни одной строки профиль:команда:cron" >&2; exit 2; }
+fi
 
 job_id() { # профиль имя → id задачи cron с этим именем (или пусто)
   python3 - "$HERMES_HOME/profiles/$1/cron/jobs.json" "$2" <<'PY'

@@ -50,7 +50,7 @@ python3 .claude/skills/sprint-status/status.py --data demo.json --out demo/sprin
 HTML печатает headless Chrome/Chromium, Python-зависимостей нет. Браузер ищется так:
 
 1. `--chrome <путь>` или переменная `SPRINT_STATUS_CHROME` / `CHROME_PATH`;
-2. Chromium из `PLAYWRIGHT_BROWSERS_PATH` (например, тот, что ставит `tools/mts-link-sync` в poh-morning-status);
+2. Chromium из `PLAYWRIGHT_BROWSERS_PATH` (например, тот, что ставит `tools/corpchat-sync` в poh-morning-status);
 3. Google Chrome, Chromium, Edge или Brave в стандартных местах и в `PATH`.
 
 Браузера нет → `Статус спринта не собран: PDF не собран: нет Chrome/Chromium…`, а лист остаётся в `.html`. Без браузера можно собрать только HTML: `--html-only`.

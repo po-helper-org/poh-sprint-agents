@@ -1,0 +1,5 @@
+# профиль:команда:cron — по строке на Hermes-агента PO-команды.
+# Скопируй в hermes/quarter-risks.specs (файл не в git) и впиши свои профили.
+po-team-a:team-a:0 9 * * 1
+po-team-b:team-b:15 9 * * 1
+po-team-c:team-c:30 9 * * 1

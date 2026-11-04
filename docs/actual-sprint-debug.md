@@ -5,7 +5,7 @@
 ## Порядок первого запуска
 
 ```bash
-export JIRA_URL=https://jira.вашкомпания.ru
+export JIRA_URL=https://jira.example.com
 export JIRA_PERSONAL_TOKEN=…            # PAT, только в окружении
 
 R=.claude/skills/actual-sprint/runner/run.py
