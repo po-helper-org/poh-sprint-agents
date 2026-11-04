@@ -1375,9 +1375,12 @@
     storiesBody.innerHTML = ref.items.length ? ref.items.map(function (it) {
       var hist = (it.history || []).map(function (h) { return '<div class="of-h">' + ddmm(h.at) + ' ' + esc(h.from || '—') + ' → <b>' + esc(h.to || '—') + '</b>' + (h.by ? ' · ' + esc(shortName(h.by)) : '') + '</div>'; }).join('');
       var com = (it.comments || []).map(function (c) { return '<div class="of-c"><span>' + ddmm(c.at) + (c.by ? ' · ' + esc(shortName(c.by)) : '') + '</span> ' + esc(clip(c.body, 260)) + '</div>'; }).join('');
-      return '<div class="es-row ' + (it.bucket === 'done' ? 'stat-green' : 'stat-yellow') + '"><div class="es-top"><span class="es-title">' + esc(it.title) + '</span>' +
+      // задача вне спринта — та же корзина ИИ-агенту, что у задач спринта: поле под карточкой и ПКМ
+      var target = { kind: 'ref', key: it.key, title: it.title, status: it.status, assignee: ref.name };
+      return '<div class="es-row ' + (it.bucket === 'done' ? 'stat-green' : 'stat-yellow') + '"' + ctxAttr(target) + '><div class="es-top"><span class="es-title">' + esc(it.title) + '</span>' +
         '<span class="es-pct">' + (it.doneAt ? 'закрыта ' + ddmm(it.doneAt) : esc(it.status)) + '</span></div>' +
-        '<div class="es-meta">' + keyLink(it.key) + ' · ' + esc(it.project || '') + (it.type ? ' · ' + esc(it.type) : '') + '</div>' + hist + com + '</div>';
+        '<div class="es-meta">' + keyLink(it.key) + ' · ' + esc(it.project || '') + (it.type ? ' · ' + esc(it.type) : '') + '</div>' + hist + com +
+        cboxHtml(target, 'Комментарий к ' + it.key + ' ИИ-агенту: взять в спринт, привязать к эпику, сменить статус…') + '</div>';
     }).join('') : '<div class="sidebar-empty">Задач вне доски за период нет.</div>';
     openPanel();
   }
