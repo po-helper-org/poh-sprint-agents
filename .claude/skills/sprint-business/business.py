@@ -206,6 +206,13 @@ def prune(doc, teams, keep=()):
                                 if k in known or any(p[:4] == ('teams', slug, field, k) for p in keep)}
         if isinstance(entry.get('hide'), list) and ('teams', slug, 'hide') not in keep:
             entry['hide'] = [k for k in entry['hide'] if k in stories]
+        if isinstance(entry.get('roadmap'), dict) and ('teams', slug, 'roadmap') not in keep:
+            entry['roadmap'] = dict(entry['roadmap'], rows=[r for r in entry['roadmap'].get('rows', [])
+                                                            if 'epic' not in r or r['epic'] in epics])
+        if isinstance(entry.get('plans'), dict) and ('teams', slug, 'plans') not in keep:
+            known = ins.team_keys(team)
+            entry['plans'] = {col: [dict(c, keys=[k for k in c['keys'] if k in known]) if 'keys' in c else c
+                                    for c in cards] for col, cards in entry['plans'].items()}
         out['teams'][slug] = entry
     return out
 
