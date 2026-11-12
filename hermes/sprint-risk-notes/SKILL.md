@@ -25,7 +25,7 @@ metadata:
 
 ```bash
 cd {{AGENTS}}/.claude/skills/sprint-business
-C={{WIDGET}}/workspace/sprint-report.config.toml
+C={{CONFIG}}
 ```
 
 1. **Что комментировать и что уже знаешь:**

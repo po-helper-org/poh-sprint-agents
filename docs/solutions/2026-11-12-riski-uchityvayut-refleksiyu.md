@@ -3,7 +3,7 @@ title: Риски квартала и комментарии к рискам с�
 date: 2026-11-12
 kind: feature
 area: sprint-business
-prs: [42]
+prs: [42, 43]
 tags: [риски, агенты, рефлексия, team-pulse, quarter-risks, sprint-risk-notes]
 source: session
 ---
@@ -33,3 +33,12 @@ source: session
 
 `tests/test_hermes_risk_skills.py` — оба установщика во временном `HERMES_HOME`: путь к team-pulse и po-feedback
 подставлен, пустых подстановок нет, чтение — в шаге 1.
+
+## Дополнение: пути установщиков (PR 43)
+
+При переустановке навыков выяснилось: умолчания установщиков (`REPORTS_DIR` = `~/Projects/poh-widget-sprint-observe/
+workspace/reports`, конфиг колоды = `<клон виджета>/workspace/…`) на сервере не существуют — снимок и конфиг лежат в
+`~/.local/share/…`. Агенты искали их сами (11.11 `sprint-risk-notes` нашёл конфиг через настройки виджета).
+Теперь установщики берут умолчания из `~/.config/poh-widget-sprint-business/config.json` (`observe_workspace`,
+`workspace`), конфиг колоды подставляется отдельным `{{CONFIG}}`, а не из каталога кода. Нет настроек — прежние
+умолчания. Тесты: `test_paths_come_from_widget_config`, `test_without_widget_config_falls_back_to_clone_paths`.
