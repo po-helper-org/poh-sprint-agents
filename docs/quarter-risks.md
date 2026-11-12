@@ -81,6 +81,9 @@
 - Агент учитывает **ежедневную рефлексию**: в шаге 1 читает знание команды `team-pulse` своего профиля и уроки PO
   (`references/po-feedback.md`). Уроки PO — обязательные правила, риски и эскалации из рефлексии — кандидаты,
   каждый сверяется с Jira, цифры — только из facts (`docs/solutions/2026-11-12-riski-uchityvayut-refleksiyu.md`).
+- Установщики (`hermes/install-quarter-risks.sh`, `hermes/install-sprint-risk-notes.sh`) берут пути снимка и конфига
+  колоды из настроек виджета `~/.config/poh-widget-sprint-business/config.json` (`observe_workspace`, `workspace`);
+  переопределить — `REPORTS_DIR`, `CONFIG`. Навыки в профилях — копии: после правки шаблона переустановить без ключей.
 - Прогнать руками — `systemd-run --user --collect hermes -p <профиль> cron run <id>`: `cron run` выполняет задачу в самом процессе CLI, поэтому `timeout` или обрыв SSH убивают прогон на середине (так было 2026-10-19). Jira/VPN недоступны — агент работает по снимку и пишет об этом, доступ не чинит.
 
 ## Файлы

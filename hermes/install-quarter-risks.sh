@@ -12,7 +12,12 @@
 #
 # Пути — переменными окружения:
 #   AGENTS_DIR   клон poh-sprint-agents                 (по умолчанию ~/Projects/poh-sprint-agents)
-#   REPORTS_DIR  reports снимка PO-Sprint-observe       (по умолчанию ~/Projects/poh-widget-sprint-observe/workspace/reports)
+#   WIDGET_CONFIG настройки виджета poh-widget-sprint-business — из них умолчания REPORTS_DIR и CONFIG
+#                (по умолчанию ~/.config/poh-widget-sprint-business/config.json: observe_workspace, workspace)
+#   REPORTS_DIR  reports снимка PO-Sprint-observe       (<observe_workspace>/reports; нет настроек —
+#                ~/Projects/poh-widget-sprint-observe/workspace/reports)
+#   CONFIG       sprint-report.config.toml колоды       (<workspace>/sprint-report.config.toml; нет настроек —
+#                $WIDGET_DIR/workspace/sprint-report.config.toml)
 #   WIDGET_DIR   клон poh-widget-sprint-business       (по умолчанию ~/Projects/poh-widget-sprint-business)
 #   PAGE_URL     адрес страницы для ответа агента       (по умолчанию /business/risks)
 #   HERMES_HOME  каталог Hermes                         (по умолчанию ~/.hermes)
@@ -20,8 +25,24 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENTS_DIR="${AGENTS_DIR:-$HOME/Projects/poh-sprint-agents}"
-REPORTS_DIR="${REPORTS_DIR:-$HOME/Projects/poh-widget-sprint-observe/workspace/reports}"
 WIDGET_DIR="${WIDGET_DIR:-$HOME/Projects/poh-widget-sprint-business}"
+WIDGET_CONFIG="${WIDGET_CONFIG:-$HOME/.config/poh-widget-sprint-business/config.json}"
+widget_path() { # ключ настроек виджета → путь (или пусто): на сервере данные не в клоне, а в ~/.local/share
+  python3 - "$WIDGET_CONFIG" "$1" <<'PY'
+import json, os, sys
+try:
+    v = json.load(open(sys.argv[1], encoding='utf-8')).get(sys.argv[2]) or ''
+except (OSError, ValueError):
+    v = ''
+print(os.path.expanduser(v) if isinstance(v, str) else '')
+PY
+}
+OBS_WS="$(widget_path observe_workspace)"
+BIZ_WS="$(widget_path workspace)"
+REPORTS_DIR="${REPORTS_DIR:-${OBS_WS:+$OBS_WS/reports}}"
+REPORTS_DIR="${REPORTS_DIR:-$HOME/Projects/poh-widget-sprint-observe/workspace/reports}"
+CONFIG="${CONFIG:-${BIZ_WS:+$BIZ_WS/sprint-report.config.toml}}"
+CONFIG="${CONFIG:-$WIDGET_DIR/workspace/sprint-report.config.toml}"
 PAGE_URL="${PAGE_URL:-/business/risks}"
 HERMES_HOME="${HERMES_HOME:-$HOME/.hermes}"
 HERMES="${HERMES:-hermes}"
@@ -86,7 +107,7 @@ for spec in "${SPECS[@]}"; do
     install|replace)
       tmp="$(mktemp)"
       python3 - "$TEMPLATE" "$tmp" TEAM_NAME="$(team_name "$team")" TEAM="$team" PROFILE="$profile" \
-        AGENTS="$AGENTS_DIR" REPORTS="$REPORTS_DIR" WIDGET="$WIDGET_DIR" PAGE_URL="$PAGE_URL" \
+        AGENTS="$AGENTS_DIR" REPORTS="$REPORTS_DIR" WIDGET="$WIDGET_DIR" PAGE_URL="$PAGE_URL" CONFIG="$CONFIG" \
         PULSE="$pdir/skills/team-pulse" <<'PY'
 import sys
 text = open(sys.argv[1], encoding='utf-8').read()
