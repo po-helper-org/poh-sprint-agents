@@ -74,6 +74,7 @@ for spec in "${SPECS[@]}"; do
   case "$MODE" in
     check)
       [ -f "$skill" ] && grep -q -- "--team $team " "$skill" && s="навык ✓" || { s="навыка нет"; fail=1; }
+      [ -f "$skill" ] && ! grep -q "skills/team-pulse/SKILL.md" "$skill" && { s="навык устарел (нет team-pulse) — переустановить без ключей"; fail=1; }
       [ -n "$id" ] && c="cron $name ✓ ($id)" || { c="cron $name нет"; fail=1; }
       echo "$profile: $s, $c"
       ;;
@@ -85,7 +86,8 @@ for spec in "${SPECS[@]}"; do
     install|replace)
       tmp="$(mktemp)"
       python3 - "$TEMPLATE" "$tmp" TEAM_NAME="$(team_name "$team")" TEAM="$team" PROFILE="$profile" \
-        AGENTS="$AGENTS_DIR" REPORTS="$REPORTS_DIR" WIDGET="$WIDGET_DIR" PAGE_URL="$PAGE_URL" <<'PY'
+        AGENTS="$AGENTS_DIR" REPORTS="$REPORTS_DIR" WIDGET="$WIDGET_DIR" PAGE_URL="$PAGE_URL" \
+        PULSE="$pdir/skills/team-pulse" <<'PY'
 import sys
 text = open(sys.argv[1], encoding='utf-8').read()
 for pair in sys.argv[3:]:
