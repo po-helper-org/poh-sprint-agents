@@ -944,7 +944,7 @@
     }).join('');
     var exp = biz(t).expectations || [], rk = biz(t).risks || [];
     return slide('hero-slide',
-      '<div class="h-kicker">Стрим · ' + esc(t.sprintName) + (p ? ' · ' + dayMonth(p.start) + ' — ' + dayMonth(p.end) : '') + '</div>' +
+      '<div class="h-kicker">Стрим · ' + esc(String(t.sprintName).replace(/^Стрим · /, '')) + (p ? ' · ' + dayMonth(p.start) + ' — ' + dayMonth(p.end) : '') + '</div>' +
       '<h1>' + esc(t.team) + '</h1><div class="h-line"></div>' +
       '<div class="h-kpis"><div><b>' + exp.length + '</b><span>открытых ожиданий</span></div>' +
       '<div><b>' + rk.length + '</b><span>рисков стрима</span></div></div>' +
