@@ -80,7 +80,13 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
     """Бизнес-блок презентации: KR — эпики команды, строки — истории её спринта, цели —
     из списка objectives, длины — под слайд, ключи задач — из данных. Числа сверяются с
     фактами там, где они из данных (строки, Sprint Goal); цели OKR, риски и договорённости
-    приходят из документов PO — их числа с фактами спринта не сверить."""
+    приходят из документов PO — их числа с фактами спринта не сверить.
+
+    Стрим (kind=stream) — раздел без Jira-операций: цели, «Открытые ожидания», риски и
+    roadmap приходят целиком из блока (пишет профиль-наблюдатель), числовых сверок нет —
+    проверки только формы и длин."""
+    if biz.get('kind') == 'stream':
+        return check_stream(slug, biz, errors, warnings)
     epics = {e['epicKey'] for e in team['epics'] if e.get('epicKey')}
     no_epic = any(not e.get('epicKey') and e['stories'] for e in team['epics'])
     stories = {st['key'] for e in team['epics'] for st in e['stories']}
@@ -143,6 +149,41 @@ def check_team(slug, biz, team, keys, allowed, errors, warnings):
     from_okr = objectives or any('kr' in st for st in biz.get('streams', {}).values()) or biz.get('risks') or biz.get('roadmap')
     if from_okr and not biz.get('goalsSource'):
         warnings.append(f'[{slug}] цели OKR и риски без goalsSource — укажите, откуда они (OKR, roadmap, со слов PO)')
+
+
+# лимиты полей «Открытых ожиданий» и стрим-строк: слайд не резиновый, числа — из блока
+STREAM_LIMITS = {'objective': 100, 'kr': 120, 'stream_done': 180, 'stream_next': 100,
+                 'stream_blocker': 140, 'meta': 80, 'what': 160, 'age': 60}
+
+
+def check_stream(slug, biz, errors, warnings):
+    """Стрим (kind=stream) в бизнес-блоке: формы общие (схема уже прошла), здесь — длины
+    и обязательный состав. Числа из данных не сверяются: у стрима нет Jira-фактов, всё
+    содержимое пишет профиль-наблюдатель по своим дайджестам."""
+    objectives = biz.get('objectives', {})
+    texts = [(f'objectives.{k}', v, STREAM_LIMITS['objective'], False) for k, v in objectives.items()]
+    for key, st in biz.get('streams', {}).items():
+        if 'obj' in st and st['obj'] not in objectives:
+            warnings.append(f'[{slug}] streams.{key}: цели {st["obj"]} нет в objectives — заголовок слайда будет без названия')
+        texts += [(f'streams.{key}.kr', st['kr'], STREAM_LIMITS['kr'], False)] if 'kr' in st else []
+        for f in ('done', 'next', 'blocker'):
+            if f in st:
+                texts += [(f'streams.{key}.{f}', st[f], STREAM_LIMITS['stream_' + f], False)]
+    for i, x in enumerate(biz.get('expectations', []), 1):
+        if not x.get('what') or not str(x.get('what', '')).strip():
+            errors.append(f'[{slug}] expectations #{i}: what пуст — нет данных пиши текстом, пустых строк не бывает')
+        texts += [(f'expectations #{i}.who', x['who'], 80, False)]
+        if 'meta' in x:
+            texts += [(f'expectations #{i}.meta', x['meta'], STREAM_LIMITS['meta'], False)]
+        texts += [(f'expectations #{i}.what', x['what'], STREAM_LIMITS['what'], False)]
+        if 'age' in x:
+            texts += [(f'expectations #{i}.age', x['age'], STREAM_LIMITS['age'], False)]
+    if not objectives and not biz.get('streams'):
+        warnings.append(f'[{slug}] у стрима нет ни целей, ни строк — раздел будет пустым')
+    for where, text, limit, _numbers in texts:
+        where = f'[{slug}] {where}'
+        if len(text) > limit:
+            errors.append(f'{where}: длиннее {limit} знаков ({len(text)}) — на слайд не влезет')
 
 
 # ------------------------------------------------------------------ страница

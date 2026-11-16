@@ -379,6 +379,18 @@
   .rk-row { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr) minmax(0, 1.2fr); gap: 24px; padding: 10px 0; align-items: baseline; }
   .rk-row.rk-first { border-top: 1px solid #e5e5e5; padding-top: 14px; }
   .rk-row.rk-head { padding: 8px 0; font-size: 12px; font-weight: 600; color: #888; border-top: 0; }
+
+  /* «Открытые ожидания» стрима: от кого · что ожидаем · срок */
+  .exp-list { margin-top: 24px; border-top: 1px solid #e5e5e5; }
+  .exp-row { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr) minmax(0, 0.7fr); gap: 24px; padding: 10px 0; align-items: baseline; }
+  .exp-row + .exp-row { border-top: 1px solid #ececec; }
+  .exp-row.rk-head { padding: 8px 0; font-size: 12px; font-weight: 600; color: #888; border-top: 0; }
+  .exp-who { font-weight: 600; font-size: 14px; }
+  .exp-meta { font-size: 12px; color: #888; margin-top: 2px; }
+  .exp-what { font-size: 14px; line-height: 1.4; }
+  .exp-when { font-size: 14px; color: #444; font-variant-numeric: tabular-nums; white-space: pre-line; }
+  .exp-when .late { color: var(--c-blocked); font-weight: 600; }
+  .exp-empty { margin-top: 20px; font-size: 14px; color: var(--muted); }
   .rk-name { font-size: 16px; font-weight: 700; line-height: 1.3; }
   .rk-key, .rk-meta { font-size: 12px; color: #888; margin-top: 3px; }
   .rk-meta.k-external { color: #b91c1c; } .rk-meta.k-deadline { color: #b45309; }
@@ -650,6 +662,9 @@
   }
 
   function biz(t) { return t.business || {}; }
+  // «стрим»: раздел без Jira-операций (данные готовит профиль-наблюдатель), слайды —
+  // цели, «Открытые ожидания», риски, roadmap; операционного отчёта и участников нет
+  function isStream(t) { return biz(t).kind === 'stream'; }
 
   // ключ строки «Вне эпиков» в бизнес-блоке (streams) — у историй спринта без эпика
   var NO_EPIC = 'no-epic';
@@ -872,6 +887,14 @@
     var end = paces.map(function (p) { return p.end; }).sort().pop();
     var cards = all.map(function (x) {
       var st = teamStats(x.t, x.streams), pc = pctOf(st.done, st.stories);
+      if (isStream(x.t)) {
+        // стрим: вместо Jira-процентов — ожидания и риски (тексты готовит профиль-наблюдатель)
+        var ex = (biz(x.t).expectations || []).length, rk = (biz(x.t).risks || []).length;
+        return '<div class="t-card"><div class="t-team">' + esc(x.t.team) + '</div><div class="t-sprint">стрим</div>' +
+          '<div class="t-big">' + ex + '<small>ожид.</small></div><div class="t-cap">открытых ожиданий · рисков ' + rk + '</div>' +
+          '<div class="t-kpis"><span><b>' + ex + '</b>ожиданий</span>' +
+          '<span class="' + (rk ? 'warn' : '') + '"><b>' + rk + '</b>рисков</span></div></div>';
+      }
       return '<div class="t-card"><div class="t-team">' + esc(x.t.team) + '</div><div class="t-sprint">' + esc(x.t.sprintName) + '</div>' +
         '<div class="t-big">' + pc + '<small>%</small></div><div class="t-cap">историй закрыто · ' + st.done + ' из ' + st.stories + '</div>' +
         '<div class="t-bar"><i style="width:' + pc + '%"></i></div>' +
@@ -908,6 +931,48 @@
       '<div class="h-goals-title">' + (goals.length ? 'Цели квартала в спринте' : 'Направления спринта') + '</div>' +
       '<div class="h-goals n' + Math.min(Math.max((goals.length || groups.length), 1), 4) + '">' + cards + '</div>',
       ' data-kind="команда" data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Команда · ' + t.team }));
+  }
+
+  // Слайд стрима — как команды, но без Jira-числительницы: карточки OBJ по данным
+  // бизнес-блока (готовит профиль-наблюдатель), счётчики — ожидания и риски стрима
+  function streamHeroSlide(t, groups) {
+    var p = teamPace(t), goals = groups.filter(function (g) { return g.obj; });
+    var cards = (goals.length ? goals : groups).slice(0, 4).map(function (g) {
+      var name = g.obj ? g.title.replace(g.obj + ': ', '') : g.title;
+      return '<div class="h-goal"><div class="h-obj">' + esc(g.obj || 'Вне целей') + '</div>' +
+        '<div class="h-name">' + ed('hero:' + t.slug + ':' + (g.obj || '-'), name) + '</div></div>';
+    }).join('');
+    var exp = biz(t).expectations || [], rk = biz(t).risks || [];
+    return slide('hero-slide',
+      '<div class="h-kicker">Стрим · ' + esc(t.sprintName) + (p ? ' · ' + dayMonth(p.start) + ' — ' + dayMonth(p.end) : '') + '</div>' +
+      '<h1>' + esc(t.team) + '</h1><div class="h-line"></div>' +
+      '<div class="h-kpis"><div><b>' + exp.length + '</b><span>открытых ожиданий</span></div>' +
+      '<div><b>' + rk.length + '</b><span>рисков стрима</span></div></div>' +
+      '<div class="h-goals-title">Цели стрима</div>' +
+      '<div class="h-goals n' + Math.min(Math.max((goals.length || groups.length), 1), 4) + '">' + cards + '</div>',
+      ' data-kind="стрим" data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Стрим · ' + t.team }));
+  }
+
+  // «Открытые ожидания» стрима: от кого · что ожидаем · в какой срок. Строки —
+  // из бизнес-блока (блок готовит профиль-наблюдатель по дайджестам); опорная дата
+  // для подсветки просрочки — момент сбора данных команды
+  function expectationsSlide(t) {
+    var rows = biz(t).expectations || [];
+    var today = (t._meta && t._meta.collectedAt || '').slice(0, 10);
+    var body = rows.map(function (x, i) {
+      var due = String(x.due || '');
+      var late = due && today && due < today;
+      var when = ed('expwhen:' + t.slug + ':' + i, (due || 'срок не назван') + (x.age ? '\n' + x.age : ''));
+      return '<div class="exp-row">' +
+        '<div class="exp-who">' + ed('expwho:' + t.slug + ':' + i, x.who || '—') +
+        (x.meta ? '<div class="exp-meta">' + ed('expmeta:' + t.slug + ':' + i, x.meta) + '</div>' : '') + '</div>' +
+        '<div class="exp-what">' + ed('expwhat:' + t.slug + ':' + i, x.what || '—') + '</div>' +
+        '<div class="exp-when' + (late ? ' late' : '') + '">' + when + '</div></div>';
+    }).join('');
+    return slide('expectations', '<h1 class="slide-title">Открытые ожидания</h1>' +
+      (rows.length ? '<div class="exp-list"><div class="exp-row rk-head"><div>От кого</div><div>Что ожидаем</div><div>В какой срок</div></div>' + body + '</div>'
+        : '<div class="exp-empty">Открытых ожиданий нет — данных по стриму не зафиксировано.</div>'),
+      ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Открытые ожидания · ' + t.team }));
   }
 
   // Строка = направление (эпик/KR): что сделано одним предложением, блокер, что не
@@ -1707,6 +1772,18 @@
     var html = titleSlide(all);
     all.forEach(function (x) {
       var groups = objGroups(x.t, x.streams);
+      if (isStream(x.t)) {
+        // стрим без Jira-операций: цели, ожидания, риски, roadmap;_ops/участники — команды
+        html += streamHeroSlide(x.t, groups);
+        groups.forEach(function (g) {
+          var pages = packStreams(g.streams);
+          pages.forEach(function (page, i) { html += objSlide(x.t, g, page, i, pages.length); });
+        });
+        html += expectationsSlide(x.t);
+        html += roadmapSlide(x.t, x.streams);
+        html += risksSlide(x.t, x.streams);
+        return;
+      }
       html += heroSlide(x.t, groups, x.streams);
       groups.forEach(function (g) {
         var pages = packStreams(g.streams);

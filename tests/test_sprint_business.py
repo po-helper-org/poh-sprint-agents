@@ -197,6 +197,74 @@ class CheckTest(unittest.TestCase):
             self.assertEqual(len(raw.get('scope') or []), e['scopeTotal'])
 
 
+class StreamCheckTest(unittest.TestCase):
+    """Стрим (kind=stream, TicketsCloud): раздел без Jira — цели, ожидания, риски и
+    roadmap целиком из блока, числовых сверок с фактами нет; длины — под слайд."""
+
+    def setUp(self):
+        self.ws = BizWorkspace()
+        self.addCleanup(self.ws.cleanup)
+        self.doc = self.ws.biz_example()
+        import build as build_mod
+        platform = next(t for t in self.ws.teams if t['slug'] == 'platform')
+        self.doc['teams']['ticketscloud'] = {
+            'kind': 'stream',
+            'dataHash': build_mod.team_digest(platform),   # любой валидный хеш: сверка не нужна
+            'goalsSource': 'Дайджесты ticketscloud-observer, 16.11.2026',
+            'objectives': {'OBJ 1': 'Первое сохранение из ВБС в TC',
+                           'OBJ 2': 'Продажи ВБС в TicketsCloud',
+                           'OBJ 3': 'Бекофис обслуживания TicketsCloud'},
+            'streams': {'INIT-101': {'obj': 'OBJ 1', 'kr': 'KR 1.1 — шлюзы и поток Базис→TC',
+                                     'done': 'Сценарий перехода согласован, эпик ждёт согласования TC.'}},
+            'expectations': [
+                {'who': 'TicketsCloud', 'meta': 'эпик GDSLV-1302', 'due': None,
+                 'what': 'Согласование scope эпика переключения потока Базис→TC', 'age': 'ждёт ~4 недели'},
+            ],
+            'risks': [{'kind': 'external', 'title': 'Молчание TicketsCloud по GDSLV-1302',
+                       'text': 'Эпик не согласован ~4 недели: без старта TC проект не успеет в квартал.'}],
+            'roadmap': {'rows': [{'title': 'Входящие шлюзы BI → TicketsCloud', 'obj': 'OBJ 1',
+                                  'cells': ['аналитика', 'дизайн', 'разработка', 'qa', 'приёмка', '']}]},
+        }
+
+    def check(self, doc=None):
+        # «ticketscloud» нет в демо-снимке: check зовётся только для его блока
+        teams = self.ws.teams
+        errors, warnings = [], []
+        business_mod.check_stream('ticketscloud', self.doc['teams']['ticketscloud'], errors, warnings)
+        return errors, warnings
+
+    def test_stream_block_passes_clean(self):
+        self.assertEqual(([], []), self.check())
+
+    def test_stream_rows_without_jira_checks(self):
+        """Ключи стрим-строк — не Jira-эпики: числовых и ключевых сверок нет, поэтому
+        «чужой» ключ проходит (его нет в данных — и не должно быть)."""
+        self.doc['teams']['ticketscloud']['streams']['TC-1'] = {
+            'obj': 'OBJ 2', 'kr': 'KR 2.1 — каталог ВБС на витрине',
+            'done': 'Вывод каталога TC с возвратами к 15.11.', 'next': 'эскалация доработок изображений',
+            'blocker': 'доработка изображений и дедубликация стоят'}
+        errors, warnings = self.check()
+        self.assertEqual([], errors)
+
+    def test_stream_expectations_checked(self):
+        exp = self.doc['teams']['ticketscloud']['expectations']
+        exp.append({'who': 'X', 'what': 'я' * 200, 'due': 'не-дата', 'age': 'a' * 100, 'meta': 'm' * 100})
+        errors, _ = self.check()
+        joined = ' | '.join(errors)
+        self.assertIn('expectations #2.what: длиннее 160', joined)
+        self.assertIn('expectations #2.age: длиннее 60', joined)
+        self.assertIn('expectations #2.meta: длиннее 80', joined)
+        # who без what — ошибка: пустых строк на слайде не бывает
+        exp.append({'who': 'Y', 'what': '   '})
+        errors, _ = self.check()
+        self.assertTrue(any('expectations #3: what пуст' in e for e in errors), errors)
+
+    def test_stream_unknown_objective_warns(self):
+        self.doc['teams']['ticketscloud']['streams']['INIT-101']['obj'] = 'OBJ 9'
+        _, warnings = self.check()
+        self.assertTrue(any('цели OBJ 9 нет в objectives' in w for w in warnings), warnings)
+
+
 
 class PageTest(unittest.TestCase):
     def setUp(self):
