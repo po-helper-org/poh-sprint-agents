@@ -1742,6 +1742,21 @@
 
   function risksSlide(t, streams) {
     var rk = teamRisks(t, streams), prev = null;
+    // стрим: риски — из бизнес-блока (пишет профиль-наблюдатель), не из Jira-данных
+    if (isStream(t)) {
+      var items = biz(t).risks || [];
+      var srows = items.map(function (x) {
+        return '<div class="rk-row rk-first">' +
+          '<div class="rk-init"><div class="rk-name">' + esc(x.kind === 'external' ? 'Внешняя зависимость'
+            : x.kind === 'deadline' ? 'Срок' : x.kind === 'resource' ? 'Ресурс' : 'Общее') + '</div></div>' +
+          '<div class="rk-story"><div class="rk-st">' + esc(clip(x.title, 110)) + '</div></div>' +
+          '<div class="rk-note">' + ed('rkrisk:' + t.slug + ':' + items.indexOf(x), x.text) + '</div></div>';
+      }).join('');
+      return slide('risks', '<h1 class="slide-title">Риски и проблемы</h1>' +
+        (srows ? '<div class="rk-list"><div class="rk-row rk-head"><div>Вид</div><div>Риск</div><div>Комментарий</div></div>' + srows + '</div>'
+          : '<div class="rk-empty">Рисков по стриму не зафиксировано.</div>'),
+        ' data-team="' + esc(t.slug) + '"' + ctxAttr({ kind: 'slide', title: 'Риски и проблемы · ' + t.team }));
+    }
     var rows = rk.list.map(function (x, i) {
       var id = 'rk:' + t.slug + ':' + x.key, first = x.name !== prev;
       prev = x.name;
