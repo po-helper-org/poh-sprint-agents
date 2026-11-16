@@ -238,9 +238,19 @@ class BusinessTemplateTest(unittest.TestCase):
         self.assertNotIn('memberMatrixHtml(t)', ops[:ops.index('function membersSlide(')], 'участники — отдельным слайдом')
         self.assertNotIn('function controlOverview(', self.html)
         build = self.html[self.html.index('function buildDeck('):]
-        self.assertLess(build.index('html += opsSlide(x.t);'), build.index('html += membersSlide(x.t);'))
-        self.assertLess(build.index('html += membersSlide(x.t);'), build.index('html += roadmapSlide('))
-        self.assertLess(build.index('html += roadmapSlide('), build.index('html += risksSlide('))
+        # порядок обычной команды: ops → участники → роадмап → риски (вторая ветка buildDeck,
+        # после раннего return стрима kind=stream)
+        team_path = build[build.index('html += opsSlide(x.t);'):]
+        self.assertLess(team_path.index('html += opsSlide(x.t);'), team_path.index('html += membersSlide(x.t);'))
+        self.assertLess(team_path.index('html += membersSlide(x.t);'), team_path.index('html += roadmapSlide('))
+        self.assertLess(team_path.index('html += roadmapSlide('), team_path.index('html += risksSlide('))
+        # стрим: цели → ожидания → роадмап → риски, без операционного и участников
+        stream_path = build[:build.index('html += opsSlide(x.t);')]
+        self.assertIn('html += streamHeroSlide(x.t, groups);', stream_path)
+        self.assertIn('html += expectationsSlide(x.t);', stream_path)
+        self.assertIn('html += roadmapSlide(x.t, x.streams);', stream_path)
+        self.assertNotIn('html += opsSlide(', stream_path)
+        self.assertNotIn('html += membersSlide(', stream_path)
         self.assertNotIn('cycleSlide', self.html, 'слайда «Сроки» нет: cycle time — на операционном')
 
     def test_ops_member_matrix(self):
