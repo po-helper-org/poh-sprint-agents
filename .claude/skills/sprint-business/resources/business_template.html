@@ -891,7 +891,7 @@
         // стрим: вместо Jira-процентов — ожидания и риски (тексты готовит профиль-наблюдатель)
         var ex = (biz(x.t).expectations || []).length, rk = (biz(x.t).risks || []).length;
         return '<div class="t-card"><div class="t-team">' + esc(x.t.team) + '</div><div class="t-sprint">стрим</div>' +
-          '<div class="t-big">' + ex + '<small>ожид.</small></div><div class="t-cap">открытых ожиданий · рисков ' + rk + '</div>' +
+          '<div class="t-big">' + ex + '<small> ож.</small></div><div class="t-cap">открытых ожиданий · рисков ' + rk + '</div>' +
           '<div class="t-kpis"><span><b>' + ex + '</b>ожиданий</span>' +
           '<span class="' + (rk ? 'warn' : '') + '"><b>' + rk + '</b>рисков</span></div></div>';
       }
