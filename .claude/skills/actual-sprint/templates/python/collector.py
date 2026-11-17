@@ -19,6 +19,8 @@
                                         кроме подзадач и эпиков (задачи, ошибки, истории)
     offboard         true               задачи участников вне доски за период спринта (другие проекты)
     offboard_max     300                сколько таких задач забирать максимум
+    offboard_skip_resolved_before true  не показывать задачи, закрытые до начала спринта
+                                        (попадают в окно только правкой полей: назначение, SP)
     done_statuses    doneExact из status_rules.json            что считать закрытым по имени
     status_buckets   {}                 «у нас "Ожидает релиза" на самом деле ревью»
     epic_link_field  "auto"             или customfield_XXXXX
@@ -1026,6 +1028,7 @@ class Collector:
             self.warn(f'задачи вне доски не собраны: {exc}')
             return out
         by = {}
+        skip_resolved_before = self.params.get('offboard_skip_resolved_before', True)
         for i in found:
             typ = ((i['fields'].get('issuetype') or {}).get('name') or '').lower()
             if i['key'] in sprint_keys or typ in ('эпик', 'epic'):   # эпики — контейнеры, не работа
@@ -1034,6 +1037,10 @@ class Collector:
             who = (f.get('assignee') or {}).get('displayName') or 'Не назначен'
             name, sid = f['status']['name'], f['status'].get('id')
             done = f.get('resolutiondate')
+            if (done and skip_resolved_before and parse(done) < start):
+                # закрыта до окна спринта: обновление полей (назначение, story points) в окне
+                # — не «работа за период», в полосу «вне доски» не попадает (GDSLV-2232/2207/2208)
+                continue
             by.setdefault(who, []).append({
                 'key': i['key'], 'title': f.get('summary') or '', 'project': i['key'].split('-')[0],
                 'type': (f.get('issuetype') or {}).get('name') or '', 'status': name,

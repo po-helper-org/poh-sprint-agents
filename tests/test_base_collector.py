@@ -493,6 +493,27 @@ class Collector110Test(unittest.TestCase):
         item = out['members'][0]['items'][0]
         self.assertEqual(('UNB', 'done', '2026-10-02', 1), (item['project'], item['bucket'], item['doneAt'], len(item['comments'])))
 
+    def test_offboard_skips_tasks_resolved_before_sprint_window(self):
+        """Закрытая до старта спринта задача, обновлённая в окне (назначение, story points),
+        не попадает в «вне доски» — это не работа за период (GDSLV-2232/2207/2208)."""
+        def api(path, **p):
+            return {'total': 1, 'issues': [{'key': 'GDSLV-2232', 'fields': {
+                'summary': 'DUMMY — дубль', 'issuetype': {'name': 'Задача'}, 'status': {'name': 'Закрыт', 'id': '1'},
+                'assignee': {'name': 'ivanov', 'displayName': 'Иванов Иван'},
+                'resolutiondate': '2026-09-10T12:00:00.000+0300',   # до старта окна 2026-09-23
+                'updated': '2026-10-05T18:02:00.000+0300'},          # правка полей в окне
+                'changelog': {'histories': []}}]}
+        c = self.collector(api=api)
+        out = c.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'},
+                               [self.issue('ALP-1', 'История', login='ivanov', name='Иванов Иван')])
+        self.assertEqual([], out['members'], 'закрытая до окна задача не показывается')
+        # поведение можно выключить параметром
+        c2 = self.collector({'offboard_skip_resolved_before': False}, api=api)
+        out2 = c2.build_offboard({'startDate': '2026-09-23T10:00:00.000+03:00'},
+                                 [self.issue('ALP-1', 'История', login='ivanov', name='Иванов Иван')])
+        self.assertEqual(['GDSLV-2232'], [i['key'] for m in out2['members'] for i in m['items']],
+                         'offboard_skip_resolved_before=false возвращает старое поведение')
+
     def test_offboard_failure_is_a_warning_not_a_crash(self):
         def api(path, **p):
             raise self.mod.JiraProblem('JIRA вернула HTTP 400')
