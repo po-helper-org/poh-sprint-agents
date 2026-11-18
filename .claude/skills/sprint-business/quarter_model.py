@@ -294,10 +294,22 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
         'candidates': candidates,
         'shifted': sum(1 for r in all_rows if r['delta'] and (r['delta'].get('p85Days') or 0) > 0),
         'previousWeek': (history or {}).get('week'),
-        'snapshot': {'week': monday.isoformat(), 'rows': {r['key']: {
-            'status': r['status'], 'p85': r['p85'].isoformat() if r['p85'] else None, 'chance': r['chance'],
-            'blockers': [b['key'] for b in r['blockers']]} for r in all_rows}},
+        'snapshot': {'week': monday.isoformat(), 'rows': {r['key']: snapshot_row(r) for r in all_rows}},
     }
+
+
+def snapshot_row(row):
+    """Строка недельного снимка. `status` — итоговый (с оценкой PO), `computedStatus` — расчёт модели до неё,
+    `override: {status}` — сама оценка PO, только если она есть: по истории снимков считаются точность модели и
+    оценки PO. Причину оценки в историю не пишем: метрикам нужен только факт оценки и её сторона, а свободный
+    текст копился бы в снимках без срока. Расчёт берётся строго из `computedStatus`: подставить `status` значило бы
+    записать оценку PO как расчёт."""
+    out = {'status': row['status'], 'computedStatus': row['computedStatus'],
+           'p85': row['p85'].isoformat() if row['p85'] else None, 'chance': row['chance'],
+           'blockers': [b['key'] for b in row['blockers']]}
+    if row.get('override') is not None:
+        out['override'] = {'status': row['status']}
+    return out
 
 
 def delta(row, prev):

@@ -249,8 +249,43 @@ class QuarterModelTest(unittest.TestCase):
         self.assertEqual(['E1B-O0'], d['newBlockers'])
         self.assertEqual(['E1-OLD'], d['resolvedBlockers'])
         self.assertEqual(1, view['shifted'])
-        self.assertEqual({'status': 'yellow', 'p85': '2026-11-08', 'chance': 1.0, 'blockers': ['E1B-O0']},
+        self.assertEqual({'status': 'yellow', 'computedStatus': 'yellow', 'p85': '2026-11-08', 'chance': 1.0,
+                          'blockers': ['E1B-O0']},
                          view['snapshot']['rows']['E-1'])
+
+    def test_snapshot_keeps_calculation_next_to_po_assessment(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6)),
+                             epic('E-2', done_items('E2', 2) + open_items('E2', 6))])
+        block = {'teams': {'team-a': {'initiatives': {'E-1': {'override': {'status': 'yellow', 'reason': 'ждём юристов'}}}}}}
+        rows = json.loads(json.dumps(qm.build(goals, data, block=block)['snapshot']['rows']))
+        self.assertEqual(('yellow', 'green', {'status': 'yellow'}),
+                         (rows['E-1']['status'], rows['E-1']['computedStatus'], rows['E-1']['override']))
+        self.assertEqual(('green', 'green'), (rows['E-2']['status'], rows['E-2']['computedStatus']))
+        self.assertNotIn('override', rows['E-2'])
+        # причина оценки — свободный текст PO — в историю не копится
+        self.assertNotIn('ждём юристов', json.dumps(rows, ensure_ascii=False))
+
+    def test_every_snapshot_row_has_calculation(self):
+        epics = [epic('E-1', done_items('E1', 2) + open_items('E1', 6)), epic('E-2', done_items('E2', 3)),
+                 epic('E-3', open_items('E3', 4, created='2026-11-01'))]
+        goals, data = world(epics)
+        goals['team-a']['epics']['E-9'] = 'OBJ 1'   # в квартале, но нет данных из Jira
+        rows = qm.build(goals, data)['snapshot']['rows']
+        self.assertLessEqual({'green', 'done', 'none'}, {r['computedStatus'] for r in rows.values()})   # все три ветки
+        self.assertEqual({}, {k: r for k, r in rows.items() if r.get('computedStatus') is None})
+
+    def test_po_confirming_calculation_is_assessment_without_shift(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
+        block = {'teams': {'team-a': {'initiatives': {'E-1': {'override': {'status': 'green'}}}}}}
+        r = qm.build(goals, data, block=block)['snapshot']['rows']['E-1']
+        self.assertEqual(('green', 'green', {'status': 'green'}), (r['status'], r['computedStatus'], r['override']))
+
+    def test_old_snapshot_without_calculation_still_gives_shift(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
+        old = {'week': '2026-10-12', 'rows': {'E-1': {'status': 'red', 'p85': '2026-11-01', 'chance': 0.4,
+                                                      'blockers': []}}}
+        d = row_of(qm.build(goals, data, history=old), 'E-1')['delta']
+        self.assertEqual('red', d['statusWas'])
 
 
 class TeamSummaryAndWordingTest(unittest.TestCase):
