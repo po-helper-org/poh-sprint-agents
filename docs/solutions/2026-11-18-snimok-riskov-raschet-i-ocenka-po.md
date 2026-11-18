@@ -3,7 +3,7 @@ title: Недельный снимок рисков хранит расчёт р
 date: 2026-11-18
 kind: feature
 area: quarter-risks
-prs: []
+prs: [49]
 tags: [риски, снимок, оценка-po, override, метрики]
 source: session
 ---
