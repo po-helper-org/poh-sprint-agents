@@ -6,6 +6,7 @@
 
 | Дата | Кейс | Вид | Область | PR |
 |---|---|---|---|---|
+| 2026-11-18 | [Недельный снимок рисков хранит расчёт рядом с оценкой PO](2026-11-18-snimok-riskov-raschet-i-ocenka-po.md) | feature | quarter-risks | — |
 | 2026-11-12 | [Риски квартала и комментарии к рискам спринта учитывают рефлексию агента (team-pulse)](2026-11-12-riski-uchityvayut-refleksiyu.md) | feature | sprint-business | 42 |
 | 2026-10-21 | [«Риски и проблемы» — инициатива · история · комментарий агента](2026-10-21-riski-tri-stolbca.md) | feature | sprint-business | 34 |
 | 2026-10-19 | [Тексты рисков квартала пишут агенты команд по понедельникам — put под замком](2026-10-19-teksty-riskov-agenty-ponedelnik.md) | ops | quarter-risks | 30 |

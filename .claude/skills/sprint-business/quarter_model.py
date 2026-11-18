@@ -294,10 +294,26 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
         'candidates': candidates,
         'shifted': sum(1 for r in all_rows if r['delta'] and (r['delta'].get('p85Days') or 0) > 0),
         'previousWeek': (history or {}).get('week'),
-        'snapshot': {'week': monday.isoformat(), 'rows': {r['key']: {
-            'status': r['status'], 'p85': r['p85'].isoformat() if r['p85'] else None, 'chance': r['chance'],
-            'blockers': [b['key'] for b in r['blockers']]} for r in all_rows}},
+        'snapshot': {'week': monday.isoformat(), 'rows': {r['key']: snapshot_row(r) for r in all_rows}},
     }
+
+
+def snapshot_row(row):
+    """Строка недельного снимка. `status` — итоговый (с оценкой PO), `computedStatus` — расчёт модели до неё,
+    `override` — сама оценка PO, только если она есть: по истории снимков считаются точность модели и оценки PO.
+    В снимках до этого поля нет: там `status` уже с оценкой PO, расчёт не восстановить."""
+    out = {'status': row['status'], 'computedStatus': row.get('computedStatus', row['status']),
+           'p85': row['p85'].isoformat() if row['p85'] else None, 'chance': row['chance'],
+           'blockers': [b['key'] for b in row['blockers']]}
+    if row.get('override') is not None:
+        out['override'] = {'status': row['status'], 'reason': row['override']}
+    return out
+
+
+def snapshot_statuses(prev):
+    """(итоговый, расчётный, оценка PO) из строки снимка любой версии. Старый снимок: расчётный и оценка — None."""
+    prev = prev or {}
+    return prev.get('status'), prev.get('computedStatus'), prev.get('override')
 
 
 def delta(row, prev):

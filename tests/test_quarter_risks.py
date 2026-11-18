@@ -249,8 +249,30 @@ class QuarterModelTest(unittest.TestCase):
         self.assertEqual(['E1B-O0'], d['newBlockers'])
         self.assertEqual(['E1-OLD'], d['resolvedBlockers'])
         self.assertEqual(1, view['shifted'])
-        self.assertEqual({'status': 'yellow', 'p85': '2026-11-08', 'chance': 1.0, 'blockers': ['E1B-O0']},
+        self.assertEqual({'status': 'yellow', 'computedStatus': 'yellow', 'p85': '2026-11-08', 'chance': 1.0,
+                          'blockers': ['E1B-O0']},
                          view['snapshot']['rows']['E-1'])
+
+    def test_snapshot_keeps_calculation_next_to_po_assessment(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6)),
+                             epic('E-2', done_items('E2', 2) + open_items('E2', 6))])
+        block = {'teams': {'team-a': {'initiatives': {'E-1': {'override': {'status': 'yellow', 'reason': 'ждём юристов'}}}}}}
+        rows = qm.build(goals, data, block=block)['snapshot']['rows']
+        self.assertEqual(('yellow', 'green', {'status': 'yellow', 'reason': 'ждём юристов'}),
+                         (rows['E-1']['status'], rows['E-1']['computedStatus'], rows['E-1']['override']))
+        self.assertEqual(('green', 'green'), (rows['E-2']['status'], rows['E-2']['computedStatus']))
+        self.assertNotIn('override', rows['E-2'])
+        self.assertEqual(('yellow', 'green', {'status': 'yellow', 'reason': 'ждём юристов'}),
+                         qm.snapshot_statuses(json.loads(json.dumps(rows['E-1']))))
+
+    def test_old_snapshot_without_calculation_still_gives_shift(self):
+        goals, data = world([epic('E-1', done_items('E1', 2) + open_items('E1', 6))])
+        old = {'week': '2026-10-12', 'rows': {'E-1': {'status': 'red', 'p85': '2026-11-01', 'chance': 0.4,
+                                                      'blockers': []}}}
+        d = row_of(qm.build(goals, data, history=old), 'E-1')['delta']
+        self.assertEqual('red', d['statusWas'])
+        self.assertEqual(('red', None, None), qm.snapshot_statuses(old['rows']['E-1']))
+        self.assertEqual((None, None, None), qm.snapshot_statuses(None))
 
 
 class TeamSummaryAndWordingTest(unittest.TestCase):
