@@ -300,20 +300,16 @@ def build(goals, data, block=None, approvals=None, history=None, today=None):
 
 def snapshot_row(row):
     """Строка недельного снимка. `status` — итоговый (с оценкой PO), `computedStatus` — расчёт модели до неё,
-    `override` — сама оценка PO, только если она есть: по истории снимков считаются точность модели и оценки PO.
-    В снимках до этого поля нет: там `status` уже с оценкой PO, расчёт не восстановить."""
-    out = {'status': row['status'], 'computedStatus': row.get('computedStatus', row['status']),
+    `override: {status}` — сама оценка PO, только если она есть: по истории снимков считаются точность модели и
+    оценки PO. Причину оценки в историю не пишем: метрикам нужен только факт оценки и её сторона, а свободный
+    текст копился бы в снимках без срока. Расчёт берётся строго из `computedStatus`: подставить `status` значило бы
+    записать оценку PO как расчёт."""
+    out = {'status': row['status'], 'computedStatus': row['computedStatus'],
            'p85': row['p85'].isoformat() if row['p85'] else None, 'chance': row['chance'],
            'blockers': [b['key'] for b in row['blockers']]}
     if row.get('override') is not None:
-        out['override'] = {'status': row['status'], 'reason': row['override']}
+        out['override'] = {'status': row['status']}
     return out
-
-
-def snapshot_statuses(prev):
-    """(итоговый, расчётный, оценка PO) из строки снимка любой версии. Старый снимок: расчётный и оценка — None."""
-    prev = prev or {}
-    return prev.get('status'), prev.get('computedStatus'), prev.get('override')
 
 
 def delta(row, prev):
