@@ -248,6 +248,13 @@
   .t-kpis b { display: block; font-size: 17px; color: #111; font-variant-numeric: tabular-nums; }
   .t-kpis .bad b { color: var(--c-blocked); }
   .t-kpis .warn b { color: #b45309; }
+  .t-burn { display: flex; align-items: center; gap: 14px; height: 44px; }
+  .t-burn-svg { flex: 1; min-width: 0; height: 100%; }
+  .t-burn-svg svg { display: block; width: 100%; height: 100%; }
+  .t-burn-num { font-size: 12px; color: #666; white-space: nowrap; text-align: right; line-height: 1.25; }
+  .t-burn-num b { font-size: 17px; color: #111; font-variant-numeric: tabular-nums; }
+  .t-burn-num b.bad { color: #dc2626; }
+  .t-burn-num span { display: block; }
 
   /* слайд команды: итог с одного взгляда — числа, цели, «заблокированы» и «не успели» */
   .hero-slide { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 64px; }
@@ -880,6 +887,42 @@
 
   function pctOf(a, b) { return b ? Math.round(100 * a / b) : 0; }
 
+  // Миниатюра сгорания на титуле — те же данные и формулы, что bizBurnChart, но без
+  // осей и сетки: красная — осталось, серая — идеал, пунктир — объём; справа «N из M»
+  // (красное, если отстаём от идеала). Клик — расшифровка сгорания с полным графиком.
+  // Нет данных — null: карточка показывает прежние числа.
+  function burnMini(t) {
+    var b = t.burndown || {}, days = b.days || [], part = burnPart(t);
+    var past = days.map(function (d, i) { return i; }).filter(function (i) { return !days[i].future; });
+    if (!past.length) return null;
+    var vals = days.map(function (d) {
+      return part === 'story' ? { scope: d.storyScope || 0, closed: d.storyClosed || 0 } : { scope: d.scope || 0, closed: d.closed || 0 };
+    });
+    var W = 200, H = 40, pad = 3;
+    var maxY = Math.max.apply(null, vals.map(function (v) { return v.scope; })) || 1;
+    var xOf = function (i) { return pad + (W - 2 * pad) * (days.length > 1 ? i / (days.length - 1) : 0); };
+    var yOf = function (v) { return pad + (H - 2 * pad) * (1 - v / maxY); };
+    var work = days.filter(function (d) { return !d.weekend; }).length || 1, start = vals[0].scope, passed = 0;
+    var ideal = days.map(function (d, i) {
+      if (!d.weekend && i > 0) passed++;
+      return Math.max(0, start * (1 - passed / Math.max(1, work - 1)));
+    });
+    var path = function (idx, f) {
+      return idx.map(function (i, j) { return (j ? 'L' : 'M') + xOf(i).toFixed(1) + ' ' + yOf(f(i)).toFixed(1); }).join(' ');
+    };
+    var ns = ' fill="none" vector-effect="non-scaling-stroke"';
+    var li = past[past.length - 1], lv = vals[li], left = lv.scope - lv.closed, late = left > Math.ceil(ideal[li]);
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="' + path(days.map(function (d, i) { return i; }), function (i) { return ideal[i]; }) + '" stroke="#9ca3af" stroke-width="1.5"' + ns + '/>' +
+      '<path d="' + path(past, function (i) { return vals[i].scope; }) + '" stroke="#6b7280" stroke-width="1" stroke-dasharray="3 3"' + ns + '/>' +
+      '<path d="' + path(past, function (i) { return vals[i].scope - vals[i].closed; }) + '" stroke="#dc2626" stroke-width="2"' + ns + '/></svg>';
+    return '<div class="t-burn burn-click" data-burn="' + esc(t.slug) + '" title="' +
+      esc('Сгорание спринта на ' + ddmm(days[li].date) + ': осталось ' + left + ' из ' + lv.scope + (late ? ' — отстаём от идеала' : '') +
+        (part === 'story' ? ' (без подзадач)' : '') + '. Клик — полный график') + '">' +
+      '<div class="t-burn-svg">' + svg + '</div>' +
+      '<div class="t-burn-num"><b class="' + (late ? 'bad' : '') + '">' + left + '</b> из ' + lv.scope + '<span>Сгорание</span></div></div>';
+  }
+
   // Титул: что за отчёт, период и ход спринта, по команде — карточка с ключевыми числами.
   function titleSlide(all) {
     var paces = TEAMS.map(teamPace).filter(Boolean);
@@ -898,9 +941,9 @@
       return '<div class="t-card"><div class="t-team">' + esc(x.t.team) + '</div><div class="t-sprint">' + esc(x.t.sprintName) + '</div>' +
         '<div class="t-big">' + pc + '<small>%</small></div><div class="t-cap">историй закрыто · ' + st.done + ' из ' + st.stories + '</div>' +
         '<div class="t-bar"><i style="width:' + pc + '%"></i></div>' +
-        '<div class="t-kpis"><span><b>' + (st.spAll ? st.spDone + '/' + st.spAll : '—') + '</b>SP сделано</span>' +
+        (burnMini(x.t) || '<div class="t-kpis"><span><b>' + (st.spAll ? st.spDone + '/' + st.spAll : '—') + '</b>SP сделано</span>' +
         '<span class="' + (st.blocked ? 'bad' : '') + '"><b>' + st.blocked + '</b>🛑 в блоке</span>' +
-        '<span class="' + (st.behind ? 'warn' : '') + '"><b>' + st.behind + '</b>⏳ не закрыто</span></div></div>';
+        '<span class="' + (st.behind ? 'warn' : '') + '"><b>' + st.behind + '</b>⏳ не закрыто</span></div>') + '</div>';
     }).join('');
     // на слайде — только карточки; период — в оглавлении и подсказке
     var name = 'ФАКТ | ' + dayMonth(start) + ' — ' + dayMonth(end) + ' ' + (end || '').slice(0, 4);

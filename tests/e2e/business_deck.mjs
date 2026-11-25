@@ -91,6 +91,17 @@ const heads = await p.evaluate(() => ({
 check(heads.cards === TEAMS_N(deckInfo) && /^\d+%$/.test(heads.big), 'титул: по карточке на команду с долей закрытых историй');
 check(heads.hero === deckInfo.teams.split('|')[0] && heads.kpis === 2 && heads.goals >= 1 && heads.centered === 'center',
       'слайд команды: имя, задачи и SP, цели карточками');
+const mini = await p.evaluate(() => { const c = document.querySelector('.title-slide .t-card');
+  const b = c.querySelector('.t-burn'); return { kpis: !!c.querySelector('.t-kpis'), lines: b ? b.querySelectorAll('svg path').length : 0,
+    axes: b ? b.querySelectorAll('svg text, svg line').length : -1, num: b ? b.querySelector('.t-burn-num').textContent : '', h: b ? b.getBoundingClientRect().height : 0 }; });
+check(!mini.kpis && mini.lines === 3 && mini.axes === 0 && /^\d+ из \d+Сгорание$/.test(mini.num) && mini.h <= 50,
+      'титул: вместо «SP · в блоке · не закрыто» — миниатюра сгорания без осей, «N из M», подпись «Сгорание»');
+await p.click('.title-slide .t-burn');
+await p.waitForTimeout(200);
+check(await p.evaluate(() => /^Сгорание спринта · /.test(document.getElementById('stackKey').textContent) && !!document.querySelector('.cbig svg')),
+      'клик по миниатюре — расшифровка сгорания с полным графиком');
+await p.keyboard.press('Escape');
+await p.waitForTimeout(200);
 check(heads.panels === 0, 'на слайде команды нет панелей «заблокированы / не успели»');
 check(!heads.sub, 'на слайдах направлений нет подписи «строка — направление, истории — по клику»');
 check(!heads.note && !heads.krTail, 'нет подписи про агента и «эпик · Sprint Goal» в строках');
