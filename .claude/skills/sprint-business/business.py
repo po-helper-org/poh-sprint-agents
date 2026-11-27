@@ -32,6 +32,7 @@ import schema as schema_mod  # noqa: E402
 import validate as validate_mod  # noqa: E402
 import risk_notes as notes_mod  # noqa: E402
 import layers as layers_mod  # noqa: E402
+import quality as quality_mod  # noqa: E402
 
 SCHEMA_PATH = HERE / 'contract' / 'business.schema.json'
 TEMPLATE_PATH = HERE / 'resources' / 'business_template.html'
@@ -352,6 +353,8 @@ def prepare(teams, path, draft=None):
     keep = [p for p, _ in patch] if store.exists() else []
     view = prune(merged, teams, keep)
     errors, warnings = check(view, teams)
+    if not errors:
+        errors += quality_errors(view, teams, path, patch, doc.get('author'))
     if not keep:
         gone = sorted({f'{slug}:{k}' for slug, t in (merged.get('teams') or {}).items() for f in ('streams', 'rows')
                        for k in (t.get(f) or {}) if k not in ((view['teams'].get(slug) or {}).get(f) or {})})
@@ -364,6 +367,42 @@ def prepare(teams, path, draft=None):
         warnings.append(f'перекрыта правка v{n} ({author}) — те же поля поменяли и вы; '
                         f'история: business.py history')
     return store, doc, patch, base_n, errors, warnings
+
+
+def quality_errors(view, teams, path, patch, author):
+    """Ваншот-качество (quality.py) полей, которые меняет запись: риск без «от кого» и срока, служебные метки
+    модели, цель не по карте целей, «закрыто» без закрытой задачи… Правки PO не проверяются (его слова —
+    достоверны); старые огрехи соседних полей запись не держат. → строки ошибок."""
+    if quality_mod.is_po(author):
+        return []
+    only = {tuple(p) for p, v in patch if v is not None}
+    if not only:
+        return []
+    goals = quality_mod.load(Path(path).parent / 'sprint-goals.json', {})
+    res = quality_mod.assess(view, teams, goals, quality_mod.last_authors(path), only=only)
+    return [f'[{slug}] {r.key} · {field}: {msg} [ваншот: {code}]'
+            for slug, rows in res.items() for r in rows for code, field, msg in r.errors]
+
+
+def cmd_quality(args, cfg):
+    """Ваншот-качество опубликованной колоды: доля строк без правок PO, явные эскалации, замечания."""
+    if args.eval:
+        ev = quality_mod.evaluate()
+        print(f'кейсы из замечаний PO: поймано {ev["caught"]}/{ev["total"]}, '
+              f'чистые без ложных срабатываний {ev["cleanOk"]}/{ev["clean"]}')
+        for m in ev['misses']:
+            print(f'  ✗ {m["id"]}: ждали {m["want"]}, получили {m["got"]}')
+        return EXIT_OK if not ev['misses'] else EXIT_ERROR
+    teams = ins.load_teams(Path(args.data).resolve() if args.data else cfg.data)
+    path, draft = _paths(args, cfg)
+    doc = read_doc(draft, required=True) if draft else (current_block(path) or {})
+    goals = quality_mod.load(Path(path).parent / 'sprint-goals.json', {})
+    res = quality_mod.assess(doc, teams, goals, quality_mod.last_authors(path), team=args.team)
+    if args.json:
+        print(json.dumps(quality_mod.to_json(res), ensure_ascii=False, indent=1))
+    else:
+        print(quality_mod.format_text(res, warnings=not args.errors))
+    return EXIT_OK
 
 
 def _report(errors, warnings):
@@ -486,6 +525,13 @@ def main(argv=None):
                            help='запись из этого файла; история версий и итог — у основного блока (--file)')
         if name != 'check':
             p.add_argument('--output', default=None, help='куда писать HTML (по умолчанию business конфига)')
+    p_q = sub.add_parser('quality', help='ваншот-качество колоды: что PO пришлось бы править')
+    p_q.add_argument('--file', default=None, help='бизнес-блок (по умолчанию business_data конфига)')
+    p_q.add_argument('--draft', default=None, help='проверить черновик, а не опубликованную колоду')
+    p_q.add_argument('--team', default=None, help='slug одной команды')
+    p_q.add_argument('--json', action='store_true', help='JSON: метрика и замечания')
+    p_q.add_argument('--errors', action='store_true', help='только ошибки')
+    p_q.add_argument('--eval', action='store_true', help='регрессия на кейсах из замечаний PO')
     p_hist = sub.add_parser('history', help='версии бизнес-блока: кто, когда, что поменял')
     p_hist.add_argument('--file', default=None, help='бизнес-блок (по умолчанию business_data конфига)')
     p_hist.add_argument('--last', type=int, default=20, help='сколько последних версий')
@@ -500,7 +546,7 @@ def main(argv=None):
     try:
         cfg = ins.load_config(args.config)
         return {'facts': cmd_facts, 'check': cmd_check, 'apply': cmd_apply, 'render': cmd_render,
-                'history': cmd_history,
+                'history': cmd_history, 'quality': cmd_quality,
                 'risk-todo': cmd_risk_todo, 'risk-put': cmd_risk_put}[args.cmd](args, cfg)
     except (ins.InsightsError, build_mod.BuildError, layers_mod.LayersError) as exc:
         print(f'✗ {exc}')
