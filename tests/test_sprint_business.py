@@ -339,6 +339,42 @@ class PageTest(unittest.TestCase):
         self.assertIn('бизнес-блок не принят', proc.stdout)
         self.assertFalse(self.ws.biz_page.exists())
 
+    def test_apply_refuses_risk_without_owner_and_slop(self):
+        """Ваншот-качество: новый блокер со служебной меткой и без «от кого» не идёт на колоду — откуда бы ни
+        писали (навык, рефлексия агента, виджет); явная эскалация проходит; правку PO не проверяем."""
+        self.ws.biz_file.write_text(json.dumps(self.ws.biz_example(), ensure_ascii=False), encoding='utf-8')
+        self.assertEqual(0, self.ws.bcli('apply').returncode)
+        doc = json.loads(self.ws.biz_file.read_text(encoding='utf-8'))
+        epic = next(iter(doc['teams']['platform']['streams']))
+        stream = doc['teams']['platform']['streams'][epic]
+        stream['blocker'] = 'стоим, причина [УТОЧНИТЬ]'
+        stream['next'] = 'разобраться'
+        self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
+        proc = self.ws.bcli('apply')
+        self.assertEqual(1, proc.returncode, proc.stdout)
+        self.assertIn('[ваншот: slop]', proc.stdout)
+        self.assertIn('[ваншот: risk_owner]', proc.stdout)
+        self.assertIn('[ваншот: risk_due]', proc.stdout)
+        doc['author'] = 'PO'
+        self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
+        self.assertNotIn('ваншот', self.ws.bcli('check').stdout, 'слова PO достоверны')
+        doc['author'] = 'po-platform'
+        stream['blocker'] = 'ждём доступ от DevOps до 27.11 — иначе запуск сдвинется'
+        stream['next'] = 'эскалация на синке 27.11'
+        self.ws.biz_file.write_text(json.dumps(doc, ensure_ascii=False), encoding='utf-8')
+        proc = self.ws.bcli('apply')
+        self.assertEqual(0, proc.returncode, proc.stdout)
+
+    def test_quality_command_and_eval(self):
+        self.ws.biz_file.write_text(json.dumps(self.ws.biz_example(), ensure_ascii=False), encoding='utf-8')
+        self.assertEqual(0, self.ws.bcli('apply').returncode)
+        proc = self.ws.bcli('quality', '--json')
+        self.assertEqual(0, proc.returncode, proc.stdout + proc.stderr)
+        self.assertIn('oneshotPct', json.loads(proc.stdout)['summary']['total'])
+        proc = self.ws.bcli('quality', '--eval')
+        self.assertEqual(0, proc.returncode, proc.stdout)
+        self.assertIn('поймано 16/16', proc.stdout)
+
     def test_facts_are_the_shared_facts(self):
         proc = self.ws.bcli('facts')
         self.assertEqual(0, proc.returncode, proc.stderr)
